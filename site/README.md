@@ -4,7 +4,7 @@
 
 - `index.html`: 게임 소개, 플레이 방법, 스크린샷
 - `privacy.html`: 개인정보처리방침. 게임의 `privacy.html`을 그대로 복사해서 올려요 (원본은 하나)
-- `ads.txt`: AdSense 게시자 ID를 받은 뒤에 추가해요
+- `ads.txt`: AdSense 게시자 확인 파일 (`pub-6503525638904411`). `index.html` 머리에도 같은 ID의 확인 코드가 있어요
 
 서버는 `/ranking/` 게임 서버와 같은 Apache(`/var/www/html`)예요.
 
@@ -16,10 +16,10 @@ ls /var/www/html                     # 지금 있는 파일 확인 (웹훅 등 �
 sudo cp -n /var/www/html/index.html /var/www/html/index.html.bak 2>/dev/null   # 예전 첫 화면 백업 (한 번만)
 sudo cp /tmp/dungeon/site/index.html /tmp/dungeon/privacy.html /var/www/html/
 sudo mkdir -p /var/www/html/img && sudo cp /tmp/dungeon/site/img/*.png /var/www/html/img/
-[ -f /tmp/dungeon/site/ads.txt ] && sudo cp /tmp/dungeon/site/ads.txt /var/www/html/
+sudo cp /tmp/dungeon/site/ads.txt /var/www/html/
 ```
 
-확인: https://apacimtest.com/ , https://apacimtest.com/privacy.html (그리고 ads.txt를 올린 뒤 https://apacimtest.com/ads.txt)
+확인: https://apacimtest.com/ , https://apacimtest.com/privacy.html , https://apacimtest.com/ads.txt
 
 ## 스크린샷 다시 찍기
 
