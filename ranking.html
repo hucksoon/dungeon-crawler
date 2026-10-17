@@ -28,6 +28,11 @@
   #me, #notice { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
   #me b { color: var(--accent); }
   #notice { color: var(--muted); }
+  .ver { font-size: 12px; color: #1a1406; background: var(--accent); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; letter-spacing: 0; text-shadow: none; }
+  .seasons { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .seasons button { font: inherit; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .seasons button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
+  .seasons small { color: var(--muted); margin-left: 4px; }
   .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 760px) { .boards { grid-template-columns: 1fr; } }
   section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-width: 0; }
@@ -78,23 +83,24 @@
 <body>
 <main>
   <header>
-    <h1>🏆 던전 크롤러 랭킹</h1>
+    <h1>🏆 던전 크롤러 랭킹<span class="ver" id="ver">v4 베타</span></h1>
     <div class="status"><span id="dot" class="dot"></span><span id="updated">불러오는 중…</span></div>
     <a class="btn" href="./">게임으로 돌아가기</a>
   </header>
 
+  <div class="seasons" role="tablist" aria-label="랭킹 버전" id="seasons"></div>
   <div id="notice" hidden></div>
   <div id="me" hidden></div>
 
   <div class="boards">
     <section>
       <h2>최고 층 랭킹</h2>
-      <p class="sub">가장 깊이 내려간 순서 · 같으면 먼저 도달한 사람이 위</p>
+      <p class="sub" id="sub-stage">가장 깊이 내려간 순서 · 같으면 먼저 도달한 사람이 위</p>
       <ol id="board-stage"></ol>
     </section>
     <section>
       <h2>최강 아이템 랭킹</h2>
-      <p class="sub">가진 적 있는 최고 아이템 · 등급 → 강화 → 아이템 레벨 순</p>
+      <p class="sub" id="sub-item">가진 적 있는 최고 아이템 · 등급 → 강화 → 아이템 레벨 순</p>
       <ol id="board-item"></ol>
     </section>
   </div>
@@ -132,6 +138,30 @@
   };
   const $ = (id) => document.getElementById(id);
 
+  // 랭킹 버전(시즌). 지금 시즌에만 기록이 올라가고, 예전 시즌은 최종 기록으로 그대로 보여줌
+  const SEASONS = [
+    { id: "v4", name: "v4 베타", note: "진행 중", current: true,
+      stageSub: `가장 깊이 내려간 순서 · ${RLMonsters.MAX_FLOOR}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
+      itemSub: "가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
+    { id: "v3", name: "v3 베타", note: "최종 기록", current: false,
+      stageSub: "v3 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)",
+      itemSub: "v3 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)" },
+  ];
+  let season = SEASONS.find(s => location.hash === `#${s.id}`) || SEASONS[0];
+  function renderSeasons() {
+    $("seasons").replaceChildren(...SEASONS.map(s => {
+      const b = el("button", {
+        type: "button",
+        onclick: () => { if (s === season) return; season = s; history.replaceState(null, "", s.current ? location.pathname : `#${s.id}`); renderSeasons(); refresh(); },
+      }, s.name, el("small", { textContent: s.note }));
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", String(s === season));
+      return b;
+    }));
+    $("sub-stage").textContent = season.stageSub;
+    $("sub-item").textContent = season.itemSub;
+  }
+
   // 서버 응답은 textContent로만 넣음 (이름에 HTML이 섞여도 실행되지 않게)
   function el(tag, { dataset, ...props } = {}, ...children) {
     const e = Object.assign(document.createElement(tag), props);
@@ -165,7 +195,7 @@
   const medal = (rank) => ["🥇", "🥈", "🥉"][rank - 1] || String(rank);
 
   function renderBoard(ol, data, myRank, value) {
-    if (!data.rows.length) { ol.replaceChildren(el("div", { className: "empty", textContent: "아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!" })); return; }
+    if (!data.rows.length) { ol.replaceChildren(el("div", { className: "empty", textContent: season.current ? "아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!" : "이 버전에는 기록이 없어요." })); return; }
     ol.replaceChildren(...data.rows.map(r => el("li", {
       className: r.rank === myRank ? "me" : "",
       ...(r.id ? { dataset: { id: r.id }, tabIndex: 0, title: "장비 보기", onclick: () => openPlayer(r.id),
@@ -203,9 +233,9 @@
     modal.hidden = false;
     $("player-close").focus();
     let p;
-    try { p = await get(`/api/player?id=${encodeURIComponent(id)}`); }
+    try { p = await get(`/api/player?id=${encodeURIComponent(id)}&season=${season.id}`); }
     catch { $("player-title").textContent = "정보를 불러오지 못했어요"; return; }
-    $("player-title").textContent = p.name + (p.guest ? " (게스트)" : "");
+    $("player-title").textContent = `${p.name}${p.guest ? " (게스트)" : ""} · ${season.name}`;
     $("player-meta").textContent = `최고 ${stageText(p.stage)}${p.stageAt ? ` · ${fmtTime(p.stageAt)} 달성` : ""}`;
     const body = [];
     const g = p.gear;
@@ -235,8 +265,8 @@
   $("player-modal").addEventListener("click", (e) => { if (e.target.id === "player-modal") $("player-modal").hidden = true; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
-  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "150층 완료"
-  const stageText = (n) => n >= RLMonsters.CLEAR_STAGE ? `${RLMonsters.MAX_FLOOR}층 완료 ✓` : `${n}층`;
+  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "150층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
+  const stageText = (n) => season.current && n >= RLMonsters.CLEAR_STAGE ? `${RLMonsters.MAX_FLOOR}층 완료 ✓` : `${n}층`;
   const stageValue = (r) => el("span", { className: "val", textContent: stageText(r.stage) });
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
@@ -251,9 +281,9 @@
     if (!me) { box.hidden = true; return; }
     box.hidden = false;
     if (me.developer) { box.textContent = "개발자 계정이라 랭킹에서 빠져 있어요."; return; }
-    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), " · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요."); return; }
+    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), season.current ? " · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요." : ` · ${season.name}에는 기록이 없어요.`); return; }
     box.replaceChildren(
-      el("b", { textContent: me.name }),
+      el("b", { textContent: me.name }), ` · ${season.name}`,
       ` · 최고 층 ${me.stageRank ? `${me.stageRank}위 (${stageText(me.stage)})` : "-"}`,
       ` · 최강 아이템 ${me.itemRank ? `${me.itemRank}위` : "-"}`,
     );
@@ -262,19 +292,22 @@
   let my = { stage: null, item: null };
   async function refresh() {
     if (document.hidden) return;
+    const asked = season;
     try {
       const ids = identityHeaders();
+      const q = `&season=${asked.id}`;
       const [stage, item, me] = await Promise.all([
-        get("/api/ranking?type=stage&limit=50"),
-        get("/api/ranking?type=item&limit=50"),
-        ids && ids !== "expired" ? get("/api/me", ids).catch(() => null) : Promise.resolve(ids),
+        get(`/api/ranking?type=stage&limit=50${q}`),
+        get(`/api/ranking?type=item&limit=50${q}`),
+        ids && ids !== "expired" ? get(`/api/me?season=${asked.id}`, ids).catch(() => null) : Promise.resolve(ids),
       ]);
+      if (asked !== season) return;  // 그사이 탭을 바꿨으면 버림
       my = { stage: me?.stageRank ?? null, item: me?.itemRank ?? null };
       renderBoard($("board-stage"), stage, my.stage, stageValue);
       renderBoard($("board-item"), item, my.item, itemValue);
       renderMe(me);
       $("dot").className = "dot";
-      $("updated").textContent = `실시간 · ${new Date().toLocaleTimeString("ko-KR")} 기준 · ${stage.total}명`;
+      $("updated").textContent = asked.current ? `실시간 · ${new Date().toLocaleTimeString("ko-KR")} 기준 · ${stage.total}명` : `${asked.name} 최종 기록 · ${stage.total}명`;
     } catch {
       $("dot").className = "dot off";
       $("updated").textContent = "랭킹 서버에 연결하지 못했어요. 잠시 후 다시 시도해요.";
@@ -289,6 +322,7 @@
     for (const id of ["board-stage", "board-item"]) $(id).replaceChildren(el("div", { className: "empty", textContent: "—" }));
     return;
   }
+  renderSeasons();
   refresh();
   setInterval(refresh, REFRESH_MS);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });

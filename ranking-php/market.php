@@ -221,7 +221,7 @@ function market_list(): array {
     if (!is_array($ref) || !in_array($ref['v'] ?? null, [2, 3, 4], true)) throw new HttpError(400, 'old_item');  // v1 아이템만 거래 불가
     // 아이템 레벨은 최고 층보다 높을 수 없음 (랭킹과 같은 기준). 개발자는 랭킹 기록이 없어서 제한 없음
     $stage = is_int($body['stage'] ?? null) ? min(MAX_STAGE, max(0, $body['stage'])) : 0;
-    $maxLvl = $who['developer'] ? MAX_STAGE : max((int)(q_val('SELECT best_stage FROM players WHERE pkey = ?', [$who['key']]) ?: 0), $stage);
+    $maxLvl = $who['developer'] ? MAX_STAGE : max(best_stage_any($who['key']), $stage);
     $item = verify_item($ref, $maxLvl);
     if (!$item) throw new HttpError(400, 'bad_item');
     if (in_array($item['rarity'], MARKET_CASH_REQUIRED, true) && $cash < 1) throw new HttpError(400, 'cash_required');
