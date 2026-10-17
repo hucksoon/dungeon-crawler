@@ -1239,6 +1239,15 @@
     }
     return null;
   }
+  // 빈 바닥 칸: 먼저 무작위로, 꽉 찬 층이면 처음부터 훑어서라도 찾음
+  function anyFreeFloor(exclude) {
+    const spot = randomFloor(exclude);
+    if (spot) return spot;
+    for (let y = 0; y < MAP_H; y++)
+      for (let x = 0; x < MAP_W; x++)
+        if (map[y][x] === FLOOR && !isShop(x, y) && !exclude.some(p => p.x === x && p.y === y)) return { x, y };
+    return null;
+  }
 
   function newLevel(rooms) {
     const start = rooms[0];
@@ -1588,6 +1597,9 @@
     }));
   }
   // 저장된 층이 지금 판·층과 같으면 복원하고 true
+  // 지도 안의 걸을 수 있는 칸(벽이 아님)에 있는지
+  const onFloor = (p) => Number.isInteger(p?.x) && Number.isInteger(p?.y) && p.x >= 0 && p.y >= 0 && p.x < MAP_W && p.y < MAP_H && map[p.y][p.x] !== WALL;
+
   function restoreLevel() {
     let L = null;
     try { L = JSON.parse(store.get(LEVEL_KEY)); } catch {}
@@ -1596,11 +1608,33 @@
     map = grid(L.map, Number);
     seen = grid(L.seen, c => c === "1");
     visible = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
-    player.x = L.px; player.y = L.py;
     shop = L.shop || null;
-    enemies = Array.isArray(L.enemies) ? L.enemies : [];
-    items = Array.isArray(L.items) ? L.items : [];
     turn = L.turn || 0;
+    // 저장된 층 고치기: 예전 버전에서 자리를 못 받고 저장된 보스(좌표 없음) 때문에 화면을 그리다 멈춰
+    // 플레이어가 안 보이던 문제. 플레이어 → 적 → 바닥 아이템 순서로 빈 바닥에 다시 놓고, 놓을 곳이 없으면 뺌
+    enemies = [];
+    items = [];
+    player.x = L.px; player.y = L.py;
+    if (!onFloor(player)) Object.assign(player, anyFreeFloor([]) || { x: 1, y: 1 });
+    for (const e of Array.isArray(L.enemies) ? L.enemies : []) {
+      if (!e || typeof e !== "object") continue;
+      const taken = (p) => (p.x === player.x && p.y === player.y) || enemies.some(o => o.x === p.x && o.y === p.y);
+      if (!onFloor(e) || taken(e)) {
+        const spot = anyFreeFloor([player, ...enemies]);
+        if (!spot) continue;
+        e.x = spot.x; e.y = spot.y;
+      }
+      enemies.push(e);
+    }
+    for (const it of Array.isArray(L.items) ? L.items : []) {
+      if (!it || typeof it !== "object") continue;
+      if (!onFloor(it)) {
+        const spot = anyFreeFloor([player, ...items]);
+        if (!spot) continue;
+        it.x = spot.x; it.y = spot.y;
+      }
+      items.push(it);
+    }
     computeFOV();
     noteSeen();
     return true;
@@ -1924,7 +1958,7 @@
       if (dist(e, player) === 1) {
         attack(e, player);
         if (gameOver) break;
-      } else if (visible[e.y][e.x] && dist(e, player) <= 6) {
+      } else if (visible[e.y]?.[e.x] && dist(e, player) <= 6) {
         moveToward(e);
       } else if (rnd(3) === 0) {
         // 가끔 배회
@@ -1942,7 +1976,7 @@
   function noteSeen() {
     const G = RLMonsters.GOLDEN;
     for (const e of enemies) {
-      if (!visible[e.y][e.x]) continue;
+      if (!visible[e.y]?.[e.x]) continue;
       Dex.see(e.id);
       if (e.kind === "golden" && e.fleeAt == null) {
         const flee = e.fleeTurns || G.ranks.normal.fleeTurns;
@@ -2423,7 +2457,7 @@
 
     // 아이템
     for (const it of items) {
-      if (!visible[it.y][it.x]) continue;
+      if (!visible[it.y]?.[it.x]) continue;  // 좌표가 이상한 것 하나 때문에 화면 전체가 멈추지 않게
       const px = it.x * TILE, py = it.y * TILE;
       if (it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");
       else if (it.type === "gear") {
@@ -2443,7 +2477,7 @@
 
     // 적
     for (const e of enemies) {
-      if (!visible[e.y][e.x]) continue;
+      if (!visible[e.y]?.[e.x]) continue;
       const px = e.x * TILE, py = e.y * TILE;
       if (e.kind === "golden") {
         // 황금 고블린은 금빛 칸으로 표시. 정예는 금색, 왕은 빨간 테두리를 더함
