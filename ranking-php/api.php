@@ -119,15 +119,6 @@ function db(): PDO {
     ] as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) { /* 이미 있음 */ }
     }
-    // 최대 층이 생기기 전에 150층보다 깊이 간 기록은 "150층 완료"(CLEAR_STAGE)로 맞춤 (그 층 보스를 이미 넘었음).
-    // 달성 시각은 그대로라 먼저 해낸 사람이 위. 맞출 줄이 있을 때만 씀 (평소엔 색인으로 읽기만)
-    $st = $pdo->prepare('SELECT 1 FROM players WHERE best_stage > ? LIMIT 1');
-    $st->execute([CLEAR_STAGE]);
-    $over = $st->fetchColumn();
-    $st->closeCursor();
-    if ($over) {
-        try { $pdo->prepare('UPDATE players SET best_stage = ? WHERE best_stage > ?')->execute([CLEAR_STAGE, CLEAR_STAGE]); } catch (PDOException $e) { /* 다음 요청에서 다시 */ }
-    }
     return $pdo;
 }
 
