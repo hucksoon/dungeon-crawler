@@ -25,6 +25,7 @@
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |
 | `ranking-php/` | 게임 서버 (PHP): 랭킹, 로비, 거래소, 하루 입장·광고, 계정 저장 → [README](ranking-php/README.md) |
 | `ranking/` | 랭킹 서버 Cloudflare Workers 버전 (예전) |
+| `site/` | apacimtest.com 첫 화면 (게임 소개, AdSense 신청용) → [README](site/README.md) |
 | `tools/` | 문서 생성, Xsolla 카탈로그 관리 |
 | `vendor/` | Xsolla Headless Checkout SDK |
 
