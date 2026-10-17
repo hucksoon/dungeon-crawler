@@ -30,6 +30,9 @@ require_once __DIR__ . '/profile.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5];
 const MAX_STAGE = 10000;
+// 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
+const MAX_FLOOR = 150;
+const CLEAR_STAGE = MAX_FLOOR + 1;
 const MAX_ENH = 10;
 
 final class HttpError extends Exception {
@@ -367,7 +370,7 @@ function verify_item($q, int $maxLvl): ?array {
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
-    if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3], true)) return null;
+    if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;
     if (!seed_origin_ok($v, $seed, $src, $lvl)) return null;
     $item = r_generate($v, $seed, $src, $lvl);
@@ -384,16 +387,20 @@ function item_view(array $it): array {
         $u = R_STAT_NAMES[$k][1] ? '%' : '';
         return $r[0] === $r[1] ? "{$r[1]}{$u}" : "{$r[0]}~{$r[1]}{$u}";
     };
+    // eff: 예전(v2·v3) 아이템의 % 능력치가 v4 최대치로 잘려 실제로 적용되는 값 (안 잘렸으면 null)
+    $eff = function (string $k, int $shown, int $applied): ?string { return $applied < $shown ? $applied . (R_STAT_NAMES[$k][1] ? '%' : '') : null; };
     $eb = r_enhanced_base($it);
+    $efb = isset($it['main']) ? r_effective_base($it) : $eb;
     $main = [];
     foreach (r_main_stats($it) as [$k, $v]) {
         $range = isset($it['main']) ? r_main_range($k, $it) : null;
-        $main[] = ['text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $range && $v === $range[1], 'plus' => $eb[$k] - $v];
+        $main[] = ['text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $range && $v === $range[1], 'plus' => $eb[$k] - $v, 'eff' => $eff($k, $eb[$k], $efb[$k])];
     }
     $lines = [];
-    foreach (r_enhanced_lines($it) as [$k, $v, $plus]) {
-        $range = r_line_range($k, $it['lvl']);
-        $lines[] = ['text' => $fmt($k, $v), 'range' => $rng($k, $range), 'max' => $v - $plus === $range[1], 'plus' => $plus];
+    $efl = isset($it['main']) ? r_effective_lines($it) : null;
+    foreach (r_enhanced_lines($it) as $i => [$k, $v, $plus]) {
+        $range = r_line_range_of($k, $it);
+        $lines[] = ['text' => $fmt($k, $v), 'range' => $rng($k, $range), 'max' => $v - $plus === $range[1], 'plus' => $plus, 'eff' => $efl ? $eff($k, $v, $efl[$i][1]) : null];
     }
     // 방패의 패링 확률 (강화로 오르지 않음)
     if (isset($it['parry'])) {
@@ -412,6 +419,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     $stage = $body['stage'] ?? null;
     if (!is_int($stage) || $stage < 1 || $stage > MAX_STAGE) throw new HttpError(400, 'bad_stage');
     $maxLvl = max($stage, $oldBest);
+    $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
     if (!is_int($plvl) || $plvl < 1 || $plvl > 500) $plvl = 1;
 

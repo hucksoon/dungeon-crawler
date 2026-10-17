@@ -117,6 +117,7 @@
 </div>
 
 <script src="ranking-config.js"></script>
+<script src="monsters.js"></script>
 <script>
 (() => {
   const API = String(window.RANKING_API || "").replace(/\/+$/, "");
@@ -185,7 +186,8 @@
     const color = (RARITY[it.rarity] || RARITY.common).color;
     const line = (mark, l, colorize) => el("div", { className: l.max ? "mx" : "", style: colorize ? `color:${color}` : "" },
       `${mark} ${l.text}`, l.range ? el("span", { className: "rg", textContent: ` [${l.range}]${l.max ? " ▲" : ""}` }) : null,
-      l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null);
+      l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null,
+      l.eff ? el("span", { className: "plus", textContent: ` (적용 ${l.eff})` }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
       el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}` }),
       el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),
@@ -204,14 +206,14 @@
     try { p = await get(`/api/player?id=${encodeURIComponent(id)}`); }
     catch { $("player-title").textContent = "정보를 불러오지 못했어요"; return; }
     $("player-title").textContent = p.name + (p.guest ? " (게스트)" : "");
-    $("player-meta").textContent = `최고 ${p.stage}층${p.stageAt ? ` · ${fmtTime(p.stageAt)} 달성` : ""}`;
+    $("player-meta").textContent = `최고 ${stageText(p.stage)}${p.stageAt ? ` · ${fmtTime(p.stageAt)} 달성` : ""}`;
     const body = [];
     const g = p.gear;
     if (!g) {
       body.push(el("p", { className: "pnote", textContent: "아직 장비 기록이 없어요. 이 기능이 생긴 뒤 최고 층을 새로 세우면(또는 같은 층에 다시 도달하면) 저장돼요." }));
     } else {
       const s = g.stats;
-      body.push(el("h4", { textContent: `최고 기록(${g.stage}층) 순간의 능력치 · Lv ${s.level}` }),
+      body.push(el("h4", { textContent: `최고 기록(${stageText(g.stage)}) 순간의 능력치 · Lv ${s.level}` }),
         el("div", { className: "pstats" }, ...[
           ["공격력", s.atk], ["방어력", s.def], ["최대 HP", s.maxHp], ["치명타", `${s.crit}% (×${Number(s.critMul).toFixed(1)})`],
           ["흡혈", `${s.lifesteal}%`], ["처치 시 회복", s.killHeal ? `HP +${s.killHeal}` : "-"], ["골드 획득", `+${s.gold}%`], ["경험치 획득", `+${s.xp}%`],
@@ -233,7 +235,9 @@
   $("player-modal").addEventListener("click", (e) => { if (e.target.id === "player-modal") $("player-modal").hidden = true; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
-  const stageValue = (r) => el("span", { className: "val", textContent: `${r.stage}층` });
+  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "150층 완료"
+  const stageText = (n) => n >= RLMonsters.CLEAR_STAGE ? `${RLMonsters.MAX_FLOOR}층 완료 ✓` : `${n}층`;
+  const stageValue = (r) => el("span", { className: "val", textContent: stageText(r.stage) });
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
     return el("span", { className: "val" },
@@ -250,7 +254,7 @@
     if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), " · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요."); return; }
     box.replaceChildren(
       el("b", { textContent: me.name }),
-      ` · 최고 층 ${me.stageRank ? `${me.stageRank}위 (${me.stage}층)` : "-"}`,
+      ` · 최고 층 ${me.stageRank ? `${me.stageRank}위 (${stageText(me.stage)})` : "-"}`,
       ` · 최강 아이템 ${me.itemRank ? `${me.itemRank}위` : "-"}`,
     );
   }

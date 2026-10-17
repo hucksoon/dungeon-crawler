@@ -241,6 +241,11 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
   }
   .modal h2 { margin: 0 0 6px; font-size: 17px; color: var(--accent); }
+  .modal.notice { max-width: 440px; display: flex; flex-direction: column; gap: 8px; }
+  .modal.notice h2 { color: var(--accent, #ffcf5c); margin: 0; }
+  .modal.notice ul { margin: 0; padding-left: 20px; line-height: 1.6; }
+  .modal.notice li + li { margin-top: 4px; }
+  .modal.notice button { width: 100%; padding: 10px; margin-top: 6px; }
   .modal.death { max-width: 360px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.death h2 { color: #ff6b6b; }
   .modal.death button { width: 100%; padding: 10px; }
@@ -445,7 +450,7 @@
   던전에서 <b>포탈</b>을 타면 골드·레벨·장비를 그대로 들고 로비로 돌아와요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
   로비 왼쪽 <b>거래소($)</b>로 걸어 들어가면 아이템을 사고팔고, 그 옆 빨간 <b>우편함(✉)</b>에서 판매 대금과 돌아온 아이템을 받아요.<br>
   계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구, <b>]</b> 방패)를 떨어뜨리기도 해요. 보조 손에 무기를 끼면 한 턴에 두 번, 방패를 끼면 확률로 공격을 막아요.<br>
-  금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요!<br>
+  금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요! 150층 보스를 쓰러뜨리면 일반 던전 완료! 그 뒤에는 로비의 포탈 문으로 150층에 다시 들어가 파밍해요.<br>
   <a href="privacy.html" style="color: inherit">개인정보처리방침</a></p>
 </div>
 
@@ -488,6 +493,14 @@
     <div id="death-revive"></div>
     <p id="death-msg"></p>
     <button id="death-restart" type="button">로비에서 새로 시작 (R)</button>
+  </div>
+</div>
+
+<div id="notice-modal" class="overlay" hidden>
+  <div class="modal notice" role="dialog" aria-modal="true" aria-labelledby="notice-title">
+    <h2 id="notice-title"></h2>
+    <ul id="notice-body"></ul>
+    <button id="notice-ok" type="button">확인</button>
   </div>
 </div>
 
@@ -1090,7 +1103,8 @@
     let sent = "";  // 마지막으로 서버가 받은 내용 (같으면 다시 보내지 않음)
 
     function payload() {
-      const stage = Math.max(bestDepth, depth || 0);
+      // 최대 층 보스까지 쓰러뜨렸으면 "완료"(CLEAR_STAGE)로 기록
+      const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, Math.max(bestDepth, depth || 0));
       let item = null, best = -1;
       for (const it of Inv.items()) {
         if (!(it.rarity in RANK) || !(it.lvl <= stage)) continue;
@@ -1146,6 +1160,7 @@
   let shopBought = [];   // 이번 층 상점에서 산 칸 번호 (지금 진열 기준)
   let shopRerolls = 0;   // 이번 층 상점에서 진열을 바꾼 횟수
   let bestDepth = 0;
+  let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
   const rarityColor = (item) => RLItems.RARITIES[item.rarity].color;
@@ -1249,7 +1264,8 @@
     return null;
   }
 
-  function newLevel(rooms) {
+  // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
+  function newLevel(rooms, { quiet = false } = {}) {
     const start = rooms[0];
     player.x = start.cx; player.y = start.cy;
 
@@ -1266,7 +1282,7 @@
     if (RLItems.isShopFloor(depth)) {
       const spots = DIRS.map(([dx, dy]) => ({ x: far.cx + dx, y: far.cy + dy })).filter(p => map[p.y][p.x] === FLOOR);
       shop = spots[rnd(spots.length)] || null;
-      if (shop) log("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자.", null, SHOP_COLOR);
+      if (shop && !quiet) log("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자.", null, SHOP_COLOR);
     }
 
     enemies = [];
@@ -1281,7 +1297,7 @@
       const boss = RLMonsters.makeBoss(depth);
       if (spot) {
         enemies.push({ ...spot, ...boss });
-        log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
+        if (!quiet) log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
       }
     }
 
@@ -1374,6 +1390,7 @@
         const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
         if (bossAlive()) log("보스가 살아 있는 동안 계단이 열리지 않는다.", "bad");
         else if (near) log(`주변 ${RLMonsters.STAIRS_BLOCK_RADIUS}칸 안에 몬스터가 ${near}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.`, "bad");
+        else if (depth >= RLMonsters.MAX_FLOOR) { completeFloor(); return; }
         else { descend(); return; }
       }
     }
@@ -1551,11 +1568,35 @@
     shopRerolls = 0;
     bestDepth = Math.max(bestDepth, depth);
     log(`${depth}층으로 내려간다...`, "info");
+    if (depth === RLMonsters.MAX_FLOOR && !cleared) log(`마지막 층이다! ${depth}층 보스를 쓰러뜨리고 계단을 밟으면 일반 던전 완료.`, "good");
     const rooms = generateDungeon();
     newLevel(rooms);
     render();
     updateStats();
     saveGame(true);
+  }
+
+  // 최대 층에서 보스를 쓰러뜨리고 계단을 밟음: 일반 던전 완료 → 안내 창과 함께 로비로.
+  // 포탈 층은 최대 층의 새 구역(새 지도·새 보스)으로 만들어 두어서, 오른쪽 문(포탈)으로 다시 들어가 파밍
+  function completeFloor() {
+    const first = !cleared;
+    cleared = true;
+    shopBought = [];
+    shopRerolls = 0;
+    if (first) log(`🎉 ${depth}층 보스를 쓰러뜨렸다! 일반 던전 완료!`, "rainbow");
+    newLevel(generateDungeon(), { quiet: true });  // 다음에 들어갈 새 구역 (포탈 문으로 들어가면 여기서 시작)
+    saveGame(true);
+    enterLobby({ from: "clear" });
+    updateStats();
+    if (first) showNotice("일반 던전 완료!", [
+      `${depth}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 "완료"로 기록돼요.`,
+      `${depth}층이 마지막 층이에요. 로비 던전 입구의 오른쪽 문(포탈)으로 들어가면 ${depth}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요.`,
+      "골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요.",
+    ]);
+    else showNotice(`${depth}층 클리어!`, [
+      `${depth}층 보스를 또 쓰러뜨리고 로비로 돌아왔어요.`,
+      `오른쪽 문(포탈)으로 ${depth}층의 새 구역에 다시 들어갈 수 있어요.`,
+    ]);
   }
 
   function death() {
@@ -1580,6 +1621,7 @@
     return {
       v: 1,
       best: bestDepth,
+      ...(cleared ? { clr: 1 } : {}),
       run: gameOver ? null : runFields(),
       dead: gameOver && !player.revived ? runFields() : null,
     };
@@ -1675,7 +1717,8 @@
   }
 
   function startFromSave(s) {
-    bestDepth = s?.best || 0;
+    bestDepth = Math.min(RLMonsters.MAX_FLOOR, s?.best || 0);
+    cleared = !!s?.clr;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -1694,7 +1737,7 @@
   }
 
   function resumeRun(r, { restore = true } = {}) {
-    depth = r.d;
+    depth = Math.min(RLMonsters.MAX_FLOOR, r.d);  // 최대 층이 생기기 전에 더 내려간 판은 최대 층에서
     gameOver = false;
     player = {
       x: 0, y: 0,
@@ -1732,6 +1775,7 @@
         cloudReady = true;
         collectMail(true);
         Ranking.schedule();
+        legacyNotice();
       } catch (e) {
         log(`계정 저장 데이터를 불러오지 못했다: ${e.message} (잠시 뒤 다시 시도)`, "bad");
         setTimeout(() => { if (Account.loggedIn() && !cloudReady) syncAfterLogin(guestOwner); }, 15000);
@@ -2105,7 +2149,7 @@
 
   // 처음 들어올 때는 광장 아래쪽 아무 데나, 포탈로 돌아오면 포탈 층 문 앞(1층에서 탔으면 1층 문 앞), 쓰러져서 새로 시작하면 1층 문 앞
   function enterLobby({ from = "start" } = {}) {
-    if (from === "portal" && resumeFloor()) lobbyPos = { x: LOBBY.doors.resume.x, y: LOBBY.gate.y + 1 };
+    if ((from === "portal" || from === "clear") && resumeFloor()) lobbyPos = { x: LOBBY.doors.resume.x, y: LOBBY.gate.y + 1 };
     else if (from === "portal" || from === "death") lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
     else do { lobbyPos = { x: between(10, 22), y: between(16, 20) }; } while (LOBBY.blocked(lobbyPos.x, lobbyPos.y));
     closeShop();
@@ -2113,6 +2157,7 @@
     setScene("lobby");
     const msg = {
       portal: [`포탈을 타고 로비로 돌아왔다. (골드 ${player.gold.toLocaleString()} · Lv ${player.plvl})${resumeFloor() ? ` 오른쪽 문으로 ${depth}층에 다시 들어갈 수 있다.` : ""}`, "good"],
+      clear: [`${depth}층을 완료하고 로비로 돌아왔다. 오른쪽 문(포탈)으로 ${depth}층의 새 구역에 들어가 계속 파밍할 수 있다.`, "good"],
       death: ["로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다.", "info"],
       start: ["로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 포탈을 탄 층으로 들어간다.", "info"],
     }[from];
@@ -2520,7 +2565,7 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("best").textContent = bestDepth;
+    document.getElementById("best").textContent = cleared ? `${bestDepth} 완료` : bestDepth;
     document.getElementById("tp-potion").textContent = `포션 (${player.potions})`;
   }
 
@@ -2689,6 +2734,7 @@
     Inv.use(inventoryOwner());
     Dex.use(inventoryOwner());
     bestDepth = 0;
+    cleared = false;
     newGame();
     log("로그아웃했다. 게스트로 새로 시작한다.", "info");
     renderAccount();
@@ -2738,22 +2784,26 @@
   }
 
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
+  // 예전(v2·v3) 아이템의 % 능력치가 지금 규칙 최대치로 잘리면 (적용 N%)
   function statLines(item, tag = "div") {
     const enhanced = RLItems.enhancedBase(item);
-    const row = (mark, k, v, rolled, range, plus, color) => {
+    const effBase = item.main ? RLItems.effectiveBase(item) : enhanced;
+    const effLines = item.main ? RLItems.effectiveLines(item) : null;
+    const row = (mark, k, v, rolled, range, plus, color, applied = v) => {
       const isMax = range && rolled === range[1];
       return el(tag, { className: `stat-line${isMax ? " max" : ""}`, style: color ? { color } : {} },
         `${mark} ${RLItems.formatStat(k, v)}`,
         range ? el("span", { className: "range" }, ` [${RLItems.formatRange(k, range)}]${isMax ? " ▲" : ""}`) : null,
-        plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null);
+        plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null,
+        applied < v ? el("span", { className: "meta capped" }, ` (적용 ${RLItems.formatRange(k, [applied, applied])})`) : null);
     };
     // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
     const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
     return [
-      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v)),
+      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v, null, effBase[k])),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
-      ...RLItems.enhancedLines(item).map(([k, v, plus]) =>
-        row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item))),
+      ...RLItems.enhancedLines(item).map(([k, v, plus], i) =>
+        row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item), effLines ? effLines[i][1] : v)),
     ];
   }
 
@@ -2784,15 +2834,17 @@
     const { stats: g, sets } = Inv.totals();
     const s = stats();
     const statRows = [
-      `공격력 ${s.atk} (장비 +${g.atk})`, `방어력 ${s.def}`, `최대 HP ${s.maxHp} (장비 +${g.hp})`,
+      `공격력 ${s.atk} (장비 +${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""})`, `방어력 ${s.def}${g.defPct ? ` (+${g.defPct}%)` : ""}`, `최대 HP ${s.maxHp} (장비 +${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""})`,
       `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
       ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.splash ? ["광란: 때린 적 주변 1칸도 같은 피해"] : []),
     ];
+    const oldEquipped = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     invSummary.replaceChildren(
       el("h3", {}, "능력치"), ...statRows.map(t => el("div", {}, t)),
+      ...(oldEquipped ? [el("div", { className: "meta" }, `예전 규칙 장비 ${oldEquipped}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.`)] : []),
       ...sets.map(set => el("div", { style: { marginTop: "6px" } },
         el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
         ...set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, `${b.count}세트: ${b.text}`)))),
@@ -2878,6 +2930,7 @@
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
       ...statLines(item),
+      ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
       el("div", { className: "meta" }, item.main
         ? `★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름)${item.parry != null ? " · 🛡 패링 확률(강화로 오르지 않음)" : ""} · [최소~최대] ▲ 최대치`
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
@@ -3179,7 +3232,7 @@
 
   // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템)
   function itemFromRef(ref) {
-    if (!ref || (ref.v !== 2 && ref.v !== 3)) return null;
+    if (!ref || !(ref.v >= 2 && ref.v <= RLItems.RULES_VERSION)) return null;
     const item = RLItems.generate(ref.seed, ref.src, ref.lvl, ref.v);
     if (item.id !== ref.id) return null;
     item.enh = ref.enh || 0;
@@ -3699,6 +3752,33 @@
 
   function closeDeath() { deathModal.hidden = true; }
 
+  // ---- 안내 창 (일반 던전 완료, 예전 장비 안내) ----
+  const noticeModal = document.getElementById("notice-modal");
+  function showNotice(title, lines) {
+    document.getElementById("notice-title").textContent = title;
+    document.getElementById("notice-body").replaceChildren(...lines.map(t => Object.assign(document.createElement("li"), { textContent: t })));
+    noticeModal.hidden = false;
+    document.getElementById("notice-ok").focus();
+  }
+  const closeNotice = () => { noticeModal.hidden = true; };
+  document.getElementById("notice-ok").addEventListener("click", closeNotice);
+
+  // 예전 규칙(v1~v3) 장비를 가진 사용자에게 한 번 안내: 150층 최대 층, v4 규칙, 새로 파밍 권장 (계정·게스트마다 한 번)
+  const isLegacy = (it) => !(it.v >= RLItems.RULES_VERSION);
+  function legacyNotice() {
+    const owner = Inv.owner();
+    const key = `rl_notice_v4:${owner}`;
+    const old = Inv.items().filter(isLegacy).length;
+    if (!old || store.get(key)) return;
+    store.set(key, "1");
+    showNotice("던전과 아이템 규칙이 바뀌었어요", [
+      `일반 던전은 이제 ${RLMonsters.MAX_FLOOR}층까지예요. ${RLMonsters.MAX_FLOOR}층 보스를 쓰러뜨리면 완료되고, 그 뒤에는 ${RLMonsters.MAX_FLOOR}층에서 계속 파밍할 수 있어요.`,
+      `아이템 규칙이 v${RLItems.RULES_VERSION}로 바뀌었어요. 부위마다 붙는 능력치가 다르고, 치명타 같은 % 능력치는 등급별로 정해진 범위예요.`,
+      `가지고 계신 예전 장비 ${old}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 "적용 N%"로 보여요)`,
+      `지금 장비로는 ${RLMonsters.MAX_FLOOR}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.`,
+    ]);
+  }
+
   async function openDeath() {
     deathModal.hidden = false;
     document.getElementById("death-sub").textContent = `${depth}층에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.`;
@@ -3817,6 +3897,10 @@
   // ---- 입력 ----
   window.addEventListener("keydown", (e) => {
     if (Ads.isOpen()) return;  // 광고를 보는 중
+    if (!noticeModal.hidden) {
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); closeNotice(); }
+      return;
+    }
     if (!deathModal.hidden && modal.hidden) {
       const k = e.key.toLowerCase();
       if (k === "r") { e.preventDefault(); startOver(); }
@@ -3868,6 +3952,7 @@
   if (scene === "dungeon") setScene("dungeon");
   else { logEl.innerHTML = ""; enterLobby(); }
   requestAnimationFrame(lobbyLoop);
+  if (!Account.loggedIn() || !RANKING_API) legacyNotice();  // 로그인 중이면 계정 저장본을 받은 뒤(syncAfterLogin)
   document.addEventListener("visibilitychange", () => { if (!document.hidden) Lobby.ping(); });
   renderAccount();
   if (imported === "ok") log("예전 주소에서 하던 게스트 기록(가방·진행 상황)을 옮겨 왔다.", "good");

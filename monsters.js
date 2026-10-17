@@ -68,6 +68,11 @@
 
   // 보스: 5층마다 계단 방에서 계단을 지킴. 준비된 보스를 다 지나면 마지막 보스가 5층마다 30%씩 강해짐
   const BOSS_EVERY = 5;
+  // 일반 던전 최대 층: 이 층 보스를 쓰러뜨리면 완료. 그 뒤 계단은 같은 층의 새 구역으로 이어져 계속 파밍
+  // 아이템은 얻은 층이 레벨이라 이 층보다 강한 아이템은 나오지 않음 (v4 기준 최고급 장비로 이길 수 있는 깊이)
+  const MAX_FLOOR = 150;
+  // 랭킹 기록값: 최대 층 보스까지 쓰러뜨리면 MAX_FLOOR + 1 ("150층 완료")
+  const CLEAR_STAGE = MAX_FLOOR + 1;
   const BOSS_SCALE = 0.3;
   const BOSS_COLOR = "#ff5a5a";
   const BOSSES = [
@@ -193,7 +198,7 @@
   }
 
   const api = {
-    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, BOSS_SCALE, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };
