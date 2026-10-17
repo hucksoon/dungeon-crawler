@@ -70,4 +70,4 @@ RANKING_HASH_KEY=<HASH_KEY> node tools/ranking-lookup.mjs someone@example.com
 | `GET /api/ranking?type=stage\|item&limit=50` | 랭킹 (최대 100명) |
 | `GET /api/me` | 내 순위 |
 
-CORS는 `ALLOWED_ORIGINS`(기본 `https://game.apacimtest.com`, 예전 주소 `https://hucksoon.github.io`)에서만 허용합니다.
+CORS는 `ALLOWED_ORIGINS`(기본 `https://game.apacimtest.com`)에서만 허용합니다. 예전 주소(`hucksoon.github.io`)의 안내 페이지는 서버를 부르지 않아서 넣지 않아요.
