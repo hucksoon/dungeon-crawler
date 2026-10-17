@@ -1718,7 +1718,8 @@
 
   function startFromSave(s) {
     bestDepth = Math.min(RLMonsters.MAX_FLOOR, s?.best || 0);
-    cleared = !!s?.clr;
+    // 최대 층이 생기기 전에 150층보다 깊이 간 사람은 그 보스를 이미 넘었으니 완료로
+    cleared = !!s?.clr || (s?.best || 0) > RLMonsters.MAX_FLOOR;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
