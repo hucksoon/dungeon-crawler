@@ -338,7 +338,7 @@ function jwk_to_pem(array $jwk): string {
 
 // ---------------------------------------------------------------- 기록 올리기
 
-const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기'];
+const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기', 'offhand' => '보조'];
 
 // 게임이 실제로 만드는 시드인지, 층·출처가 맞는지 (items.js / index.html / shop.html 의 시드 형식)
 function seed_origin_ok(int $v, string $seed, string $src, int $lvl): bool {
@@ -367,7 +367,7 @@ function verify_item($q, int $maxLvl): ?array {
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
-    if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2], true)) return null;
+    if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;
     if (!seed_origin_ok($v, $seed, $src, $lvl)) return null;
     $item = r_generate($v, $seed, $src, $lvl);
@@ -394,6 +394,11 @@ function item_view(array $it): array {
     foreach (r_enhanced_lines($it) as [$k, $v, $plus]) {
         $range = r_line_range($k, $it['lvl']);
         $lines[] = ['text' => $fmt($k, $v), 'range' => $rng($k, $range), 'max' => $v - $plus === $range[1], 'plus' => $plus];
+    }
+    // 방패의 패링 확률 (강화로 오르지 않음)
+    if (isset($it['parry'])) {
+        $pr = R_PARRY['ranges'][$it['rarity']];
+        $main[] = ['text' => $fmt('parry', $it['parry']), 'range' => $rng('parry', $pr), 'max' => $it['parry'] === $pr[1], 'plus' => 0];
     }
     return [
         'name' => r_item_name($it), 'rarity' => $it['rarity'], 'rarityName' => R_RARITIES[$it['rarity']]['name'],
@@ -426,7 +431,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     // 장착 장비: 부위마다 1개, 검증을 통과한 것만
     $gear = [];
     $rejected = 0;
-    foreach (array_slice(is_array($body['gear'] ?? null) ? $body['gear'] : [], 0, 6) as $q) {
+    foreach (array_slice(is_array($body['gear'] ?? null) ? $body['gear'] : [], 0, count(R_SLOTS)) as $q) {
         $it = verify_item($q, $maxLvl);
         if (!$it || isset($gear[$it['slot']]) || owned_by_other($it['id'], $key)) { $rejected++; continue; }
         $gear[$it['slot']] = $it;
@@ -438,7 +443,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'stage' => $stage,
         'stats' => r_player_stats($plvl, $totals),
         'items' => array_map('item_view', $ordered),
-        'sets' => array_map(function ($s) { return ['name' => $s['name'], 'count' => $s['count'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
+        'sets' => array_map(function ($s) { return ['name' => $s['name'], 'count' => $s['count'], 'full' => $s['full'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
         'rejected' => $rejected,
     ];
     return [$stage, $item, $snapshot];

@@ -260,10 +260,22 @@ ${table(["등급", "무기 공격력", "도끼 공격력", "방어구 방어력"
 ${table(["아이템 레벨", ...I.STAT_KEYS.map(k => I.STATS[k].name)],
   LEVELS.map(l => [l, ...I.STAT_KEYS.map(k => fmtR(k, I.lineRange(k, l)))]))}
 
+## 보조 손: 보조무기와 방패
+
+- ${I.SLOTS.length}번째 부위 **보조 손**이 있어요. 보조 손 아이템은 ${pct(I.OFFHAND.shieldChance)}가 **방패**, 나머지는 **보조무기**(보조 단검·지팡이·도끼)예요
+- **보조무기**를 끼면 두 손 무기: **한 턴에 2번** 공격해요. 두 번째(왼손) 공격은 공격력의 ${pct(I.DUAL_WIELD.secondHit)}. 첫 공격에 적이 쓰러지면 두 번째는 쓰지 않아요
+- **방패**를 끼면 확률로 몬스터의 공격을 **패링**(막아서 피해 0)해요. 패링 확률은 방패 등급마다 정해진 3가지 값 중 하나로 붙고, **강화로 오르지 않아요**
+
+${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo, hi]]) => [I.RARITIES[r].name, Array.from({ length: hi - lo + 1 }, (_, i) => `${lo + i}%`).join(", ")]))}
+
+- 패링 확률은 방패와 세트 효과를 합쳐 **최대 ${I.PARRY.max}%**예요 (방패 최대 25% + 견고의 세트 15%)
+- 방패의 주 능력치는 방어구처럼 방어력이 첫 번째, 보조무기는 무기처럼 공격력이 첫 번째예요
+
 ## 고대 아이템
 
-- **모든 능력치(주 + 추가)가 최대치**로 붙은 아이템이에요. 이름 앞에 **"고대"**가 붙고, 인벤토리에서 금빛으로 빛나요
-- 능력치가 많을수록 어려워요: 능력치 ${[2, 3, 5, 7, 9].join("·")}개일 때 각각 ${[2, 3, 5, 7, 9].map(n => { const p = I.MAX_ROLL_CHANCE ** n; return p >= 0.001 ? pct(p) : `약 ${Math.round(1 / p).toLocaleString("en-US")}분의 1`; }).join(" · ")}
+- **최고 등급(레전더리·세트)** 이면서 **모든 능력치(주 + 추가, 방패는 패링도)가 최대치**로 붙은 아이템이에요. 이름 앞에 **"고대"**가 붙고, 인벤토리에서 금빛으로 빛나요
+- 그 아래 등급은 능력치가 모두 최대치여도 고대가 아니에요 (예전에 고대로 표시되던 낮은 등급 아이템도 이제 보통 아이템으로 보여요)
+- 능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 아주 드물어요: ${["legendary", "set"].map(r => { const [a, b] = I.MAIN.count[r]; const lines = I.RARITIES[r].lines; const odds = (n) => `약 ${Math.round(1 / I.MAX_ROLL_CHANCE ** n).toLocaleString("en-US")}분의 1`; return `${I.RARITIES[r].name}는 능력치 ${a + lines}~${b + lines}개라 ${odds(a + lines)}~${odds(b + lines)}`; }).join(", ")}
   (범위의 최소와 최대가 같은 능력치는 항상 최대치라 실제로는 조금 더 자주 나와요)
 
 ## 강화
@@ -275,9 +287,15 @@ ${table(["아이템 레벨", ...I.STAT_KEYS.map(k => I.STATS[k].name)],
 
 ## 세트
 
-구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 같은 세트를 ${Object.values(I.SETS)[0].bonuses.map(b => b.count).join("·")}개 입을 때마다 효과가 하나씩 켜져요. 세트는 6부위지만 아무거나 5개면 효과가 전부 켜져서, 무기는 자유롭게 골라도 돼요.
+구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 세트 아이템이 나오면 그 부위에 있는 세트 중 하나로 정해져요 (방어구 부위는 시험의 세트, 무기는 셋 중 하나, 보조 손은 광란·견고 중 하나).
+
+- **시험의 세트**: ${Object.values(I.SETS.trial.bonuses).map(b => b.count).join("·")}개 입을 때마다 효과가 하나씩 켜져요. 6부위지만 아무거나 5개면 효과가 전부 켜져서, 무기는 자유롭게 골라도 돼요
+- **광란의 세트**: 오른손·왼손 무기 2개. 보조 손도 무기라 한 턴에 2번 공격하고, 두 공격 모두 주변 1칸에 같은 피해
+- **견고의 세트**: 무기·방패 2개. 패링 확률 +15% (방패 패링과 합쳐 최대 ${I.PARRY.max}%)
 
 ${Object.values(I.SETS).map(set => `### ${set.name}
+
+${table(["부위", "이름"], Object.entries(set.pieces).map(([slot, name]) => [I.SLOT_NAMES[slot], name]))}
 
 ${table(["입은 개수", "효과"], set.bonuses.map(b => [`${b.count}개`, b.text]))}`).join("\n\n")}
 

@@ -177,7 +177,7 @@
   }
 
   // ---- 장비 보기: 최고 층을 세운 순간의 장비와 능력치 (서버가 시드로 검증하고 계산한 값) ----
-  const SLOT_ORDER = [["head", "머리"], ["chest", "가슴"], ["arms", "팔"], ["pants", "바지"], ["boots", "장화"], ["weapon", "무기"]];
+  const SLOT_ORDER = [["head", "머리"], ["chest", "가슴"], ["arms", "팔"], ["pants", "바지"], ["boots", "장화"], ["weapon", "무기"], ["offhand", "보조"]];
   const fmtTime = (ms) => new Date(ms).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 
   function itemCard(it, slotName) {
@@ -215,11 +215,12 @@
         el("div", { className: "pstats" }, ...[
           ["공격력", s.atk], ["방어력", s.def], ["최대 HP", s.maxHp], ["치명타", `${s.crit}% (×${Number(s.critMul).toFixed(1)})`],
           ["흡혈", `${s.lifesteal}%`], ["처치 시 회복", s.killHeal ? `HP +${s.killHeal}` : "-"], ["골드 획득", `+${s.gold}%`], ["경험치 획득", `+${s.xp}%`],
+          ...(s.parry ? [["패링", `${s.parry}%`]] : []), ...(s.dual ? [["두 손 무기", "한 턴 2번 공격"]] : []), ...(s.splash ? [["광란", "주변 1칸 피해"]] : []),
         ].map(([k, v]) => el("div", {}, k, el("b", { textContent: String(v) })))));
       const bySlot = Object.fromEntries((g.items || []).map(it => [it.slot, it]));
       body.push(el("h4", { textContent: "장착 장비" }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
       for (const set of g.sets || []) {
-        body.push(el("h4", { textContent: `${set.name} (${Math.min(set.count, 5)}/5)`, style: `color:${RARITY.set.color}` }),
+        body.push(el("h4", { textContent: `${set.name} (${Math.min(set.count, set.full || 5)}/${set.full || 5})`, style: `color:${RARITY.set.color}` }),
           el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: `${b.on ? "✔" : "·"} ${b.count}세트: ${b.text}` }))));
       }
       if (g.rejected) body.push(el("p", { className: "pnote", textContent: `확인되지 않은 장비 ${g.rejected}개는 제외했어요.` }));

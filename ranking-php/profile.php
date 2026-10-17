@@ -25,7 +25,7 @@ function profile_valid($d): bool {
     if (!is_array($d)) return false;
     $inv = $d['inv'] ?? null;
     if (!is_array($inv) || !is_array($inv['bag'] ?? null) || count($inv['bag']) > 60) return false;
-    if (!is_array($inv['equip'] ?? null) || count($inv['equip']) > 6) return false;
+    if (!is_array($inv['equip'] ?? null) || count($inv['equip']) > 7) return false;
     if (isset($inv['stones']) && (!is_int($inv['stones']) || $inv['stones'] < 0)) return false;
     if (isset($d['dex']) && !is_array($d['dex'])) return false;
     if (isset($d['save']) && !is_array($d['save'])) return false;
