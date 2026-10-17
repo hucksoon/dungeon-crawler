@@ -2738,22 +2738,26 @@
   }
 
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
+  // 예전(v2·v3) 아이템의 % 능력치가 지금 규칙 최대치로 잘리면 (적용 N%)
   function statLines(item, tag = "div") {
     const enhanced = RLItems.enhancedBase(item);
-    const row = (mark, k, v, rolled, range, plus, color) => {
+    const effBase = item.main ? RLItems.effectiveBase(item) : enhanced;
+    const effLines = item.main ? RLItems.effectiveLines(item) : null;
+    const row = (mark, k, v, rolled, range, plus, color, applied = v) => {
       const isMax = range && rolled === range[1];
       return el(tag, { className: `stat-line${isMax ? " max" : ""}`, style: color ? { color } : {} },
         `${mark} ${RLItems.formatStat(k, v)}`,
         range ? el("span", { className: "range" }, ` [${RLItems.formatRange(k, range)}]${isMax ? " ▲" : ""}`) : null,
-        plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null);
+        plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null,
+        applied < v ? el("span", { className: "meta capped" }, ` (적용 ${RLItems.formatRange(k, [applied, applied])})`) : null);
     };
     // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
     const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
     return [
-      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v)),
+      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v, null, effBase[k])),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
-      ...RLItems.enhancedLines(item).map(([k, v, plus]) =>
-        row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item))),
+      ...RLItems.enhancedLines(item).map(([k, v, plus], i) =>
+        row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item), effLines ? effLines[i][1] : v)),
     ];
   }
 
@@ -2784,7 +2788,7 @@
     const { stats: g, sets } = Inv.totals();
     const s = stats();
     const statRows = [
-      `공격력 ${s.atk} (장비 +${g.atk})`, `방어력 ${s.def}`, `최대 HP ${s.maxHp} (장비 +${g.hp})`,
+      `공격력 ${s.atk} (장비 +${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""})`, `방어력 ${s.def}${g.defPct ? ` (+${g.defPct}%)` : ""}`, `최대 HP ${s.maxHp} (장비 +${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""})`,
       `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
       ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
@@ -2878,6 +2882,7 @@
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
       ...statLines(item),
+      ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
       el("div", { className: "meta" }, item.main
         ? `★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름)${item.parry != null ? " · 🛡 패링 확률(강화로 오르지 않음)" : ""} · [최소~최대] ▲ 최대치`
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
@@ -3179,7 +3184,7 @@
 
   // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템)
   function itemFromRef(ref) {
-    if (!ref || (ref.v !== 2 && ref.v !== 3)) return null;
+    if (!ref || !(ref.v >= 2 && ref.v <= RLItems.RULES_VERSION)) return null;
     const item = RLItems.generate(ref.seed, ref.src, ref.lvl, ref.v);
     if (item.id !== ref.id) return null;
     item.enh = ref.enh || 0;

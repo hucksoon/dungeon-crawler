@@ -3,6 +3,8 @@
 // items.js와 한 비트도 다르면 안 됨: items.js를 바꾸면 여기도 같이 바꾸고 일치 테스트를 돌릴 것.
 // v1: 기본 능력치가 부위로 고정 / v2: 주 능력치도 무작위, [최소~최대] 범위에서 최대치 20%
 // v3: 보조 손(보조무기·방패) 부위, 방패의 패링 확률, 광란·견고 세트
+// v4: 부위별 주 능력치 후보, % 능력치는 등급별 고정 범위, 추가 능력치에 치명타 피해·공격력%.
+//     예전(v2·v3) 아이템의 % 능력치는 효과 계산 때 v4 최대치로 잘림
 
 declare(strict_types=1);
 
@@ -42,10 +44,43 @@ const R_TABLES = [
 ];
 const R_DROP_CHANCE = ['normal' => 0.08, 'elite' => 0.4];
 const R_STAT_KEYS = ['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp'];
+const R_STAT_KEYS_V4 = ['atk', 'def', 'hp', 'crit', 'critDmg', 'atkPct', 'lifesteal', 'gold', 'xp'];
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
+    'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true],
 ];
+// v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
+const R_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'set'];
+const R_PCT_MAIN = [
+    'crit' => [[1, 2], [2, 3], [3, 5], [5, 7], [8, 10], [7, 9]],
+    'critDmg' => [[5, 10], [10, 15], [15, 25], [25, 35], [40, 50], [35, 45]],
+    'atkPct' => [[2, 3], [3, 5], [5, 8], [8, 12], [13, 15], [12, 14]],
+    'lifesteal' => [[1, 1], [1, 2], [2, 3], [3, 4], [5, 6], [4, 5]],
+    'defPct' => [[2, 3], [3, 5], [5, 8], [8, 12], [13, 15], [12, 14]],
+    'xp' => [[5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]],
+    'gold' => [[5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]],
+];
+const R_PCT_LINE = [
+    'crit' => [[1, 1], [1, 2], [2, 3], [3, 4], [4, 6], [4, 5]],
+    'critDmg' => [[3, 5], [5, 7], [7, 9], [9, 12], [12, 15], [11, 14]],
+    'atkPct' => [[1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]],
+    'lifesteal' => [[1, 1], [1, 1], [1, 2], [2, 3], [3, 4], [3, 3]],
+    'gold' => [[3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]],
+    'xp' => [[3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]],
+];
+const R_PCT_LINE_BOOST = 0.2;
+const R_MAIN_POOL_V4 = [
+    'weapon' => ['atk', 'critDmg', 'atkPct', 'lifesteal'],
+    'offhandWeapon' => ['atk', 'critDmg', 'lifesteal'],
+    'chest' => ['def', 'crit', 'hp'],
+    'arms' => ['def', 'crit', 'atkPct'],
+    'head' => ['def', 'hp', 'xp'],
+    'pants' => ['def', 'hp', 'defPct'],
+    'boots' => ['def', 'hp', 'gold'],
+    'shield' => ['def', 'hp'],
+];
+const R_MAIN_COUNT_V4 = ['common' => [1, 1], 'uncommon' => [1, 2], 'rare' => [2, 2], 'epic' => [2, 3], 'legendary' => [2, 3], 'set' => [2, 3]];
 const R_MAIN_POOL = ['weapon' => ['atk', 'crit', 'lifesteal', 'hp'], 'armor' => ['def', 'hp', 'atk', 'crit']];
 const R_MAIN_COUNT = ['common' => [1, 2], 'uncommon' => [1, 2], 'rare' => [3, 4], 'epic' => [3, 4], 'legendary' => [3, 4], 'set' => [3, 4]];
 const R_RARITY_MUL = ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' => 1.5, 'legendary' => 1.75, 'set' => 1.6];
@@ -92,6 +127,20 @@ function r_sets_for(string $slot): array {
     return $out;
 }
 function r_set_full(string $id): int { return max(array_column(R_SETS[$id]['bonuses'], 'count')); }
+// 등급별 고정 범위 표에서 찾기 (없으면 null)
+function r_pct_of(array $table, string $stat, string $rarity): ?array {
+    if (!isset($table[$stat])) return null;
+    $i = array_search($rarity, R_RARITY_ORDER, true);
+    return $i === false ? null : $table[$stat][$i];
+}
+// v4 아이템의 % 능력치 고정 범위
+function r_fixed_pct(array $item, array $table, string $stat): ?array {
+    return ($item['v'] ?? 0) >= 4 ? r_pct_of($table, $stat, $item['rarity']) : null;
+}
+function r_main_pool_v4(array $item): array {
+    if ($item['slot'] === 'offhand') return R_MAIN_POOL_V4[$item['type'] === 'shield' ? 'shield' : 'offhandWeapon'];
+    return R_MAIN_POOL_V4[$item['slot']];
+}
 
 // ---------------------------------------------------------------- 시드 난수 (JS Math.imul / >>> 와 같게)
 
@@ -169,6 +218,8 @@ function r_main_base_range(string $stat, int $lv): array {
 }
 
 function r_main_range(string $stat, array $item): array {
+    $fixed = r_fixed_pct($item, R_PCT_MAIN, $stat);
+    if ($fixed) return $fixed;
     $mul = R_RARITY_MUL[$item['rarity']] ?? 1;
     $weaponLike = r_weapon_like($item);
     if ($weaponLike && $stat === 'atk' && $item['type']) $mul *= R_WEAPONS[$item['type']]['atkMul'];
@@ -177,6 +228,11 @@ function r_main_range(string $stat, array $item): array {
     [$lo, $hi] = r_main_base_range($stat, $item['lvl']);
     $a = max(1, r_round($lo * $mul));
     return [$a, max($a, r_round($hi * $mul))];
+}
+
+// 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
+function r_line_range_of(string $stat, array $item): array {
+    return r_fixed_pct($item, R_PCT_LINE, $stat) ?? r_line_range($stat, $item['lvl']);
 }
 
 function r_roll_range(Closure $rng, array $range): int {
@@ -201,7 +257,7 @@ function r_id(int $version, string $source, int $lv, string $seed): string {
 function r_generate(int $version, string $seed, string $source, int $level): array {
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
-    if (!in_array($version, [1, 2, 3], true)) throw new InvalidArgumentException('bad version');
+    if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
     $rng = r_rng("v{$version}|{$seed}");
     $rarity = r_pick_weighted($rng, R_TABLES[$source]);
     $type = null;
@@ -231,20 +287,20 @@ function r_generate(int $version, string $seed, string $source, int $level): arr
         $item['ancient'] = false;
         return $item;
     }
-    $pool = R_MAIN_POOL[r_weapon_like($item) ? 'weapon' : 'armor'];
-    [$cLo, $cHi] = R_MAIN_COUNT[$rarity];
-    $count = r_rand_int($rng, $cLo, $cHi);
+    $pool = $version >= 4 ? r_main_pool_v4($item) : R_MAIN_POOL[r_weapon_like($item) ? 'weapon' : 'armor'];
+    [$cLo, $cHi] = ($version >= 4 ? R_MAIN_COUNT_V4 : R_MAIN_COUNT)[$rarity];
+    $count = min(count($pool), r_rand_int($rng, $cLo, $cHi));
     $rest = array_slice($pool, 1);
     $mainStats = [$pool[0]];
     while (count($mainStats) < $count) $mainStats[] = array_splice($rest, (int)floor($rng() * count($rest)), 1)[0];
     $item['main'] = [];
     foreach ($mainStats as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
 
-    $stats = R_STAT_KEYS;
+    $stats = $version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS;
     $item['lines'] = [];
     for ($i = 0; $i < R_RARITIES[$rarity]['lines']; $i++) {
         $stat = array_splice($stats, (int)floor($rng() * count($stats)), 1)[0];
-        $item['lines'][] = [$stat, r_roll_range($rng, r_line_range($stat, $lv))];
+        $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
     }
     if ($type === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges'][$rarity]);
     $item['id'] = r_id($version, $source, $lv, $seed);
@@ -257,7 +313,7 @@ function r_is_ancient(array $item): bool {
     if (!isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return false;
     if (isset($item['parry']) && $item['parry'] !== R_PARRY['ranges'][$item['rarity']][1]) return false;
     foreach ($item['main'] as [$k, $v]) if ($v !== r_main_range($k, $item)[1]) return false;
-    foreach ($item['lines'] as [$k, $v]) if ($v !== r_line_range($k, $item['lvl'])[1]) return false;
+    foreach ($item['lines'] as [$k, $v]) if ($v !== r_line_range_of($k, $item)[1]) return false;
     return true;
 }
 
@@ -280,6 +336,7 @@ function r_enhanced_base(array $item): array {
     $n = (int)($item['enh'] ?? 0);
     $out = [];
     foreach (r_main_stats($item) as [$k, $v]) {
+        if (($item['v'] ?? 0) >= 4 && R_STAT_NAMES[$k][1]) { $out[$k] = $v + intdiv($n, 2); continue; }
         $floor = R_STAT_NAMES[$k][1] ? intdiv($n, 2) : $n;
         $out[$k] = $v + ($n ? max($floor, r_round($v * R_ENHANCE['statPerLevel'] * $n)) : 0);
     }
@@ -294,11 +351,42 @@ function r_enhanced_lines(array $item): array {
         if ((int)($item['enh'] ?? 0) < $step) break;
         $rng = r_rng("enhline|{$item['id']}|{$step}");
         $i = (int)floor($rng() * count($lines));
-        $add = max(1, r_round(r_line_range($lines[$i][0], $item['lvl'])[1] * R_ENHANCE['lineBoost']));
+        $add = r_line_boost($item, $lines[$i][0]);
         $lines[$i][1] += $add;
         $lines[$i][2] += $add;
     }
     return $lines;
+}
+
+function r_line_boost(array $item, string $stat): int {
+    $fixed = r_fixed_pct($item, R_PCT_LINE, $stat);
+    if ($fixed) return max(1, r_round($fixed[1] * R_PCT_LINE_BOOST));
+    return max(1, r_round(r_line_range($stat, $item['lvl'])[1] * R_ENHANCE['lineBoost']));
+}
+
+// 예전(v2·v3) 아이템의 % 능력치 상한: 같은 등급 v4 최대치 + 강화로 오를 수 있는 만큼 (items.js oldCap)
+function r_old_cap(array $item, string $kind, string $stat): ?int {
+    $v = $item['v'] ?? 0;
+    if (!($v >= 2 && $v < 4)) return null;
+    $n = (int)($item['enh'] ?? 0);
+    if ($kind === 'main') {
+        $r = r_pct_of(R_PCT_MAIN, $stat, $item['rarity']);
+        return $r ? $r[1] + intdiv($n, 2) : null;
+    }
+    $r = r_pct_of(R_PCT_LINE, $stat, $item['rarity']);
+    if (!$r) return null;
+    $steps = count(array_filter(R_ENHANCE['lineSteps'], function ($s) use ($n) { return $n >= $s; }));
+    return $r[1] + max(1, r_round($r[1] * R_PCT_LINE_BOOST)) * $steps;
+}
+function r_effective_base(array $item): array {
+    $out = r_enhanced_base($item);
+    foreach ($out as $k => $v) { $cap = r_old_cap($item, 'main', $k); if ($cap !== null) $out[$k] = min($v, $cap); }
+    return $out;
+}
+function r_effective_lines(array $item): array {
+    $out = [];
+    foreach (r_enhanced_lines($item) as [$k, $v, $plus]) { $cap = r_old_cap($item, 'line', $k); $out[] = [$k, $cap !== null ? min($v, $cap) : $v, $plus]; }
+    return $out;
 }
 
 function r_totals(array $equipped): array {
@@ -306,8 +394,8 @@ function r_totals(array $equipped): array {
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
-        foreach (r_enhanced_base($item) as $k => $v) $sum[$k] += $v;
-        foreach (r_enhanced_lines($item) as [$k, $v]) $sum[$k] += $v;
+        foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
+        foreach (r_effective_lines($item) as [$k, $v]) $sum[$k] += $v;
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;

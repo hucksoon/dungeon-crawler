@@ -185,7 +185,8 @@
     const color = (RARITY[it.rarity] || RARITY.common).color;
     const line = (mark, l, colorize) => el("div", { className: l.max ? "mx" : "", style: colorize ? `color:${color}` : "" },
       `${mark} ${l.text}`, l.range ? el("span", { className: "rg", textContent: ` [${l.range}]${l.max ? " ▲" : ""}` }) : null,
-      l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null);
+      l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null,
+      l.eff ? el("span", { className: "plus", textContent: ` (적용 ${l.eff})` }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
       el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}` }),
       el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),

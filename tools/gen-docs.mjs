@@ -204,8 +204,8 @@ ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.ke
 
 - 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
 - +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요
-- 강화 1단계마다 주 능력치가 +10% 올라요 (최소 +1, 치명타·흡혈 같은 % 능력치는 2단계마다 +1)
-- +${I.ENHANCE.lineSteps.join(", +")}이 되면 추가 능력치 중 하나가 그 능력치 최대치의 ${pct(I.ENHANCE.lineBoost)}(최소 +1)만큼 올라요. 자세한 건 [장비 문서](items.md#강화)
+- 강화 1단계마다 수치 주 능력치가 +10% 올라요 (최소 +1). 치명타 같은 % 주 능력치는 2단계마다 +1%p
+- +${I.ENHANCE.lineSteps.join(", +")}이 되면 추가 능력치 중 하나가 올라요. 자세한 건 [장비 문서](items.md#강화)
 - 결과는 (아이템 ID, 몇 번째 시도)로 정해져서 새로고침해도 바뀌지 않아요
 
 ${table(["강화", ...Array.from({ length: I.ENHANCE.max }, (_, i) => `+${i + 1}`)], [
@@ -222,31 +222,43 @@ const itemsMd = `# 장비: 능력치, 고대 아이템, 강화, 세트
 
 ${HEADER}
 
-## 능력치가 붙는 방식
+## 능력치가 붙는 방식 (규칙 v${I.RULES_VERSION})
 
-- 모든 능력치는 아이템 레벨(얻은 층)로 정해지는 **[최소~최대] 범위**에서 정해져요
+- 모든 능력치는 **[최소~최대] 범위**에서 정해져요
+  - 공격력·방어력·최대 HP 같은 **수치 능력치**는 아이템 레벨(얻은 층)이 높을수록 범위가 커져요
+  - 치명타·치명타 피해·공격력%·흡혈·골드·경험치 같은 **% 능력치**는 레벨과 상관없이 **등급마다 정해진 범위**예요. 깊은 층에서도 % 능력치가 끝없이 커지지 않아요
 - **최대치가 나올 확률은 능력치마다 ${pct(I.MAX_ROLL_CHANCE)}**, 나머지 ${pct(1 - I.MAX_ROLL_CHANCE)}는 최소 ~ (최대 − 1)에서 고르게 나와요
 - 인벤토리에서 값 옆에 범위가 보이고, 최대치면 ▲ 표시가 붙어요
-- 결과는 아이템 시드로 정해져서 서버에서 똑같이 다시 계산할 수 있어요 (규칙 버전 v${I.RULES_VERSION})
+- 결과는 아이템 시드로 정해져서 서버에서 똑같이 다시 계산할 수 있어요
 
 ## 주 능력치 ★
 
-강화하면 함께 오르는 중요한 능력치예요.
+강화하면 함께 오르는 중요한 능력치예요. **부위마다 붙을 수 있는 능력치가 달라요.** 첫 번째는 항상 붙고, 나머지는 그 부위 후보에서 무작위예요. 원하는 능력치가 있으면 그 부위를 모아야 해요.
 
-${table(["등급", "주 능력치 개수", "추가 능력치 줄 수", "범위 배율"],
-  Object.entries(I.RARITIES).map(([r, x]) => [x.name, I.MAIN.count[r].join("~") + "개", x.lines + "줄", `×${I.MAIN.rarityMul[r]}`]))}
+${table(["부위", "항상", "후보"], [["무기", "weapon"], ["보조무기", "offhandWeapon"], ["가슴(갑옷)", "chest"], ["팔", "arms"], ["머리(투구)", "head"], ["바지", "pants"], ["장화", "boots"], ["방패", "shield"]]
+  .map(([name, k]) => [name, I.STATS[I.MAIN_V4.pool[k][0]].name, I.MAIN_V4.pool[k].slice(1).map(s => I.STATS[s].name + (I.STATS[s].pct ? "%" : "")).join(", ")]))}
 
-- 무기는 **공격력**, 방어구는 **방어력**이 항상 첫 번째로 붙고, 나머지는 후보에서 무작위
-  - 무기 후보: ${I.MAIN.pool.weapon.map(k => I.STATS[k].name).join(", ")}
-  - 방어구 후보: ${I.MAIN.pool.armor.map(k => I.STATS[k].name).join(", ")}
-- 방어구의 공격력·치명타, 무기의 최대 HP는 범위가 절반이에요. 도끼의 공격력은 ×${I.WEAPONS.axe.atkMul}
+- **치명타 확률**은 가슴·팔에만 붙어요. **치명타 피해**는 무기·보조무기에만 붙어요
+- 방패는 여기에 더해 패링 확률이 붙어요 (아래 [보조 손](#보조-손-보조무기와-방패))
 
-### 주 능력치 범위 (커먼 기준, 등급 배율을 곱함)
+${table(["등급", "주 능력치 개수", "추가 능력치 줄 수", "수치 능력치 범위 배율"],
+  Object.entries(I.RARITIES).map(([r, x]) => [x.name, I.MAIN_V4.count[r][0] === I.MAIN_V4.count[r][1] ? I.MAIN_V4.count[r][0] + "개" : I.MAIN_V4.count[r].join("~") + "개", x.lines + "줄", `×${I.MAIN.rarityMul[r]}`]))}
 
-${table(["아이템 레벨", ...Object.keys(I.MAIN.range).map(k => I.STATS[k].name + (["atk", "crit", "lifesteal"].includes(k) ? " (무기)" : " (방어구)"))],
-  LEVELS.map(l => [l, ...Object.keys(I.MAIN.range).map(k => fmtR(k, I.mainRange(k, sample(["atk", "crit", "lifesteal"].includes(k) ? "weapon" : "chest", "common", l))))]))}
+- 후보가 적은 부위(방패)는 후보 수만큼만 붙어요
 
-### 예: 레벨 10 장비의 주 능력치 범위
+### 주 능력치: % 능력치 (등급별 고정)
+
+${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
+  Object.keys(I.PCT_MAIN).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_MAIN[k][r]))]))}
+
+### 주 능력치: 수치 능력치 (커먼 기준, 등급 배율을 곱함)
+
+${table(["아이템 레벨", "공격력 (무기)", "방어력", "최대 HP (방어구)"],
+  LEVELS.map(l => [l, fmtR("atk", I.mainRange("atk", sample("weapon", "common", l))), fmtR("def", I.mainRange("def", sample("chest", "common", l))), fmtR("hp", I.mainRange("hp", sample("chest", "common", l)))]))}
+
+- 도끼의 공격력은 ×${I.WEAPONS.axe.atkMul}
+
+### 예: 레벨 10 장비의 수치 주 능력치 범위
 
 ${table(["등급", "무기 공격력", "도끼 공격력", "방어구 방어력", "방어구 최대 HP"],
   Object.keys(I.RARITIES).map(r => [I.RARITIES[r].name,
@@ -255,10 +267,31 @@ ${table(["등급", "무기 공격력", "도끼 공격력", "방어구 방어력"
 
 ## 추가 능력치 ◆
 
-등급별 줄 수만큼, 서로 다른 종류로 붙어요. 범위는 등급과 상관없이 아이템 레벨로만 정해져요.
+등급별 줄 수만큼, 서로 다른 종류로 붙어요. 모든 부위에 ${I.STAT_KEYS_V4.length}가지가 붙을 수 있어요: ${I.STAT_KEYS_V4.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", ")}.
 
-${table(["아이템 레벨", ...I.STAT_KEYS.map(k => I.STATS[k].name)],
-  LEVELS.map(l => [l, ...I.STAT_KEYS.map(k => fmtR(k, I.lineRange(k, l)))]))}
+### 추가 능력치: % 능력치 (등급별 고정)
+
+${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
+  Object.keys(I.PCT_LINE).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
+
+### 추가 능력치: 수치 능력치 (등급과 상관없이 아이템 레벨로)
+
+${table(["아이템 레벨", ...["atk", "def", "hp"].map(k => I.STATS[k].name)],
+  LEVELS.map(l => [l, ...["atk", "def", "hp"].map(k => fmtR(k, I.lineRange(k, l)))]))}
+
+### 치명타는 얼마나 모을 수 있나
+
+- 주 능력치로는 가슴·팔 2부위만: 레전더리 최대 ${I.PCT_MAIN.crit.legendary[1]}% × 2 = ${I.PCT_MAIN.crit.legendary[1] * 2}%
+- 추가 능력치까지 7부위 모두 레전더리 최대치면 ${I.PCT_MAIN.crit.legendary[1] * 2 + 7 * I.PCT_LINE.crit.legendary[1]}% (강화 전). 치명타 확률 상한은 75%예요
+
+## 예전 아이템 (v2·v3)
+
+- 예전 규칙으로 얻은 아이템은 **그대로** 남아요. 능력치·이름·고대 여부·거래 모두 예전 그대로예요
+- 다만 예전 규칙에서는 % 능력치가 레벨에 비례해서, 깊은 층 아이템 하나로 치명타 40%가 넘기도 했어요. 그래서 **효과를 계산할 때만** % 능력치(치명타·흡혈·골드·경험치)를 **같은 등급 v${I.RULES_VERSION} 최대치**까지만 적용해요
+  - 강화로 오를 수 있는 만큼은 더해줘요 (주 능력치는 2단계마다 +1, 추가 능력치는 +${I.ENHANCE.lineSteps.join("·+")}마다 등급 최대치의 ${pct(I.PCT_LINE_BOOST)})
+  - 예: 예전 레전더리 갑옷의 치명타 42% → 적용 ${I.PCT_MAIN.crit.legendary[1]}% (+10 강화면 ${I.PCT_MAIN.crit.legendary[1] + 5}%)
+- 인벤토리와 랭킹에서 원래 값 옆에 **(적용 N%)**로 실제로 쓰이는 값이 보여요
+- 공격력·방어력·최대 HP는 줄이지 않아요
 
 ## 보조 손: 보조무기와 방패
 
@@ -275,13 +308,15 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - **최고 등급(레전더리·세트)** 이면서 **모든 능력치(주 + 추가, 방패는 패링도)가 최대치**로 붙은 아이템이에요. 이름 앞에 **"고대"**가 붙고, 인벤토리에서 금빛으로 빛나요
 - 그 아래 등급은 능력치가 모두 최대치여도 고대가 아니에요 (예전에 고대로 표시되던 낮은 등급 아이템도 이제 보통 아이템으로 보여요)
-- 능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 아주 드물어요: ${["legendary", "set"].map(r => { const [a, b] = I.MAIN.count[r]; const lines = I.RARITIES[r].lines; const odds = (n) => `약 ${Math.round(1 / I.MAX_ROLL_CHANCE ** n).toLocaleString("en-US")}분의 1`; return `${I.RARITIES[r].name}는 능력치 ${a + lines}~${b + lines}개라 ${odds(a + lines)}~${odds(b + lines)}`; }).join(", ")}
+- 능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 아주 드물어요: ${["legendary", "set"].map(r => { const [a, b] = I.MAIN_V4.count[r]; const lines = I.RARITIES[r].lines; const odds = (n) => `약 ${Math.round(1 / I.MAX_ROLL_CHANCE ** n).toLocaleString("en-US")}분의 1`; return `${I.RARITIES[r].name}는 능력치 ${a + lines}~${b + lines}개라 ${odds(a + lines)}~${odds(b + lines)}`; }).join(", ")}
   (범위의 최소와 최대가 같은 능력치는 항상 최대치라 실제로는 조금 더 자주 나와요)
 
 ## 강화
 
-- 강화 1단계마다 **주 능력치 +${pct(I.ENHANCE.statPerLevel)}** (최소 +1, 치명타·흡혈 같은 % 능력치는 2단계마다 +1)
-- **+${I.ENHANCE.lineSteps.join(", +")}**이 되면 추가 능력치 중 하나가 그 능력치 **최대치의 ${pct(I.ENHANCE.lineBoost)}**(최소 +1)만큼 올라요
+- 강화 1단계마다 **수치 주 능력치 +${pct(I.ENHANCE.statPerLevel)}** (최소 +1). **% 주 능력치는 2단계마다 +1%p** (+10이면 +5%p)
+- **+${I.ENHANCE.lineSteps.join(", +")}**이 되면 추가 능력치 중 하나가 올라요
+  - 수치 능력치: 그 레벨 범위 **최대치의 ${pct(I.ENHANCE.lineBoost)}**(최소 +1)
+  - % 능력치: 그 등급 범위 **최대치의 ${pct(I.PCT_LINE_BOOST)}**(최소 +1). 예: 레전더리 치명타 피해(최대 ${I.PCT_LINE.critDmg.legendary[1]}%)는 +${I.lineBoost({ v: I.RULES_VERSION, rarity: "legendary", lvl: 1 }, "critDmg")}%p
   - 어느 줄이 오를지는 (아이템 ID, 강화 단계)로 정해져요. 같은 줄이 여러 번 오를 수도 있어요
 - 성공 확률과 강화석은 [경제 문서](economy.md#판매와-강화)를 보세요
 
