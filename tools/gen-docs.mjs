@@ -28,7 +28,7 @@ const tableRates = (t) => Object.entries(t).map(([k, w]) => {
 const HEADER = "> 이 문서는 `node tools/gen-docs.mjs`로 만들어요. 직접 고치지 말고 `monsters.js`, `items.js`를 고친 뒤 다시 실행하세요.";
 
 const E = M.ELITE, G = M.GOLDEN, GOLD = M.GOLD;
-const FLOORS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 15, 17, 20, 25];
+const FLOORS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 15, 17, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150];
 const BOSS_FLOORS = [5, 10, 15, 20, 25, 30];
 
 // ---------------------------------------------------------------- monsters.md
@@ -84,12 +84,17 @@ ${table(["층", "종류 수", "출현 비율 (높은 순)"],
 ## 황금 고블린
 
 - ${G.from}층부터 층마다 ${pct(G.chance)} 확률로 1마리. 시작 지점에서 떨어진 곳에 있고, 금빛 칸으로 보여요
-- 플레이어를 공격하지 않아요. 들키면 ${G.moveEvery}턴에 1번씩 플레이어에게서 멀어지는 쪽으로 움직여요
-- 처음 보인 뒤 **${G.fleeTurns}턴** 안에 잡지 못하면 도망쳐서 사라져요 (10턴 남으면 경고)
-- 잡으면 **레어 이상 장비 ${G.drops}개를 반드시** 떨어뜨려요: ${tableRates(I.TABLES.golden)}
+- 플레이어를 공격하지 않아요. 들키면 플레이어에게서 멀어지는 쪽으로 움직이고, 처음 보인 뒤 정해진 턴 안에 잡지 못하면 도망쳐서 사라져요 (10턴 남으면 경고)
+- HP는 6 + 층, 또는 그 층에서 가장 튼튼한 몬스터 HP(층 보정 포함)의 ${pct(G.hpOfPool)} 중 큰 쪽. 방어력은 그 층 몬스터 중 가장 높은 방어력 +${G.defAdd}
+- 깊은 층에서는 **정예**(금색 테두리)와 **왕**(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 맞고 살아남으면 확률로 연막을 터뜨려 ${G.blinkRange[0]}~${G.blinkRange[1]}칸 떨어진 곳으로 순간이동해요
+- 잡으면 **레어 이상 장비를 반드시** 떨어뜨려요: ${tableRates(I.TABLES.golden)}
 
-${table(["층", "HP", "방어 (그 층 최고 방어 +" + G.defAdd + ")", "경험치"],
-  FLOORS.filter(d => d >= G.from).map(d => { const g = M.makeGolden(d); return [d, g.hp, g.def, g.xp]; }))}
+${table(["등급", "나오는 층", "확률 (황금 고블린 중)", "HP", "방어", "도망까지", "이동", "순간이동", "장비", "골드·경험치"],
+  Object.entries(G.ranks).map(([rank, r]) => [r.name, `${r.from}층부터`, rank === "normal" ? "나머지" : pct(r.chance),
+    `×${r.hpMul}`, r.defAdd ? `+${r.defAdd}` : "-", `${r.fleeTurns}턴`, `${r.moves[1]}턴에 ${r.moves[0]}번`, r.blink ? pct(r.blink) : "-", `${r.drops}개`, `×${r.goldMul}`]))}
+
+${table(["층", "보통 HP", "정예 HP", "왕 HP", "방어 (보통)", "경험치 (보통)"],
+  FLOORS.filter(d => d >= G.from).map(d => { const g = M.makeGolden(d); return [d, g.hp, d >= G.ranks.elite.from ? M.makeGolden(d, "elite").hp : "-", d >= G.ranks.king.from ? M.makeGolden(d, "king").hp : "-", g.def, g.xp]; }))}
 
 ## 보스
 
@@ -106,7 +111,7 @@ ${table(["어디서", "확률", "등급 확률"], [
   ["일반 몬스터, 포션 자리", pct(I.DROPS.normal.chance), tableRates(I.TABLES.drop)],
   ["정예", pct(I.DROPS.elite.chance), tableRates(I.TABLES.drop)],
   ["보스", pct(I.DROPS.boss.chance), tableRates(I.TABLES.boss)],
-  ["황금 고블린", `${pct(I.DROPS.golden.chance)} × ${G.drops}개`, tableRates(I.TABLES.golden)],
+  ["황금 고블린", `${pct(I.DROPS.golden.chance)} × ${Object.values(G.ranks).map(r => r.drops).join("·")}개 (보통·정예·왕)`, tableRates(I.TABLES.golden)],
   [`상점 (보스 전 층, 골드)`, `진열 ${I.SHOP.slots}개`, tableRates(I.TABLES[I.SHOP.table])],
   ["장비 상자 (캐시)", "-", tableRates(I.TABLES.box)],
 ])}

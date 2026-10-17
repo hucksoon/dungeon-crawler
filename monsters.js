@@ -21,11 +21,33 @@
     { id: "dark_knight", ch: "A", name: "암흑 기사",  color: "#6f7fa8", hp: 22, atk: 8,  def: 4, xp: 27, from: 9,  until: 20 },
     { id: "minotaur",   ch: "M", name: "미노타우로스", color: "#c8743c", hp: 28, atk: 9,  def: 4, xp: 32, from: 10, until: 22 },
     { id: "chimera",    ch: "C", name: "키메라",      color: "#d4a83c", hp: 26, atk: 10, def: 4, xp: 36, from: 11, until: 24 },
-    { id: "lich",       ch: "L", name: "리치",        color: "#c27bff", hp: 24, atk: 12, def: 5, xp: 42, from: 12 },
-    { id: "fire_spirit", ch: "E", name: "화염 정령", color: "#ff8a3d", hp: 30, atk: 12, def: 6, xp: 48, from: 13 },
-    { id: "vampire",    ch: "V", name: "뱀파이어",    color: "#d23c5a", hp: 32, atk: 13, def: 6, xp: 52, from: 14 },
-    { id: "drake",      ch: "D", name: "어린 드래곤", color: "#ff6b4a", hp: 40, atk: 14, def: 7, xp: 60, from: 15 },
-    { id: "hydra",      ch: "H", name: "히드라",      color: "#3cc8a0", hp: 50, atk: 16, def: 8, xp: 75, from: 17 },
+    { id: "lich",       ch: "L", name: "리치",        color: "#c27bff", hp: 24, atk: 12, def: 5, xp: 42, from: 12, until: 30 },
+    { id: "fire_spirit", ch: "E", name: "화염 정령", color: "#ff8a3d", hp: 30, atk: 12, def: 6, xp: 48, from: 13, until: 34 },
+    { id: "vampire",    ch: "V", name: "뱀파이어",    color: "#d23c5a", hp: 32, atk: 13, def: 6, xp: 52, from: 14, until: 38 },
+    { id: "drake",      ch: "D", name: "어린 드래곤", color: "#ff6b4a", hp: 40, atk: 14, def: 7, xp: 60, from: 15, until: 42 },
+    { id: "hydra",      ch: "H", name: "히드라",      color: "#3cc8a0", hp: 50, atk: 16, def: 8, xp: 75, from: 17, until: 50 },
+    // 18층부터: 깊은 층을 위한 몬스터. 강해지는 건 대부분 층 보정이 맡고, 기본 능력치는 히드라 언저리에서 천천히 오름
+    // (한 번에 너무 세지면 지금 깊은 층에 있는 사람이 갑자기 막히므로). 몇몇은 단단하거나(골렘·베히모스) 아프게(밴시·스펙터) 때림
+    { id: "ghoul",      ch: "u", name: "구울",        color: "#9fb07a", hp: 46, atk: 15, def: 7,  xp: 78,  from: 18, until: 40 },
+    { id: "basilisk",   ch: "B", name: "바실리스크",  color: "#8bc34a", hp: 50, atk: 15, def: 8,  xp: 82,  from: 20, until: 44 },
+    { id: "gargoyle",   ch: "Y", name: "가고일",      color: "#8d99ae", hp: 48, atk: 15, def: 10, xp: 86,  from: 22, until: 48 },
+    { id: "naga",       ch: "N", name: "나가",        color: "#26a69a", hp: 50, atk: 17, def: 7,  xp: 90,  from: 25, until: 52 },
+    { id: "wyvern",     ch: "y", name: "와이번",      color: "#e07a5f", hp: 54, atk: 16, def: 8,  xp: 95,  from: 28, until: 56 },
+    { id: "death_knight", ch: "X", name: "데스 나이트", color: "#7986cb", hp: 56, atk: 17, def: 9, xp: 100, from: 31, until: 60 },
+    { id: "banshee",    ch: "n", name: "밴시",        color: "#b39ddb", hp: 48, atk: 19, def: 7,  xp: 105, from: 34, until: 64 },
+    { id: "golem",      ch: "R", name: "바위 골렘",   color: "#a1887f", hp: 66, atk: 15, def: 11, xp: 110, from: 37, until: 68 },
+    { id: "manticore",  ch: "m", name: "만티코어",    color: "#ef6c00", hp: 56, atk: 18, def: 9,  xp: 116, from: 40, until: 72 },
+    { id: "frost_giant", ch: "F", name: "서리 거인",  color: "#81d4fa", hp: 62, atk: 18, def: 9,  xp: 122, from: 44, until: 78 },
+    { id: "specter",    ch: "p", name: "스펙터",      color: "#cfd8dc", hp: 52, atk: 20, def: 8,  xp: 128, from: 48, until: 84 },
+    { id: "demon",      ch: "U", name: "악마",        color: "#e53935", hp: 58, atk: 19, def: 9,  xp: 134, from: 52, until: 90 },
+    { id: "behemoth",   ch: "Q", name: "베히모스",    color: "#8d6e63", hp: 70, atk: 17, def: 12, xp: 140, from: 56, until: 96 },
+    { id: "kraken",     ch: "q", name: "크라켄",      color: "#42a5f5", hp: 62, atk: 19, def: 10, xp: 146, from: 60, until: 102 },
+    { id: "phoenix",    ch: "P", name: "불사조",      color: "#ffa726", hp: 58, atk: 21, def: 9,  xp: 152, from: 65, until: 110 },
+    { id: "shadow_dragon", ch: "Z", name: "그림자 드래곤", color: "#78909c", hp: 64, atk: 20, def: 10, xp: 158, from: 70 },
+    { id: "archdemon",  ch: "J", name: "대악마",      color: "#c62828", hp: 64, atk: 21, def: 10, xp: 164, from: 78 },
+    { id: "titan",      ch: "I", name: "타이탄",      color: "#fdd835", hp: 72, atk: 20, def: 11, xp: 170, from: 86 },
+    { id: "void_lord",  ch: "v", name: "공허의 군주", color: "#9575cd", hp: 64, atk: 22, def: 10, xp: 176, from: 95 },
+    { id: "ancient_dragon", ch: "d", name: "고룡",    color: "#ff5252", hp: 70, atk: 22, def: 11, xp: 185, from: 105 },
   ];
 
   // 층 보정: 같은 몬스터도 깊은 층일수록 강해짐. from층부터 n = 층 − from + 1 단계
@@ -54,14 +76,33 @@
     { id: "lich_lord",   ch: "K", name: "리치 군주",   hp: 150, atk: 15, def: 7, xp: 260 },
   ];
 
-  // 황금 고블린: 2층부터 층마다 12% 확률로 1마리. 공격하지 않고 플레이어에게서 달아나며(2턴에 1번 이동),
-  // 처음 보인 뒤 30턴이 지나면 도망침. 방어력은 그 층 몬스터 중 가장 높은 방어력 +2
+  // 황금 고블린: 2층부터 층마다 12% 확률로 1마리. 공격하지 않고 플레이어에게서 달아나며,
+  // 처음 보인 뒤 정해진 턴이 지나면 도망침. 방어력은 그 층 몬스터 중 가장 높은 방어력 + defAdd
+  // 등급: 깊은 층에서는 정예(10층부터)와 왕(30층부터)이 나옴. 더 단단하고, 더 빨리 도망치고,
+  //   맞고 살아남으면 확률로 연막을 터뜨려 순간이동함. 대신 장비를 더 많이 떨어뜨림
+  //   moves: [n, m] = m턴에 n번 움직임. blink: 맞았을 때 순간이동 확률, blinkRange: 순간이동 거리
   const GOLDEN = {
     id: "golden_goblin", ch: "g", name: "황금 고블린", color: "#ffd700",
-    from: 2, chance: 0.12, fleeTurns: 30, moveEvery: 2, defAdd: 2, drops: 2,
+    from: 2, chance: 0.12, defAdd: 2, blinkRange: [4, 7],
+    // HP: 6 + 층, 또는 그 층에서 가장 튼튼한 몬스터 HP(층 보정 포함)의 절반 중 큰 쪽 (깊은 층에서 한 방에 잡히지 않게)
     hp: (d) => 6 + d,
+    hpOfPool: 0.5,
     xp: (d) => 10 + d * 4,
+    ranks: {
+      normal: { name: "황금 고블린",      from: 2,  chance: 1,    hpMul: 1, defAdd: 0, fleeTurns: 24, moves: [1, 2], blink: 0,    drops: 2, goldMul: 1, xpMul: 1 },
+      elite:  { name: "정예 황금 고블린", from: 10, chance: 0.3,  hpMul: 3, defAdd: 2, fleeTurns: 20, moves: [1, 2], blink: 0.3,  drops: 3, goldMul: 2, xpMul: 2 },
+      king:   { name: "황금 고블린 왕",   from: 30, chance: 0.12, hpMul: 6, defAdd: 4, fleeTurns: 16, moves: [2, 3], blink: 0.5,  drops: 4, goldMul: 4, xpMul: 4 },
+    },
   };
+  // 그 층에 나올 황금 고블린 등급. 왕 → 정예 → 보통 순서로 확률을 봄 (30층부터 왕 12%, 정예 30%)
+  function goldenRank(d, rand) {
+    const R = GOLDEN.ranks;
+    const r = rand();
+    const king = d >= R.king.from ? R.king.chance : 0;
+    if (r < king) return "king";
+    if (d >= R.elite.from && r < king + R.elite.chance) return "elite";
+    return "normal";
+  }
 
   // 골드: 바닥의 골드 더미와 몬스터 처치로 얻음. 층이 깊을수록 많아짐 (층 배율 = 1 + 0.15 × (층 − 1))
   // 범위 [최소, 최대]에서 무작위로 정한 뒤 층 배율을 곱함. 장비의 "골드 획득 +%"는 그 위에 더해짐
@@ -138,18 +179,22 @@
     };
   }
 
-  function makeGolden(d) {
-    const def = Math.max(0, ...pool(d).map(m => m.def)) + floorScale(d).def + GOLDEN.defAdd;
-    const hp = GOLDEN.hp(d);
+  // rank: "normal" | "elite" | "king". kind는 모두 "golden" (드롭 등급표·서버 검증은 같음)
+  function makeGolden(d, rank = "normal") {
+    const R = GOLDEN.ranks[rank];
+    const def = Math.max(0, ...pool(d).map(m => m.def)) + floorScale(d).def + GOLDEN.defAdd + R.defAdd;
+    const toughest = Math.max(0, ...pool(d).map(m => m.hp)) * floorScale(d).hp;
+    const hp = Math.round(Math.max(GOLDEN.hp(d), GOLDEN.hpOfPool * toughest) * R.hpMul);
     return {
-      id: GOLDEN.id, ch: GOLDEN.ch, name: GOLDEN.name, color: GOLDEN.color, kind: "golden",
-      hp, maxHp: hp, atk: 0, def, xp: GOLDEN.xp(d),
+      id: GOLDEN.id, ch: GOLDEN.ch, name: R.name, color: GOLDEN.color, kind: "golden", rank,
+      hp, maxHp: hp, atk: 0, def, xp: Math.round(GOLDEN.xp(d) * R.xpMul),
+      fleeTurns: R.fleeTurns, moves: R.moves, blink: R.blink, drops: R.drops, goldMul: R.goldMul,
     };
   }
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, BOSS_SCALE, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
-    pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden,
+    pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
