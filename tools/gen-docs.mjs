@@ -193,7 +193,11 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 
 ## 판매와 강화
 
-- 판매하면 등급에 따라 강화석을 받아요: ${Object.entries(I.SELL_STONES).map(([r, n]) => `${I.RARITIES[r].name} ${n}`).join(", ")}
+- 판매하면 등급에 따라 강화석을 받아요. 아이템 레벨이 높을수록 더 받아요: 기본값 × (1 + 레벨당 ${pct(I.SELL_PER_LEVEL)})
+
+${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_STONES).map(r => [I.RARITIES[r].name, I.SELL_STONES[r], ...[10, 30, 60, 120].map(lvl => I.sellStones({ rarity: r, lvl }))]))}
+
+- 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
 - +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요
 - 강화 1단계마다 주 능력치가 +10% 올라요 (최소 +1, 치명타·흡혈 같은 % 능력치는 2단계마다 +1)
 - +${I.ENHANCE.lineSteps.join(", +")}이 되면 추가 능력치 중 하나가 그 능력치 최대치의 ${pct(I.ENHANCE.lineBoost)}(최소 +1)만큼 올라요. 자세한 건 [장비 문서](items.md#강화)
@@ -266,7 +270,7 @@ ${table(["아이템 레벨", ...I.STAT_KEYS.map(k => I.STATS[k].name)],
 
 ## 세트
 
-구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 같은 세트를 2·4·6개 입을 때마다 효과가 하나씩 켜져요.
+구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 같은 세트를 ${Object.values(I.SETS)[0].bonuses.map(b => b.count).join("·")}개 입을 때마다 효과가 하나씩 켜져요. 세트는 6부위지만 아무거나 5개면 효과가 전부 켜져서, 무기는 자유롭게 골라도 돼요.
 
 ${Object.values(I.SETS).map(set => `### ${set.name}
 
