@@ -2,11 +2,18 @@
 // items.js의 아이템 규칙을 PHP로 옮긴 것. 서버가 아이템을 시드로 다시 만들어 위조를 확인하고 능력치를 계산한다.
 // items.js와 한 비트도 다르면 안 됨: items.js를 바꾸면 여기도 같이 바꾸고 일치 테스트를 돌릴 것.
 // v1: 기본 능력치가 부위로 고정 / v2: 주 능력치도 무작위, [최소~최대] 범위에서 최대치 20%
+// v3: 보조 손(보조무기·방패) 부위, 방패의 패링 확률, 광란·견고 세트
 
 declare(strict_types=1);
 
 const R_MASK = 0xFFFFFFFF;
-const R_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon'];
+const R_SLOTS_V2 = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon'];   // v1·v2 아이템을 다시 만들 때
+const R_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offhand'];
+const R_OFFHAND = ['shieldChance' => 0.5, 'shieldName' => '방패', 'weaponPrefix' => '보조'];
+const R_PARRY = [
+    'ranges' => ['common' => [9, 11], 'uncommon' => [9, 11], 'rare' => [9, 11], 'epic' => [16, 18], 'legendary' => [23, 25], 'set' => [23, 25]],
+    'max' => 40,
+];
 const R_WEAPONS = [
     'dagger' => ['name' => '단검', 'base' => ['atk' => 2, 'crit' => 6], 'atkMul' => 1],
     'staff' => ['name' => '지팡이', 'base' => ['atk' => 2, 'hp' => 6], 'atkMul' => 1],
@@ -37,7 +44,7 @@ const R_DROP_CHANCE = ['normal' => 0.08, 'elite' => 0.4];
 const R_STAT_KEYS = ['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp'];
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
-    'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true],
+    'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
 ];
 const R_MAIN_POOL = ['weapon' => ['atk', 'crit', 'lifesteal', 'hp'], 'armor' => ['def', 'hp', 'atk', 'crit']];
 const R_MAIN_COUNT = ['common' => [1, 2], 'uncommon' => [1, 2], 'rare' => [3, 4], 'epic' => [3, 4], 'legendary' => [3, 4], 'set' => [3, 4]];
@@ -56,7 +63,35 @@ const R_SETS = [
             ['count' => 5, 'text' => '치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'lifesteal' => 8, 'killHealPct' => 15]],
         ],
     ],
+    'frenzy' => [
+        'name' => '광란의 세트',
+        'weapon' => 'dagger', 'offhand' => 'dagger',
+        'pieces' => ['weapon' => '광란의 오른손무기', 'offhand' => '광란의 왼손무기'],
+        'bonuses' => [
+            ['count' => 2, 'text' => '공격하면 대상 주변 1칸의 적도 같은 피해를 입어요', 'stats' => ['splash' => 1]],
+        ],
+    ],
+    'sturdy' => [
+        'name' => '견고의 세트',
+        'weapon' => 'axe', 'offhand' => 'shield',
+        'pieces' => ['weapon' => '견고의 도끼', 'offhand' => '견고의 방패'],
+        'bonuses' => [
+            ['count' => 2, 'text' => '패링 확률 +15% (방패와 합쳐 최대 40%)', 'stats' => ['parry' => 15]],
+        ],
+    ],
 ];
+
+// 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
+function r_weapon_like(array $item): bool {
+    return $item['slot'] === 'weapon' || ($item['slot'] === 'offhand' && !empty($item['type']) && $item['type'] !== 'shield');
+}
+// 그 부위로 나올 수 있는 세트 (R_SETS 순서)
+function r_sets_for(string $slot): array {
+    $out = [];
+    foreach (R_SETS as $id => $set) if (isset($set['pieces'][$slot])) $out[] = $id;
+    return $out;
+}
+function r_set_full(string $id): int { return max(array_column(R_SETS[$id]['bonuses'], 'count')); }
 
 // ---------------------------------------------------------------- 시드 난수 (JS Math.imul / >>> 와 같게)
 
@@ -135,8 +170,9 @@ function r_main_base_range(string $stat, int $lv): array {
 
 function r_main_range(string $stat, array $item): array {
     $mul = R_RARITY_MUL[$item['rarity']] ?? 1;
-    if ($item['slot'] === 'weapon' && $stat === 'atk' && $item['type']) $mul *= R_WEAPONS[$item['type']]['atkMul'];
-    $off = $item['slot'] === 'weapon' ? $stat === 'hp' : ($stat === 'atk' || $stat === 'crit');
+    $weaponLike = r_weapon_like($item);
+    if ($weaponLike && $stat === 'atk' && $item['type']) $mul *= R_WEAPONS[$item['type']]['atkMul'];
+    $off = $weaponLike ? $stat === 'hp' : ($stat === 'atk' || $stat === 'crit');
     if ($off) $mul *= R_OFF_SLOT_MUL;
     [$lo, $hi] = r_main_base_range($stat, $item['lvl']);
     $a = max(1, r_round($lo * $mul));
@@ -165,12 +201,20 @@ function r_id(int $version, string $source, int $lv, string $seed): string {
 function r_generate(int $version, string $seed, string $source, int $level): array {
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
+    if (!in_array($version, [1, 2, 3], true)) throw new InvalidArgumentException('bad version');
     $rng = r_rng("v{$version}|{$seed}");
     $rarity = r_pick_weighted($rng, R_TABLES[$source]);
-    $slot = r_pick($rng, R_SLOTS);
-    $set = $rarity === 'set' ? 'trial' : null;
     $type = null;
-    if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
+    if ($version < 3) {
+        $slot = r_pick($rng, R_SLOTS_V2);
+        $set = $rarity === 'set' ? 'trial' : null;
+        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
+    } else {
+        $slot = r_pick($rng, R_SLOTS);
+        $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot)) : null;
+        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
+        elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, array_keys(R_WEAPONS)));
+    }
     $item = ['v' => $version, 'seed' => $seed, 'src' => $source, 'lvl' => $lv, 'slot' => $slot, 'type' => $type, 'rarity' => $rarity, 'set' => $set];
 
     if ($version === 1) {
@@ -187,9 +231,7 @@ function r_generate(int $version, string $seed, string $source, int $level): arr
         $item['ancient'] = false;
         return $item;
     }
-    if ($version !== 2) throw new InvalidArgumentException('bad version');
-
-    $pool = R_MAIN_POOL[$slot === 'weapon' ? 'weapon' : 'armor'];
+    $pool = R_MAIN_POOL[r_weapon_like($item) ? 'weapon' : 'armor'];
     [$cLo, $cHi] = R_MAIN_COUNT[$rarity];
     $count = r_rand_int($rng, $cLo, $cHi);
     $rest = array_slice($pool, 1);
@@ -204,13 +246,16 @@ function r_generate(int $version, string $seed, string $source, int $level): arr
         $stat = array_splice($stats, (int)floor($rng() * count($stats)), 1)[0];
         $item['lines'][] = [$stat, r_roll_range($rng, r_line_range($stat, $lv))];
     }
-    $item['id'] = r_id(2, $source, $lv, $seed);
+    if ($type === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges'][$rarity]);
+    $item['id'] = r_id($version, $source, $lv, $seed);
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }
 
+// 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 최대치
 function r_is_ancient(array $item): bool {
-    if (!isset($item['main'])) return false;
+    if (!isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return false;
+    if (isset($item['parry']) && $item['parry'] !== R_PARRY['ranges'][$item['rarity']][1]) return false;
     foreach ($item['main'] as [$k, $v]) if ($v !== r_main_range($k, $item)[1]) return false;
     foreach ($item['lines'] as [$k, $v]) if ($v !== r_line_range($k, $item['lvl'])[1]) return false;
     return true;
@@ -258,11 +303,13 @@ function r_enhanced_lines(array $item): array {
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
-        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0];
+        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
         foreach (r_enhanced_base($item) as $k => $v) $sum[$k] += $v;
         foreach (r_enhanced_lines($item) as [$k, $v]) $sum[$k] += $v;
+        if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
+        if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
     }
     $sets = [];
@@ -274,16 +321,23 @@ function r_totals(array $equipped): array {
             if ($on) foreach ($b['stats'] as $k => $v) $sum[$k] += $v;
             $bonuses[] = ['count' => $b['count'], 'text' => $b['text'], 'on' => $on];
         }
-        $sets[] = ['id' => $id, 'name' => $set['name'], 'count' => $count, 'bonuses' => $bonuses];
+        $sets[] = ['id' => $id, 'name' => $set['name'], 'count' => $count, 'full' => r_set_full($id), 'bonuses' => $bonuses];
     }
+    $sum['parry'] = min(R_PARRY['max'], $sum['parry']);
+    $sum['splash'] = $sum['splash'] ? 1 : 0;
     return ['stats' => $sum, 'sets' => $sets];
 }
 
 function r_item_name(array $item): string {
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '');
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
-    $base = $item['type'] ? R_WEAPONS[$item['type']]['name'] : R_ARMOR[$item['slot']]['name'];
-    return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . $base;
+    return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);
+}
+
+// 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
+function r_kind_name(array $item): string {
+    if ($item['slot'] === 'offhand') return $item['type'] === 'shield' ? R_OFFHAND['shieldName'] : R_OFFHAND['weaponPrefix'] . ' ' . R_WEAPONS[$item['type']]['name'];
+    return $item['type'] ? R_WEAPONS[$item['type']]['name'] : R_ARMOR[$item['slot']]['name'];
 }
 
 // 게임 화면의 stats()와 같은 최종 능력치. 레벨로 오르는 기본치: HP 20 + 4/레벨, 공격력 3 + 1/레벨
@@ -302,5 +356,8 @@ function r_player_stats(int $plvl, array $totals): array {
         'gold' => $g['gold'],
         'xp' => $g['xp'],
         'killHeal' => $g['killHeal'] + r_round($maxHp * $g['killHealPct'] / 100),
+        'parry' => $g['parry'],
+        'dual' => (bool)$g['dual'],
+        'splash' => (bool)$g['splash'],
     ];
 }

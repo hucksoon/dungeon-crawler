@@ -218,7 +218,7 @@ function market_list(): array {
         throw new HttpError(400, 'bad_price');
     }
     $ref = $body['item'] ?? null;
-    if (!is_array($ref) || ($ref['v'] ?? null) !== 2) throw new HttpError(400, 'old_item');
+    if (!is_array($ref) || !in_array($ref['v'] ?? null, [2, 3], true)) throw new HttpError(400, 'old_item');  // v1 아이템만 거래 불가
     // 아이템 레벨은 최고 층보다 높을 수 없음 (랭킹과 같은 기준). 개발자는 랭킹 기록이 없어서 제한 없음
     $stage = is_int($body['stage'] ?? null) ? min(MAX_STAGE, max(0, $body['stage'])) : 0;
     $maxLvl = $who['developer'] ? MAX_STAGE : max((int)(q_val('SELECT best_stage FROM players WHERE pkey = ?', [$who['key']]) ?: 0), $stage);
@@ -226,7 +226,7 @@ function market_list(): array {
     if (!$item) throw new HttpError(400, 'bad_item');
     if (in_array($item['rarity'], MARKET_CASH_REQUIRED, true) && $cash < 1) throw new HttpError(400, 'cash_required');
     $tries = is_int($ref['tries'] ?? null) ? max(0, min(1000, $ref['tries'])) : 0;
-    $cleanRef = ['seed' => $item['seed'], 'src' => $item['src'], 'lvl' => $item['lvl'], 'v' => 2, 'enh' => $item['enh'], 'id' => $item['id'], 'tries' => $tries];
+    $cleanRef = ['seed' => $item['seed'], 'src' => $item['src'], 'lvl' => $item['lvl'], 'v' => $item['v'], 'enh' => $item['enh'], 'id' => $item['id'], 'tries' => $tries];
 
     $now = now_ms();
     $id = tx(function (PDO $pdo) use ($who, $item, $cleanRef, $gold, $cash, $now) {

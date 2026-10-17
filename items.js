@@ -7,7 +7,8 @@
   // 생성 규칙이 바뀌면 올린다. 검증할 때는 아이템에 기록된 버전의 규칙으로 다시 계산해야 함
   // v1: 기본 능력치는 부위로 고정, 추가 능력치만 무작위
   // v2: 주 능력치(강화로 오름)도 등급별 개수만큼 무작위, 모든 능력치는 [최소~최대] 범위에서 최대치 20%
-  const RULES_VERSION = 2;
+  // v3: 보조 손(보조무기·방패) 부위, 방패의 패링 확률, 광란·견고 세트 (게임은 v3만 만들고, 서버는 v1~v3을 모두 검증)
+  const RULES_VERSION = 3;
 
   // ---- 시드 기반 난수 ----
   function hashSeed(str) {
@@ -46,8 +47,25 @@
   }
 
   // ---- 부위와 무기 ----
-  const SLOTS = ["head", "chest", "arms", "pants", "boots", "weapon"];
-  const SLOT_NAMES = { head: "머리", chest: "가슴", arms: "팔", pants: "바지", boots: "장화", weapon: "무기" };
+  const SLOTS = ["head", "chest", "arms", "pants", "boots", "weapon", "offhand"];
+  const SLOT_NAMES = { head: "머리", chest: "가슴", arms: "팔", pants: "바지", boots: "장화", weapon: "무기", offhand: "보조" };
+
+  // 보조 손: 절반은 방패, 절반은 보조무기(왼손에 드는 무기 — 끼면 한 턴에 두 번 공격)
+  // 방패는 막기(패링) 확률이 붙음: 등급마다 정해진 3가지 값 중 하나, 강화로 오르지 않음. 세트 효과까지 합쳐 최대 40%
+  // 두 손 무기: 두 번째(왼손) 공격은 공격력의 secondHit 배
+  const OFFHAND = { shieldChance: 0.5, shieldName: "방패", weaponPrefix: "보조" };
+  const PARRY = {
+    ranges: { common: [9, 11], uncommon: [9, 11], rare: [9, 11], epic: [16, 18], legendary: [23, 25], set: [23, 25] },
+    max: 40,
+  };
+  const DUAL_WIELD = { secondHit: 0.6 };
+  // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
+  const isWeaponLike = (item) => item.slot === "weapon" || (item.slot === "offhand" && !!item.type && item.type !== "shield");
+  // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
+  function kindName(item) {
+    if (item.slot === "offhand") return item.type === "shield" ? OFFHAND.shieldName : `${OFFHAND.weaponPrefix} ${WEAPONS[item.type].name}`;
+    return item.type ? WEAPONS[item.type].name : ARMOR[item.slot].name;
+  }
 
   // 기본 능력치는 아이템 레벨에 따라 커짐
   // base는 v1 아이템용. v2에서는 atkMul(주 능력치 공격력 배율)만 씀
@@ -99,6 +117,7 @@
     def: { name: "방어력", pct: false, line: (lv) => [1, 1 + Math.floor(lv / 3)] },
     hp: { name: "최대 HP", pct: false, line: (lv) => [2, 4 + lv * 2] },
     crit: { name: "치명타 확률", pct: true, line: (lv) => [1, 2 + Math.floor(lv / 3)] },
+    parry: { name: "패링 확률", pct: true },  // 방패와 견고 세트에만
     lifesteal: { name: "흡혈", pct: true, line: (lv) => [1, 2 + Math.floor(lv / 4)] },
     gold: { name: "골드 획득", pct: true, line: (lv) => [3, 8 + lv] },
     xp: { name: "경험치 획득", pct: true, line: (lv) => [3, 8 + lv] },
@@ -108,6 +127,7 @@
     hpPct: { name: "최대 HP", pct: true },
     critDmg: { name: "치명타 피해", pct: true },
     killHealPct: { name: "처치 시 최대 HP 회복", pct: true },
+    splash: { name: "주변 1칸 피해", pct: false },
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것
 
@@ -134,8 +154,9 @@
   };
   function mainRange(stat, item) {
     let mul = MAIN.rarityMul[item.rarity] || 1;
-    if (item.slot === "weapon" && stat === "atk" && item.type) mul *= WEAPONS[item.type].atkMul;
-    const off = item.slot === "weapon" ? stat === "hp" : (stat === "atk" || stat === "crit");
+    const weaponLike = isWeaponLike(item);
+    if (weaponLike && stat === "atk" && item.type) mul *= WEAPONS[item.type].atkMul;
+    const off = weaponLike ? stat === "hp" : (stat === "atk" || stat === "crit");
     if (off) mul *= MAIN.offSlotMul;
     return scaleRange(MAIN.range[stat](item.lvl), mul);
   }
@@ -147,8 +168,10 @@
   }
 
   // ---- 세트 ----
-  // 2·4·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음).
-  // 직업이 생기면 직업별 세트를 여기에 추가
+  // 시험의 세트: 2·4·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음)
+  // 광란의 세트: 오른손·왼손 무기 2개 → 때린 적 주변 1칸의 적도 같은 피해
+  // 견고의 세트: 무기·방패 2개 → 패링 확률 +15% (방패 최대 25%와 합쳐 최대 40%)
+  // weapon / offhand: 그 세트의 무기·보조 손 아이템 종류. 직업이 생기면 직업별 세트를 여기에 추가
   const SETS = {
     trial: {
       name: "시험의 세트",
@@ -164,7 +187,27 @@
         { count: 5, text: "치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, lifesteal: 8, killHealPct: 15 } },
       ],
     },
+    frenzy: {
+      name: "광란의 세트",
+      weapon: "dagger", offhand: "dagger",
+      pieces: { weapon: "광란의 오른손무기", offhand: "광란의 왼손무기" },
+      bonuses: [
+        { count: 2, text: "공격하면 대상 주변 1칸의 적도 같은 피해를 입어요", stats: { splash: 1 } },
+      ],
+    },
+    sturdy: {
+      name: "견고의 세트",
+      weapon: "axe", offhand: "shield",
+      pieces: { weapon: "견고의 도끼", offhand: "견고의 방패" },
+      bonuses: [
+        { count: 2, text: "패링 확률 +15% (방패와 합쳐 최대 40%)", stats: { parry: 15 } },
+      ],
+    },
   };
+  // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, sturdy)
+  const setsFor = (slot) => Object.keys(SETS).filter(id => SETS[id].pieces[slot]);
+  // 세트를 다 맞추는 개수 (효과가 모두 켜지는 개수)
+  const setFull = (id) => Math.max(...SETS[id].bonuses.map(b => b.count));
 
   // v1 아이템 생성 규칙에서 쓰던 함수 (예전 아이템 검증용으로 남겨 둠)
   function scaleBase(base, level) {
@@ -173,20 +216,30 @@
     return out;
   }
 
-  // 장비 1개 생성. source: "box" | "drop", level: 아이템 레벨(1 이상)
-  function generate(seed, source, level) {
+  // 장비 1개 생성. source: "box" | "drop" | "boss" | "golden", level: 아이템 레벨(1 이상)
+  // version: 새로 얻는 아이템은 지금 규칙(RULES_VERSION). 거래소·우편함에서 예전(v2) 아이템을 다시 만들 때만 2
+  const SLOTS_V2 = SLOTS.slice(0, 6);
+  function generate(seed, source, level, version = RULES_VERSION) {
+    if (version !== 2 && version !== 3) throw new Error(`unsupported item version ${version}`);
     const lv = Math.max(1, Math.floor(level));
-    const rng = rngFrom(`v${RULES_VERSION}|${seed}`);
+    const rng = rngFrom(`v${version}|${seed}`);
     const rarity = pickWeighted(rng, TABLES[source]);
-    const slot = pick(rng, SLOTS);
-    const set = rarity === "set" ? "trial" : null;
-    let type = null;
-    if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
+    let slot, set, type = null;
+    if (version === 2) {
+      slot = pick(rng, SLOTS_V2);
+      set = rarity === "set" ? "trial" : null;
+      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
+    } else {
+      slot = pick(rng, SLOTS);
+      set = rarity === "set" ? pick(rng, setsFor(slot)) : null;
+      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
+      else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, Object.keys(WEAPONS)));
+    }
 
-    const item = { v: RULES_VERSION, seed, src: source, lvl: lv, slot, type, rarity, set };
+    const item = { v: version, seed, src: source, lvl: lv, slot, type, rarity, set };
 
-    // 주 능력치: 첫 번째는 고정, 나머지는 후보에서 무작위
-    const pool = MAIN.pool[slot === "weapon" ? "weapon" : "armor"];
+    // 주 능력치: 첫 번째는 고정, 나머지는 후보에서 무작위 (방패는 방어구 후보)
+    const pool = MAIN.pool[isWeaponLike(item) ? "weapon" : "armor"];
     const [cLo, cHi] = MAIN.count[rarity];
     const count = randInt(rng, cLo, cHi);
     const rest = pool.slice(1);
@@ -201,8 +254,10 @@
       const stat = stats.splice(Math.floor(rng() * stats.length), 1)[0];
       item.lines.push([stat, rollRange(rng, lineRange(stat, lv))]);
     }
+    // 방패: 패링 확률 (등급별 3가지 값 중 하나, 강화로 오르지 않음)
+    if (type === "shield") item.parry = randInt(rng, ...PARRY.ranges[rarity]);
 
-    const [h1, h2] = hashSeed(`${RULES_VERSION}|${source}|${lv}|${seed}`);
+    const [h1, h2] = hashSeed(`${version}|${source}|${lv}|${seed}`);
     item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
     item.ancient = isAncient(item);
     return item;
@@ -216,9 +271,10 @@
     if (kind === "line") return STATS[stat]?.line ? lineRange(stat, item.lvl) : null;
     return item.main && MAIN.range[stat] ? mainRange(stat, item) : null;
   }
-  // 모든 능력치가 범위의 최대치 (v2 아이템만)
+  // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 범위의 최대치 (v2 이후 아이템)
   function isAncient(item) {
-    if (!item.main) return false;
+    if (!item.main || (item.rarity !== "legendary" && item.rarity !== "set")) return false;
+    if (item.parry != null && item.parry !== PARRY.ranges[item.rarity][1]) return false;
     return item.main.every(([k, v]) => v === mainRange(k, item)[1]) &&
       item.lines.every(([k, v]) => v === lineRange(k, item.lvl)[1]);
   }
@@ -246,7 +302,8 @@
   // 강화 결과는 (아이템 ID, 몇 번째 시도) 시드로 정해짐 → 새로고침해도 같은 결과, 서버에서 다시 계산 가능
   function rollEnhance(item) {
     const to = (item.enh || 0) + 1;
-    const rng = rngFrom(`v${RULES_VERSION}|enh|${item.id}|${item.tries || 0}`);
+    // 아이템이 만들어진 규칙 버전으로 (규칙이 바뀌어도 예전 아이템의 강화 결과는 그대로)
+    const rng = rngFrom(`v${item.v || RULES_VERSION}|enh|${item.id}|${item.tries || 0}`);
     return { to, chance: enhanceChance(to), ok: rng() < enhanceChance(to) };
   }
 
@@ -306,8 +363,7 @@
   function itemName(item) {
     const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "");
     if (item.set) return plus + SETS[item.set].pieces[item.slot];
-    const base = item.type ? WEAPONS[item.type].name : ARMOR[item.slot].name;
-    return `${plus}${RARITIES[item.rarity].name} ${base}`;
+    return `${plus}${RARITIES[item.rarity].name} ${kindName(item)}`;
   }
 
   function formatStat(stat, value) {
@@ -323,13 +379,16 @@
 
   // 장착한 아이템들의 능력치 합계와 세트 효과
   function totals(equipped) {
+    // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0 };
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, parry: 0, splash: 0, dual: 0 };
     const setCounts = {};
     for (const item of equipped) {
       if (!item) continue;
       for (const [k, v] of Object.entries(enhancedBase(item))) sum[k] += v;
       for (const [k, v] of enhancedLines(item)) sum[k] += v;
+      if (item.parry) sum.parry += item.parry;
+      if (item.slot === "offhand" && isWeaponLike(item)) sum.dual = 1;
       if (item.set) setCounts[item.set] = (setCounts[item.set] || 0) + 1;
     }
     const activeSets = [];
@@ -337,13 +396,16 @@
       const set = SETS[id];
       const active = set.bonuses.filter(b => count >= b.count);
       for (const b of active) for (const [k, v] of Object.entries(b.stats)) sum[k] += v;
-      activeSets.push({ id, name: set.name, count, bonuses: set.bonuses.map(b => ({ ...b, on: count >= b.count })) });
+      activeSets.push({ id, name: set.name, count, full: setFull(id), bonuses: set.bonuses.map(b => ({ ...b, on: count >= b.count })) });
     }
+    sum.parry = Math.min(PARRY.max, sum.parry);
+    sum.splash = sum.splash ? 1 : 0;
     return { stats: sum, sets: activeSets };
   }
 
   const api = {
     RULES_VERSION, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, DROPS, DROP_CHANCE, STATS, STAT_KEYS, SETS,
+    OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,

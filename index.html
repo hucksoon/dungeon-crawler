@@ -60,6 +60,7 @@
     animation: dmg-rise 0.8s ease-out forwards;
   }
   .dmg.crit { font-size: 22px; font-weight: 900; color: #ffcf5c; animation-duration: 1.1s; }
+  .dmg.parry { color: #5fd4ff; font-size: 15px; }
   .dmg.crit::after { content: "!"; }
   @keyframes dmg-rise {
     0% { opacity: 0; margin-top: 4px; }
@@ -443,7 +444,7 @@
   로비 가운데 던전 입구의 왼쪽 문은 <b>1층부터</b>, 오른쪽 문은 <b>포탈을 탄 층</b>으로 들어가요.<br>
   던전에서 <b>포탈</b>을 타면 골드·레벨·장비를 그대로 들고 로비로 돌아와요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
   로비 왼쪽 <b>거래소($)</b>로 걸어 들어가면 아이템을 사고팔고, 그 옆 빨간 <b>우편함(✉)</b>에서 판매 대금과 돌아온 아이템을 받아요.<br>
-  계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구)를 떨어뜨리기도 해요.<br>
+  계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구, <b>]</b> 방패)를 떨어뜨리기도 해요. 보조 손에 무기를 끼면 한 턴에 두 번, 방패를 끼면 확률로 공격을 막아요.<br>
   금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요!<br>
   <a href="privacy.html" style="color: inherit">개인정보처리방침</a></p>
 </div>
@@ -578,7 +579,7 @@
   function showDamage(target, dmg, crit) {
     const scale = canvas.clientWidth / canvas.width;
     const d = document.createElement("div");
-    d.className = crit ? "dmg crit" : "dmg";
+    d.className = typeof dmg === "string" ? "dmg parry" : crit ? "dmg crit" : "dmg";
     d.textContent = dmg;
     d.style.left = `${(target.x + 0.5) * TILE * scale}px`;
     d.style.top = `${(target.y + 0.2) * TILE * scale}px`;
@@ -813,9 +814,15 @@
     function read(o) {
       try {
         const d = JSON.parse(store.get(key(o)));
-        if (d && Array.isArray(d.bag) && d.equip && Array.isArray(d.log)) return d;
+        if (d && Array.isArray(d.bag) && d.equip && Array.isArray(d.log)) return normalize(d);
       } catch {}
       return empty();
+    }
+    // 예전에 저장한 가방 맞추기: 새 부위(보조 손) 칸 추가, 고대 표시는 지금 규칙으로 (레전더리·세트만)
+    function normalize(d) {
+      d.equip = fullEquip(d.equip);
+      for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
+      return d;
     }
     const write = () => { store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
@@ -865,7 +872,7 @@
       // 서버 저장본으로 바꿈 (기록은 이 기기 것 유지)
       load(o, inv) {
         owner = o;
-        data = { bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: fullEquip(inv?.equip), stones: inv?.stones || 0, log: read(o).log };
+        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, log: read(o).log });
         store.set(key(owner), JSON.stringify(data));
       },
       // 이 기기에만 있던 장비를 합침. 옮긴 개수
@@ -1164,6 +1171,9 @@
       gold: g.gold,
       xp: g.xp,
       killHeal: g.killHeal + Math.round(maxHp * g.killHealPct / 100),
+      parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
+      dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
+      splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 같은 피해
     };
   }
   const heal = (n) => { player.hp = Math.min(stats().maxHp, player.hp + n); };
@@ -1369,24 +1379,45 @@
   function attack(attacker, target) {
     if (attacker === player) {
       const s = stats();
-      const crit = Math.random() * 100 < s.crit;
-      const dmg = Math.max(1, Math.round((s.atk + rnd(2)) * (crit ? s.critMul : 1)) - target.def);
-      target.hp -= dmg;
-      showDamage(target, dmg, crit);
-      let left = target.kind !== "normal" ? ` (남은 HP ${Math.max(0, target.hp)}/${target.maxHp}` : "";
-      if (target.kind === "golden" && target.fleeAt != null) left += `, 도망까지 ${Math.max(0, target.fleeAt - turn)}턴`;
-      if (left) left += ")";
-      log(`${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
-      const drain = Math.floor(dmg * s.lifesteal / 100);
-      if (drain > 0) heal(drain);
-      if (target.hp <= 0) killEnemy(target);
-      else if (target.kind === "golden" && target.blink && Math.random() < target.blink) goldenBlink(target);
+      // 두 손 무기면 한 턴에 두 번 (두 번째 왼손 공격은 약하게). 첫 공격에 쓰러지면 끝
+      const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [1];
+      hits.forEach((mul, i) => {
+        if (target.hp <= 0 || !enemies.includes(target)) return;
+        const crit = Math.random() * 100 < s.crit;
+        const raw = (s.atk + rnd(2)) * (crit ? s.critMul : 1) * mul;
+        // 광란 세트: 대상 주변 1칸(대각선 포함)의 다른 적도 같은 공격을 맞음 (각자 방어력만큼 줄어듦)
+        const around = s.splash ? enemies.filter(e => e !== target && Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) === 1) : [];
+        hitEnemy(target, raw, crit, s, i ? "왼손 " : "");
+        for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw, crit, s, "광란 ");
+      });
     } else {
-      const dmg = RLMonsters.damageToPlayer(attacker.atk + rnd(2), stats().def);
+      const s = stats();
+      // 방패: 확률로 공격을 막아냄 (피해 없음)
+      if (s.parry && Math.random() * 100 < s.parry) {
+        showDamage(target, "막음", false);
+        log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
+        return;
+      }
+      const dmg = RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def);
       target.hp -= dmg;
       log(`${attacker.name}에게 ${dmg} 피해를 입음.`, "bad");
       if (target.hp <= 0) death();
     }
+  }
+
+  // 플레이어가 적 하나를 때림. raw: 방어력 빼기 전 피해. tag: "왼손 " / "광란 " (로그 앞머리)
+  function hitEnemy(target, raw, crit, s, tag) {
+    const dmg = Math.max(1, Math.round(raw) - target.def);
+    target.hp -= dmg;
+    showDamage(target, dmg, crit);
+    let left = target.kind !== "normal" ? ` (남은 HP ${Math.max(0, target.hp)}/${target.maxHp}` : "";
+    if (target.kind === "golden" && target.fleeAt != null) left += `, 도망까지 ${Math.max(0, target.fleeAt - turn)}턴`;
+    if (left) left += ")";
+    log(`${tag}${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
+    const drain = Math.floor(dmg * s.lifesteal / 100);
+    if (drain > 0) heal(drain);
+    if (target.hp <= 0) killEnemy(target);
+    else if (target.kind === "golden" && target.blink && Math.random() < target.blink) goldenBlink(target);
   }
 
   function killEnemy(e) {
@@ -2396,7 +2427,7 @@
       const px = it.x * TILE, py = it.y * TILE;
       if (it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");
       else if (it.type === "gear") {
-        const glyph = it.item.slot === "weapon" ? ")" : "[";
+        const glyph = RLItems.isWeaponLike(it.item) ? ")" : it.item.type === "shield" ? "]" : "[";
         if (isRainbow(it.item) && !reduceMotion) {
           // 레전더리·세트: 무지개색으로 계속 바뀌고 은은하게 빛남
           const color = rainbowColor(it.x + it.y);
@@ -2664,6 +2695,14 @@
 
   const itemLabel = (item) => el("span", { className: isRainbow(item) ? "rainbow" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item));
 
+  // 세트 설명 한 줄
+  function setNote(id) {
+    const set = RLItems.SETS[id];
+    const counts = set.bonuses.map(b => b.count);
+    if (id === "trial") return `${set.name}: ${counts.join("·")}개를 입으면 효과가 켜져요. 6부위 중 아무거나 5개면 전부 켜져서 무기는 자유롭게 골라도 돼요.`;
+    return `${set.name}: ${Object.values(set.pieces).join(" + ")} — 둘 다 끼면 ${set.bonuses.map(b => b.text).join(", ")}`;
+  }
+
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
   function statLines(item, tag = "div") {
     const enhanced = RLItems.enhancedBase(item);
@@ -2674,8 +2713,11 @@
         range ? el("span", { className: "range" }, ` [${RLItems.formatRange(k, range)}]${isMax ? " ▲" : ""}`) : null,
         plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null);
     };
+    // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
+    const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
     return [
       ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v)),
+      ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
       ...RLItems.enhancedLines(item).map(([k, v, plus]) =>
         row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item))),
     ];
@@ -2711,11 +2753,14 @@
       `공격력 ${s.atk} (장비 +${g.atk})`, `방어력 ${s.def}`, `최대 HP ${s.maxHp} (장비 +${g.hp})`,
       `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
       ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
+      ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
+      ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
+      ...(s.splash ? ["광란: 때린 적 주변 1칸도 같은 피해"] : []),
     ];
     invSummary.replaceChildren(
       el("h3", {}, "능력치"), ...statRows.map(t => el("div", {}, t)),
       ...sets.map(set => el("div", { style: { marginTop: "6px" } },
-        el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, 5)}/5)`),
+        el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
         ...set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, `${b.count}세트: ${b.text}`)))),
     );
 
@@ -2791,7 +2836,7 @@
         el("span", { className: "meta" }, "아이템을 선택하면 자세한 정보가 보여요."));
       return;
     }
-    const kind = item.type ? RLItems.WEAPONS[item.type].name : RLItems.SLOT_NAMES[item.slot];
+    const kind = RLItems.kindName(item);
     const rows = [];
     if (invMsg) rows.push(el("div", { className: `msg-${invMsg.cls}` }, invMsg.text));
     rows.push(
@@ -2800,10 +2845,10 @@
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
       ...statLines(item),
       el("div", { className: "meta" }, item.main
-        ? "★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름) · [최소~최대] ▲ 최대치"
+        ? `★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름)${item.parry != null ? " · 🛡 패링 확률(강화로 오르지 않음)" : ""} · [최소~최대] ▲ 최대치`
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
     );
-    if (item.set) rows.push(el("div", { className: "meta" }, `${RLItems.SETS[item.set].name}: 2·4·5개를 입으면 효과가 켜져요. 6부위 중 아무거나 5개면 전부 켜져서 무기는 자유롭게 골라도 돼요.`));
+    if (item.set) rows.push(el("div", { className: "meta" }, setNote(item.set)));
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
@@ -2904,7 +2949,7 @@
     document.getElementById("shop-items").replaceChildren(...stock.map((item, i) => {
       const price = RLItems.shopPrice(item);
       const sold = shopBought.includes(i);
-      const kind = item.type ? RLItems.WEAPONS[item.type].name : RLItems.SLOT_NAMES[item.slot];
+      const kind = RLItems.kindName(item);
       return el("div", { className: `shop-card${sold ? " sold" : ""}${item.ancient ? " ancient" : ""}` },
         el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
         el("span", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
@@ -3100,8 +3145,8 @@
 
   // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템)
   function itemFromRef(ref) {
-    if (!ref || ref.v !== 2) return null;
-    const item = RLItems.generate(ref.seed, ref.src, ref.lvl);
+    if (!ref || (ref.v !== 2 && ref.v !== 3)) return null;
+    const item = RLItems.generate(ref.seed, ref.src, ref.lvl, ref.v);
     if (item.id !== ref.id) return null;
     item.enh = ref.enh || 0;
     if (ref.tries) item.tries = ref.tries;
@@ -3213,7 +3258,7 @@
     else if (!Account.loggedIn()) label = "계정 연결하고 사기";
     else if (r.gold > player.gold) { label = "골드 부족"; disabled = true; }
     else if (Market.cash != null && Market.cash < total) { label = `캐시 부족 (◆${total} 필요)`; disabled = true; }
-    const kind = item?.type ? RLItems.WEAPONS[item.type].name : r.item.slotName;
+    const kind = item ? RLItems.kindName(item) : r.item.slotName;
     return el("div", { className: `shop-card${r.mine ? " mine" : ""}${item?.ancient ? " ancient" : ""}` },
       el("h3", { className: item?.ancient ? "ancient-name" : "", style: { color: RLItems.RARITIES[r.item.rarity]?.color } }, name),
       el("span", { className: "meta" }, `${r.item.rarityName} · ${kind} · Lv${r.item.lvl}`),
@@ -3278,7 +3323,7 @@
     const item = bag.find(x => x.id === Market.sel);
     if (!item) return [...parts, el("p", { className: "market-note" }, "올릴 아이템을 고르세요.")];
     const needCash = Market.rules.cashRequired.includes(item.rarity);
-    const old = item.v !== 2;
+    const old = !item.v || item.v < 2;  // v1(예전 규칙) 아이템만 못 올림
     const gold = el("input", { type: "number", min: 0, step: 1, inputMode: "numeric", id: "sell-gold", value: "0" });
     const cash = el("input", { type: "number", min: needCash ? 1 : 0, step: 1, inputMode: "numeric", id: "sell-cash", value: needCash ? "1" : "0" });
     const blocked = old ? "예전 규칙 아이템은 올릴 수 없어요" : active >= max ? `${max}개까지 올릴 수 있어요` : null;
