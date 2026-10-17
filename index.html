@@ -609,22 +609,42 @@
     : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""));
 
   // ---- 예전 주소(hucksoon.github.io/hucksoon)에서 옮겨 오기 ----
-  // 예전 주소의 안내 페이지가 그 브라우저의 게스트 기록을 #import=…(base64url JSON)로 넘겨줌. 브라우저 저장소는 주소마다 따로라서.
-  // 이 브라우저에 새 주소 기록이 하나도 없을 때만 받음 (덮어쓰지 않게). 로그인 정보는 받지 않음 (다시 로그인하면 서버 저장본이 옴)
+  // 예전 주소의 안내 페이지가 그 브라우저의 기록을 #import=…(base64url JSON)로 넘겨줌. 브라우저 저장소는 주소마다 따로라서.
+  // - 이 브라우저에 새 주소 기록이 없으면: 게스트 기록(기기 ID, 진행 상황, 가방)을 그대로
+  // - 이미 있으면: 덮어쓰지 않고, 게스트 장비·도감만 rl_old:g에 두었다가 지금 가방에 합침
+  // - 계정으로 하던 장비(서버 저장 전에 그 브라우저에만 있던 것): rl_old:u:<계정>에 두었다가 그 계정으로 로그인하면 합침
+  // 로그인 정보는 받지 않음 (다시 로그인하면 서버 저장본이 옴)
   const imported = (() => {
     const m = location.hash.match(/^#import=([\w-]+)$/);
     if (!m) return null;
     history.replaceState(null, "", location.pathname + location.search);
-    if (store.get("rl_device_id") || store.get("rl_save")) return "skipped";
+    let d;
     try {
       const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
-      const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
-      const id = d.rl_device_id;
-      if (typeof id !== "string" || !/^[0-9a-zA-Z-]{8,64}$/.test(id)) return null;
-      const keys = ["rl_device_id", "rl_save", "rl_level", `rl_inv:g:${id}`, `rl_dex:g:${id}`, `rl_mail:g:${id}`];
-      for (const k of keys) if (typeof d[k] === "string") store.set(k, d[k]);
-      return "ok";
+      d = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
     } catch { return null; }
+    if (!d || typeof d !== "object") return null;
+    const str = (k) => (typeof d[k] === "string" ? d[k] : null);
+    const stash = (key, part, value) => {
+      let o = null;
+      try { o = JSON.parse(store.get(key)); } catch {}
+      store.set(key, JSON.stringify({ ...(o || {}), [part]: value }));
+    };
+    let result = null;
+    const id = d.rl_device_id;
+    if (typeof id === "string" && /^[0-9a-zA-Z-]{8,64}$/.test(id)) {
+      if (!store.get("rl_device_id") && !store.get("rl_save")) {
+        for (const k of ["rl_device_id", "rl_save", "rl_level", `rl_inv:g:${id}`, `rl_dex:g:${id}`, `rl_mail:g:${id}`]) if (str(k)) store.set(k, str(k));
+        result = "ok";
+      } else {
+        for (const part of ["inv", "dex", "mail"]) if (str(`rl_${part}:g:${id}`)) { stash("rl_old:g", part, str(`rl_${part}:g:${id}`)); result = "merge"; }
+      }
+    }
+    for (const k of Object.keys(d)) {
+      const a = k.match(/^rl_(inv|dex|mail):u:([0-9a-zA-Z-]{1,64})$/);
+      if (a && str(k)) { stash(`rl_old:u:${a[2]}`, a[1], str(k)); result = result || "merge"; }
+    }
+    return result;
   })();
 
   // ---- 계정 (Xsolla Login, OAuth 2.0 + 이메일/휴대폰 인증 코드) ----
@@ -788,19 +808,32 @@
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
     const fullEquip = (eq) => Object.fromEntries(RLItems.SLOTS.map(s => [s, eq?.[s] || null]));
 
-    // 다른 곳(게스트, 이 기기에만 있던 예전 저장)의 장비를 지금 가방으로. 빈 칸이면 장착 상태도 유지
+    // 다른 곳(게스트, 이 기기에만 있던 예전 저장, 예전 주소)의 장비를 지금 가방으로. 빈 칸이면 장착 상태도 유지.
+    // 가방이 차면 상자 보관함(rl_mail)에서 기다림 (가방을 비우면 들어옴)
     function absorb(src, from) {
       let moved = 0;
+      const wait = [];
       const take = (item, wasEquipped) => {
-        if (all().some(x => x.id === item.id)) return;
+        if (!item?.id || all().some(x => x.id === item.id)) return;
         if (wasEquipped && !data.equip[item.slot]) data.equip[item.slot] = item;
-        else data.bag.push(item);
+        else if (data.bag.length < BAG_SIZE) data.bag.push(item);
+        else wait.push({ item, from });
         record("migrate", item, { from });
         moved++;
       };
-      src.bag.forEach(item => take(item, false));
+      (src.bag || []).forEach(item => take(item, false));
       Object.values(src.equip || {}).filter(Boolean).forEach(item => take(item, true));
+      addMail(wait);
       return moved;
+    }
+    // 상자 보관함에 더함 (이미 가진 아이템이나 이미 보관함에 있는 아이템은 빼고)
+    function addMail(list) {
+      const mailKey = `rl_mail:${owner}`;
+      let mail;
+      try { mail = JSON.parse(store.get(mailKey)) || []; } catch { mail = []; }
+      const fresh = list.filter(m => m?.item?.id && !all().some(x => x.id === m.item.id) && !mail.some(x => x.item?.id === m.item.id));
+      if (fresh.length) store.set(mailKey, JSON.stringify([...mail, ...fresh]));
+      return fresh.length;
     }
 
     function record(ev, item, extra = {}) {
@@ -827,6 +860,11 @@
         const moved = absorb(src, from);
         if (moved) write();
         return moved;
+      },
+      addMail(list) {
+        const n = addMail(list);
+        if (n) Profile.touch("soon");
+        return n;
       },
       items: () => all(),
       bag: () => data.bag,
@@ -1590,6 +1628,7 @@
       return;
     }
     if (guestOwner) mergeGuest(guestOwner);
+    mergeOldSite();
     try {
       const cloud = parseSave(await Account.loadAttr(SAVE_ATTR));
       if (!Account.loggedIn()) return;
@@ -1615,6 +1654,26 @@
     Dex.mergeFrom(guestOwner);
     const moved = Inv.mergeFrom(guestOwner);
     if (moved) log(`게스트 장비 ${moved}개를 계정으로 옮겼다.`, "good");
+  }
+
+  // 예전 주소에서 받아 둔 장비·도감·상자 보관함(rl_old:…)을 지금 가방에 합침. 같은 아이템은 한 번만.
+  // 계정 것은 그 계정으로 로그인했을 때만 (계정이면 서버 저장본을 받은 다음에 불러야 함)
+  function mergeOldSite() {
+    const keys = ["rl_old:g"];
+    if (Account.loggedIn() && Account.claims()?.sub) keys.push(`rl_old:u:${Account.claims().sub}`);
+    let moved = 0;
+    for (const k of keys) {
+      let o = null;
+      try { o = JSON.parse(store.get(k)); } catch {}
+      if (!o) continue;
+      const parse = (t) => { try { return JSON.parse(t); } catch { return null; } };
+      const inv = parse(o.inv), dex = parse(o.dex), mail = parse(o.mail);
+      if (inv && Array.isArray(inv.bag)) moved += Inv.absorb(inv, "old-site");
+      if (dex?.seen && dex?.kills) Dex.absorb(dex);
+      if (Array.isArray(mail)) moved += Inv.addMail(mail);
+      store.del(k);
+    }
+    if (moved) log(`예전 주소에 있던 장비 ${moved}개를 가방에 합쳤다. (가방이 차면 상자 보관함에서 기다린다)`, "good");
   }
 
   // ---- 계정 저장 (게임 서버) ---- 로그인하면 가방·장착 장비·강화석·도감·진행 중인 판·상자 보관함을 서버에 저장
@@ -1700,6 +1759,7 @@
       // 게스트로 모은 장비·도감을 계정으로 (방금 로그인했거나, 지난번 로그인 때 서버가 안 돼서 못 옮긴 것)
       const guest = guestOwner || inventoryOwner(false);
       if (store.get(`rl_inv:${guest}`) || store.get(`rl_dex:${guest}`)) mergeGuest(guest);
+      mergeOldSite();
       ready = true;
       warned = false;
       await push();
@@ -3542,7 +3602,9 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) Lobby.ping(); });
   renderAccount();
   if (imported === "ok") log("예전 주소에서 하던 게스트 기록(가방·진행 상황)을 옮겨 왔다.", "good");
-  else if (imported === "skipped") log("이 브라우저에 이미 새 주소 기록이 있어서 예전 주소의 게스트 기록은 옮기지 않았다. 계정을 연결했다면 로그인하면 이어진다.", "info");
+  else if (imported === "merge" && !Account.loggedIn()) log("예전 주소의 장비를 받아 왔다. 계정으로 하던 장비는 그 계정으로 로그인하면 가방에 합쳐진다.", "info");
+  // 게스트면 예전 주소의 게스트 장비를 바로 합침 (로그인 중이면 서버 저장본을 받은 뒤 syncAfterLogin 안에서)
+  if (!Account.loggedIn()) mergeOldSite();
   // 로그인 중이면 서버 저장본과 맞춘 다음에 상자 보관함을 가방으로 (syncAfterLogin 안에서)
   if (Account.configured() && Account.loggedIn()) syncAfterLogin();
   else { collectMail(true); Ranking.schedule(); }
