@@ -83,6 +83,14 @@
   @keyframes ancient-glow { 50% { box-shadow: 0 0 0 1px #ffd700 inset, 0 0 18px rgba(255, 215, 0, 0.8); } }
   @media (prefers-reduced-motion: reduce) { .ancient { animation: none; } }
   .ancient-name { text-shadow: 0 0 8px rgba(255, 215, 0, 0.7); }
+  /* 레전더리·세트: 이름이 무지개색으로 계속 바뀜 (득템 표시) */
+  .rainbow { animation: rainbow 2.4s linear infinite; text-shadow: 0 0 6px rgba(255, 255, 255, 0.25); }
+  @keyframes rainbow {
+    0% { color: #ff5a5a; } 17% { color: #ffb347; } 33% { color: #fff36b; } 50% { color: #6bff8f; }
+    67% { color: #6bd3ff; } 83% { color: #b98bff; } 100% { color: #ff5a5a; }
+  }
+  #log div.rainbow { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .rainbow { animation: none; } }
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
   #game {
     border: 1px solid var(--border);
@@ -1133,6 +1141,12 @@
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
   const rarityColor = (item) => RLItems.RARITIES[item.rarity].color;
+  // 레전더리·세트는 무지개색 (바닥에서는 색이 계속 바뀌고, 이름에는 .rainbow 애니메이션)
+  const isRainbow = (item) => item.rarity === "legendary" || item.rarity === "set";
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const rainbowColor = (offset = 0) => `hsl(${Math.round(performance.now() / 6 + offset * 40) % 360}, 100%, 65%)`;
+  // 장비 얻기·떨어뜨리기 메시지: 레전더리·세트면 무지개색 줄
+  const gearLog = (msg, item) => log(msg, isRainbow(item) ? "rainbow" : null, rarityColor(item));
 
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과
   function stats() {
@@ -1313,7 +1327,7 @@
   const logEl = document.getElementById("log");
   function log(msg, cls, color) {
     const d = document.createElement("div");
-    if (cls) d.className = "msg-" + cls;
+    if (cls) d.className = cls === "rainbow" ? "rainbow" : "msg-" + cls;
     if (color) d.style.color = color;
     d.textContent = msg;
     logEl.appendChild(d);
@@ -1390,6 +1404,29 @@
     gainXp(xp);
   }
 
+  // 아이템을 떨어뜨릴 칸: (x, y)에 아무것도 없으면 거기, 이미 있으면 걸어서 닿는 가까운 빈 바닥으로 한 칸씩 밀려남
+  // (한 칸에 여러 개가 겹쳐 보이지 않게. 플레이어가 서 있는 칸·계단·상점 칸은 피함)
+  function dropSpot(x, y) {
+    const free = (p) => map[p.y][p.x] === FLOOR && !isShop(p.x, p.y) && !(p.x === player.x && p.y === player.y) &&
+      !items.some(i => i.x === p.x && i.y === p.y);
+    const start = { x, y };
+    if (free(start)) return start;
+    const seenTiles = new Set([`${x},${y}`]);
+    const queue = [start];
+    while (queue.length) {
+      const p = queue.shift();
+      for (const [dx, dy] of DIRS) {
+        const q = { x: p.x + dx, y: p.y + dy };
+        const key = `${q.x},${q.y}`;
+        if (seenTiles.has(key) || q.x < 0 || q.y < 0 || q.x >= MAP_W || q.y >= MAP_H || map[q.y][q.x] === WALL) continue;
+        seenTiles.add(key);
+        if (free(q)) return q;
+        queue.push(q);
+      }
+    }
+    return start;
+  }
+
   // 드롭 여부와 아이템은 (판 ID, 층, 처치 순번) 시드와 몬스터 등급으로 정해짐 → 서버에서 똑같이 다시 계산됨
   // 황금 고블린은 등급만큼 굴려서(보통 2, 정예 3, 왕 4 — 처치 순번 그만큼 사용) 레어 이상을 반드시 떨어뜨림
   function dropLoot(e) {
@@ -1398,8 +1435,9 @@
       const seed = `${player.rid}|d${depth}|k${player.kills++}`;
       const item = RLItems.rollDrop(seed, depth, e.kind);
       if (!item) continue;
-      items.push({ x: e.x, y: e.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
-      log(`${e.name}이(가) ${RLItems.itemName(item)}을(를) 떨어뜨렸다!`, null, rarityColor(item));
+      const spot = dropSpot(e.x, e.y);
+      items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
+      gearLog(`${e.name}이(가) ${RLItems.itemName(item)}을(를) 떨어뜨렸다!${isRainbow(item) ? " ✨" : ""}`, item);
     }
   }
 
@@ -1409,7 +1447,7 @@
     const seed = `${player.rid}|d${depth}|p${player.potionPicks++}`;
     const item = RLItems.rollDrop(seed, depth);
     if (!item) return false;
-    log(`포션 대신 ${RLItems.itemName(item)}을(를) 발견했다!`, null, rarityColor(item));
+    gearLog(`포션 대신 ${RLItems.itemName(item)}을(를) 발견했다!`, item);
     const gear = { x: player.x, y: player.y, type: "gear", item, from: "potion" };
     if (!takeGear(gear)) items.push(gear);  // 가방이 가득 차면 바닥에 남김
     return true;
@@ -1419,7 +1457,7 @@
   function takeGear(gear) {
     const result = Inv.add(gear.item, { depth, from: gear.from });
     if (result === "full") { log("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요.", "bad"); return false; }
-    if (result === "ok") log(`${RLItems.itemName(gear.item)}을(를) 주웠다.`, null, rarityColor(gear.item));
+    if (result === "ok") gearLog(`${RLItems.itemName(gear.item)}을(를) 주웠다.`, gear.item);
     return true;
   }
 
@@ -2145,12 +2183,15 @@
     return { ping, moved, step, people, me: () => me };
   })();
 
-  // 로비 화면은 계속 다시 그림 (다른 사람 움직임, 입구 빛)
+  // 로비 화면은 계속 다시 그림 (다른 사람 움직임, 입구 빛).
+  // 던전은 보이는 곳에 레전더리·세트 장비가 떨어져 있을 때만 계속 다시 그림 (무지개색)
   let lobbyFrame = 0;
+  const rainbowInSight = () => !reduceMotion && items?.some(it => it.type === "gear" && isRainbow(it.item) && visible?.[it.y]?.[it.x]);
   function lobbyLoop(t) {
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
     if (scene === "lobby" && !document.hidden) { Lobby.step(dt); render(); }
+    else if (scene === "dungeon" && !document.hidden && rainbowInSight()) render();
     requestAnimationFrame(lobbyLoop);
   }
 
@@ -2287,7 +2328,18 @@
       if (!visible[it.y][it.x]) continue;
       const px = it.x * TILE, py = it.y * TILE;
       if (it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");
-      else if (it.type === "gear") drawGlyph(it.item.slot === "weapon" ? ")" : "[", px, py, rarityColor(it.item));
+      else if (it.type === "gear") {
+        const glyph = it.item.slot === "weapon" ? ")" : "[";
+        if (isRainbow(it.item) && !reduceMotion) {
+          // 레전더리·세트: 무지개색으로 계속 바뀌고 은은하게 빛남
+          const color = rainbowColor(it.x + it.y);
+          ctx.save();
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 10;
+          drawGlyph(glyph, px, py, color);
+          ctx.restore();
+        } else drawGlyph(glyph, px, py, rarityColor(it.item));
+      }
       else drawGlyph("$", px, py, "#ffcf5c");
     }
 
@@ -2543,7 +2595,7 @@
     return node;
   }
 
-  const itemLabel = (item) => el("span", { style: { color: rarityColor(item) } }, RLItems.itemName(item));
+  const itemLabel = (item) => el("span", { className: isRainbow(item) ? "rainbow" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item));
 
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
   function statLines(item, tag = "div") {
@@ -2676,7 +2728,7 @@
     const rows = [];
     if (invMsg) rows.push(el("div", { className: `msg-${invMsg.cls}` }, invMsg.text));
     rows.push(
-      el("h3", { className: item.ancient ? "ancient-name" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item)),
+      el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
       ...statLines(item),
@@ -2787,7 +2839,7 @@
       const sold = shopBought.includes(i);
       const kind = item.type ? RLItems.WEAPONS[item.type].name : RLItems.SLOT_NAMES[item.slot];
       return el("div", { className: `shop-card${sold ? " sold" : ""}${item.ancient ? " ancient" : ""}` },
-        el("h3", { className: item.ancient ? "ancient-name" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item)),
+        el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
         el("span", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
         ...statLines(item, "span"),
         el("span", { className: "price" }, sold ? "판매 완료" : `${price} 골드`),
@@ -2811,7 +2863,7 @@
     shopBought.push(i);
     shopMsg.className = "msg-good";
     shopMsg.textContent = `${RLItems.itemName(item)}을(를) ${price} 골드에 샀어요.`;
-    log(`상점에서 ${RLItems.itemName(item)}을(를) 샀다. (-${price} 골드)`, null, rarityColor(item));
+    gearLog(`상점에서 ${RLItems.itemName(item)}을(를) 샀다. (-${price} 골드)`, item);
     updateStats();
     saveGame();
     renderShop();
