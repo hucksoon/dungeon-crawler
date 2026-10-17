@@ -2130,7 +2130,9 @@
         const res = await fetch(rankingUrl("lobby"), { method: "POST", headers, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(res.status);
         const d = await res.json();
+        const wasStaff = !!me?.staff;
         me = d.me;
+        if (!!me?.staff !== wasStaff) renderAccount();  // 운영자면 위쪽 계정 표시도 "운영자"로
         others = (d.players || []).filter(p => p.id !== me?.id);
         for (const id of [...shown.keys()]) if (!others.some(p => p.id === id && p.scene === "lobby")) shown.delete(id);
         setMailCount(d.mail || 0);
@@ -2159,14 +2161,15 @@
     function renderList() {
       const inLobby = others.filter(p => p.scene === "lobby").length;
       countEl.textContent = failed ? "" : `${others.length + 1}명 접속 중 · 로비 ${inLobby + (scene === "lobby" ? 1 : 0)}명`;
-      const row = (name, where, color, mine, crown) => el("li", { className: mine ? "me" : "" },
+      const row = (name, where, color, mine, crown, staff) => el("li", { className: mine ? "me" : "" },
         el("span", { className: "dot", style: { background: color } }),
-        crown ? el("span", { className: "crown-wrap", innerHTML: crownSvg(crown), title: `층 랭킹 ${crown}위` }) : null,
-        el("span", { className: "name" }, name), el("span", { className: "where" }, where));
+        staff ? el("span", { className: "crown-wrap", innerHTML: staffSvg(), title: "운영자" })
+          : crown ? el("span", { className: "crown-wrap", innerHTML: crownSvg(crown), title: `층 랭킹 ${crown}위` }) : null,
+        el("span", { className: "name", style: staff ? { color: STAFF_COLOR } : {} }, name), el("span", { className: "where" }, where));
       const atLobby = (portal) => portal ? `로비 · 포탈 ${portal}층` : "로비";
       const whereOf = (p) => p.scene === "lobby" ? atLobby(p.portal) : p.depth ? `${p.depth}층 탐험 중` : "던전";
-      const rows = [row(me ? `${me.name} (나)` : "나", scene === "lobby" ? atLobby(resumeFloor()) : `${depth}층 탐험 중`, "#ffffff", true, me?.crown)];
-      for (const p of others) rows.push(row(p.name, whereOf(p), colorOf(p.id), false, p.crown));
+      const rows = [row(me ? `${me.name} (나)` : "나", scene === "lobby" ? atLobby(resumeFloor()) : `${depth}층 탐험 중`, "#ffffff", true, me?.crown, me?.staff)];
+      for (const p of others) rows.push(row(p.name, whereOf(p), colorOf(p.id), false, p.crown, p.staff));
       if (failed) rows.push(el("li", { className: "note" }, "다른 사람 정보를 불러오지 못했어요. 혼자서도 던전에 들어갈 수 있어요."));
       else if (!others.length) rows.push(el("li", { className: "note" }, "아직 다른 사람이 없어요."));
       listEl.replaceChildren(...rows);
@@ -2277,19 +2280,19 @@
 
     // 다른 사람들 → 나 (내가 맨 위에 보이게). 이름 위에 그 사람이 포탈을 타고 나온 층(◎N층),
     // 층 랭킹 1~3위는 이름 왼쪽에 금·은·동 왕관
-    const person = (x, y, name, color, portal, crown) => {
+    const person = (x, y, name, color, portal, crown, staff) => {
       const cx = x * TILE + TILE / 2, by = y * TILE - 2;
       drawGlyph("@", x * TILE, y * TILE, color);
-      drawLabel(name, cx, by, color, 11);
-      if (crown) {
-        ctx.font = `bold 11px "Courier New", monospace`;
-        drawCrown(cx - ctx.measureText(name).width / 2 - 12, by, crown);
-      }
+      drawLabel(name, cx, by, staff ? STAFF_COLOR : color, 11);
+      ctx.font = `bold 11px "Courier New", monospace`;
+      const left = cx - ctx.measureText(name).width / 2;
+      if (staff) drawStaffBadge(left - 13, by);
+      else if (crown) drawCrown(left - 12, by, crown);
       if (portal) drawLabel(`◎${portal}층`, cx, y * TILE - 14, "#be8cff", 10);
     };
-    for (const p of Lobby.people()) person(p.x, p.y, p.name, p.color, p.portal, p.crown);
+    for (const p of Lobby.people()) person(p.x, p.y, p.name, p.color, p.portal, p.crown, p.staff);
     const me = Lobby.me();
-    person(lobbyPos.x, lobbyPos.y, me?.name || "나", "#ffffff", resumeFloor(), me?.crown);
+    person(lobbyPos.x, lobbyPos.y, me?.name || "나", "#ffffff", resumeFloor(), me?.crown, me?.staff);
   }
 
   // 캐릭터 머리 위 이름 (검은 테두리로 바닥 위에서도 잘 보이게)
@@ -2317,6 +2320,31 @@
     ctx.fillStyle = "#1a1406";
     ctx.fillText(String(rank), cx, by + 0.5);
   }
+  // 운영자 표시: 하늘색 방패에 GM. (cx, by) = 가운데 아래
+  const STAFF_COLOR = "#5fd4ff";
+  function drawStaffBadge(cx, by) {
+    const w = 20, h = 14, l = cx - w / 2, top = by - h;
+    ctx.beginPath();
+    ctx.moveTo(l, top);
+    ctx.lineTo(l + w, top);
+    ctx.lineTo(l + w, top + h * 0.55);
+    ctx.quadraticCurveTo(l + w, by - 1, cx, by);
+    ctx.quadraticCurveTo(l, by - 1, l, top + h * 0.55);
+    ctx.closePath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+    ctx.stroke();
+    ctx.fillStyle = STAFF_COLOR;
+    ctx.fill();
+    ctx.font = `bold 9px "Courier New", monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#06222c";
+    ctx.fillText("GM", cx, top + h * 0.42);
+  }
+  const staffSvg = () => `<svg class="crown" viewBox="0 0 20 14" width="22" height="16" aria-label="운영자" role="img">` +
+    `<path d="M0.5 0.5h19v7.2q0 5.8-9.5 5.8t-9.5-5.8z" fill="${STAFF_COLOR}" stroke="rgba(0,0,0,.65)" stroke-width="1"/>` +
+    `<text x="10" y="8.6" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#06222c" font-family="Courier New, monospace">GM</text></svg>`;
   // 목록용 같은 왕관 (SVG)
   const crownSvg = (rank) => `<svg class="crown" viewBox="0 0 19 14" width="22" height="16" aria-label="랭킹 ${rank}위" role="img">` +
     `<path d="M0.5 13.5V3l4.25 3.5L9.5 0.5l4.75 6L18.5 3v10.5z" fill="${CROWN_COLORS[rank]}" stroke="rgba(0,0,0,.65)" stroke-width="1"/>` +
@@ -2483,7 +2511,7 @@
     accountBtn.title = "";
     if (Account.loggedIn()) {
       const c = Account.claims();
-      accountStatus.textContent = `${c?.email || c?.phone_number || "계정"} 로그인됨`;
+      accountStatus.textContent = Lobby.me()?.staff ? "운영자 로그인됨" : `${c?.email || c?.phone_number || "계정"} 로그인됨`;
       accountBtn.textContent = "로그아웃";
     } else {
       accountStatus.textContent = guest;

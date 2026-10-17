@@ -96,7 +96,8 @@ function db(): PDO {
         x            INTEGER NOT NULL DEFAULT 0,
         y            INTEGER NOT NULL DEFAULT 0,
         depth        INTEGER NOT NULL DEFAULT 0,
-        seen_at      BIGINT NOT NULL
+        seen_at      BIGINT NOT NULL,
+        staff        INTEGER NOT NULL DEFAULT 0
     )');
     // 나중에 추가된 칸: 기존 DB에도 붙임 (이미 있으면 무시)
     market_tables($pdo);
@@ -105,6 +106,7 @@ function db(): PDO {
     foreach (['pub_id VARCHAR(32)', 'stage_gear TEXT', 'item_json TEXT'] as $col) {
         try { $pdo->exec("ALTER TABLE players ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
     }
+    try { $pdo->exec('ALTER TABLE presence ADD COLUMN staff INTEGER NOT NULL DEFAULT 0'); } catch (PDOException $e) { /* 이미 있음 */ }
     foreach ([
         'CREATE INDEX idx_players_pub ON players (pub_id)',
         'CREATE INDEX idx_players_stage ON players (best_stage, stage_at)',
@@ -203,6 +205,8 @@ function header_value(string $name): string {
     return '';
 }
 
+const OPERATOR_NAME = '운영자';
+
 function identify(): array {
     $auth = header_value('Authorization');
     if (strpos($auth, 'Bearer ') === 0) {
@@ -210,15 +214,17 @@ function identify(): array {
         $email = is_string($claims['email'] ?? null) ? strtolower(trim($claims['email'])) : '';
         $phone = is_string($claims['phone_number'] ?? null) ? $claims['phone_number'] : (is_string($claims['phone'] ?? null) ? $claims['phone'] : '');
         $devs = array_filter(array_map(function ($s) { return strtolower(trim($s)); }, explode(',', (string)(config()['dev_emails'] ?? ''))));
+        $developer = $email !== '' && in_array($email, $devs, true);
         return [
             'kind' => 'user',
             // token·sub는 이 요청 동안만 씀 (거래소에서 Xsolla 캐시를 차감·지급할 때). 저장하지 않음
             'token' => trim(substr($auth, 7)),
             'sub' => (string)$claims['sub'],
             'key' => hmac_hex('u:' . $claims['sub']),
-            'display' => $email !== '' ? mask_email($email) : ($phone !== '' ? mask_phone($phone) : ('사용자 #' . substr((string)$claims['sub'], 0, 6))),
+            // 운영자(개발자) 계정은 가린 이메일도 보이지 않게 "운영자"로만
+            'display' => $developer ? OPERATOR_NAME : ($email !== '' ? mask_email($email) : ($phone !== '' ? mask_phone($phone) : ('사용자 #' . substr((string)$claims['sub'], 0, 6)))),
             'email_hmac' => $email !== '' ? hmac_hex('e:' . $email) : null,
-            'developer' => $email !== '' && in_array($email, $devs, true),
+            'developer' => $developer,
         ];
     }
     $guest = header_value('X-Guest-Id');
@@ -591,16 +597,17 @@ function lobby_ping(): array {
     $now = now_ms();
     $pub = pub_id($who['key']);
     $pdo = db();
-    $up = $pdo->prepare('UPDATE presence SET pub_id = ?, display = ?, scene = ?, x = ?, y = ?, depth = ?, seen_at = ? WHERE pkey = ?');
-    $up->execute([$pub, $who['display'], $scene, $x, $y, $depth, $now, $who['key']]);
+    $staff = $who['developer'] ? 1 : 0;
+    $up = $pdo->prepare('UPDATE presence SET pub_id = ?, display = ?, scene = ?, x = ?, y = ?, depth = ?, seen_at = ?, staff = ? WHERE pkey = ?');
+    $up->execute([$pub, $who['display'], $scene, $x, $y, $depth, $now, $staff, $who['key']]);
     if ($up->rowCount() === 0) {
         try {
-            $pdo->prepare('INSERT INTO presence (pkey, pub_id, display, scene, x, y, depth, seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-                ->execute([$who['key'], $pub, $who['display'], $scene, $x, $y, $depth, $now]);
+            $pdo->prepare('INSERT INTO presence (pkey, pub_id, display, scene, x, y, depth, seen_at, staff) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$who['key'], $pub, $who['display'], $scene, $x, $y, $depth, $now, $staff]);
         } catch (PDOException $e) { /* 같은 사람이 동시에 보낸 요청이 먼저 넣음 */ }
     }
     $pdo->prepare('DELETE FROM presence WHERE seen_at < ?')->execute([$now - 60000]);
-    $st = $pdo->prepare('SELECT pkey, pub_id, display, scene, x, y, depth FROM presence
+    $st = $pdo->prepare('SELECT pkey, pub_id, display, scene, x, y, depth, staff FROM presence
         WHERE (scene = ? AND seen_at >= ?) OR (scene = ? AND seen_at >= ?) ORDER BY seen_at DESC LIMIT 200');
     $st->execute(['lobby', $now - LOBBY_TTL_MS, 'dungeon', $now - DUNGEON_TTL_MS]);
     $rows = $st->fetchAll();
@@ -609,12 +616,14 @@ function lobby_ping(): array {
     foreach ($rows as $r) {
         $p = ['id' => $r['pub_id'], 'name' => $r['display'], 'scene' => $r['scene']];
         if (isset($crowns[$r['pkey']])) $p['crown'] = $crowns[$r['pkey']];
+        if ((int)$r['staff']) $p['staff'] = true;  // 운영자 표시
         if ($r['scene'] === 'lobby') { $p['x'] = (int)$r['x']; $p['y'] = (int)$r['y']; $p['portal'] = (int)$r['depth']; }
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
     $me = ['id' => $pub, 'name' => $who['display']];
     if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
+    if ($who['developer']) $me['staff'] = true;
     return [
         'me' => $me, 'players' => $players, 'at' => $now,
         'mail' => $who['kind'] === 'user' ? mail_count($who['key']) : 0,  // 우편함에 받을 것
