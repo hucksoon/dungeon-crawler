@@ -147,7 +147,8 @@
   }
 
   // ---- 세트 ----
-  // 2·4·6개를 입을 때마다 효과가 하나씩 켜짐. 직업이 생기면 직업별 세트를 여기에 추가
+  // 2·4·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음).
+  // 직업이 생기면 직업별 세트를 여기에 추가
   const SETS = {
     trial: {
       name: "시험의 세트",
@@ -160,7 +161,7 @@
       bonuses: [
         { count: 2, text: "최대 HP +20%, 방어력 +20%", stats: { hpPct: 20, defPct: 20 } },
         { count: 4, text: "공격력 +25%, 치명타 확률 +10%", stats: { atkPct: 25, crit: 10 } },
-        { count: 6, text: "치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, lifesteal: 8, killHealPct: 15 } },
+        { count: 5, text: "치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, lifesteal: 8, killHealPct: 15 } },
       ],
     },
   };
@@ -230,8 +231,10 @@
   }
 
   // ---- 판매 / 강화 ----
-  // 판매하면 등급에 따라 강화석을 줌
+  // 판매하면 등급에 따라 강화석을 줌. 아이템 레벨이 높을수록 더 줌: × (1 + 레벨당 5%) — 120레벨 레전더리면 16 × 6.95 ≈ 111개
   const SELL_STONES = { common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 16, set: 12 };
+  const SELL_PER_LEVEL = 0.05;
+  const sellStones = (item) => Math.max(1, Math.round(SELL_STONES[item.rarity] * (1 + SELL_PER_LEVEL * ((item.lvl || 1) - 1))));
 
   // +N으로 강화할 때: 강화석 N개. +4까지는 항상 성공, +5는 50%, 이후 10%p씩 낮아져 최저 5%.
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
@@ -341,7 +344,7 @@
 
   const api = {
     RULES_VERSION, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, DROPS, DROP_CHANCE, STATS, STAT_KEYS, SETS,
-    MAIN, MAX_ROLL_CHANCE, SELL_STONES, ENHANCE, SHOP, isShopFloor,
+    MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost,

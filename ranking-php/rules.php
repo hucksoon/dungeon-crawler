@@ -53,7 +53,7 @@ const R_SETS = [
         'bonuses' => [
             ['count' => 2, 'text' => '최대 HP +20%, 방어력 +20%', 'stats' => ['hpPct' => 20, 'defPct' => 20]],
             ['count' => 4, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
-            ['count' => 6, 'text' => '치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'lifesteal' => 8, 'killHealPct' => 15]],
+            ['count' => 5, 'text' => '치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'lifesteal' => 8, 'killHealPct' => 15]],
         ],
     ],
 ];

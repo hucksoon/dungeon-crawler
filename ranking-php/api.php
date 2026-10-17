@@ -566,6 +566,16 @@ const DUNGEON_TTL_MS = 25000;
 // POST api.php?r=lobby { scene: "lobby", x, y, portal } 또는 { scene: "dungeon", depth }
 //   portal: 로비에 있을 때 그 사람이 포탈을 타고 나온 층 (다시 들어갈 수 있는 층, 없으면 0). 머리 위에 "◎N층"으로 보임
 // → 내 정보와 지금 접속 중인 사람들 (가린 이름과 공개 ID만)
+// 층 랭킹 1~3위 { 사람 키: 순위 }. 로비 이름 옆 금·은·동 왕관. 랭킹 화면과 같은 순서(최고 층, 먼저 세운 사람)
+// 랭킹은 계정(또는 게스트 기기)마다 남아서, 새 캐릭터로 시작해도 왕관은 그대로. 다른 사람에게 밀리면 다음 요청부터 사라짐
+function top_crowns(): array {
+    $out = [];
+    foreach (db()->query('SELECT pkey FROM players WHERE ' . BOARDS['stage']['where'] . ' ORDER BY ' . BOARDS['stage']['order'] . ' LIMIT 3')->fetchAll() as $i => $r) {
+        $out[$r['pkey']] = $i + 1;
+    }
+    return $out;
+}
+
 function lobby_ping(): array {
     $who = identify();
     $raw = file_get_contents('php://input');
@@ -590,18 +600,23 @@ function lobby_ping(): array {
         } catch (PDOException $e) { /* 같은 사람이 동시에 보낸 요청이 먼저 넣음 */ }
     }
     $pdo->prepare('DELETE FROM presence WHERE seen_at < ?')->execute([$now - 60000]);
-    $st = $pdo->prepare('SELECT pub_id, display, scene, x, y, depth FROM presence
+    $st = $pdo->prepare('SELECT pkey, pub_id, display, scene, x, y, depth FROM presence
         WHERE (scene = ? AND seen_at >= ?) OR (scene = ? AND seen_at >= ?) ORDER BY seen_at DESC LIMIT 200');
     $st->execute(['lobby', $now - LOBBY_TTL_MS, 'dungeon', $now - DUNGEON_TTL_MS]);
+    $rows = $st->fetchAll();
+    $crowns = top_crowns();
     $players = [];
-    foreach ($st->fetchAll() as $r) {
+    foreach ($rows as $r) {
         $p = ['id' => $r['pub_id'], 'name' => $r['display'], 'scene' => $r['scene']];
+        if (isset($crowns[$r['pkey']])) $p['crown'] = $crowns[$r['pkey']];
         if ($r['scene'] === 'lobby') { $p['x'] = (int)$r['x']; $p['y'] = (int)$r['y']; $p['portal'] = (int)$r['depth']; }
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
+    $me = ['id' => $pub, 'name' => $who['display']];
+    if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
     return [
-        'me' => ['id' => $pub, 'name' => $who['display']], 'players' => $players, 'at' => $now,
+        'me' => $me, 'players' => $players, 'at' => $now,
         'mail' => $who['kind'] === 'user' ? mail_count($who['key']) : 0,  // 우편함에 받을 것
     ];
 }

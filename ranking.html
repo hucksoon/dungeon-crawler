@@ -219,7 +219,7 @@
       const bySlot = Object.fromEntries((g.items || []).map(it => [it.slot, it]));
       body.push(el("h4", { textContent: "장착 장비" }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
       for (const set of g.sets || []) {
-        body.push(el("h4", { textContent: `${set.name} (${set.count}/6)`, style: `color:${RARITY.set.color}` }),
+        body.push(el("h4", { textContent: `${set.name} (${Math.min(set.count, 5)}/5)`, style: `color:${RARITY.set.color}` }),
           el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: `${b.on ? "✔" : "·"} ${b.count}세트: ${b.text}` }))));
       }
       if (g.rejected) body.push(el("p", { className: "pnote", textContent: `확인되지 않은 장비 ${g.rejected}개는 제외했어요.` }));
