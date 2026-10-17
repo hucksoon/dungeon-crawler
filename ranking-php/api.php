@@ -30,6 +30,9 @@ require_once __DIR__ . '/profile.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5];
 const MAX_STAGE = 10000;
+// 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
+const MAX_FLOOR = 150;
+const CLEAR_STAGE = MAX_FLOOR + 1;
 const MAX_ENH = 10;
 
 final class HttpError extends Exception {
@@ -416,6 +419,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     $stage = $body['stage'] ?? null;
     if (!is_int($stage) || $stage < 1 || $stage > MAX_STAGE) throw new HttpError(400, 'bad_stage');
     $maxLvl = max($stage, $oldBest);
+    $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
     if (!is_int($plvl) || $plvl < 1 || $plvl > 500) $plvl = 1;
 
