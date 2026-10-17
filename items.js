@@ -13,6 +13,10 @@
   //     예전(v2·v3) 아이템의 % 능력치는 효과를 계산할 때 v4 기준 최대치로 잘림 (아이템 자체는 그대로)
   // 게임은 v4만 새로 만들고(거래소·우편함용으로 v2·v3도 다시 만들 수 있음), 서버는 v1~v4를 모두 검증
   const RULES_VERSION = 4;
+  // 같은 버전 안의 규칙 개정 (아이템 r). 버전 표기·랭킹 시즌은 그대로 두고, 그 뒤에 얻은 아이템에만 적용
+  // r1: 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 예전 그대로
+  const RULES_REV = 1;
+  const ANCIENT = { chance: 0.03 };
 
   // ---- 시드 기반 난수 ----
   function hashSeed(str) {
@@ -270,8 +274,13 @@
   // 장비 1개 생성. source: "box" | "drop" | "boss" | "golden", level: 아이템 레벨(1 이상)
   // version: 새로 얻는 아이템은 지금 규칙(RULES_VERSION). 거래소·우편함에서 예전(v2) 아이템을 다시 만들 때만 2
   const SLOTS_V2 = SLOTS.slice(0, 6);
-  function generate(seed, source, level, version = RULES_VERSION) {
+  // rev: 규칙 개정. 버전을 생략하면(새로 얻는 아이템) 지금 개정, 버전을 적으면(저장된 참조를 다시 만들 때) 적은 개정(없으면 0)
+  function generate(seed, source, level, version, rev) {
+    const latest = version === undefined;
+    if (latest) version = RULES_VERSION;
+    rev = rev ?? (latest ? RULES_REV : 0);
     if (version < 2 || version > 4) throw new Error(`unsupported item version ${version}`);
+    if (rev !== 0 && !(rev === 1 && version === 4)) throw new Error(`unsupported item rev ${rev}`);
     const lv = Math.max(1, Math.floor(level));
     const rng = rngFrom(`v${version}|${seed}`);
     const rarity = pickWeighted(rng, TABLES[source]);
@@ -308,8 +317,17 @@
     // 방패: 패링 확률 (등급별 3가지 값 중 하나, 강화로 오르지 않음)
     if (type === "shield") item.parry = randInt(rng, ...PARRY.ranges[rarity]);
 
-    const [h1, h2] = hashSeed(`${version}|${source}|${lv}|${seed}`);
+    const [h1, h2] = hashSeed(`${version}${rev ? "r" + rev : ""}|${source}|${lv}|${seed}`);
     item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+    if (rev) {
+      item.r = rev;
+      // 고대 굴림: (아이템 ID) 시드로 따로. 걸리면 주 능력치·추가 능력치·패링을 모두 최대치로
+      if ((rarity === "legendary" || rarity === "set") && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) {
+        item.main = item.main.map(([k]) => [k, mainRange(k, item)[1]]);
+        item.lines = item.lines.map(([k]) => [k, lineRangeOf(k, item)[1]]);
+        if (item.parry != null) item.parry = PARRY.ranges[rarity][1];
+      }
+    }
     item.ancient = isAncient(item);
     return item;
   }
@@ -488,7 +506,7 @@
   }
 
   const api = {
-    RULES_VERSION, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, DROPS, DROP_CHANCE, STATS, STAT_KEYS, SETS,
+    RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, DROPS, DROP_CHANCE, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,

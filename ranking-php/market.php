@@ -226,7 +226,7 @@ function market_list(): array {
     if (!$item) throw new HttpError(400, 'bad_item');
     if (in_array($item['rarity'], MARKET_CASH_REQUIRED, true) && $cash < 1) throw new HttpError(400, 'cash_required');
     $tries = is_int($ref['tries'] ?? null) ? max(0, min(1000, $ref['tries'])) : 0;
-    $cleanRef = ['seed' => $item['seed'], 'src' => $item['src'], 'lvl' => $item['lvl'], 'v' => $item['v'], 'enh' => $item['enh'], 'id' => $item['id'], 'tries' => $tries];
+    $cleanRef = ['seed' => $item['seed'], 'src' => $item['src'], 'lvl' => $item['lvl'], 'v' => $item['v'], 'enh' => $item['enh'], 'r' => $item['r'] ?? 0, 'id' => $item['id'], 'tries' => $tries];
 
     $now = now_ms();
     $id = tx(function (PDO $pdo) use ($who, $item, $cleanRef, $gold, $cash, $now) {

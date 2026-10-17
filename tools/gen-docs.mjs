@@ -316,8 +316,9 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - **최고 등급(레전더리·세트)** 이면서 **모든 능력치(주 + 추가, 방패는 패링도)가 최대치**로 붙은 아이템이에요. 이름 앞에 **"고대"**가 붙고, 인벤토리에서 금빛으로 빛나요
 - 그 아래 등급은 능력치가 모두 최대치여도 고대가 아니에요 (예전에 고대로 표시되던 낮은 등급 아이템도 이제 보통 아이템으로 보여요)
-- 능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 아주 드물어요: ${["legendary", "set"].map(r => { const [a, b] = I.MAIN_V4.count[r]; const lines = I.RARITIES[r].lines; const odds = (n) => `약 ${Math.round(1 / I.MAX_ROLL_CHANCE ** n).toLocaleString("en-US")}분의 1`; return `${I.RARITIES[r].name}는 능력치 ${a + lines}~${b + lines}개라 ${odds(a + lines)}~${odds(b + lines)}`; }).join(", ")}
-  (범위의 최소와 최대가 같은 능력치는 항상 최대치라 실제로는 조금 더 자주 나와요)
+- **새로 얻는 레전더리·세트의 ${pct(I.ANCIENT.chance)}가 고대**예요. 고대로 나오면 모든 능력치가 범위의 최대치로 붙어요. 1~150층을 한 번 내려가면 레전더리·세트를 40~50개쯤 얻으니, 한 판에 고대 1개 남짓이에요
+  - 아이템 ID로 정해지는 굴림이라 서버에서 똑같이 다시 계산해요
+- 아이템 버전은 그대로 v4이고, 이 규칙이 생기기 전에 얻은 v4 아이템은 예전처럼 **모든 능력치가 우연히 최대치일 때만** 고대예요 (능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 2만 개 중 1개꼴)
 
 ## 강화
 

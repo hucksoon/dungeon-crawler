@@ -5,6 +5,7 @@
 // v3: 보조 손(보조무기·방패) 부위, 방패의 패링 확률, 광란·견고 세트
 // v4: 부위별 주 능력치 후보, % 능력치는 등급별 고정 범위, 추가 능력치에 치명타 피해·공격력%.
 //     예전(v2·v3) 아이템의 % 능력치는 효과 계산 때 v4 최대치로 잘림
+// v4 r1(규칙 개정, 아이템의 r): 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 그대로
 
 declare(strict_types=1);
 
@@ -86,6 +87,7 @@ const R_MAIN_COUNT = ['common' => [1, 2], 'uncommon' => [1, 2], 'rare' => [3, 4]
 const R_RARITY_MUL = ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' => 1.5, 'legendary' => 1.75, 'set' => 1.6];
 const R_OFF_SLOT_MUL = 0.5;
 const R_MAX_ROLL_CHANCE = 0.2;
+const R_ANCIENT_CHANCE = 0.03;   // v4 r1부터
 const R_ENHANCE = ['max' => 10, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10], 'lineBoost' => 0.5];
 const R_SETS = [
     'trial' => [
@@ -249,12 +251,14 @@ function r_scale_base(array $base, int $level): array {
     return $out;
 }
 
-function r_id(int $version, string $source, int $lv, string $seed): string {
-    [$h1, $h2] = r_hash_seed("{$version}|{$source}|{$lv}|{$seed}");
+function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0): string {
+    $r = $rev ? "r{$rev}" : '';
+    [$h1, $h2] = r_hash_seed("{$version}{$r}|{$source}|{$lv}|{$seed}");
     return str_pad(dechex($h1), 8, '0', STR_PAD_LEFT) . str_pad(dechex($h2), 8, '0', STR_PAD_LEFT);
 }
 
-function r_generate(int $version, string $seed, string $source, int $level): array {
+function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
+    if ($rev !== 0 && !($rev === 1 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -303,7 +307,16 @@ function r_generate(int $version, string $seed, string $source, int $level): arr
         $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
     }
     if ($type === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges'][$rarity]);
-    $item['id'] = r_id($version, $source, $lv, $seed);
+    $item['id'] = r_id($version, $source, $lv, $seed, $rev);
+    if ($rev) {
+        $item['r'] = $rev;
+        // 고대 굴림 (items.js와 같은 시드): 걸리면 모든 능력치·패링을 최대치로
+        if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) {
+            foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
+            foreach ($item['lines'] as $i => [$k, $v]) $item['lines'][$i][1] = r_line_range_of($k, $item)[1];
+            if (isset($item['parry'])) $item['parry'] = R_PARRY['ranges'][$rarity][1];
+        }
+    }
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }
