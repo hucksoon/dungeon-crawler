@@ -24,9 +24,14 @@ function fail(string $msg): void { fwrite(STDERR, $msg . "\n"); exit(1); }
 
 // 이메일 → 랭킹 기록의 사람들 (이메일 HMAC으로 찾음)
 function players_by_email(string $email): array {
-    $st = db()->prepare('SELECT pkey, display FROM players WHERE email_hmac = ?');
-    $st->execute([hmac_hex('e:' . strtolower(trim($email)))]);
-    $rows = $st->fetchAll();
+    // 모든 시즌 표에서 찾음 (같은 사람은 한 번만)
+    $rows = [];
+    foreach (SEASONS as $s) {
+        $st = db()->prepare('SELECT pkey, display FROM ' . $s['table'] . ' WHERE email_hmac = ?');
+        $st->execute([hmac_hex('e:' . strtolower(trim($email)))]);
+        foreach ($st->fetchAll() as $r) $rows[$r['pkey']] = $r;
+    }
+    $rows = array_values($rows);
     if (!$rows) fail('이 이메일로 플레이한 기록이 없어요. 그 계정으로 로그인해서 한 번 플레이한 뒤(랭킹에 기록이 올라간 뒤) 다시 실행하세요. 개발자 계정은 랭킹에 저장되지 않아서 찾을 수 없어요.');
     return $rows;
 }

@@ -33,6 +33,13 @@ const MAX_STAGE = 10000;
 // 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
 const MAX_FLOOR = 150;
 const CLEAR_STAGE = MAX_FLOOR + 1;
+// 랭킹 시즌: 규칙이 크게 바뀌면 새 표에 따로 쌓고, 예전 시즌 표는 그대로 보관해서 최종 기록으로 보여줌.
+// players 표는 v3 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
+const SEASONS = [
+    'v4' => ['table' => 'players_v4', 'name' => 'v4 베타', 'minItemV' => 4],
+    'v3' => ['table' => 'players', 'name' => 'v3 베타', 'minItemV' => 1],
+];
+const CURRENT_SEASON = 'v4';
 const MAX_ENH = 10;
 
 final class HttpError extends Exception {
@@ -102,6 +109,25 @@ function db(): PDO {
         seen_at      BIGINT NOT NULL,
         staff        INTEGER NOT NULL DEFAULT 0
     )');
+    // v4 베타 시즌 표 (players와 같은 모양)
+    $pdo->exec('CREATE TABLE IF NOT EXISTS players_v4 (
+        pkey         VARCHAR(64) PRIMARY KEY,
+        pub_id       VARCHAR(32),
+        kind         VARCHAR(8)  NOT NULL,
+        display      VARCHAR(80) NOT NULL,
+        email_hmac   VARCHAR(64),
+        best_stage   INTEGER NOT NULL DEFAULT 0,
+        stage_at     BIGINT,
+        stage_gear   TEXT,
+        item_score   INTEGER NOT NULL DEFAULT -1,
+        item_rarity  VARCHAR(16),
+        item_enh     INTEGER,
+        item_lvl     INTEGER,
+        item_name    VARCHAR(64),
+        item_json    TEXT,
+        item_at      BIGINT,
+        updated_at   BIGINT NOT NULL
+    )');
     // 나중에 추가된 칸: 기존 DB에도 붙임 (이미 있으면 무시)
     market_tables($pdo);
     ads_tables($pdo);
@@ -116,6 +142,10 @@ function db(): PDO {
         'CREATE INDEX idx_players_item ON players (item_score, item_at)',
         'CREATE INDEX idx_players_email ON players (email_hmac)',
         'CREATE INDEX idx_presence_seen ON presence (seen_at)',
+        'CREATE INDEX idx_players_v4_pub ON players_v4 (pub_id)',
+        'CREATE INDEX idx_players_v4_stage ON players_v4 (best_stage, stage_at)',
+        'CREATE INDEX idx_players_v4_item ON players_v4 (item_score, item_at)',
+        'CREATE INDEX idx_players_v4_email ON players_v4 (email_hmac)',
     ] as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) { /* 이미 있음 */ }
     }
@@ -428,6 +458,8 @@ function read_score(array $body, int $oldBest, string $key): array {
     $verified = verify_item($body['item'] ?? null, $maxLvl);
     // 거래소에서 남에게 판 아이템(의 복사본)은 인정하지 않음
     if ($verified && owned_by_other($verified['id'], $key)) $verified = null;
+    // 아이템 랭킹은 시즌 규칙의 아이템만 (v4 베타는 v4 아이템)
+    if ($verified && ($verified['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $verified = null;
     if ($verified) {
         $item = [
             'rarity' => $verified['rarity'], 'enh' => $verified['enh'], 'lvl' => $verified['lvl'], 'name' => r_item_name($verified),
@@ -459,6 +491,19 @@ function read_score(array $body, int $oldBest, string $key): array {
 
 function now_ms(): int { return (int)floor(microtime(true) * 1000); }
 
+// 요청의 ?season= (없거나 모르는 값이면 지금 시즌)
+function req_season(): string {
+    $s = (string)($_GET['season'] ?? CURRENT_SEASON);
+    return isset(SEASONS[$s]) ? $s : CURRENT_SEASON;
+}
+function season_table(string $season = CURRENT_SEASON): string { return SEASONS[$season]['table']; }
+// 모든 시즌을 통틀어 가장 깊이 간 층: 아이템 레벨 검증·거래소용 (예전 시즌에 얻은 깊은 층 아이템도 인정)
+function best_stage_any(string $key): int {
+    $best = 0;
+    foreach (SEASONS as $s) $best = max($best, (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0));
+    return $best;
+}
+
 // 랭킹에 공개하는 ID: 내부 키에서 다시 만든 짧은 값 (내부 키·기기 ID·이메일을 알 수 없음)
 function pub_id(string $pkey): string { return substr(hmac_hex('p:' . $pkey), 0, 16); }
 
@@ -467,24 +512,25 @@ function submit_score(): array {
     $pdo = db();
     if ($who['developer']) {
         // 개발자 계정은 저장하지 않음 (예전에 저장된 게 있으면 지움)
-        $pdo->prepare('DELETE FROM players WHERE pkey = ?')->execute([$who['key']]);
+        foreach (SEASONS as $s) $pdo->prepare('DELETE FROM ' . $s['table'] . ' WHERE pkey = ?')->execute([$who['key']]);
         return ['ok' => true, 'ranked' => false, 'reason' => 'developer'];
     }
     $raw = file_get_contents('php://input');
     if (strlen((string)$raw) > 8192) throw new HttpError(413, 'too_large');
     $body = json_decode((string)$raw, true);
     if (!is_array($body)) throw new HttpError(400, 'bad_json');
-    [$stage, $item, $snapshot] = read_score($body, (int)(q_val('SELECT best_stage FROM players WHERE pkey = ?', [$who['key']]) ?: 0), $who['key']);
+    [$stage, $item, $snapshot] = read_score($body, best_stage_any($who['key']), $who['key']);
+    $t = season_table();
     $now = now_ms();
     $snapshot['at'] = $now;
     $gearJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE);
 
     // 최고 기록만 남김: 층은 더 높을 때, 아이템은 점수가 더 높을 때만 바꿈
-    tx(function (PDO $pdo) use ($who, $stage, $item, $now, $gearJson) {
-        $old = q_row('SELECT * FROM players WHERE pkey = ?', [$who['key']]);
+    tx(function (PDO $pdo) use ($who, $stage, $item, $now, $gearJson, $t) {
+        $old = q_row("SELECT * FROM {$t} WHERE pkey = ?", [$who['key']]);
         if (!$old) {
-            $pdo->prepare('INSERT INTO players (pkey, pub_id, kind, display, email_hmac, best_stage, stage_at, stage_gear, item_score, item_rarity, item_enh, item_lvl, item_name, item_json, item_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
+            $pdo->prepare("INSERT INTO {$t} (pkey, pub_id, kind, display, email_hmac, best_stage, stage_at, stage_gear, item_score, item_rarity, item_enh, item_lvl, item_name, item_json, item_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")->execute([
                 $who['key'], pub_id($who['key']), $who['kind'], $who['display'], $who['email_hmac'], $stage, $now, $gearJson,
                 $item ? $item['score'] : -1, $item['rarity'] ?? null, $item['enh'] ?? null, $item['lvl'] ?? null, $item['name'] ?? null, $item['json'] ?? null, $item ? $now : null, $now,
             ]);
@@ -493,10 +539,10 @@ function submit_score(): array {
             $betterItem = $item && $item['score'] > (int)$old['item_score'];
             // 장비는 최고 층을 세운 순간의 것. 예전 기록이라 장비가 없으면 같은 층일 때 채움
             $saveGear = $betterStage || ($stage === (int)$old['best_stage'] && empty($old['stage_gear']));
-            $pdo->prepare('UPDATE players SET display = ?, email_hmac = ?, updated_at = ?, pub_id = ?,
+            $pdo->prepare("UPDATE {$t} SET display = ?, email_hmac = ?, updated_at = ?, pub_id = ?,
                 best_stage = ?, stage_at = ?, stage_gear = ?,
                 item_score = ?, item_rarity = ?, item_enh = ?, item_lvl = ?, item_name = ?, item_json = ?, item_at = ?
-                WHERE pkey = ?')->execute([
+                WHERE pkey = ?")->execute([
                 $who['display'], $who['email_hmac'], $now, $old['pub_id'] ?: pub_id($who['key']),
                 $betterStage ? $stage : (int)$old['best_stage'], $betterStage ? $now : $old['stage_at'], $saveGear ? $gearJson : $old['stage_gear'],
                 $betterItem ? $item['score'] : (int)$old['item_score'],
@@ -535,27 +581,31 @@ function get_ranking(): array {
     $type = ($_GET['type'] ?? '') === 'item' ? 'item' : 'stage';
     $limit = min(100, max(1, (int)($_GET['limit'] ?? 50) ?: 50));
     $b = BOARDS[$type];
+    $season = req_season();
+    $t = season_table($season);
     // 공개 ID가 없는 예전 행은 채워 넣음
-    $missing = db()->query('SELECT pkey FROM players WHERE pub_id IS NULL LIMIT 200')->fetchAll();
-    foreach ($missing as $m) db()->prepare('UPDATE players SET pub_id = ? WHERE pkey = ?')->execute([pub_id($m['pkey']), $m['pkey']]);
-    $rows = db()->query("SELECT pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name FROM players WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
-    $total = (int)q_val("SELECT COUNT(*) FROM players WHERE {$b['where']}");
+    $missing = db()->query("SELECT pkey FROM {$t} WHERE pub_id IS NULL LIMIT 200")->fetchAll();
+    foreach ($missing as $m) db()->prepare("UPDATE {$t} SET pub_id = ? WHERE pkey = ?")->execute([pub_id($m['pkey']), $m['pkey']]);
+    $rows = db()->query("SELECT pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name FROM {$t} WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
+    $total = (int)q_val("SELECT COUNT(*) FROM {$t} WHERE {$b['where']}");
     $out = [];
     foreach ($rows as $i => $r) $out[] = row_out($r, $i + 1);
-    return ['type' => $type, 'total' => $total, 'updatedAt' => now_ms(), 'rows' => $out];
+    return ['type' => $type, 'season' => $season, 'seasonName' => SEASONS[$season]['name'], 'current' => $season === CURRENT_SEASON,
+        'total' => $total, 'updatedAt' => now_ms(), 'rows' => $out];
 }
 
 function get_me(): array {
     $who = identify();
     if ($who['developer']) return ['developer' => true];
-    $r = q_row('SELECT * FROM players WHERE pkey = ?', [$who['key']]);
+    $t = season_table(req_season());
+    $r = q_row("SELECT * FROM {$t} WHERE pkey = ?", [$who['key']]);
     if (!$r) return ['name' => $who['display'], 'stageRank' => null, 'itemRank' => null];
     $ahead = function (string $sql, array $args): int { return (int)q_val($sql, $args); };
     $stageRank = (int)$r['best_stage'] > 0
-        ? 1 + $ahead('SELECT COUNT(*) AS n FROM players WHERE best_stage > ? OR (best_stage = ? AND stage_at < ?)', [$r['best_stage'], $r['best_stage'], $r['stage_at']])
+        ? 1 + $ahead("SELECT COUNT(*) AS n FROM {$t} WHERE best_stage > ? OR (best_stage = ? AND stage_at < ?)", [$r['best_stage'], $r['best_stage'], $r['stage_at']])
         : null;
     $itemRank = (int)$r['item_score'] >= 0
-        ? 1 + $ahead('SELECT COUNT(*) AS n FROM players WHERE item_score > ? OR (item_score = ? AND item_at < ?)', [$r['item_score'], $r['item_score'], $r['item_at']])
+        ? 1 + $ahead("SELECT COUNT(*) AS n FROM {$t} WHERE item_score > ? OR (item_score = ? AND item_at < ?)", [$r['item_score'], $r['item_score'], $r['item_at']])
         : null;
     return array_merge(row_out($r, null), ['stageRank' => $stageRank, 'itemRank' => $itemRank]);
 }
@@ -563,7 +613,7 @@ function get_me(): array {
 function get_player(): array {
     $id = (string)($_GET['id'] ?? '');
     if (!preg_match('/^[0-9a-f]{16}$/', $id)) throw new HttpError(400, 'bad_id');
-    $r = q_row('SELECT * FROM players WHERE pub_id = ?', [$id]);
+    $r = q_row('SELECT * FROM ' . season_table(req_season()) . ' WHERE pub_id = ?', [$id]);
     if (!$r) throw new HttpError(404, 'not_found');
     $gear = $r['stage_gear'] ? json_decode($r['stage_gear'], true) : null;
     return [
@@ -589,7 +639,7 @@ const DUNGEON_TTL_MS = 25000;
 // 랭킹은 계정(또는 게스트 기기)마다 남아서, 새 캐릭터로 시작해도 왕관은 그대로. 다른 사람에게 밀리면 다음 요청부터 사라짐
 function top_crowns(): array {
     $out = [];
-    foreach (db()->query('SELECT pkey FROM players WHERE ' . BOARDS['stage']['where'] . ' ORDER BY ' . BOARDS['stage']['order'] . ' LIMIT 3')->fetchAll() as $i => $r) {
+    foreach (db()->query('SELECT pkey FROM ' . season_table() . ' WHERE ' . BOARDS['stage']['where'] . ' ORDER BY ' . BOARDS['stage']['order'] . ' LIMIT 3')->fetchAll() as $i => $r) {
         $out[$r['pkey']] = $i + 1;
     }
     return $out;

@@ -1104,10 +1104,11 @@
 
     function payload() {
       // 최대 층 보스까지 쓰러뜨렸으면 "완료"(CLEAR_STAGE)로 기록
-      const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, Math.max(bestDepth, depth || 0));
+      // 층은 이번 시즌(v4 베타)에 실제로 내려간 최고 층, 아이템은 이번 시즌 규칙(v4) 아이템만
+      const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, bestDepth);
       let item = null, best = -1;
       for (const it of Inv.items()) {
-        if (!(it.rarity in RANK) || !(it.lvl <= stage)) continue;
+        if (!(it.rarity in RANK) || !(it.lvl <= stage) || !(it.v >= SEASON)) continue;
         const score = RANK[it.rarity] * 100000 + (it.enh || 0) * 1000 + it.lvl;
         if (score > best) { best = score; item = it; }
       }
@@ -1138,7 +1139,7 @@
 
     // 바뀐 게 있으면 몇 초 모았다가 한 번에 보냄
     function schedule() {
-      if (!RANKING_API || Math.max(bestDepth, depth || 0) < 1) return;
+      if (!RANKING_API || bestDepth < 1) return;
       // 로그인 직후 계정 저장본을 불러오기 전에는 보내지 않음
       if (Account.loggedIn() && !cloudReady) return;
       if (timer || signature(payload()) === sent) return;
@@ -1159,7 +1160,9 @@
   let shop = null;       // 상점 칸 { x, y } (보스 층 바로 전 층)
   let shopBought = [];   // 이번 층 상점에서 산 칸 번호 (지금 진열 기준)
   let shopRerolls = 0;   // 이번 층 상점에서 진열을 바꾼 횟수
-  let bestDepth = 0;
+  // 랭킹 시즌: v4 베타. 그 전(v3 베타까지) 기록은 랭킹 화면의 v3 베타 탭에 그대로 남고, 최고 층은 새로 셈
+  const SEASON = 4;
+  let bestDepth = 0;     // 이번 시즌에 내려간 최고 층
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
@@ -1581,6 +1584,7 @@
   function completeFloor() {
     const first = !cleared;
     cleared = true;
+    bestDepth = Math.max(bestDepth, depth);
     shopBought = [];
     shopRerolls = 0;
     if (first) log(`🎉 ${depth}층 보스를 쓰러뜨렸다! 일반 던전 완료!`, "rainbow");
@@ -1601,7 +1605,6 @@
 
   function death() {
     gameOver = true;
-    bestDepth = Math.max(bestDepth, depth);
     log(`당신은 ${depth}층에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
     saveGame(true);
     openDeath();
@@ -1620,6 +1623,7 @@
   function makeSave() {
     return {
       v: 1,
+      season: SEASON,
       best: bestDepth,
       ...(cleared ? { clr: 1 } : {}),
       run: gameOver ? null : runFields(),
@@ -1717,8 +1721,10 @@
   }
 
   function startFromSave(s) {
-    bestDepth = Math.min(RLMonsters.MAX_FLOOR, s?.best || 0);
-    cleared = !!s?.clr;
+    // 예전 시즌 저장이면 최고 층·완료는 새로 셈 (진행 중이던 판은 그대로 이어서 하고, 이제부터 내려가는 층이 기록됨)
+    const sameSeason = s?.season === SEASON;
+    bestDepth = sameSeason ? Math.min(RLMonsters.MAX_FLOOR, s?.best || 0) : 0;
+    cleared = sameSeason && !!s?.clr;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -2182,6 +2188,7 @@
       try { ok = await allowEntry(); } finally { entering = false; }
       if (!ok || scene !== "lobby") return;
       depth = 1;
+      bestDepth = Math.max(bestDepth, 1);
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
       shopBought = [];
       shopRerolls = 0;
@@ -2565,7 +2572,7 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("best").textContent = cleared ? `${bestDepth} 완료` : bestDepth;
+    document.getElementById("best").textContent = cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = `포션 (${player.potions})`;
   }
 
@@ -2584,6 +2591,7 @@
     };
     shopBought = [];
     shopRerolls = 0;
+    bestDepth = Math.max(bestDepth, 1);
     player.hp = stats().maxHp;  // 장비로 늘어난 최대 HP까지 채우고 시작
     closeDeath();
     logEl.innerHTML = "";
@@ -3776,6 +3784,7 @@
       `아이템 규칙이 v${RLItems.RULES_VERSION}로 바뀌었어요. 부위마다 붙는 능력치가 다르고, 치명타 같은 % 능력치는 등급별로 정해진 범위예요.`,
       `가지고 계신 예전 장비 ${old}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 "적용 N%"로 보여요)`,
       `지금 장비로는 ${RLMonsters.MAX_FLOOR}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.`,
+      "지금까지의 랭킹 기록은 랭킹 화면의 \"v3 베타\"에 그대로 남아요. \"v4 베타\" 랭킹은 새로 시작해요.",
     ]);
   }
 
