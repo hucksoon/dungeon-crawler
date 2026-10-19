@@ -562,24 +562,27 @@
   }
 
 
-  // 골드 던전 완료 보상: 그 레벨 레전더리 하나를 고대 굴리기 n번 할 수 있는 골드
-  const goldDungeonReward = (level, rolls) => rolls * ancientRerollCost({ rarity: "legendary", lvl: level });
+  // 골드 던전 완료 보상: 그 레벨 레전더리 하나를 고대 굴리기 n번 할 수 있는 골드. 나이트메어 난이도면 × NM_SHOP.priceMul
+  const goldDungeonReward = (level, rolls, nm = false) => rolls * ancientRerollCost({ rarity: "legendary", lvl: level }) * (nm ? NM_SHOP.priceMul : 1);
 
   // 로비 시간 상점: 매 시간 정각(UTC 기준 시간 번호)에 진열이 바뀜. 던전 상점과 같은 등급표·가격·진열 바꾸기
   // 시드: lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸 → 사람마다 진열이 다르고, 서버가 같은 아이템을 다시 만들어 검증
+  // 나이트메어 기록이 있으면(nm = 나이트메어 최고 층) lobby|…|n층|h… → 나이트메어 아이템 (레벨 75 + 층, 속성 줄·악몽의 힘)
   const hourIndex = (ms = Date.now()) => Math.floor(ms / 3600000);
   const ownerTag = (owner) => hashSeed(`owner|${owner}`)[0].toString(16).padStart(8, "0");
-  function lobbyShopStock(tag, hour, level, reroll = 0) {
-    const r = reroll ? `|r${reroll}` : "";
-    return Array.from({ length: SHOP.slots }, (_, i) => generate(`lobby|${tag}|h${hour}${r}|s${i}`, SHOP.table, level));
+  function lobbyShopStock(tag, hour, level, reroll = 0, nm = 0) {
+    const r = reroll ? `|r${reroll}` : "", n = nm ? `|n${nm}` : "";
+    return Array.from({ length: SHOP.slots }, (_, i) => generate(`lobby|${tag}${n}|h${hour}${r}|s${i}`, SHOP.table, level));
   }
 
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
-  const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl);
-  // n번째(0부터) 진열 바꾸기 비용: 기본값 × (1 + 0.25 × (층 − 1)), 5골드 단위. 더 바꿀 수 없으면 null
-  const rerollCost = (depth, n) => (n < SHOP.rerolls.max
-    ? Math.round(SHOP.rerolls.costs[n] * (1 + SHOP.rerolls.perFloor * (depth - 1)) / 5) * 5
+  // 나이트메어 아이템(공격력·방어력·HP ×3)은 상점 가격·진열 바꾸기 비용이 priceMul배. 나이트메어 골드 던전 보상도 같은 배율
+  const NM_SHOP = { priceMul: 2 };
+  const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl) * (isNightmareItem(item) ? NM_SHOP.priceMul : 1);
+  // n번째(0부터) 진열 바꾸기 비용: 기본값 × (1 + 0.25 × (층 − 1)), 5골드 단위. 더 바꿀 수 없으면 null. nm: 나이트메어 아이템 상점
+  const rerollCost = (depth, n, nm = false) => (n < SHOP.rerolls.max
+    ? Math.round(SHOP.rerolls.costs[n] * (1 + SHOP.rerolls.perFloor * (depth - 1)) / 5) * 5 * (nm ? NM_SHOP.priceMul : 1)
     : null);
 
   // ---- 표시 ----
@@ -637,7 +640,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

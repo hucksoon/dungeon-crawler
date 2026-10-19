@@ -126,8 +126,9 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 
 ## 골드 던전
 
-- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요
-- 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요**: ${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스
+- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요. 문이 두 개예요
+- **왼쪽 문 (${M.GOLD_DUNGEON.floor}층)**: 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요** (${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스)
+- **오른쪽 문 (악몽 N층)**: 나이트메어에 들어가 본 뒤에 열려요. **나이트메어 최고 층과 같은 몬스터·보스**(속성 포함)가 나오고, 보상은 그 레벨(${M.NIGHTMARE.itemBase} + 층) 레전더리 고대 굴리기 ${M.GOLD_DUNGEON.rewardRolls}번 비용의 **×${I.NM_SHOP.priceMul}** (몬스터가 강한 만큼). 예: 악몽 10층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 10, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 25층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 25, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 50층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 50, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}골드. 몬스터 처치 골드도 그 레벨만큼
 - 보스를 쓰러뜨리고 계단을 밟으면 **완료 보상 골드 ${I.goldDungeonReward(M.GOLD_DUNGEON.floor, M.GOLD_DUNGEON.rewardRolls).toLocaleString()}** (= ${M.GOLD_DUNGEON.floor}레벨 레전더리 하나를 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드) ${M.GOLD_DUNGEON.rewardRolls}번 할 수 있는 골드). 몬스터 처치·골드 더미 골드도 ${M.GOLD_DUNGEON.floor}층만큼 따로 받아요 ([경제: 골드](economy.md#골드) 참고)
 - **장비는 나오지 않아요** (몬스터 드롭·보물·황금 고블린 없음). 골드를 모으는 곳이에요
 - 완료하면 로비로 돌아오고, 파란 포탈(\*)이나 건물로 새 골드 던전(새 지도·새 보스)에 다시 들어가요. 쓰러지면 일반 던전처럼 골드·레벨이 처음으로 돌아가요
@@ -244,6 +245,7 @@ ${table(["층", "더미", "처치", "보스", "황금 고블린", "합계", "1�
 - 황금 고블린과 같은 등급표로 ${I.SHOP.slots}개를 진열해요: ${tableRates(I.TABLES[I.SHOP.table])}
 - 진열품은 (판 ID, 층)으로 정해져서 다시 열어도 같아요. 산 칸은 "판매 완료"로 남아요
 - 가격: 등급 기본값 × (1 + 아이템 레벨당 10%), 5골드 단위. 상점 아이템 레벨 = 그 층
+- **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
 
 ${table(["등급", "기본 가격", ...SHOP_FLOORS.map(d => `${d}층`)],
   Object.keys(I.SHOP.prices).map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
@@ -264,10 +266,11 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 - 로비 거래소·우편함 오른쪽 건물 \`&\`. 걸어 들어가면 열려요. 이름 옆에 다음 갱신까지 남은 분이 보여요
 - **매 시간 정각**(시간 번호 = 1970년부터 지난 시간 수)에 진열이 새로 바뀌어요. 던전 상점과 **같은 등급표·가격·진열 바꾸기(최대 ${I.SHOP.rerolls.max}번)**, 판의 골드로 사요 (쓰러진 판은 못 씀)
 - 아이템 레벨은 그 시간에 처음 열 때의 **최고 층(일반 던전, 최대 ${M.MAX_FLOOR})**으로 고정
+- **나이트메어 기록이 있으면 나이트메어 아이템**을 진열해요: 레벨 = ${M.NIGHTMARE.itemBase} + 나이트메어 최고 층 (최대 ${M.NIGHTMARE.itemBase + M.NIGHTMARE.floors}), 속성 줄과 [악몽의 힘](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})이 붙고, 가격·진열 바꾸기 비용은 ×${I.NM_SHOP.priceMul}
 - 진열은 사람(게스트·계정)마다 달라요. 시드 \`lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸\`
 - 산 칸·바꾼 횟수는 그 기기에 저장해요. 이미 가진 아이템(다른 기기에서 산 같은 칸)은 다시 살 수 없어요
 - 창을 열어 둔 채 정각이 지나면 새 진열로 바뀌고, 지난 진열의 칸은 살 수 없어요
-- 서버는 시드를 다시 만들어 확인해요: 시간 번호가 서버 시각보다 미래면 안 되고, 레벨은 최고 층까지만
+- 서버는 시드를 다시 만들어 확인해요: 시간 번호가 서버 시각보다 미래면 안 되고, 레벨은 최고 층까지만 (나이트메어 진열은 시드에 \`|n층|\`, 레벨 = ${M.NIGHTMARE.itemBase} + 층)
 
 ## 판매와 강화
 
