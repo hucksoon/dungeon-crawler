@@ -191,7 +191,10 @@
   // 몬스터에 속성이 붙으면서(3단계) 일반·정예 공격 배율 2 → 1.6: 75층 장비로 들어가도 한 층 포션이 속성 전과 비슷하게(약 4~6개).
   // 보스 공격 1.3 → 1.1: 포션을 마시는 데 한 턴이 드는 것까지 넣고 다시 보니 1층 보스에게 3번 중 1번 쓰러짐 → 1.1이면 4%, 50층 9%
   const NIGHTMARE = {
-    floors: 50, perFloor: 0.02, monsters: 50, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    floors: 50, perFloor: 0.02, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    // 한 층 몬스터 수: 1층 30마리에서 2층마다 1마리씩 늘어 41층부터 50마리 (±3)
+    // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
+    monsters: { start: 30, perFloor: 0.5, max: 50, spread: 3 },
     hp: 4, atk: 1.6, bossHp: 2.5, bossAtk: 1.1,
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
@@ -218,6 +221,7 @@
   const pickElement = (rand) => ELEMENTS.list[Math.floor(rand() * ELEMENTS.list.length)];
   const withElement = (m, el) => (el ? { ...m, name: `악몽의 ${ELEMENTS.prefix[el]} ${m.name.replace(/^악몽의 /, "")}`, el } : m);
 
+  const nmMonsterCount = (n) => Math.min(NIGHTMARE.monsters.max, Math.floor(NIGHTMARE.monsters.start + NIGHTMARE.monsters.perFloor * (Math.max(1, n) - 1)));
   const nmScale = (n) => 1 + NIGHTMARE.perFloor * (Math.max(1, n) - 1);
   // 75층에 나오는 몬스터 + 그 뒤에 나오는 몬스터(대악마·타이탄·공허의 군주·고룡). 뒤쪽일수록 자주
   const nightmarePool = () => MONSTERS.filter(m => (m.until ?? Infinity) >= NIGHTMARE.base);
@@ -254,7 +258,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, ELEMENTS, pickElement, nmScale, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    NIGHTMARE, ELEMENTS, pickElement, nmScale, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

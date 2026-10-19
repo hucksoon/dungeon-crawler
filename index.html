@@ -1371,8 +1371,9 @@
     }
 
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
-    // 나이트메어: 한 층 50마리 안팎, 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
-    const count = inNM() ? between(NM.monsters - 5, NM.monsters + 5) : between(4 + depth, 6 + depth * 2);
+    // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
+    const nmCount = inNM() ? RLMonsters.nmMonsterCount(depth) : 0;
+    const count = inNM() ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
