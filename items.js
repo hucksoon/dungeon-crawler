@@ -15,7 +15,8 @@
   const RULES_VERSION = 4;
   // 같은 버전 안의 규칙 개정 (아이템 r). 버전 표기·랭킹 시즌은 그대로 두고, 그 뒤에 얻은 아이템에만 적용
   // r1: 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 예전 그대로
-  const RULES_REV = 1;
+  // r2: 일반 던전이 75층으로 줄면서 드롭을 늘림 — 몬스터·보스 등급표가 좋아지고(TABLES), 드롭 확률이 오름(DROPS)
+  const RULES_REV = 2;
   const ANCIENT = { chance: 0.03 };
 
   // ---- 시드 기반 난수 ----
@@ -101,19 +102,28 @@
   };
 
   // 등급 확률(가중치). 임시 값 — 확정된 확률표를 받으면 여기만 바꾸고 RULES_VERSION을 올린다
+  // 등급표 (지금 규칙 r2). 75층까지만 가도 예전 150층만큼 레전더리·세트가 나오게 몬스터·보스 표를 올림
   const TABLES = {
     box: { common: 40, uncommon: 30, rare: 18, epic: 8, legendary: 3, set: 1 },
-    drop: { common: 60, uncommon: 25, rare: 10, epic: 3.5, legendary: 1, set: 0.5 },
-    boss: { common: 20, uncommon: 30, rare: 28, epic: 15, legendary: 5, set: 2 },
+    drop: { common: 45, uncommon: 28, rare: 17, epic: 6.5, legendary: 2.5, set: 1 },
+    boss: { common: 10, uncommon: 25, rare: 32, epic: 20, legendary: 9, set: 4 },
     golden: { rare: 65, epic: 25, legendary: 7, set: 3 },  // 황금 고블린: 레어 이상만
   };
-  // 장비를 떨어뜨릴 확률과 등급표. normal은 일반 몬스터와 포션 자리
-  const DROPS = {
-    normal: { chance: 0.08, table: "drop" },
-    elite: { chance: 0.4, table: "drop" },
-    boss: { chance: 1, table: "boss" },
-    golden: { chance: 1, table: "golden" },  // 한 마리당 2번 굴림 (처치 순번 2개 사용)
+  // r2 전 규칙의 등급표 (예전 아이템을 똑같이 다시 만들 때)
+  const TABLES_OLD = {
+    ...TABLES,
+    drop: { common: 60, uncommon: 25, rare: 10, epic: 3.5, legendary: 1, set: 0.5 },
+    boss: { common: 20, uncommon: 30, rare: 28, epic: 15, legendary: 5, set: 2 },
   };
+  const tablesFor = (version, rev) => (version === 4 && rev >= 2 ? TABLES : TABLES_OLD);
+  // 장비를 떨어뜨릴 확률과 등급표. normal은 일반 몬스터와 포션 자리. rolls: 한 마리당 굴리는 횟수
+  const DROPS = {
+    normal: { chance: 0.15, table: "drop" },
+    elite: { chance: 0.6, table: "drop" },
+    boss: { chance: 1, table: "boss", rolls: 2 },
+    golden: { chance: 1, table: "golden" },  // 황금 고블린은 등급만큼 굴림 (monsters.js GOLDEN.ranks[].drops)
+  };
+  const DROP_CHANCE_OLD = { normal: 0.08, elite: 0.4 };  // r2 전 규칙 (서버가 예전 드롭을 검증할 때)
   const DROP_CHANCE = DROPS.normal.chance;
 
   // ---- 능력치 ----
@@ -280,10 +290,10 @@
     if (latest) version = RULES_VERSION;
     rev = rev ?? (latest ? RULES_REV : 0);
     if (version < 2 || version > 4) throw new Error(`unsupported item version ${version}`);
-    if (rev !== 0 && !(rev === 1 && version === 4)) throw new Error(`unsupported item rev ${rev}`);
+    if (rev !== 0 && !((rev === 1 || rev === 2) && version === 4)) throw new Error(`unsupported item rev ${rev}`);
     const lv = Math.max(1, Math.floor(level));
     const rng = rngFrom(`v${version}|${seed}`);
-    const rarity = pickWeighted(rng, TABLES[source]);
+    const rarity = pickWeighted(rng, tablesFor(version, rev)[source]);
     let slot, set, type = null;
     if (version === 2) {
       slot = pick(rng, SLOTS_V2);
@@ -506,7 +516,7 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, DROPS, DROP_CHANCE, STATS, STAT_KEYS, SETS,
+    RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,

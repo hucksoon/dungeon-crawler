@@ -99,7 +99,7 @@ ${table(["층", "보통 HP", "정예 HP", "왕 HP", "방어 (보통)", "경험�
 ## 보스
 
 - ${M.BOSS_EVERY}층마다 계단 방에서 계단을 지켜요. 쓰러뜨려야 계단이 열려요. 빨간 테두리
-- 장비를 반드시 떨어뜨려요: ${tableRates(I.TABLES.boss)}
+- 장비를 반드시 ${I.DROPS.boss.rolls}개 떨어뜨려요: ${tableRates(I.TABLES.boss)}
 - 준비된 보스를 다 지나면 마지막 보스가 ${M.BOSS_EVERY}층마다 ${pct(M.BOSS_SCALE)}씩 강해져요
 
 ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
@@ -111,14 +111,14 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 - 완료하면 안내 창과 함께 **로비로 돌아와요**. 로비 던전 입구의 **오른쪽 문(포탈)**으로 들어가면 ${M.MAX_FLOOR}층의 **새 구역**(새 지도·몬스터·보스)에서 계속 파밍할 수 있어요. 다시 클리어하면 또 로비로 돌아와요. 아이템 레벨은 얻은 층이라 ${M.MAX_FLOOR}보다 높은 아이템은 없어요
 - 랭킹 최고 층에는 "${M.MAX_FLOOR}층 완료 ✓"로 보여요 (서버 기록값 ${M.CLEAR_STAGE}). 같은 기록이면 먼저 세운 사람이 위
 - 랭킹은 버전(시즌)마다 따로예요. 지금은 **v4 베타**에 기록되고, 최대 층이 생기기 전까지의 기록은 **v3 베타** 탭에 최종 기록으로 그대로 남아요. v4 베타의 아이템 랭킹은 v4 아이템만 세고, **예전(v3까지) 장비를 한 번이라도 낀 판은 v4 베타 층 랭킹에 기록되지 않아요** (가방에 보관하는 건 괜찮아요)
-- 왜 ${M.MAX_FLOOR}층인가: 보스는 (보스 배율 × 층 보정)이라 층 수의 제곱으로 강해지고 장비는 층에 비례해서 커져요. 아이템 규칙 v4 기준으로 시뮬레이션해 보면 그 층 최고급 장비(레전더리급 +10)로 이길 수 있는 깊이가 약 240층, 보통 파밍 장비는 약 120층이에요. ${M.MAX_FLOOR}층은 잘 파밍한 장비로 깰 수 있는 목표예요
+- 왜 ${M.MAX_FLOOR}층인가: 처음엔 150층이었는데, 끝까지 가는 시간이 너무 길어서(몬스터 약 17,700마리) ${M.MAX_FLOOR}층(약 4,650마리)으로 줄였어요. 대신 드롭 확률과 레전더리·세트가 나올 확률을 올려서, ${M.MAX_FLOOR}층까지만 가도 예전 150층만큼 좋은 장비(레전더리·세트 40~50개)와 강화석이 모여요. ${M.MAX_FLOOR}층을 완료한 사람은 나이트메어 던전으로 이어져요
 
 ## 장비 드롭 요약
 
 ${table(["어디서", "확률", "등급 확률"], [
   ["일반 몬스터, 포션 자리", pct(I.DROPS.normal.chance), tableRates(I.TABLES.drop)],
   ["정예", pct(I.DROPS.elite.chance), tableRates(I.TABLES.drop)],
-  ["보스", pct(I.DROPS.boss.chance), tableRates(I.TABLES.boss)],
+  ["보스", `${pct(I.DROPS.boss.chance)} × ${I.DROPS.boss.rolls}개`, tableRates(I.TABLES.boss)],
   ["황금 고블린", `${pct(I.DROPS.golden.chance)} × ${Object.values(G.ranks).map(r => r.drops).join("·")}개 (보통·정예·왕)`, tableRates(I.TABLES.golden)],
   [`상점 (보스 전 층, 골드)`, `진열 ${I.SHOP.slots}개`, tableRates(I.TABLES[I.SHOP.table])],
   ["장비 상자 (캐시)", "-", tableRates(I.TABLES.box)],

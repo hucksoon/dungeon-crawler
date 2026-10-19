@@ -6,6 +6,7 @@
 // v4: 부위별 주 능력치 후보, % 능력치는 등급별 고정 범위, 추가 능력치에 치명타 피해·공격력%.
 //     예전(v2·v3) 아이템의 % 능력치는 효과 계산 때 v4 최대치로 잘림
 // v4 r1(규칙 개정, 아이템의 r): 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 그대로
+// v4 r2: 일반 던전 75층에 맞춰 드롭을 늘림 — 몬스터·보스 등급표(R_TABLES_R2)와 드롭 확률(R_DROP_CHANCE_R2)
 
 declare(strict_types=1);
 
@@ -43,7 +44,15 @@ const R_TABLES = [
     'boss' => ['common' => 20, 'uncommon' => 30, 'rare' => 28, 'epic' => 15, 'legendary' => 5, 'set' => 2],
     'golden' => ['rare' => 65, 'epic' => 25, 'legendary' => 7, 'set' => 3],
 ];
-const R_DROP_CHANCE = ['normal' => 0.08, 'elite' => 0.4];
+const R_DROP_CHANCE = ['normal' => 0.08, 'elite' => 0.4];          // r2 전
+const R_DROP_CHANCE_R2 = ['normal' => 0.15, 'elite' => 0.6];       // v4 r2부터
+// v4 r2부터 바뀐 등급표 (나머지 출처는 R_TABLES 그대로)
+const R_TABLES_R2 = [
+    'drop' => ['common' => 45, 'uncommon' => 28, 'rare' => 17, 'epic' => 6.5, 'legendary' => 2.5, 'set' => 1],
+    'boss' => ['common' => 10, 'uncommon' => 25, 'rare' => 32, 'epic' => 20, 'legendary' => 9, 'set' => 4],
+];
+function r_tables_for(int $version, int $rev): array { return ($version === 4 && $rev >= 2) ? array_merge(R_TABLES, R_TABLES_R2) : R_TABLES; }
+function r_drop_chance_for(int $version, int $rev): array { return ($version === 4 && $rev >= 2) ? R_DROP_CHANCE_R2 : R_DROP_CHANCE; }
 const R_STAT_KEYS = ['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp'];
 const R_STAT_KEYS_V4 = ['atk', 'def', 'hp', 'crit', 'critDmg', 'atkPct', 'lifesteal', 'gold', 'xp'];
 const R_STAT_NAMES = [
@@ -258,12 +267,12 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !($rev === 1 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !(($rev === 1 || $rev === 2) && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
     $rng = r_rng("v{$version}|{$seed}");
-    $rarity = r_pick_weighted($rng, R_TABLES[$source]);
+    $rarity = r_pick_weighted($rng, r_tables_for($version, $rev)[$source]);
     $type = null;
     if ($version < 3) {
         $slot = r_pick($rng, R_SLOTS_V2);
