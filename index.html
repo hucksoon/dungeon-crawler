@@ -314,6 +314,23 @@
   .detail .meta { opacity: 0.6; }
   .detail .row { margin-top: 8px; }
   #inv-close { width: 100%; margin-top: 10px; }
+  .detail-close { display: none; }
+  /* 넓은 화면: 상세를 오른쪽 칸에 (장비창을 보면서 바로 비교) */
+  @media (min-width: 900px) {
+    #inv-modal .modal.inv { width: 1040px; }
+    .inv-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
+    #inv-detail { margin-top: 10px; position: sticky; top: 0; max-height: calc(100vh - 150px); overflow-y: auto; }
+  }
+  /* 좁은 화면(휴대폰): 아이템을 고르면 상세가 화면 아래에서 올라오는 창으로. 닫으면 다시 가방이 보임 */
+  @media (max-width: 899px) {
+    #inv-detail { display: none; }
+    #inv-detail.open {
+      display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0;
+      max-height: 70vh; overflow-y: auto; border-radius: 12px 12px 0 0; border-bottom: none;
+      padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+    }
+    .detail-close { display: block; width: 100%; margin-bottom: 8px; font-size: 13px; }
+  }
 
   /* ---- 도감 ---- */
   #dex-body h3 { margin: 14px 0 6px; font-size: 13px; }
@@ -466,14 +483,19 @@
       <h2 id="inv-title">인벤토리</h2>
       <span id="inv-count"></span>
     </div>
-    <div class="inv-top">
-      <div id="inv-equip" class="equip-grid"></div>
-      <div id="inv-summary" class="summary"></div>
+    <!-- 넓은 화면: 왼쪽 장비·능력치·가방, 오른쪽 아이템 상세 / 좁은 화면(휴대폰): 아이템을 고르면 상세가 아래에서 올라옴 -->
+    <div class="inv-body">
+      <div class="inv-main">
+        <div class="inv-top">
+          <div id="inv-equip" class="equip-grid"></div>
+          <div id="inv-summary" class="summary"></div>
+        </div>
+        <div id="inv-bag" class="bag"></div>
+        <button id="inv-sell-all" type="button"></button>
+        <div id="inv-sell-ask" hidden></div>
+      </div>
+      <div id="inv-detail" class="detail"></div>
     </div>
-    <div id="inv-bag" class="bag"></div>
-    <button id="inv-sell-all" type="button"></button>
-    <div id="inv-sell-ask" hidden></div>
-    <div id="inv-detail" class="detail"></div>
     <button id="inv-close" type="button">닫기 (I)</button>
   </div>
 </div>
@@ -3215,6 +3237,7 @@
 
   function renderDetail() {
     const item = selectedItem();
+    invDetail.classList.toggle("open", !!item);
     if (!item) {
       invDetail.replaceChildren(
         ...(invMsg ? [el("div", { className: `msg-${invMsg.cls}` }, invMsg.text)] : []),
@@ -3270,7 +3293,9 @@
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
-    invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
+    // 휴대폰에서만 보이는 닫기 (상세 창을 내리고 가방으로)
+    const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; invMsg = null; renderInventory(); } }, "▼ 닫기");
+    invDetail.replaceChildren(closeBtn, ...rows.slice(0, head), actions, ...rows.slice(head));
   }
 
   // 장비가 바뀌면 최대 HP를 넘는 HP를 잘라내고 화면과 저장을 갱신
