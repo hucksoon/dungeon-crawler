@@ -63,6 +63,18 @@ const R_ELEMENT_DMG_CAP = 11;   // 속성 피해는 강화해도 한 줄 최대 
 const R_RES_CAP = 75;           // 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
 const R_NM_SEED = '/\|(shop\|)?n\d+\|/';
 function r_is_element_dmg(string $k): bool { return $k === 'fireDmg' || $k === 'iceDmg' || $k === 'boltDmg'; }
+const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개'];
+// 나이트메어에서 얻은 아이템 (속성 줄은 r3부터). 이름 앞에 "악몽의 (속성)"
+function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_NM_SEED, (string)($item['seed'] ?? '')) === 1; }
+// 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
+function r_item_element(array $item): ?string {
+    $best = null; $bestV = 0;
+    foreach ($item['lines'] ?? [] as [$k, $v]) {
+        if (!r_is_element_dmg($k) || $v <= $bestV) continue;
+        $best = substr($k, 0, -3); $bestV = $v;
+    }
+    return $best;
+}
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
@@ -462,7 +474,9 @@ function r_totals(array $equipped): array {
 }
 
 function r_item_name(array $item): string {
-    $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '');
+    $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
+    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] : '무속') . ' ' : '';
+    $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
     return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);
 }

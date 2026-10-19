@@ -200,12 +200,23 @@
     res: { fire: "fireRes", ice: "iceRes", bolt: "boltRes" },
     dmgCap: 11,
     resCap: 75,
+    names: { fire: "불", ice: "얼음", bolt: "번개" },
+    none: "무속",   // 속성 피해 줄이 없는 나이트메어 아이템
   };
   const STAT_KEYS_NM = [...STAT_KEYS_V4, ...ELEMENT_LINES.keys];
   const isElementDmg = (stat) => stat === "fireDmg" || stat === "iceDmg" || stat === "boltDmg";
-  // 나이트메어에서 얻은 아이템: r3 이후이고 시드에 나이트메어 층(|n12| 또는 |shop|n9|)이 있음
+  // 나이트메어에서 얻은 아이템: 시드에 나이트메어 층(|n12| 또는 |shop|n9|)이 있음 (속성 줄은 r3부터)
   const NM_SEED = /\|(shop\|)?n\d+\|/;
-  const isNightmareItem = (item) => item.v === 4 && (item.r || 0) >= 3 && NM_SEED.test(item.seed || "");
+  const isNightmareItem = (item) => item.v === 4 && NM_SEED.test(item.seed || "");
+  // 나이트메어 아이템의 속성: 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄). 강화 전 값으로 정해서 강화해도 이름이 안 바뀜. 없으면 null
+  function itemElement(item) {
+    let best = null, bestV = 0;
+    for (const [k, v] of item.lines || []) {
+      if (!isElementDmg(k) || v <= bestV) continue;
+      best = k.slice(0, -3); bestV = v;   // "fireDmg" → "fire"
+    }
+    return best;
+  }
   // v4 % 능력치 강화: 주 능력치는 2단계마다 +1%p (+10이면 +5), 추가 능력치는 +4·6·8·10 때 최대치의 20%(최소 +1)
   const PCT_LINE_BOOST = 0.2;
   const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat] ? table[stat][item.rarity] : null);
@@ -512,8 +523,10 @@
     : null);
 
   // ---- 표시 ----
+  // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 무속 레어 바지
   function itemName(item) {
-    const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "");
+    const nm = isNightmareItem(item) ? `악몽의 ${ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none} ` : "";
+    const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + nm;
     if (item.set) return plus + SETS[item.set].pieces[item.slot];
     return `${plus}${RARITIES[item.rarity].name} ${kindName(item)}`;
   }
@@ -559,7 +572,7 @@
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
-    STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
+    STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
