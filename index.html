@@ -1012,7 +1012,7 @@
         if (!item) return { error: "아이템이 없어요." };
         const to = (item.enh || 0) + 1;
         if (to > RLItems.ENHANCE.max) return { error: `+${RLItems.ENHANCE.max}이 최대예요.` };
-        const cost = RLItems.enhanceCost(to);
+        const cost = RLItems.enhanceCost(to, item);
         if ((data.stones || 0) < cost) return { error: `강화석이 부족해요. (필요 ${cost}개)` };
         const result = RLItems.rollEnhance(item);
         data.stones -= cost;
@@ -3349,10 +3349,10 @@
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · 강화석 ${RLItems.enhanceCost(to)}개 (실패해도 아이템은 그대로)`
+      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · 강화석 ${RLItems.enhanceCost(to, item)}개 (실패해도 아이템은 그대로)`
       : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
     const enhanceBtn = el("button", {
-      type: "button", disabled: !canEnhance || Inv.stones() < RLItems.enhanceCost(to), onclick: () => enhanceItem(item),
+      type: "button", disabled: !canEnhance || Inv.stones() < RLItems.enhanceCost(to, item), onclick: () => enhanceItem(item),
     }, "강화");
     // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
     const AR = RLItems.ANCIENT_REROLL;
@@ -3507,7 +3507,8 @@
         stOwner = Inv.owner();
         try { st = JSON.parse(store.get(key())); } catch { st = null; }
       }
-      if (!st || st.h !== h || !Array.isArray(st.b)) {
+      // n이 없는 상태는 나이트메어 진열이 생기기 전에 저장된 것 → 새로 (이번 시간이어도)
+      if (!st || st.h !== h || !Array.isArray(st.b) || st.n === undefined) {
         const n = Math.min(NM.floors, nmBest);
         st = { h, n, lv: n ? NM.itemBase + n : Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), b: [], r: 0 };
       }

@@ -406,7 +406,8 @@
   // ---- 고대 다시 굴리기 ----
   const canRerollAncient = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
     !item.ancient && (item.ar || 0) < ANCIENT_REROLL.max;
-  const ancientRerollCost = (item) => Math.max(5, Math.round(levelPrice(SHOP.prices[item.rarity], item.lvl) * ANCIENT_REROLL.costMul / 5) * 5);
+  // 나이트메어 아이템은 × NM_SHOP.priceMul (상점 가격처럼)
+  const ancientRerollCost = (item) => Math.max(5, Math.round(levelPrice(SHOP.prices[item.rarity], item.lvl) * ANCIENT_REROLL.costMul / 5) * 5) * nmCostMul(item);
   // n번째 굴림이 고대인지 (1부터)
   const ancientRerollHit = (item, n) => n >= 1 && n <= ANCIENT_REROLL.max && rngFrom(`anc|${item.id}|re${n}`)() < ANCIENT_REROLL.chance;
   // 한 번 굴림: 아이템을 바꾸고 { ok, n }
@@ -461,7 +462,8 @@
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
   // +4, +6, +8, +10이 되면 추가 능력치 중 하나가 그 능력치 최대치의 50%(최소 +1)만큼 오름
   const ENHANCE = { max: 10, statPerLevel: 0.1, lineSteps: [4, 6, 8, 10], lineBoost: 0.5 };
-  const enhanceCost = (to) => to;
+  // 나이트메어 아이템은 강화석도 × NM_SHOP.priceMul
+  const enhanceCost = (to, item) => to * (item ? nmCostMul(item) : 1);
   const enhanceChance = (to) => (to <= 4 ? 1 : Math.max(0.05, 0.5 - (to - 5) * 0.1));
 
   // 강화 결과는 (아이템 ID, 몇 번째 시도) 시드로 정해짐 → 새로고침해도 같은 결과, 서버에서 다시 계산 가능
@@ -478,6 +480,8 @@
   // 시뮬레이션: 고대 시험의 세트 5부위(+10)에서 방어구를 나이트메어 레전더리(+5)로 1·2·5부위 바꿔도 1층 보스에게 덜 쓰러짐
   // (세트 54% → 2·14·3%). 대신 나이트메어 몬스터가 층마다 더 세짐 (monsters.js NIGHTMARE.perFloor)
   const NM_POWER = { mul: 3, stats: ["atk", "def", "hp"] };
+  // 나이트메어 아이템 비용 배율 (NM_SHOP은 상점 쪽에 있음)
+  const nmCostMul = (item) => (isNightmareItem(item) ? NM_SHOP.priceMul : 1);
   const nmPower = (item, stat) => (isNightmareItem(item) && NM_POWER.stats.includes(stat) ? NM_POWER.mul : 1);
 
   function enhancedBase(item) {
@@ -563,6 +567,7 @@
 
 
   // 골드 던전 완료 보상: 그 레벨 레전더리 하나를 고대 굴리기 n번 할 수 있는 골드. 나이트메어 난이도면 × NM_SHOP.priceMul
+  // (= 그 레벨 나이트메어 레전더리 고대 굴리기 n번)
   const goldDungeonReward = (level, rolls, nm = false) => rolls * ancientRerollCost({ rarity: "legendary", lvl: level }) * (nm ? NM_SHOP.priceMul : 1);
 
   // 로비 시간 상점: 매 시간 정각(UTC 기준 시간 번호)에 진열이 바뀜. 던전 상점과 같은 등급표·가격·진열 바꾸기
@@ -577,9 +582,9 @@
 
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
-  // 나이트메어 아이템(공격력·방어력·HP ×3)은 상점 가격·진열 바꾸기 비용이 priceMul배. 나이트메어 골드 던전 보상도 같은 배율
+  // 나이트메어 아이템(공격력·방어력·HP ×3)은 상점 가격·진열 바꾸기·강화석·고대 굴리기 비용이 priceMul배. 나이트메어 골드 던전 보상도 같은 배율
   const NM_SHOP = { priceMul: 2 };
-  const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl) * (isNightmareItem(item) ? NM_SHOP.priceMul : 1);
+  const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl) * nmCostMul(item);
   // n번째(0부터) 진열 바꾸기 비용: 기본값 × (1 + 0.25 × (층 − 1)), 5골드 단위. 더 바꿀 수 없으면 null. nm: 나이트메어 아이템 상점
   const rerollCost = (depth, n, nm = false) => (n < SHOP.rerolls.max
     ? Math.round(SHOP.rerolls.costs[n] * (1 + SHOP.rerolls.perFloor * (depth - 1)) / 5) * 5 * (nm ? NM_SHOP.priceMul : 1)
