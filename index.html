@@ -1217,13 +1217,14 @@
       def: pct(g.def, g.defPct),
       crit: Math.min(75, g.crit),
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
-      lifesteal: g.lifesteal,
+      lifesteal: g.lifesteal,  // 합계 최대 20% (RLItems.LIFESTEAL)
+      dmgReduce: g.dmgReduce,  // 받는 피해 감소 % (시험의 세트 5세트)
       gold: g.gold,
       xp: g.xp,
       killHeal: g.killHeal + Math.round(maxHp * g.killHealPct / 100),
       parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
-      splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 같은 피해
+      splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes)])),
@@ -1462,10 +1463,11 @@
         const raw = (s.atk + rnd(2)) * (crit ? s.critMul : 1) * mul;
         // 속성 피해: 공격력의 (불 + 얼음 + 번개)%를 더함. 방어력에 줄지 않고, 치명타면 같이 커짐
         const elem = elemPct ? s.atk * elemPct / 100 * (crit ? s.critMul : 1) * mul : 0;
-        // 광란 세트: 대상 주변 1칸(대각선 포함)의 다른 적도 같은 공격을 맞음 (각자 방어력만큼 줄어듦)
+        // 광란 세트: 대상 주변 1칸(대각선 포함)의 다른 적도 피해의 50%를 맞음 (각자 방어력만큼 줄어듦)
         const around = s.splash ? enemies.filter(e => e !== target && near8(e, target) === 1) : [];
+        const sm = RLItems.SPLASH.mul;
         hitEnemy(target, raw, crit, s, i ? "왼손 " : "", elem);
-        for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw, crit, s, "광란 ", elem);
+        for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw * sm, crit, s, "광란 ", elem * sm);
         playerElements(target, s);
       });
     } else {
@@ -1476,7 +1478,8 @@
         log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
         return;
       }
-      const dmg = RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def);
+      // 받는 피해 감소(시험의 세트 5세트)는 방어력으로 줄어든 뒤에 (최소 1)
+      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100)));
       target.hp -= dmg;
       log(`${attacker.name}에게 ${dmg} 피해를 입음.`, "bad");
       if (target.hp <= 0) { death(); return; }
@@ -1556,13 +1559,14 @@
   // elem: 속성 피해 (방어력에 줄지 않음)
   function hitEnemy(target, raw, crit, s, tag, elem = 0) {
     const dmg = Math.max(1, Math.round(raw) - target.def) + Math.round(elem);
+    const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
     let left = target.kind !== "normal" ? ` (남은 HP ${Math.max(0, target.hp)}/${target.maxHp}` : "";
     if (target.kind === "golden" && target.fleeAt != null) left += `, 도망까지 ${Math.max(0, target.fleeAt - turn)}턴`;
     if (left) left += ")";
     log(`${tag}${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
-    const drain = Math.floor(dmg * s.lifesteal / 100);
+    const drain = Math.floor(taken * s.lifesteal / 100);
     if (drain > 0) heal(drain);
     if (target.hp <= 0) killEnemy(target);
     else if (target.kind === "golden" && target.blink && Math.random() < target.blink) goldenBlink(target);
@@ -3121,11 +3125,12 @@
     const s = stats();
     const statRows = [
       `공격력 ${s.atk} (장비 +${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""})`, `방어력 ${s.def}${g.defPct ? ` (+${g.defPct}%)` : ""}`, `최대 HP ${s.maxHp} (장비 +${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""})`,
-      `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
+      `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%${s.lifesteal >= RLItems.LIFESTEAL.max ? ` (최대 ${RLItems.LIFESTEAL.max}%)` : ""}`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
       ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
-      ...(s.splash ? ["광란: 때린 적 주변 1칸도 같은 피해"] : []),
+      ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
+      ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
       ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
     ];
@@ -4072,17 +4077,19 @@
   function legacyNotice() {
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
-    const floorKey = `rl_notice_75:${owner}`;  // 최대 층 150 → 75, 드롭 늘림
+    // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
+    const floorKey = `rl_notice_1019:${owner}`;  // 75층·나이트메어·포션·포탈·흡혈 상한
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
       if (store.get(floorKey) || (!Inv.items().length && bestDepth <= 1)) return;  // 새 판은 1층부터 최고 층 1
-      const D = RLItems.DROPS, F = RLMonsters.MAX_FLOOR;
+      const F = RLMonsters.MAX_FLOOR;
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
-        Object.assign(document.createElement("b"), { textContent: `업데이트: 일반 던전이 ${F}층까지로 바뀌었어요. ` }),
-        `${F}층 보스를 쓰러뜨리면 완료예요. 대신 장비가 훨씬 많이 나와요 (몬스터 ${Math.round(D.normal.chance * 100)}%, 정예 ${Math.round(D.elite.chance * 100)}%, 보스 장비 ${D.boss.rolls}개, 레전더리·세트↑, 황금 고블린 더 자주). ` +
-        `${F}층보다 깊이 있던 판은 ${F}층에서 이어져요. ${F}층을 완료한 사람을 위한 나이트메어 던전을 준비 중이에요.`);
+        Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `일반 던전은 ${F}층까지(장비가 훨씬 많이 나와요), 완료하면 나이트메어 던전. ` +
+        `포션은 개수 제한 없이 10턴마다, 바닥의 !는 레어 이상 보물, 포탈을 타면 HP·포션 회복. ` +
+        `흡혈은 최대 ${RLItems.LIFESTEAL.max}%, 시험의 세트 5세트는 "받는 피해 −10%", 광란은 주변 피해 ${Math.round(RLItems.SPLASH.mul * 100)}%로 바뀌었어요.`);
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };

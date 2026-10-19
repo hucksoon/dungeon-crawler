@@ -60,7 +60,8 @@ const R_STAT_KEYS_V4 = ['atk', 'def', 'hp', 'crit', 'critDmg', 'atkPct', 'lifest
 const R_ELEMENT_KEYS = ['fireDmg', 'iceDmg', 'boltDmg', 'fireRes', 'iceRes', 'boltRes', 'allRes'];
 const R_STAT_KEYS_NM = [...R_STAT_KEYS_V4, ...R_ELEMENT_KEYS];
 const R_ELEMENT_DMG_CAP = 11;   // 속성 피해는 강화해도 한 줄 최대 11%
-const R_RES_CAP = 75;           // 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
+const R_RES_CAP = 75;
+const R_LIFESTEAL_MAX = 20;     // 흡혈은 장비·세트를 합쳐 최대 20% (items.js LIFESTEAL)           // 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
 const R_NM_SEED = '/\|(shop\|)?n\d+\|/';
 function r_is_element_dmg(string $k): bool { return $k === 'fireDmg' || $k === 'iceDmg' || $k === 'boltDmg'; }
 const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개'];
@@ -80,6 +81,7 @@ const R_STAT_NAMES = [
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
     'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true],
     'fireDmg' => ['불 피해', true], 'iceDmg' => ['얼음 피해', true], 'boltDmg' => ['번개 피해', true],
+    'dmgReduce' => ['받는 피해 감소', true],
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
@@ -136,7 +138,7 @@ const R_SETS = [
         'bonuses' => [
             ['count' => 2, 'text' => '최대 HP +20%, 방어력 +20%', 'stats' => ['hpPct' => 20, 'defPct' => 20]],
             ['count' => 4, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
-            ['count' => 5, 'text' => '치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'lifesteal' => 8, 'killHealPct' => 15]],
+            ['count' => 5, 'text' => '치명타 피해 +100%, 받는 피해 −10%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'dmgReduce' => 10, 'killHealPct' => 15]],
         ],
     ],
     'frenzy' => [
@@ -144,7 +146,7 @@ const R_SETS = [
         'weapon' => 'dagger', 'offhand' => 'dagger',
         'pieces' => ['weapon' => '광란의 오른손무기', 'offhand' => '광란의 왼손무기'],
         'bonuses' => [
-            ['count' => 2, 'text' => '공격하면 대상 주변 1칸의 적도 같은 피해를 입어요', 'stats' => ['splash' => 1]],
+            ['count' => 2, 'text' => '공격하면 대상 주변 1칸의 적도 피해의 50%를 입어요', 'stats' => ['splash' => 1]],
         ],
     ],
     'sturdy' => [
@@ -447,7 +449,7 @@ function r_effective_lines(array $item): array {
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
-        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
+        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
@@ -469,6 +471,7 @@ function r_totals(array $equipped): array {
         $sets[] = ['id' => $id, 'name' => $set['name'], 'count' => $count, 'full' => r_set_full($id), 'bonuses' => $bonuses];
     }
     $sum['parry'] = min(R_PARRY['max'], $sum['parry']);
+    $sum['lifesteal'] = min(R_LIFESTEAL_MAX, $sum['lifesteal']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
     return ['stats' => $sum, 'sets' => $sets];
 }
@@ -504,6 +507,7 @@ function r_player_stats(int $plvl, array $totals): array {
         'xp' => $g['xp'],
         'killHeal' => $g['killHeal'] + r_round($maxHp * $g['killHealPct'] / 100),
         'parry' => $g['parry'],
+        'dmgReduce' => $g['dmgReduce'],
         'dual' => (bool)$g['dual'],
         'splash' => (bool)$g['splash'],
         'elem' => ['fire' => $g['fireDmg'], 'ice' => $g['iceDmg'], 'bolt' => $g['boltDmg']],

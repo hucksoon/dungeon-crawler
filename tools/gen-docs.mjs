@@ -331,6 +331,12 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
 ${table(["아이템 레벨", ...["atk", "def", "hp"].map(k => I.STATS[k].name)],
   LEVELS.map(l => [l, ...["atk", "def", "hp"].map(k => fmtR(k, I.lineRange(k, l)))]))}
 
+### 흡혈은 최대 ${I.LIFESTEAL.max}%
+
+- 장비와 세트 효과를 합쳐 **흡혈은 최대 ${I.LIFESTEAL.max}%**예요 (치명타 75%, 패링 ${I.PARRY.max}%, 속성 저항 ${I.ELEMENT_LINES.resCap}%처럼)
+- 흡혈은 **실제로 깎은 HP만큼만** 회복해요. HP 100 남은 적을 1,000 피해로 쓰러뜨리면 100의 흡혈만큼
+- 왜: 40레벨 세트로 흡혈이 38%까지 모여서, 공격력이 1/3인 장비로도 75층 보스를 잡았어요. 상한이 생기면 깊은 층에서는 높은 레벨 장비(공격력·방어력·HP)가 필요해요
+
 ### 치명타는 얼마나 모을 수 있나
 
 - 주 능력치로는 가슴·팔 2부위만: 레전더리 최대 ${I.PCT_MAIN.crit.legendary[1]}% × 2 = ${I.PCT_MAIN.crit.legendary[1] * 2}%
@@ -392,7 +398,7 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
 구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 세트 아이템이 나오면 그 부위에 있는 세트 중 하나로 정해져요 (방어구 부위는 시험의 세트, 무기는 셋 중 하나, 보조 손은 광란·견고 중 하나).
 
 - **시험의 세트**: ${Object.values(I.SETS.trial.bonuses).map(b => b.count).join("·")}개 입을 때마다 효과가 하나씩 켜져요. 6부위지만 아무거나 5개면 효과가 전부 켜져서, 무기는 자유롭게 골라도 돼요
-- **광란의 세트**: 오른손·왼손 무기 2개. 보조 손도 무기라 한 턴에 2번 공격하고, 두 공격 모두 주변 1칸에 같은 피해
+- **광란의 세트**: 오른손·왼손 무기 2개. 보조 손도 무기라 한 턴에 2번 공격하고, 두 공격 모두 주변 1칸의 적에게 피해의 ${pct(I.SPLASH.mul)} (예전엔 100%였는데 무리를 다른 무기보다 2배 빨리 잡아서 줄였어요)
 - **견고의 세트**: 무기·방패 2개. 패링 확률 +15% (방패 패링과 합쳐 최대 ${I.PARRY.max}%)
 
 ${Object.values(I.SETS).map(set => `### ${set.name}

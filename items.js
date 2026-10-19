@@ -70,6 +70,11 @@
     max: 40,
   };
   const DUAL_WIELD = { secondHit: 0.6 };
+  // 흡혈: 장비·세트를 합쳐 최대 20% (치명타 75%·패링 40%·저항 75%처럼). 실제로 깎은 HP만큼만 회복 (넘친 피해는 회복 안 함)
+  // 40레벨 세트로 흡혈 38%가 되어 75층까지 버티던 것 → 깊은 층은 높은 레벨 장비로 바꾸게
+  const LIFESTEAL = { max: 20 };
+  // 광란의 세트: 때린 적 주변 1칸의 다른 적도 이 배율만큼 피해 (100% → 50%: 무리를 다른 무기보다 2배 빨리 잡던 것을 줄임)
+  const SPLASH = { mul: 0.5 };
   // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
   const isWeaponLike = (item) => item.slot === "weapon" || (item.slot === "offhand" && !!item.type && item.type !== "shield");
   // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
@@ -147,6 +152,7 @@
     hpPct: { name: "최대 HP", pct: true },
     critDmg: { name: "치명타 피해", pct: true },
     killHealPct: { name: "처치 시 최대 HP 회복", pct: true },
+    dmgReduce: { name: "받는 피해 감소", pct: true },  // 시험의 세트 5세트
     splash: { name: "주변 1칸 피해", pct: false },
     // 나이트메어 아이템(r3)의 추가 능력치에만 있음. 속성 피해: 공격할 때 공격력의 N%를 그 속성 피해로 더함
     fireDmg: { name: "불 피해", pct: true },
@@ -294,7 +300,8 @@
       bonuses: [
         { count: 2, text: "최대 HP +20%, 방어력 +20%", stats: { hpPct: 20, defPct: 20 } },
         { count: 4, text: "공격력 +25%, 치명타 확률 +10%", stats: { atkPct: 25, crit: 10 } },
-        { count: 5, text: "치명타 피해 +100%, 흡혈 +8%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, lifesteal: 8, killHealPct: 15 } },
+        // 5세트: 흡혈 +8% → 받는 피해 −10% (흡혈이 최대 20%가 되면서 묻히지 않게)
+        { count: 5, text: "치명타 피해 +100%, 받는 피해 −10%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, dmgReduce: 10, killHealPct: 15 } },
       ],
     },
     frenzy: {
@@ -302,7 +309,7 @@
       weapon: "dagger", offhand: "dagger",
       pieces: { weapon: "광란의 오른손무기", offhand: "광란의 왼손무기" },
       bonuses: [
-        { count: 2, text: "공격하면 대상 주변 1칸의 적도 같은 피해를 입어요", stats: { splash: 1 } },
+        { count: 2, text: "공격하면 대상 주변 1칸의 적도 피해의 50%를 입어요", stats: { splash: 1 } },
       ],
     },
     sturdy: {
@@ -546,7 +553,7 @@
   function totals(equipped) {
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, parry: 0, splash: 0, dual: 0,
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
     for (const item of equipped) {
@@ -565,13 +572,14 @@
       activeSets.push({ id, name: set.name, count, full: setFull(id), bonuses: set.bonuses.map(b => ({ ...b, on: count >= b.count })) });
     }
     sum.parry = Math.min(PARRY.max, sum.parry);
+    sum.lifesteal = Math.min(LIFESTEAL.max, sum.lifesteal);
     sum.splash = sum.splash ? 1 : 0;
     return { stats: sum, sets: activeSets };
   }
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
-    OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
