@@ -48,7 +48,8 @@ ${table(["표시", "이름", "HP", "공격", "방어", "경험치", "나오는 �
 - 플레이어가 주는 피해: 공격력 + (0~1) − 몬스터 방어력 (최소 1, 치명타면 공격력 부분이 2배 + 장비의 치명타 피해)
 - 몬스터가 주는 피해: 방어력이 **비율로** 줄여요. 피해 = 공격 × ${M.DEFENSE_K}공격 ÷ (${M.DEFENSE_K}공격 + 방어력), 최소 1
   - 방어력이 공격력과 같으면 피해 ${pct(M.damageToPlayer(100, 100) / 100)}, 2배면 ${pct(M.damageToPlayer(100, 200) / 100)}, 4배면 ${pct(M.damageToPlayer(100, 400) / 100)}
-- 포션: 최대 HP의 30% 회복 (최소 8)
+- 포션: 최대 HP의 30% 회복 (최소 8). **개수 제한 없이 10턴마다 한 번** 마실 수 있어요 (마시는 데 한 턴). 화면 아래 포션 버튼에 남은 턴이 보여요
+- 보물(*): 층마다 1~3곳. 주우면 **레어 이상 장비 1개** (황금 고블린과 같은 등급표). 예전의 포션 자리예요
 - 한 층의 마릿수: (4 + 층) ~ (6 + 층×2)
 - 계단: 주변 ${M.STAIRS_BLOCK_RADIUS}칸(가로 칸 + 세로 칸) 안에 몬스터가 있으면 내려갈 수 없어요. 정리한 뒤 다시 밟으면 내려가요
 - 처치 골드는 [경제 문서](economy.md#골드)를 보세요
@@ -151,7 +152,8 @@ ${table(["속성", "몬스터가 걸 때 (플레이어가 맞음)", "플레이�
 ## 장비 드롭 요약
 
 ${table(["어디서", "확률", "등급 확률"], [
-  ["일반 몬스터, 포션 자리", pct(I.DROPS.normal.chance), tableRates(I.TABLES.drop)],
+  ["일반 몬스터", pct(I.DROPS.normal.chance), tableRates(I.TABLES.drop)],
+  ["보물(*) (층마다 1~3곳)", "100% × 1개", tableRates(I.TABLES.golden)],
   ["정예", pct(I.DROPS.elite.chance), tableRates(I.TABLES.drop)],
   ["보스", `${pct(I.DROPS.boss.chance)} × ${I.DROPS.boss.rolls}개`, tableRates(I.TABLES.boss)],
   ["황금 고블린", `${pct(I.DROPS.golden.chance)} × ${Object.values(G.ranks).map(r => r.drops).join("·")}개 (보통·정예·왕)`, tableRates(I.TABLES.golden)],
@@ -357,7 +359,7 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r${I.RULES_REV})
 
-[나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·포션 자리·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
+[나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·보물·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
 
 ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
   I.ELEMENT_LINES.keys.map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}

@@ -395,7 +395,7 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|n(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[1];
         if ($v !== 4 || $rev < 2 || $n < 1 || $n > NM_FLOORS || $lvl !== NM_ITEM_BASE + $n) return false;
-        if ($m[2] === 'p') return $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];   // 포션 자리
+        if ($m[2] === 'p') return ($src === 'drop' && r_drop_roll($v, $seed) < $chance['normal']) || ($src === 'golden' && $rev >= 3);   // 포션 자리 / r3부터 보물 자리
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
         if ($src === 'boss') return $n % 5 === 0;
         return $src === 'golden';
@@ -404,8 +404,10 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         $n = (int)$m[1];
         return $v === 4 && $rev >= 2 && $n >= 1 && $n <= NM_FLOORS && $n % 5 === 4 && $lvl === NM_ITEM_BASE + $n && $src === 'golden';
     }
-    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|p\d{1,8}$/', $seed, $m)) {           // 포션 자리
-        return (int)$m[1] === $lvl && $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|p\d{1,8}$/', $seed, $m)) {           // 포션 자리 (r3부터 보물 자리: 레어 이상 1개)
+        if ((int)$m[1] !== $lvl) return false;
+        if ($src === 'golden') return $v === 4 && $rev >= 3;
+        return $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];
     }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|d(\d{1,5})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 상점
         // 보스 층 바로 전 층(4, 9, 14…). 예전에는 보스 층(5, 10…)에 있어서 그때 산 아이템도 인정
