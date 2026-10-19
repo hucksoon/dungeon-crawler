@@ -506,7 +506,7 @@
       <h2 id="shop-title">상점</h2>
       <span id="shop-gold"></span>
     </div>
-    <p class="sub">레어 이상 장비만 팔아요. 진열은 이 층에서만 열려 있어요.</p>
+    <p id="shop-sub" class="sub"></p>
     <p id="shop-msg"></p>
     <div id="shop-items" class="shop-grid"></div>
     <button id="shop-reroll" type="button"></button>
@@ -1032,8 +1032,9 @@
         return r;
       },
 
-      // 상점 구매: "ok" | "full"
+      // 상점 구매: "ok" | "full" | "owned"
       buy(item, price) {
+        if (all().some(x => x.id === item.id)) return "owned";  // 같은 아이템(다른 기기에서 이미 산 시간 상점 칸 등)
         if (data.bag.length >= BAG_SIZE) return "full";
         data.bag.push(item);
         record("buy", item, { price });
@@ -1265,6 +1266,8 @@
   const EL = RLMonsters.ELEMENTS;
   const ELITE_COLOR = "#ffcf5c";
   const SHOP_COLOR = "#5ee7ff";
+  // 로비 건물 벽돌색 [벽, 줄눈]
+  const BUILDING_COLORS = { market: ["#24443f", "#1a302c"], nightmare: ["#2e1a3a", "#1f1028"], hourshop: ["#1d3a44", "#132a32"] };
   const bossAlive = () => enemies.some(e => e.kind === "boss");
 
   // ---- 던전 생성 (방 + 통로) ----
@@ -2345,11 +2348,12 @@
     for (const d of Object.values(doors)) deco.delete(`${d.x},${d.y}`);
     for (const x of [gate.x - 2, gate.x + 2]) put(x, gate.y + 1, "torch");
     for (const [x, y] of [[6, 5], [25, 5], [6, 18], [25, 18], [11, 3], [20, 3], [11, 20], [20, 20]]) put(x, y, "pillar");
-    // 왼쪽 거래소(건물)와 바로 옆 작은 우편함(상자 한 칸): 걸어 들어가면 창이 열림
-    // 오른쪽 건물은 다음 업데이트에서 쓸 자리 (지금은 닫혀 있음)
+    // 왼쪽 거래소(건물)와 바로 옆 작은 우편함(상자 한 칸), 그 옆 시간 상점(매 시간 정각에 진열이 바뀜): 걸어 들어가면 창이 열림
+    // 오른쪽 건물은 나이트메어 입구
     const shops = [
       { kind: "market", label: "거래소", x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
       { kind: "mailbox", label: "우편함", door: { x: 8, y: gate.y }, tab: "mail" },
+      { kind: "hourshop", label: "시간 상점", x0: 10, x1: 12, door: { x: 11, y: gate.y }, glyph: "&", tab: null },
       { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
     ];
     for (const s of shops) {
@@ -2483,6 +2487,7 @@
     if (shopDoor) {
       if (shopDoor.tab) openMarket(shopDoor.tab);
       else if (shopDoor.kind === "nightmare") enterNightmare();
+      else if (shopDoor.kind === "hourshop") openHourShop();
       return;
     }
     if (LOBBY.blocked(nx, ny)) return;
@@ -2608,10 +2613,10 @@
           ctx.fillRect(px + 3, py + 3, TILE - 6, 3);
         } else if (kind === "torch") {
           drawGlyph("*", px, py, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + x))}, 60, 1)`);
-        } else if (kind === "market" || kind === "nightmare") {
-          ctx.fillStyle = kind === "market" ? "#24443f" : "#2e1a3a";
+        } else if (BUILDING_COLORS[kind]) {
+          ctx.fillStyle = BUILDING_COLORS[kind][0];
           ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = kind === "market" ? "#1a302c" : "#1f1028";
+          ctx.fillStyle = BUILDING_COLORS[kind][1];
           ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
           ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
         }
@@ -2639,9 +2644,11 @@
       }
       ctx.fillStyle = "#050608";
       ctx.fillRect(sx, sy, TILE, TILE);
-      const color = s.kind === "market" ? "#5ee7c8" : (cleared ? "#d07bff" : "#7a5a8a");
+      const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR : (cleared ? "#d07bff" : "#7a5a8a");
       drawGlyph(s.glyph, sx, sy, color);
-      drawLabel(s.label, sx + TILE / 2, (s.door.y - 2) * TILE - 4, color, 12);
+      // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
+      const label = s.kind === "hourshop" ? `${s.label} ${HourShop.minutesLeft()}분` : s.label;
+      drawLabel(label, sx + TILE / 2, (s.door.y - 2) * TILE - 4, color, 12);
     }
     // 던전 입구: 왼쪽 문(1층부터, 금색 ▼), 오른쪽 문(최고 층 − 10층부터, 보라색 ▼ · 12층 전에는 닫힘). 그 아래 파란 포탈(*)
     const pulse = Math.sin(t * 3);
@@ -3388,23 +3395,77 @@
   invModal.addEventListener("click", (e) => { if (e.target === invModal) closeInventory(); });
 
   // ---- 상점 UI ----
-  // 진열품은 (판 ID, 층) 시드로 정해져서 다시 열어도 같고, 산 칸은 판 저장에 남음
+  // 던전 상점과 로비 시간 상점이 같은 창을 씀. 열 때 고른 상점(shopCtx)의 진열·산 칸·바꾼 횟수를 보여줌
+  // 던전 상점: 진열품은 (판 ID, 층) 시드로 정해져서 다시 열어도 같고, 산 칸은 판 저장에 남음
   const shopModal = document.getElementById("shop-modal");
   const shopMsg = document.getElementById("shop-msg");
 
+  const DungeonShop = {
+    title: "상점",
+    sub: () => "레어 이상 장비만 팔아요. 진열은 이 층에서만 열려 있어요.",
+    stock: () => currentStock(),
+    level: () => itemLevel(),
+    bought: () => shopBought,
+    rerolls: () => shopRerolls,
+    markBought(i) { shopBought.push(i); },
+    reroll() { shopRerolls++; shopBought = []; },
+    save() { saveGame(); },
+  };
+
+  // 로비 시간 상점: 매 시간 정각에 진열이 바뀜. 진열·가격·바꾸기는 던전 상점과 같음
+  // 아이템 레벨은 그 시간에 처음 열 때의 최고 층(일반 던전, 최대 75층)으로 고정. 사람마다 진열이 다름
+  // 산 칸과 바꾼 횟수는 이 기기에 (계정·게스트별로) 저장
+  const HourShop = (() => {
+    let st = null, stOwner = null;
+    const key = () => `rl_hourshop:${Inv.owner()}`;
+    function state() {
+      const h = RLItems.hourIndex();
+      if (stOwner !== Inv.owner()) {
+        stOwner = Inv.owner();
+        try { st = JSON.parse(store.get(key())); } catch { st = null; }
+      }
+      if (!st || st.h !== h || !Array.isArray(st.b)) {
+        st = { h, lv: Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), b: [], r: 0 };
+      }
+      return st;
+    }
+    const write = () => store.set(key(), JSON.stringify(st));
+    return {
+      title: "시간 상점",
+      sub: () => `매 시간 정각에 진열이 새로 바뀌어요 (다음 갱신까지 ${HourShop.minutesLeft()}분). 아이템 레벨 ${state().lv}.`,
+      stock: () => { const s = state(); return RLItems.lobbyShopStock(RLItems.ownerTag(Inv.owner()), s.h, s.lv, s.r); },
+      level: () => state().lv,
+      bought: () => state().b,
+      rerolls: () => state().r,
+      markBought(i) { state().b.push(i); write(); },
+      reroll() { const s = state(); s.r++; s.b = []; write(); },
+      save() { saveGame(true); },
+      hour: () => state().h,
+      minutesLeft: () => Math.max(1, Math.ceil((3600000 - Date.now() % 3600000) / 60000)),
+    };
+  })();
+
+  let shopCtx = DungeonShop;
+  let shopHour = 0;  // 시간 상점 창을 연 시간 번호: 열어 둔 채 정각이 지나면 새 진열로
+
   function renderShop() {
+    if (shopCtx === HourShop) shopHour = HourShop.hour();
+    document.getElementById("shop-title").textContent = shopCtx.title;
+    document.getElementById("shop-sub").textContent = shopCtx.sub();
     document.getElementById("shop-gold").textContent = `보유 골드 ${player.gold}`;
-    const stock = currentStock();
-    const cost = RLItems.rerollCost(itemLevel(), shopRerolls);
+    const stock = shopCtx.stock();
+    const bought = shopCtx.bought();
+    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls());
     const rerollBtn = document.getElementById("shop-reroll");
     const max = RLItems.SHOP.rerolls.max;
+    const closed = gameOver;  // 쓰러진 판은 골드를 쓸 수 없음
     rerollBtn.textContent = cost == null
       ? `진열 바꾸기 (이번 상점은 ${max}번 모두 사용)`
-      : `진열 바꾸기 (${cost} 골드 · 남은 횟수 ${max - shopRerolls}/${max})`;
-    rerollBtn.disabled = cost == null || player.gold < cost;
+      : `진열 바꾸기 (${cost} 골드 · 남은 횟수 ${max - shopCtx.rerolls()}/${max})`;
+    rerollBtn.disabled = closed || cost == null || player.gold < cost;
     document.getElementById("shop-items").replaceChildren(...stock.map((item, i) => {
       const price = RLItems.shopPrice(item);
-      const sold = shopBought.includes(i);
+      const sold = bought.includes(i);
       const kind = RLItems.kindName(item);
       return el("div", { className: `shop-card${sold ? " sold" : ""}${item.ancient ? " ancient" : ""}` },
         el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
@@ -3412,57 +3473,85 @@
         ...statLines(item, "span"),
         el("span", { className: "price" }, sold ? "판매 완료" : `${price} 골드`),
         sold ? null : el("button", {
-          type: "button", className: "primary", disabled: player.gold < price, onclick: () => buyItem(i),
+          type: "button", className: "primary", disabled: closed || player.gold < price, onclick: () => buyItem(i),
         }, player.gold < price ? "골드 부족" : "구매"));
     }));
   }
 
+  // 정각이 지난 뒤 누른 버튼은 무시하고 새 진열을 보여줌 (예전 진열의 칸을 사지 않게)
+  function shopStale() {
+    if (shopCtx !== HourShop || HourShop.hour() === shopHour) return false;
+    shopMsg.className = "msg-bad";
+    shopMsg.textContent = "정각이 지나 진열이 새로 바뀌었어요.";
+    renderShop();
+    return true;
+  }
+
   function buyItem(i) {
-    if (shopBought.includes(i)) return;
-    const item = currentStock()[i];
+    if (gameOver || shopStale() || shopCtx.bought().includes(i)) return;
+    const item = shopCtx.stock()[i];
     const price = RLItems.shopPrice(item);
     if (player.gold < price) return;
-    if (Inv.buy(item, price) === "full") {
+    const res = Inv.buy(item, price);
+    if (res === "owned") {
+      shopCtx.markBought(i);
+      shopMsg.className = "msg-bad";
+      shopMsg.textContent = "이미 가지고 있는 아이템이에요.";
+      renderShop();
+      return;
+    }
+    if (res === "full") {
       shopMsg.className = "msg-bad";
       shopMsg.textContent = "가방이 가득 찼어요. 인벤토리에서 판매해 공간을 만들어 주세요.";
       return;
     }
     player.gold -= price;
-    shopBought.push(i);
+    shopCtx.markBought(i);
     shopMsg.className = "msg-good";
     shopMsg.textContent = `${RLItems.itemName(item)}을(를) ${price} 골드에 샀어요.`;
-    gearLog(`상점에서 ${RLItems.itemName(item)}을(를) 샀다. (-${price} 골드)`, item);
+    gearLog(`${shopCtx.title}에서 ${RLItems.itemName(item)}을(를) 샀다. (-${price} 골드)`, item);
     updateStats();
-    saveGame();
+    shopCtx.save();
     renderShop();
   }
 
   // 진열 바꾸기: 6개를 새로 진열하고 산 칸 표시를 초기화. 바꿀 때마다 비용이 2배
   function rerollShop() {
-    const cost = RLItems.rerollCost(itemLevel(), shopRerolls);
+    if (gameOver || shopStale()) return;
+    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls());
     if (cost == null || player.gold < cost) return;
     player.gold -= cost;
-    shopRerolls++;
-    shopBought = [];
+    shopCtx.reroll();
     shopMsg.className = "msg-good";
     shopMsg.textContent = `진열을 바꿨어요. (-${cost} 골드)`;
-    log(`상점 진열을 바꿨다. (-${cost} 골드)`, "info");
+    log(`${shopCtx.title} 진열을 바꿨다. (-${cost} 골드)`, "info");
     updateStats();
-    saveGame();
+    shopCtx.save();
     renderShop();
   }
 
-  function openShop() {
+  function openShop(ctx = DungeonShop) {
+    shopCtx = ctx;
     shopMsg.textContent = "";
     shopModal.hidden = false;
     renderShop();
     document.getElementById("shop-close").focus();
+  }
+  function openHourShop() {
+    if (gameOver) { openDeath(); return; }
+    openShop(HourShop);
   }
   function closeShop() { shopModal.hidden = true; }
 
   document.getElementById("shop-close").addEventListener("click", closeShop);
   document.getElementById("shop-reroll").addEventListener("click", rerollShop);
   shopModal.addEventListener("click", (e) => { if (e.target === shopModal) closeShop(); });
+  // 시간 상점 창을 열어 둔 채 정각이 지나면 새 진열로 (남은 분 표시도 갱신)
+  setInterval(() => {
+    if (shopModal.hidden || shopCtx !== HourShop) return;
+    if (HourShop.hour() !== shopHour) { shopMsg.className = "msg-good"; shopMsg.textContent = "정각이 되어 진열이 새로 바뀌었어요."; renderShop(); }
+    else document.getElementById("shop-sub").textContent = HourShop.sub();
+  }, 15000);
 
   // ---- 도감 UI ----
   // 한 번이라도 본 몬스터만 능력치를 보여줌. 수치는 monsters.js에서 그대로 읽음

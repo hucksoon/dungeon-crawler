@@ -554,6 +554,15 @@
   }
 
 
+  // 로비 시간 상점: 매 시간 정각(UTC 기준 시간 번호)에 진열이 바뀜. 던전 상점과 같은 등급표·가격·진열 바꾸기
+  // 시드: lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸 → 사람마다 진열이 다르고, 서버가 같은 아이템을 다시 만들어 검증
+  const hourIndex = (ms = Date.now()) => Math.floor(ms / 3600000);
+  const ownerTag = (owner) => hashSeed(`owner|${owner}`)[0].toString(16).padStart(8, "0");
+  function lobbyShopStock(tag, hour, level, reroll = 0) {
+    const r = reroll ? `|r${reroll}` : "";
+    return Array.from({ length: SHOP.slots }, (_, i) => generate(`lobby|${tag}|h${hour}${r}|s${i}`, SHOP.table, level));
+  }
+
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
   const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl);
@@ -617,7 +626,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
