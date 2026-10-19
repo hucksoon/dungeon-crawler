@@ -265,7 +265,7 @@
   $("player-modal").addEventListener("click", (e) => { if (e.target.id === "player-modal") $("player-modal").hidden = true; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
-  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "150층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
+  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
   const stageText = (n) => season.current && n >= RLMonsters.CLEAR_STAGE ? `${RLMonsters.MAX_FLOOR}층 완료 ✓` : `${n}층`;
   const stageValue = (r) => el("span", { className: "val", textContent: stageText(r.stage) });
   function itemValue(r) {

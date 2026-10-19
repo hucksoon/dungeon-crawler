@@ -31,7 +31,7 @@ require_once __DIR__ . '/profile.php';
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5];
 const MAX_STAGE = 10000;
 // 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
-const MAX_FLOOR = 150;
+const MAX_FLOOR = 75;
 const CLEAR_STAGE = MAX_FLOOR + 1;
 // 랭킹 시즌: 규칙이 크게 바뀌면 새 표에 따로 쌓고, 예전 시즌 표는 그대로 보관해서 최종 기록으로 보여줌.
 // players 표는 v3 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
@@ -374,15 +374,16 @@ function jwk_to_pem(array $jwk): string {
 const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기', 'offhand' => '보조'];
 
 // 게임이 실제로 만드는 시드인지, 층·출처가 맞는지 (items.js / index.html / shop.html 의 시드 형식)
-function seed_origin_ok(int $v, string $seed, string $src, int $lvl): bool {
+function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 0): bool {
+    $chance = r_drop_chance_for($v, $rev);  // r2부터 일반 15% / 정예 60% (그 전 8% / 40%)
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|k\d{1,8}$/', $seed, $m)) {           // 몬스터 처치
         if ((int)$m[1] !== $lvl) return false;
-        if ($src === 'drop') return r_drop_roll($v, $seed) < R_DROP_CHANCE['elite'];      // 일반 8% / 정예 40% 안에 들어야 떨어짐
+        if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];      // 정예 확률 안에 들어야 떨어짐
         if ($src === 'boss') return $lvl % 5 === 0;
         return $src === 'golden' && $lvl >= 2;
     }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|p\d{1,8}$/', $seed, $m)) {           // 포션 자리
-        return (int)$m[1] === $lvl && $src === 'drop' && r_drop_roll($v, $seed) < R_DROP_CHANCE['normal'];
+        return (int)$m[1] === $lvl && $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];
     }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|d(\d{1,5})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 상점
         // 보스 층 바로 전 층(4, 9, 14…). 예전에는 보스 층(5, 10…)에 있어서 그때 산 아이템도 인정
@@ -398,13 +399,13 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl): bool {
 function verify_item($q, int $maxLvl): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
-    $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%)
-    if (!in_array($rev, [0, 1], true) || ($rev === 1 && $v !== 4)) return null;
+    $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림)
+    if (!in_array($rev, [0, 1, 2], true) || ($rev > 0 && $v !== 4)) return null;
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;
-    if (!seed_origin_ok($v, $seed, $src, $lvl)) return null;
+    if (!seed_origin_ok($v, $seed, $src, $lvl, $rev)) return null;
     $item = r_generate($v, $seed, $src, $lvl, $rev);
     if (isset($q['id']) && $q['id'] !== $item['id']) return null;
     $item['enh'] = $enh;
