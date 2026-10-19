@@ -473,10 +473,18 @@
   }
 
   // 강화가 반영된 주 능력치 { stat: 값 }
+  // 나이트메어 아이템의 힘: 주 능력치 공격력·방어력·최대 HP가 mul배 (시험의 세트 효과를 잃어도 바꿔 낄 만하게).
+  // 아이템에 저장된 값(굴린 값)은 그대로이고, 효과와 화면에 보여줄 때 곱함 → 이미 가진 나이트메어 아이템도 바로 적용
+  // 시뮬레이션: 고대 시험의 세트 5부위(+10)에서 방어구를 나이트메어 레전더리(+5)로 1·2·5부위 바꿔도 1층 보스에게 덜 쓰러짐
+  // (세트 54% → 2·14·3%). 대신 나이트메어 몬스터가 층마다 더 세짐 (monsters.js NIGHTMARE.perFloor)
+  const NM_POWER = { mul: 3, stats: ["atk", "def", "hp"] };
+  const nmPower = (item, stat) => (isNightmareItem(item) && NM_POWER.stats.includes(stat) ? NM_POWER.mul : 1);
+
   function enhancedBase(item) {
     const n = item.enh || 0;
     const out = {};
-    for (const [k, v] of mainStatsOf(item)) {
+    for (let [k, v] of mainStatsOf(item)) {
+      v = Math.round(v * nmPower(item, k));
       // v4 % 능력치: 2단계마다 +1%p만
       if (item.v >= 4 && STATS[k].pct) { out[k] = v + Math.floor(n / 2); continue; }
       // 최소 보장: 수치 능력치는 단계마다 +1, % 능력치(치명타·흡혈)는 2단계마다 +1
@@ -629,7 +637,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

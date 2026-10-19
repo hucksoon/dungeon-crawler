@@ -405,10 +405,17 @@ function r_main_stats(array $item): array {
     return $out;
 }
 
+// 나이트메어 아이템의 힘 (items.js NM_POWER): 주 능력치 공격력·방어력·최대 HP가 mul배. 굴린 값은 그대로, 계산할 때 곱함
+const R_NM_POWER = ['mul' => 3, 'stats' => ['atk', 'def', 'hp']];
+function r_nm_power(array $item, string $stat): int {
+    return r_is_nightmare_item($item) && in_array($stat, R_NM_POWER['stats'], true) ? R_NM_POWER['mul'] : 1;
+}
+
 function r_enhanced_base(array $item): array {
     $n = (int)($item['enh'] ?? 0);
     $out = [];
     foreach (r_main_stats($item) as [$k, $v]) {
+        $v = $v * r_nm_power($item, $k);
         if (($item['v'] ?? 0) >= 4 && R_STAT_NAMES[$k][1]) { $out[$k] = $v + intdiv($n, 2); continue; }
         $floor = R_STAT_NAMES[$k][1] ? intdiv($n, 2) : $n;
         $out[$k] = $v + ($n ? max($floor, r_round($v * R_ENHANCE['statPerLevel'] * $n)) : 0);

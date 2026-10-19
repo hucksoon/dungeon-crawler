@@ -458,7 +458,12 @@ function item_view(array $it): array {
     $main = [];
     foreach (r_main_stats($it) as [$k, $v]) {
         $range = isset($it['main']) ? r_main_range($k, $it) : null;
-        $main[] = ['text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $range && $v === $range[1], 'plus' => $eb[$k] - $v, 'eff' => $eff($k, $eb[$k], $efb[$k])];
+        $max = $range && $v === $range[1];
+        // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
+        $m = r_nm_power($it, $k);
+        $v *= $m;
+        if ($range) $range = [$range[0] * $m, $range[1] * $m];
+        $main[] = ['text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $max, 'plus' => $eb[$k] - $v, 'eff' => $eff($k, $eb[$k], $efb[$k])];
     }
     $lines = [];
     $efl = isset($it['main']) ? r_effective_lines($it) : null;

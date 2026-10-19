@@ -95,6 +95,7 @@
   #log div.rainbow { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .rainbow { animation: none; } }
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
+  .nm-note { color: #d07bff; font-size: 12px; margin: 2px 0 4px; }
   #game {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -3173,7 +3174,11 @@
     // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
     const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
     return [
-      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v, null, effBase[k])),
+      // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
+      ...RLItems.mainStatsOf(item).map(([k, v]) => {
+        const m = RLItems.nmPower(item, k), range = RLItems.statRange(item, "main", k);
+        return row("★", k, enhanced[k], v * m, range && range.map(x => x * m), enhanced[k] - v * m, null, effBase[k]);
+      }),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
       ...RLItems.enhancedLines(item).map(([k, v, plus], i) =>
         row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item), effLines ? effLines[i][1] : v)),
@@ -3309,6 +3314,7 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
+      ...(RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...statLines(item),
       ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
       el("div", { className: "meta" }, item.main
@@ -3355,7 +3361,7 @@
     }
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
-    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
+    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isNightmareItem(item) ? 1 : 0);
     // 휴대폰에서만 보이는 닫기 (상세 창을 내리고 가방으로)
     const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; invMsg = null; renderInventory(); } }, "▼ 닫기");
     invDetail.replaceChildren(closeBtn, ...rows.slice(0, head), actions, ...rows.slice(head));
@@ -4289,7 +4295,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1019:${owner}`;  // 75층·나이트메어·포션·포탈·흡혈 상한
+    const floorKey = `rl_notice_1020:${owner}`;  // 나이트메어 아이템의 힘 ×3·깊은 층 몬스터, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4298,9 +4304,9 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `일반 던전은 ${F}층까지(장비가 훨씬 많이 나와요), 완료하면 나이트메어 던전. ` +
-        `포션은 개수 제한 없이 10턴마다, 바닥의 !는 레어 이상 보물, 포탈을 타면 HP·포션 회복. ` +
-        `흡혈은 최대 ${RLItems.LIFESTEAL.max}%, 시험의 세트 5세트는 "받는 피해 −10%", 광란은 주변 피해 ${Math.round(RLItems.SPLASH.mul * 100)}%로 바뀌었어요.`);
+        `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요 ` +
+        `(대신 나이트메어는 깊은 층일수록 몬스터가 더 세져요). ` +
+        `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };
