@@ -480,6 +480,10 @@ function read_score(array $body, int $oldBest, string $key): array {
     }
     $ordered = [];
     foreach (R_SLOTS as $slot) if (isset($gear[$slot])) $ordered[] = $gear[$slot];
+    // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (v4 베타는 v4 장비로만)
+    $oldGear = false;
+    foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
+    if ($oldGear) $stage = 0;
     $totals = r_totals($ordered);
     $snapshot = [
         'stage' => $stage,

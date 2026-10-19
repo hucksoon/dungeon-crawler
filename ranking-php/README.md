@@ -138,13 +138,22 @@ sudo -u www-data php gift.php --resume <이메일>
 캐시는 이미 받은 것으로 표시하고, 다음 "받기"에서 골드·아이템만 들어가요 (캐시를 다시 지급하지 않아요).
 지금 버전은 캐시를 지급하거나 받은 순간을 바로 기록해서, 중간에 오류가 나도 다음 "받기"나 1분 뒤 자동으로 마무리돼요.
 
+## 랭킹 관리 (admin.php)
+
+지금 시즌(v4 베타) 기록을 보거나, 규칙에 맞지 않는 기록(예: 예전 장비를 끼고 올라간 기록)을 지울 때 써요. 서버에서 명령으로만 실행돼요.
+
+```bash
+sudo -u www-data php admin.php list          # 지금 시즌 층 랭킹: 순위, 이름, 최고 층, 공개 ID
+sudo -u www-data php admin.php remove <공개ID>  # 그 사람의 지금 시즌 기록만 지움 (예전 시즌 기록은 그대로)
+```
+
 ## 업데이트
 
 서버에 이미 올려 둔 경우, 새 파일만 덮어써요 (`config.php`와 `data/`는 그대로).
 
 ```bash
 cd /tmp && rm -rf dungeon && git clone --depth 1 https://github.com/hucksoon/dungeon-crawler.git dungeon
-sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/profile.php /var/www/html/ranking/
+sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /var/www/html/ranking/
 ```
 
 DB 표는 다음 요청 때 새 칸이 자동으로 추가돼요.
