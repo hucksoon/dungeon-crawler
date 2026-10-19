@@ -967,18 +967,19 @@
 
       // 가방 전부 판매 (장착 중인 아이템은 제외). keep(item)이 true인 아이템은 남김. 아이템마다 판매 기록을 남김
       sellAll(keep = () => false) {
-        let stones = 0;
+        let stones = 0, gold = 0;
         const sold = data.bag.filter(item => !keep(item));
         const count = sold.length;
         for (const item of sold) {
           const gain = RLItems.sellStones(item);
           stones += gain;
+          gold += RLItems.sellGold(item);
           record("sell", item, { stones: gain, bulk: true });
         }
         data.bag = data.bag.filter(item => keep(item));
         data.stones = (data.stones || 0) + stones;
         write();
-        return { count, stones };
+        return { count, stones, gold };
       },
 
       // 거래소에 올림: 가방에서 빼고 기록만 남김 (팔리면 구매자에게, 안 팔리면 우편함으로 돌아옴)
@@ -3183,7 +3184,8 @@
 
     const sellAllBtn = document.getElementById("inv-sell-all");
     const total = bag.reduce((s, item) => s + RLItems.sellStones(item), 0);
-    sellAllBtn.textContent = bag.length ? `가방 전부 판매 (${bag.length}개 → 강화석 +${total})` : "가방 전부 판매";
+    const totalGold = bag.reduce((s, item) => s + RLItems.sellGold(item), 0);
+    sellAllBtn.textContent = bag.length ? `가방 전부 판매 (${bag.length}개 → 강화석 +${total} · 골드 +${totalGold.toLocaleString()})` : "가방 전부 판매";
     sellAllBtn.disabled = !bag.length;
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
@@ -3211,8 +3213,9 @@
     sellAsk = false;
     const r = Inv.sellAll(keep);
     const kept = Inv.bag().length;
+    const gold = sellGoldIn(r.gold);
     selected = null;
-    invMsg = { cls: "good", text: `아이템 ${r.count}개 판매 → 강화석 +${r.stones}${kept ? ` (레전더리·세트 ${kept}개는 가방에 남김)` : ""}` };
+    invMsg = { cls: "good", text: `아이템 ${r.count}개 판매 → 강화석 +${r.stones}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}${kept ? ` (레전더리·세트 ${kept}개는 가방에 남김)` : ""}` };
     log(invMsg.text, "good");
     afterGearChange();
   }
@@ -3286,7 +3289,7 @@
       actions.append(
         el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착"),
         enhanceBtn,
-        el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (강화석 +${RLItems.sellStones(item)})`),
+        el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (강화석 +${RLItems.sellStones(item)} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
       );
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
@@ -3331,9 +3334,17 @@
     const gain = RLItems.sellStones(item);
     if (rank <= RARITY_ORDER.indexOf("rare") && !confirm(`${RLItems.itemName(item)}을(를) 강화석 ${gain}개에 판매할까요? 되돌릴 수 없어요.`)) return;
     Inv.sell(item.id);
+    const gold = sellGoldIn(RLItems.sellGold(item));
     selected = null;
-    invMsg = { cls: "good", text: `${RLItems.itemName(item)} 판매 → 강화석 +${gain}` };
+    invMsg = { cls: "good", text: `${RLItems.itemName(item)} 판매 → 강화석 +${gain}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}` };
     afterGearChange();
+  }
+  // 판매 골드는 지금 판의 골드로 (쓰러진 판에는 들어가지 않음). 실제로 받은 골드
+  function sellGoldIn(amount) {
+    if (!player || gameOver || !amount) return 0;
+    player.gold += amount;
+    saveGame(true);
+    return amount;
   }
 
   function enhanceItem(item) {

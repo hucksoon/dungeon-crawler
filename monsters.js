@@ -192,9 +192,9 @@
   // 보스 공격 1.3 → 1.1: 포션을 마시는 데 한 턴이 드는 것까지 넣고 다시 보니 1층 보스에게 3번 중 1번 쓰러짐 → 1.1이면 4%, 50층 9%
   const NIGHTMARE = {
     floors: 50, perFloor: 0.02, base: MAX_FLOOR, itemBase: MAX_FLOOR,
-    // 한 층 몬스터 수: 1층 30마리에서 2층마다 1마리씩 늘어 41층부터 50마리 (±3)
+    // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (±3)
     // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
-    monsters: { start: 30, perFloor: 0.5, max: 50, spread: 3 },
+    monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },
     hp: 4, atk: 1.6, bossHp: 2.5, bossAtk: 1.1,
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)

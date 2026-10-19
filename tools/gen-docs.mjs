@@ -129,7 +129,7 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요. 로비 오른쪽 **나이트메어(▼)** 건물이 입구예요.
 
 - 들어갈 수 있는 사람: 일반 던전 ${M.MAX_FLOOR}층 완료 + **장착한 장비가 모두 v4 이후** (예전 v3까지 장비는 가방에 있어도 되지만 끼고 있으면 못 들어가요. 안에서도 낄 수 없어요)
-- **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 2층마다 1마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
+- **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 층마다 ${N.monsters.perFloor}마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
 - 몬스터: 일반 던전 ${N.base}층 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${N.base}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
 - 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)})
 - 아이템 레벨은 **${N.itemBase} + 나이트메어 층** (${N.itemBase + 1}~${N.itemBase + N.floors}). 드롭 확률·등급 확률은 일반 던전과 같아요
@@ -197,12 +197,13 @@ ${HEADER}
 
 ## 골드
 
-골드는 **판(run)마다 처음부터** 모아요. 죽으면 0이 되고, 상점에서 장비를 살 때 써요.
+골드는 **판(run)마다 처음부터** 모아요. 죽으면 0이 되고, 상점에서 장비를 사거나 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드)에 써요.
 
 ### 얻는 곳
 
 - **골드 더미 \`$\`**: 층마다 ${GOLD.piles.count.join("~")}개, 하나에 ${GOLD.piles.amount.join("~")} × 층 배율
 - **몬스터 처치**: 쓰러뜨리는 즉시 들어와요
+- **장비 판매**: 강화석과 함께 골드도 조금 (아래 [판매와 강화](#판매와-강화))
 
 ${table(["처치한 몬스터", "골드 (1층 기준)", "일반 대비"],
   [["일반", "normal"], ["정예", "elite"], ["보스", "boss"], ["황금 고블린", "golden"]].map(([name, k]) =>
@@ -253,6 +254,10 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 - 판매하면 등급에 따라 강화석을 받아요. 아이템 레벨이 높을수록 더 받아요: 기본값 × (1 + 레벨당 ${pct(I.SELL_PER_LEVEL)})
 
 ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_STONES).map(r => [I.RARITIES[r].name, I.SELL_STONES[r], ...[10, 30, 60, 120].map(lvl => I.sellStones({ rarity: r, lvl }))]))}
+
+- 판매하면 **골드도 조금** 받아요: 기본값 × (1 + 레벨당 10%), 5골드 단위 (쓰러진 판에는 들어가지 않아요)
+
+${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_GOLD).map(r => [I.RARITIES[r].name, I.SELL_GOLD[r], ...[10, 30, 60, 120].map(lvl => I.sellGold({ rarity: r, lvl }))]))}
 
 - 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
 - +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요
@@ -374,7 +379,7 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - 고대가 아닌 **v4 레전더리·세트**는 인벤토리에서 **골드로 고대를 다시 굴릴 수 있어요**
 - 한 번에 **${pct(I.ANCIENT_REROLL.chance)}** 확률로 고대(모든 능력치 최대치)가 돼요. 아이템마다 **최대 ${I.ANCIENT_REROLL.max}번** (다 굴리면 고대가 될 확률 ${pct(1 - (1 - I.ANCIENT_REROLL.chance) ** I.ANCIENT_REROLL.max)})
-- 비용은 그 아이템의 **상점 가격**이에요. 레벨이 높을수록 비싸요
+- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요
 
 ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층에서 한 층에 모이는 골드 (평균)"],
   [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}
