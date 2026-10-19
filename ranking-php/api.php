@@ -413,6 +413,10 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         // 보스 층 바로 전 층(4, 9, 14…). 예전에는 보스 층(5, 10…)에 있어서 그때 산 아이템도 인정
         return (int)$m[1] === $lvl && ($lvl % 5 === 4 || $lvl % 5 === 0) && $src === 'golden';
     }
+    // 로비 시간 상점 (r3 이후 v4): 시간 번호가 지금(서버 시각)보다 미래면 안 됨. 레벨은 verify_item이 최고 층까지만
+    if (preg_match('/^lobby\|[0-9a-f]{8}\|h(\d{6,8})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) {
+        return $v === 4 && $rev >= 3 && $src === 'golden' && (int)$m[1] <= intdiv(time(), 3600) + 1;
+    }
     if (preg_match('/^box\|o[0-9A-Za-z]{1,48}\|(\d{1,2})$/', $seed, $m)) {                   // 장비 상자 (최대 50회)
         return $src === 'box' && (int)$m[1] < 50;
     }

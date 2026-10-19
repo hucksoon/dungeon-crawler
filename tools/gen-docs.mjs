@@ -124,12 +124,21 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 - 로비에는 던전 입구 아래에 **파란 포탈(\*)**이 생겨요. 들어가면 **떠난 자리로** 돌아가요. 던전의 몬스터는 그대로라(HP도 그대로) 돌아가면 같은 자리에서 다시 싸워요
 - 옆 칸에 포탈을 열고 걸어 들어가는 방식도 시뮬레이션해 봤는데, 여는 턴에 맞아서 쓰러지는 경우가 늘어서(나이트메어 1층 보스 7% → 17%) 바로 가는 방식으로 했어요
 
+## 골드 던전
+
+- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요
+- 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요**: ${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스
+- 보스를 쓰러뜨리고 계단을 밟으면 **완료 보상 골드 ${I.goldDungeonReward(M.GOLD_DUNGEON.floor, M.GOLD_DUNGEON.rewardRolls).toLocaleString()}** (= ${M.GOLD_DUNGEON.floor}레벨 레전더리 하나를 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드) ${M.GOLD_DUNGEON.rewardRolls}번 할 수 있는 골드). 몬스터 처치·골드 더미 골드도 ${M.GOLD_DUNGEON.floor}층만큼 따로 받아요 ([경제: 골드](economy.md#골드) 참고)
+- **장비는 나오지 않아요** (몬스터 드롭·보물·황금 고블린 없음). 골드를 모으는 곳이에요
+- 완료하면 로비로 돌아오고, 파란 포탈(\*)이나 건물로 새 골드 던전(새 지도·새 보스)에 다시 들어가요. 쓰러지면 일반 던전처럼 골드·레벨이 처음으로 돌아가요
+- 랭킹에는 영향이 없어요
+
 ## 나이트메어 던전
 
 ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요. 로비 오른쪽 **나이트메어(▼)** 건물이 입구예요.
 
 - 들어갈 수 있는 사람: 일반 던전 ${M.MAX_FLOOR}층 완료 + **장착한 장비가 모두 v4 이후** (예전 v3까지 장비는 가방에 있어도 되지만 끼고 있으면 못 들어가요. 안에서도 낄 수 없어요)
-- **${N.floors}층**까지, 층마다 몬스터 **${N.monsters}마리**, 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
+- **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 층마다 ${N.monsters.perFloor}마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
 - 몬스터: 일반 던전 ${N.base}층 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${N.base}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
 - 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)})
 - 아이템 레벨은 **${N.itemBase} + 나이트메어 층** (${N.itemBase + 1}~${N.itemBase + N.floors}). 드롭 확률·등급 확률은 일반 던전과 같아요
@@ -197,12 +206,13 @@ ${HEADER}
 
 ## 골드
 
-골드는 **판(run)마다 처음부터** 모아요. 죽으면 0이 되고, 상점에서 장비를 살 때 써요.
+골드는 **판(run)마다 처음부터** 모아요. 죽으면 0이 되고, 상점에서 장비를 사거나 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드)에 써요.
 
 ### 얻는 곳
 
 - **골드 더미 \`$\`**: 층마다 ${GOLD.piles.count.join("~")}개, 하나에 ${GOLD.piles.amount.join("~")} × 층 배율
 - **몬스터 처치**: 쓰러뜨리는 즉시 들어와요
+- **장비 판매**: 강화석과 함께 골드도 조금 (아래 [판매와 강화](#판매와-강화))
 
 ${table(["처치한 몬스터", "골드 (1층 기준)", "일반 대비"],
   [["일반", "normal"], ["정예", "elite"], ["보스", "boss"], ["황금 고블린", "golden"]].map(([name, k]) =>
@@ -248,11 +258,25 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 
 1층부터 상점 층까지 모은 평균 골드: ${SHOP_FLOORS.map(d => `${d}층 약 ${Math.round(cumulative[d - 1])}`).join(", ")} (상점에서 쓴 골드는 빼지 않은 값)
 
+### 로비 시간 상점
+
+- 로비 거래소·우편함 오른쪽 건물 \`&\`. 걸어 들어가면 열려요. 이름 옆에 다음 갱신까지 남은 분이 보여요
+- **매 시간 정각**(시간 번호 = 1970년부터 지난 시간 수)에 진열이 새로 바뀌어요. 던전 상점과 **같은 등급표·가격·진열 바꾸기(최대 ${I.SHOP.rerolls.max}번)**, 판의 골드로 사요 (쓰러진 판은 못 씀)
+- 아이템 레벨은 그 시간에 처음 열 때의 **최고 층(일반 던전, 최대 ${M.MAX_FLOOR})**으로 고정
+- 진열은 사람(게스트·계정)마다 달라요. 시드 \`lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸\`
+- 산 칸·바꾼 횟수는 그 기기에 저장해요. 이미 가진 아이템(다른 기기에서 산 같은 칸)은 다시 살 수 없어요
+- 창을 열어 둔 채 정각이 지나면 새 진열로 바뀌고, 지난 진열의 칸은 살 수 없어요
+- 서버는 시드를 다시 만들어 확인해요: 시간 번호가 서버 시각보다 미래면 안 되고, 레벨은 최고 층까지만
+
 ## 판매와 강화
 
 - 판매하면 등급에 따라 강화석을 받아요. 아이템 레벨이 높을수록 더 받아요: 기본값 × (1 + 레벨당 ${pct(I.SELL_PER_LEVEL)})
 
 ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_STONES).map(r => [I.RARITIES[r].name, I.SELL_STONES[r], ...[10, 30, 60, 120].map(lvl => I.sellStones({ rarity: r, lvl }))]))}
+
+- 판매하면 **골드도 조금** 받아요: 기본값 × (1 + 레벨당 10%), 5골드 단위 (쓰러진 판에는 들어가지 않아요)
+
+${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_GOLD).map(r => [I.RARITIES[r].name, I.SELL_GOLD[r], ...[10, 30, 60, 120].map(lvl => I.sellGold({ rarity: r, lvl }))]))}
 
 - 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
 - +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요
@@ -374,7 +398,9 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - 고대가 아닌 **v4 레전더리·세트**는 인벤토리에서 **골드로 고대를 다시 굴릴 수 있어요**
 - 한 번에 **${pct(I.ANCIENT_REROLL.chance)}** 확률로 고대(모든 능력치 최대치)가 돼요. 아이템마다 **최대 ${I.ANCIENT_REROLL.max}번** (다 굴리면 고대가 될 확률 ${pct(1 - (1 - I.ANCIENT_REROLL.chance) ** I.ANCIENT_REROLL.max)})
-- 비용은 그 아이템의 **상점 가격**이에요. 레벨이 높을수록 비싸요
+- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요. 인벤토리 위쪽과 굴리기 줄에 지금 가진 골드가 보여요
+- ${I.ANCIENT_REROLL.max}번 모두 실패한 아이템은 버튼 자리에 **"고대 굴리기 ${I.ANCIENT_REROLL.max}/${I.ANCIENT_REROLL.max}번 실패"**가 (누를 수 없게) 그대로 남아요
+- 골드가 모자라면 [골드 던전](monsters.md#골드-던전)에서 한 번에 모을 수 있어요
 
 ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층에서 한 층에 모이는 골드 (평균)"],
   [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}

@@ -23,7 +23,8 @@
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
   // 결과는 (아이템 ID, 몇 번째) 시드로 정해짐 → 서버가 아이템 참조의 ar(굴린 횟수)로 똑같이 다시 계산
-  const ANCIENT_REROLL = { chance: 0.05, max: 20 };
+  // 비용: 그 아이템 상점 가격의 1/3 (처음엔 상점 가격 그대로였는데, 20번 다 실패하면 끝이라 너무 비쌌음)
+  const ANCIENT_REROLL = { chance: 0.05, max: 20, costMul: 1 / 3 };
 
   // ---- 시드 기반 난수 ----
   function hashSeed(str) {
@@ -405,7 +406,7 @@
   // ---- 고대 다시 굴리기 ----
   const canRerollAncient = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
     !item.ancient && (item.ar || 0) < ANCIENT_REROLL.max;
-  const ancientRerollCost = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl);
+  const ancientRerollCost = (item) => Math.max(5, Math.round(levelPrice(SHOP.prices[item.rarity], item.lvl) * ANCIENT_REROLL.costMul / 5) * 5);
   // n번째 굴림이 고대인지 (1부터)
   const ancientRerollHit = (item, n) => n >= 1 && n <= ANCIENT_REROLL.max && rngFrom(`anc|${item.id}|re${n}`)() < ANCIENT_REROLL.chance;
   // 한 번 굴림: 아이템을 바꾸고 { ok, n }
@@ -452,6 +453,9 @@
   const SELL_STONES = { common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 16, set: 12 };
   const SELL_PER_LEVEL = 0.05;
   const sellStones = (item) => Math.max(1, Math.round(SELL_STONES[item.rarity] * (1 + SELL_PER_LEVEL * ((item.lvl || 1) - 1))));
+  // 판매하면 골드도 조금 (상점 가격처럼 레벨당 10%씩, 5골드 단위. 50레벨 레전더리 약 235골드 ≈ 상점 가격의 1/10)
+  const SELL_GOLD = { common: 2, uncommon: 4, rare: 8, epic: 15, legendary: 40, set: 30 };
+  const sellGold = (item) => Math.max(1, levelPrice(SELL_GOLD[item.rarity] || 1, item.lvl || 1));
 
   // +N으로 강화할 때: 강화석 N개. +4까지는 항상 성공, +5는 50%, 이후 10%p씩 낮아져 최저 5%.
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
@@ -550,6 +554,18 @@
   }
 
 
+  // 골드 던전 완료 보상: 그 레벨 레전더리 하나를 고대 굴리기 n번 할 수 있는 골드
+  const goldDungeonReward = (level, rolls) => rolls * ancientRerollCost({ rarity: "legendary", lvl: level });
+
+  // 로비 시간 상점: 매 시간 정각(UTC 기준 시간 번호)에 진열이 바뀜. 던전 상점과 같은 등급표·가격·진열 바꾸기
+  // 시드: lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸 → 사람마다 진열이 다르고, 서버가 같은 아이템을 다시 만들어 검증
+  const hourIndex = (ms = Date.now()) => Math.floor(ms / 3600000);
+  const ownerTag = (owner) => hashSeed(`owner|${owner}`)[0].toString(16).padStart(8, "0");
+  function lobbyShopStock(tag, hour, level, reroll = 0) {
+    const r = reroll ? `|r${reroll}` : "";
+    return Array.from({ length: SHOP.slots }, (_, i) => generate(`lobby|${tag}|h${hour}${r}|s${i}`, SHOP.table, level));
+  }
+
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
   const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl);
@@ -610,10 +626,10 @@
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
-    MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
+    MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
