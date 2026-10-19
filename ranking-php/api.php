@@ -37,8 +37,13 @@ const CLEAR_STAGE = MAX_FLOOR + 1;
 // players 표는 v3 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
 const SEASONS = [
     'v4' => ['table' => 'players_v4', 'name' => 'v4 베타', 'minItemV' => 4],
+    'nm' => ['table' => 'players_nm', 'name' => '나이트메어', 'minItemV' => 4, 'nightmare' => true],  // v4 베타의 나이트메어 던전 (층 = 나이트메어 층)
     'v3' => ['table' => 'players', 'name' => 'v3 베타', 'minItemV' => 1],
 ];
+// 나이트메어 던전 (monsters.js NIGHTMARE): 50층, 아이템 레벨 = 75 + 나이트메어 층, 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
+const NM_FLOORS = 50;
+const NM_ITEM_BASE = MAX_FLOOR;
+const NM_CLEAR = NM_FLOORS + 1;
 const CURRENT_SEASON = 'v4';
 const MAX_ENH = 10;
 
@@ -109,8 +114,8 @@ function db(): PDO {
         seen_at      BIGINT NOT NULL,
         staff        INTEGER NOT NULL DEFAULT 0
     )');
-    // v4 베타 시즌 표 (players와 같은 모양)
-    $pdo->exec('CREATE TABLE IF NOT EXISTS players_v4 (
+    // v4 베타 시즌 표, 나이트메어 표 (players와 같은 모양)
+    foreach (['players_v4', 'players_nm'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
         pkey         VARCHAR(64) PRIMARY KEY,
         pub_id       VARCHAR(32),
         kind         VARCHAR(8)  NOT NULL,
@@ -127,7 +132,7 @@ function db(): PDO {
         item_json    TEXT,
         item_at      BIGINT,
         updated_at   BIGINT NOT NULL
-    )');
+    )");
     // 나중에 추가된 칸: 기존 DB에도 붙임 (이미 있으면 무시)
     market_tables($pdo);
     ads_tables($pdo);
@@ -146,6 +151,10 @@ function db(): PDO {
         'CREATE INDEX idx_players_v4_stage ON players_v4 (best_stage, stage_at)',
         'CREATE INDEX idx_players_v4_item ON players_v4 (item_score, item_at)',
         'CREATE INDEX idx_players_v4_email ON players_v4 (email_hmac)',
+        'CREATE INDEX idx_players_nm_pub ON players_nm (pub_id)',
+        'CREATE INDEX idx_players_nm_stage ON players_nm (best_stage, stage_at)',
+        'CREATE INDEX idx_players_nm_item ON players_nm (item_score, item_at)',
+        'CREATE INDEX idx_players_nm_email ON players_nm (email_hmac)',
     ] as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) { /* 이미 있음 */ }
     }
@@ -382,6 +391,19 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         if ($src === 'boss') return $lvl % 5 === 0;
         return $src === 'golden' && $lvl >= 2;
     }
+    // 나이트메어 (r2 이후 v4만): 층 n은 1~50, 아이템 레벨 = 75 + n
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|n(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
+        $n = (int)$m[1];
+        if ($v !== 4 || $rev < 2 || $n < 1 || $n > NM_FLOORS || $lvl !== NM_ITEM_BASE + $n) return false;
+        if ($m[2] === 'p') return $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];   // 포션 자리
+        if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
+        if ($src === 'boss') return $n % 5 === 0;
+        return $src === 'golden';
+    }
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|n(\d{1,2})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 나이트메어 상점 (보스 전 층)
+        $n = (int)$m[1];
+        return $v === 4 && $rev >= 2 && $n >= 1 && $n <= NM_FLOORS && $n % 5 === 4 && $lvl === NM_ITEM_BASE + $n && $src === 'golden';
+    }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|p\d{1,8}$/', $seed, $m)) {           // 포션 자리
         return (int)$m[1] === $lvl && $src === 'drop' && r_drop_roll($v, $seed) < $chance['normal'];
     }
@@ -451,7 +473,11 @@ function item_view(array $it): array {
 function read_score(array $body, int $oldBest, string $key): array {
     $stage = $body['stage'] ?? null;
     if (!is_int($stage) || $stage < 1 || $stage > MAX_STAGE) throw new HttpError(400, 'bad_stage');
-    $maxLvl = max($stage, $oldBest);
+    $nm = $body['nm'] ?? 0;  // 나이트메어 최고 층 (51 = 완료)
+    if (!is_int($nm) || $nm < 0) $nm = 0;
+    $nm = min($nm, NM_CLEAR);
+    if (min($stage, CLEAR_STAGE) < CLEAR_STAGE) $nm = 0;  // 나이트메어는 일반 던전을 완료한 사람만
+    $maxLvl = max($stage, $oldBest, nm_level($nm));
     $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
     if (!is_int($plvl) || $plvl < 1 || $plvl > 500) $plvl = 1;
@@ -484,7 +510,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (v4 베타는 v4 장비로만)
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
-    if ($oldGear) $stage = 0;
+    if ($oldGear) { $stage = 0; $nm = 0; }
     $totals = r_totals($ordered);
     $snapshot = [
         'stage' => $stage,
@@ -493,7 +519,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'sets' => array_map(function ($s) { return ['name' => $s['name'], 'count' => $s['count'], 'full' => $s['full'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
         'rejected' => $rejected,
     ];
-    return [$stage, $item, $snapshot];
+    return [$stage, $item, $snapshot, $nm];
 }
 
 function now_ms(): int { return (int)floor(microtime(true) * 1000); }
@@ -504,10 +530,15 @@ function req_season(): string {
     return isset(SEASONS[$s]) ? $s : CURRENT_SEASON;
 }
 function season_table(string $season = CURRENT_SEASON): string { return SEASONS[$season]['table']; }
-// 모든 시즌을 통틀어 가장 깊이 간 층: 아이템 레벨 검증·거래소용 (예전 시즌에 얻은 깊은 층 아이템도 인정)
-function best_stage_any(string $key): int {
+// 모든 시즌을 통틀어 얻을 수 있었던 가장 높은 아이템 레벨: 아이템 레벨 검증·거래소용 (예전 시즌에 얻은 깊은 층 아이템도 인정)
+// 일반 던전은 층 = 레벨, 나이트메어는 75 + 나이트메어 층
+function nm_level(int $nm): int { return $nm > 0 ? NM_ITEM_BASE + min($nm, NM_FLOORS) : 0; }
+function best_level_any(string $key): int {
     $best = 0;
-    foreach (SEASONS as $s) $best = max($best, (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0));
+    foreach (SEASONS as $s) {
+        $v = (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0);
+        $best = max($best, !empty($s['nightmare']) ? nm_level($v) : $v);
+    }
     return $best;
 }
 
@@ -526,12 +557,17 @@ function submit_score(): array {
     if (strlen((string)$raw) > 8192) throw new HttpError(413, 'too_large');
     $body = json_decode((string)$raw, true);
     if (!is_array($body)) throw new HttpError(400, 'bad_json');
-    [$stage, $item, $snapshot] = read_score($body, best_stage_any($who['key']), $who['key']);
-    $t = season_table();
+    [$stage, $item, $snapshot, $nm] = read_score($body, best_level_any($who['key']), $who['key']);
     $now = now_ms();
     $snapshot['at'] = $now;
-    $gearJson = json_encode($snapshot, JSON_UNESCAPED_UNICODE);
+    record_board(season_table(), $who, $stage, $item, json_encode($snapshot, JSON_UNESCAPED_UNICODE), $now);
+    // 나이트메어 랭킹 (따로): 같은 장비 기록, 층은 나이트메어 층
+    if ($nm > 0) record_board(season_table('nm'), $who, $nm, $item, json_encode(['stage' => $nm] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
+    return ['ok' => true, 'ranked' => true];
+}
 
+// 한 랭킹 표에 기록: 층은 더 높을 때, 아이템은 점수가 더 높을 때만 바꿈
+function record_board(string $t, array $who, int $stage, ?array $item, string $gearJson, int $now): void {
     // 최고 기록만 남김: 층은 더 높을 때, 아이템은 점수가 더 높을 때만 바꿈
     tx(function (PDO $pdo) use ($who, $stage, $item, $now, $gearJson, $t) {
         $old = q_row("SELECT * FROM {$t} WHERE pkey = ?", [$who['key']]);
@@ -561,7 +597,6 @@ function submit_score(): array {
             ]);
         }
     });
-    return ['ok' => true, 'ranked' => true];
 }
 
 // ---------------------------------------------------------------- 랭킹

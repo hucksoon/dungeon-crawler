@@ -143,8 +143,8 @@ sudo -u www-data php gift.php --resume <이메일>
 지금 시즌(v4 베타) 기록을 보거나, 규칙에 맞지 않는 기록(예: 예전 장비를 끼고 올라간 기록)을 지울 때 써요. 서버에서 명령으로만 실행돼요.
 
 ```bash
-sudo -u www-data php admin.php list          # 지금 시즌 층 랭킹: 순위, 이름, 최고 층, 공개 ID
-sudo -u www-data php admin.php remove <공개ID>  # 그 사람의 지금 시즌 기록만 지움 (예전 시즌 기록은 그대로)
+sudo -u www-data php admin.php list [개수] [시즌]      # 층 랭킹: 순위, 이름, 최고 층, 공개 ID (시즌 v4 기본, nm 나이트메어, v3)
+sudo -u www-data php admin.php remove <공개ID> [시즌]  # 그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로)
 ```
 
 ## 업데이트

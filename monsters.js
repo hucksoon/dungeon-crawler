@@ -186,6 +186,35 @@
   }
 
   // rank: "normal" | "elite" | "king". kind는 모두 "golden" (드롭 등급표·서버 검증은 같음)
+  // ---- 나이트메어 던전: 일반 던전(최대 층)을 완료하고 v4 이후 장비만 낀 사람이 들어가는 50층 던전 ----
+  // 몬스터 = 최대 층(75층) 몬스터 × 배율 × (1 + 층마다 2%). 아이템 레벨 = 75 + 나이트메어 층 (76~125)
+  // 배율은 시뮬레이션으로 맞춤: 그 층 근처 레벨 장비를 잘 맞추면(+10) 40층까지 꾸준히, 50층에서 벽
+  const NIGHTMARE = {
+    floors: 50, perFloor: 0.02, monsters: 50, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    hp: 4, atk: 2, bossHp: 2.5, bossAtk: 1.3,
+    clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
+    presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
+  };
+  const nmScale = (n) => 1 + NIGHTMARE.perFloor * (Math.max(1, n) - 1);
+  // 75층에 나오는 몬스터 + 그 뒤에 나오는 몬스터(대악마·타이탄·공허의 군주·고룡). 뒤쪽일수록 자주
+  const nightmarePool = () => MONSTERS.filter(m => (m.until ?? Infinity) >= NIGHTMARE.base);
+  function pickNightmareType(rand) {
+    const list = nightmarePool(), total = 2 ** list.length - 1;
+    let r = rand() * total;
+    for (let i = 0; i < list.length; i++) if ((r -= 2 ** i) < 0) return list[i];
+    return list[list.length - 1];
+  }
+  function makeNightmare(t, kind, n) {
+    const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n);
+    const hp = Math.round(m.hp * NIGHTMARE.hp * k);
+    return { ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * k), nm: 1 };
+  }
+  function makeNightmareBoss(n) {
+    const b = makeBoss(NIGHTMARE.base), k = nmScale(n);
+    const hp = Math.round(b.hp * NIGHTMARE.bossHp * k);
+    return { ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * k), nm: 1 };
+  }
+
   function makeGolden(d, rank = "normal") {
     const R = GOLDEN.ranks[rank];
     const def = Math.max(0, ...pool(d).map(m => m.def)) + floorScale(d).def + GOLDEN.defAdd + R.defAdd;
@@ -199,7 +228,8 @@
   }
 
   const api = {
-    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
+    NIGHTMARE, nmScale, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };
