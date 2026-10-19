@@ -95,6 +95,7 @@
   #log div.rainbow { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .rainbow { animation: none; } }
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
+  .nm-note { color: #d07bff; font-size: 12px; margin: 2px 0 4px; }
   #game {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -1215,15 +1216,19 @@
   const inNM = () => player?.zone === "nm";
   // 골드 던전: player.zone이 "gold"이면 75층과 같은 몬스터·보스가 있는 한 층. 보스를 쓰러뜨리고 계단을 밟으면 완료 보상 골드
   const GD = RLMonsters.GOLD_DUNGEON;
-  const GOLD_REWARD = RLItems.goldDungeonReward(GD.floor, GD.rewardRolls);
   const inGold = () => player?.zone === "gold";
+  // 나이트메어 난이도 골드 던전: player.gn = 나이트메어 층 (0이면 일반 75층 난이도). 그 층 나이트메어 몬스터·보스, 보상 ×2
+  const goldNM = () => inGold() && player.gn > 0;
+  const nmMobs = () => inNM() || goldNM();   // 나이트메어 몬스터가 나오는 곳
+  const goldReward = (gn = goldNM() ? player.gn : 0) => RLItems.goldDungeonReward(gn ? NM.itemBase + gn : GD.floor, GD.rewardRolls, gn > 0);
   const maxFloor = () => (inNM() ? NM.floors : RLMonsters.MAX_FLOOR);
-  const itemLevel = () => (inNM() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125)
+  const itemLevel = () => (nmMobs() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125)
   const floorTag = () => (inNM() ? "n" : "d");                       // 아이템 시드의 층 표시 (서버가 층·레벨을 검증)
-  const floorName = (n = depth, nm = inNM(), gold = inGold()) => (nm ? `나이트메어 ${n}층` : gold ? "골드 던전" : `${n}층`);
+  const floorName = (n = depth, nm = inNM(), gold = inGold()) => (nm ? `나이트메어 ${n}층` : gold ? (goldNM() ? `골드 던전(악몽 ${player.gn}층)` : "골드 던전") : `${n}층`);
   // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층으로 보내고 받음
   const presenceFloor = (n, nm, gold = inGold()) => (n ? (nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
-  const presenceLabel = (n) => (n > GD.presence ? "골드 던전" : n > NM.presence ? `악몽 ${n - NM.presence}층` : `${n}층`);
+  const presenceLabel = (n) => (n > GD.presence ? (n - GD.presence <= NM.floors ? `골드 던전(악몽 ${n - GD.presence}층)` : "골드 던전")
+    : n > NM.presence ? `악몽 ${n - NM.presence}층` : `${n}층`);
   // 던전 입구 오른쪽 문: 일반 던전 최고 층 − 10층부터 (보스 2~3마리를 다시 잡으며 파밍). 2층 이상일 때만 열림. 완료자는 65층
   const skipFloor = () => Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth) - 10);
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
@@ -1356,7 +1361,7 @@
 
     // 보스 층 바로 전 층(4, 9, 14…층) 계단 옆에 상점
     shop = null;
-    if (RLItems.isShopFloor(depth)) {
+    if (!inGold() && RLItems.isShopFloor(depth)) {
       const spots = DIRS.map(([dx, dy]) => ({ x: far.cx + dx, y: far.cy + dy })).filter(p => map[p.y][p.x] === FLOOR);
       shop = spots[rnd(spots.length)] || null;
       if (shop && !quiet) log("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자.", null, SHOP_COLOR);
@@ -1365,13 +1370,13 @@
     enemies = [];
     // 보스는 계단 방에서 계단을 지킴. 일반 몬스터보다 먼저 자리를 잡음
     // (깊은 층은 몬스터가 많아서, 나중에 놓으면 계단 방에 빈칸이 없어 보스 자리를 못 찾던 문제)
-    if (RLMonsters.isBossFloor(depth)) {
+    if (inGold() || RLMonsters.isBossFloor(depth)) {  // 골드 던전은 층과 상관없이 보스가 계단을 지킴
       const tiles = [];
       for (let y = far.y; y < far.y + far.h; y++)
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = inNM() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
+      const boss = nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (!quiet) log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
@@ -1380,13 +1385,13 @@
 
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
-    const nmCount = inNM() ? RLMonsters.nmMonsterCount(depth) : 0;
-    const count = inNM() ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
+    const nmCount = nmMobs() ? RLMonsters.nmMonsterCount(depth) : 0;
+    const count = nmMobs() ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
-      const kind = Math.random() < RLMonsters.eliteChance(inNM() ? NM.base : depth) ? "elite" : "normal";
-      const m = inNM() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
+      const kind = Math.random() < RLMonsters.eliteChance(nmMobs() ? NM.base : depth) ? "elite" : "normal";
+      const m = nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), kind, depth);
       enemies.push({ x: spot.x, y: spot.y, ...m });
     }
@@ -1475,7 +1480,7 @@
         const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
         if (bossAlive()) log("보스가 살아 있는 동안 계단이 열리지 않는다.", "bad");
         else if (near) log(`주변 ${RLMonsters.STAIRS_BLOCK_RADIUS}칸 안에 몬스터가 ${near}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.`, "bad");
-        else if (depth >= maxFloor()) { completeFloor(); return; }
+        else if (inGold() || depth >= maxFloor()) { completeFloor(); return; }
         else { descend(); return; }
       }
     }
@@ -1771,14 +1776,17 @@
 
   // 골드 던전 보스를 쓰러뜨리고 계단을 밟음: 완료 보상 골드 → 로비로, 포탈 문으로 골드 던전 새 구역
   function completeGold() {
-    player.gold += GOLD_REWARD;
-    log(`💰 골드 던전 완료! 보상 골드 +${GOLD_REWARD.toLocaleString()}`, "rainbow");
+    const reward = goldReward();
+    player.gold += reward;
+    log(`💰 ${floorName()} 완료! 보상 골드 +${reward.toLocaleString()}`, "rainbow");
     newLevel(generateDungeon(), { quiet: true });
     saveGame(true);
     enterLobby({ from: "clear" });
     updateStats();
     showNotice("골드 던전 완료!", [
-      `보상으로 골드 ${GOLD_REWARD.toLocaleString()}을 받았어요. (${GD.floor}레벨 레전더리 하나를 고대 굴리기 ${GD.rewardRolls}번 할 수 있는 골드)`,
+      goldNM()
+        ? `보상으로 골드 ${reward.toLocaleString()}을 받았어요. (${itemLevel()}레벨 레전더리 하나를 고대 굴리기 ${GD.rewardRolls}번 할 수 있는 골드 × ${RLItems.NM_SHOP.priceMul}, 나이트메어 난이도)`
+        : `보상으로 골드 ${reward.toLocaleString()}을 받았어요. (${GD.floor}레벨 레전더리 하나를 고대 굴리기 ${GD.rewardRolls}번 할 수 있는 골드)`,
       "로비의 파란 포탈(*)이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요.",
     ]);
   }
@@ -1819,6 +1827,7 @@
     rv: player.revived ? 1 : 0,
     ...(player.oldGear ? { og: 1 } : {}),
     ...(player.zone === "nm" || player.zone === "gold" ? { z: player.zone } : {}),
+    ...(goldNM() ? { gn: player.gn } : {}),
   });
   function makeSave() {
     return {
@@ -1967,6 +1976,7 @@
       revived: !!r.rv,
       oldGear: !!r.og,
       zone: r.z === "nm" || r.z === "gold" ? r.z : "normal",
+      gn: r.z === "gold" ? Math.max(0, Math.min(NM.floors, r.gn | 0)) : 0,
     };
     depth = Math.min(maxFloor(), depth);
     noteOldGear(true);  // 이 표시가 생기기 전의 판: 지금 예전 장비를 끼고 있으면 제외
@@ -2374,14 +2384,13 @@
       { kind: "market", label: "거래소", x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
       { kind: "mailbox", label: "우편함", door: { x: 8, y: gate.y }, tab: "mail" },
       { kind: "hourshop", label: "시간 상점", x0: 10, x1: 12, door: { x: 11, y: gate.y }, glyph: "&", tab: null },
-      { kind: "golddungeon", label: "골드 던전", x0: 20, x1: 22, door: { x: 21, y: gate.y }, glyph: "▼", tab: null },
+      // 골드 던전: 왼쪽 문 75층 난이도, 오른쪽 문 나이트메어 최고 층 난이도
+      { kind: "golddungeon", label: "골드 던전", x0: 20, x1: 22, door: { x: 20, y: gate.y }, glyph: "▼", tab: null },
+      { kind: "golddungeonNM", door: { x: 22, y: gate.y }, glyph: "▼", tab: null },
       { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
     ];
-    for (const s of shops) {
-      if (s.x0 == null) continue;
-      for (let y = gate.y - 2; y <= gate.y; y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
-      deco.delete(`${s.door.x},${s.door.y}`);
-    }
+    for (const s of shops) if (s.x0 != null) for (let y = gate.y - 2; y <= gate.y; y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
+    for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
     const shopAt = (x, y) => shops.find(s => s.door.x === x && s.door.y === y) || null;
     const doorAt = (x, y) => Object.keys(doors).find(k => doors[k].x === x && doors[k].y === y) || null;
     return { gate, doors, portal, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
@@ -2389,7 +2398,7 @@
   let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
 
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
-  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM()) ? depth : 0);
+  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold()) ? depth : 0);
 
   function setScene(s) {
     scene = s;
@@ -2490,22 +2499,27 @@
   }
 
   // 골드 던전 입구(로비 나이트메어 왼쪽 건물): 일반 던전을 완료하면. 들어갈 때마다 새 지도
-  async function enterGoldDungeon() {
+  // 왼쪽 문: 75층 난이도 / 오른쪽 문: 나이트메어 최고 층 난이도 (나이트메어 기록이 있을 때, 보상 ×2)
+  async function enterGoldDungeon(nm = false) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
     if (!cleared) { log(`골드 던전은 일반 던전 ${RLMonsters.MAX_FLOOR}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
+    if (nm && nmBest < 1) { log("골드 던전 오른쪽 문은 나이트메어에 들어가 본 뒤에 열린다 (나이트메어 최고 층 난이도).", "bad"); return; }
     if (resumeFloor() && !confirm(`새 골드 던전에 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
     if (!ok || scene !== "lobby") return;
     player.zone = "gold";
-    depth = GD.floor;
+    player.gn = nm ? Math.min(NM.floors, nmBest) : 0;
+    depth = player.gn || GD.floor;
     player.rid = newRunId();
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    log(`골드 던전에 발을 들였다. ${GD.floor}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 ${GOLD_REWARD.toLocaleString()}!`, null, "#ffcf5c");
+    log(goldNM()
+      ? `${floorName()}에 발을 들였다. 나이트메어 ${player.gn}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 ${goldReward().toLocaleString()}!`
+      : `골드 던전에 발을 들였다. ${GD.floor}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 ${goldReward().toLocaleString()}!`, null, "#ffcf5c");
     log("골드 던전에서는 장비가 떨어지지 않는다. 몬스터 골드와 완료 보상만.", "info");
     newLevel(generateDungeon());
     saveGame(true);
@@ -2533,7 +2547,8 @@
       if (shopDoor.tab) openMarket(shopDoor.tab);
       else if (shopDoor.kind === "nightmare") enterNightmare();
       else if (shopDoor.kind === "hourshop") openHourShop();
-      else if (shopDoor.kind === "golddungeon") enterGoldDungeon();
+      else if (shopDoor.kind === "golddungeon") enterGoldDungeon(false);
+      else if (shopDoor.kind === "golddungeonNM") enterGoldDungeon(true);
       return;
     }
     if (LOBBY.blocked(nx, ny)) return;
@@ -2690,8 +2705,17 @@
       }
       ctx.fillStyle = "#050608";
       ctx.fillRect(sx, sy, TILE, TILE);
+      // 골드 던전 문 두 개: 문 위에 난이도, 이름은 건물 가운데 위에
+      if (s.kind === "golddungeon" || s.kind === "golddungeonNM") {
+        const open = cleared && (s.kind === "golddungeon" || nmBest >= 1);
+        const c = open ? "#ffcf5c" : "#7a6a3a";
+        drawGlyph(open ? s.glyph : "×", sx, sy, c);
+        drawLabel(s.kind === "golddungeon" ? `${GD.floor}층` : nmBest >= 1 ? `악몽${Math.min(NM.floors, nmBest)}` : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        if (s.label) drawLabel(s.label, (s.x0 + s.x1 + 1) / 2 * TILE, (s.door.y - 2) * TILE - 4, cleared ? "#ffcf5c" : "#7a6a3a", 12);
+        continue;
+      }
       const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR
-        : s.kind === "golddungeon" ? (cleared ? "#ffcf5c" : "#7a6a3a") : (cleared ? "#d07bff" : "#7a5a8a");
+        : (cleared ? "#d07bff" : "#7a5a8a");
       drawGlyph(s.glyph, sx, sy, color);
       // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
       const label = s.kind === "hourshop" ? `${s.label} ${HourShop.minutesLeft()}분` : s.label;
@@ -2925,7 +2949,7 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("zone").textContent = inNM() ? "나이트메어 " : inGold() ? "골드 던전 " : "";
+    document.getElementById("zone").textContent = inNM() ? "나이트메어 " : goldNM() ? "골드 던전 · 나이트메어 " : inGold() ? "골드 던전 " : "";
     document.getElementById("best").textContent = inNM() ? (nmCleared ? `${nmBest} 완료` : (nmBest || "-"))
       : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? `포션 (${player.potCd}턴)` : "포션 (준비됨)";
@@ -3173,7 +3197,11 @@
     // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
     const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
     return [
-      ...RLItems.mainStatsOf(item).map(([k, v]) => row("★", k, enhanced[k], v, RLItems.statRange(item, "main", k), enhanced[k] - v, null, effBase[k])),
+      // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
+      ...RLItems.mainStatsOf(item).map(([k, v]) => {
+        const m = RLItems.nmPower(item, k), range = RLItems.statRange(item, "main", k);
+        return row("★", k, enhanced[k], v * m, range && range.map(x => x * m), enhanced[k] - v * m, null, effBase[k]);
+      }),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
       ...RLItems.enhancedLines(item).map(([k, v, plus], i) =>
         row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item), effLines ? effLines[i][1] : v)),
@@ -3309,6 +3337,7 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
+      ...(RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...statLines(item),
       ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
       el("div", { className: "meta" }, item.main
@@ -3355,7 +3384,7 @@
     }
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
-    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
+    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isNightmareItem(item) ? 1 : 0);
     // 휴대폰에서만 보이는 닫기 (상세 창을 내리고 가방으로)
     const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; invMsg = null; renderInventory(); } }, "▼ 닫기");
     invDetail.replaceChildren(closeBtn, ...rows.slice(0, head), actions, ...rows.slice(head));
@@ -3457,6 +3486,7 @@
     sub: () => "레어 이상 장비만 팔아요. 진열은 이 층에서만 열려 있어요.",
     stock: () => currentStock(),
     level: () => itemLevel(),
+    nm: () => inNM(),
     bought: () => shopBought,
     rerolls: () => shopRerolls,
     markBought(i) { shopBought.push(i); },
@@ -3466,6 +3496,7 @@
 
   // 로비 시간 상점: 매 시간 정각에 진열이 바뀜. 진열·가격·바꾸기는 던전 상점과 같음
   // 아이템 레벨은 그 시간에 처음 열 때의 최고 층(일반 던전, 최대 75층)으로 고정. 사람마다 진열이 다름
+  // 나이트메어 기록이 있으면 나이트메어 아이템 (레벨 75 + 나이트메어 최고 층, 가격·바꾸기 비용 ×2)
   // 산 칸과 바꾼 횟수는 이 기기에 (계정·게스트별로) 저장
   const HourShop = (() => {
     let st = null, stOwner = null;
@@ -3477,16 +3508,19 @@
         try { st = JSON.parse(store.get(key())); } catch { st = null; }
       }
       if (!st || st.h !== h || !Array.isArray(st.b)) {
-        st = { h, lv: Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), b: [], r: 0 };
+        const n = Math.min(NM.floors, nmBest);
+        st = { h, n, lv: n ? NM.itemBase + n : Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), b: [], r: 0 };
       }
       return st;
     }
     const write = () => store.set(key(), JSON.stringify(st));
     return {
       title: "시간 상점",
-      sub: () => `매 시간 정각에 진열이 새로 바뀌어요 (다음 갱신까지 ${HourShop.minutesLeft()}분). 아이템 레벨 ${state().lv}.`,
-      stock: () => { const s = state(); return RLItems.lobbyShopStock(RLItems.ownerTag(Inv.owner()), s.h, s.lv, s.r); },
+      sub: () => `매 시간 정각에 진열이 새로 바뀌어요 (다음 갱신까지 ${HourShop.minutesLeft()}분). ` +
+        (state().n ? `나이트메어 아이템 (나이트메어 ${state().n}층 · 아이템 레벨 ${state().lv}).` : `아이템 레벨 ${state().lv}.`),
+      stock: () => { const s = state(); return RLItems.lobbyShopStock(RLItems.ownerTag(Inv.owner()), s.h, s.lv, s.r, s.n || 0); },
       level: () => state().lv,
+      nm: () => !!state().n,
       bought: () => state().b,
       rerolls: () => state().r,
       markBought(i) { state().b.push(i); write(); },
@@ -3507,7 +3541,7 @@
     document.getElementById("shop-gold").textContent = `보유 골드 ${player.gold}`;
     const stock = shopCtx.stock();
     const bought = shopCtx.bought();
-    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls());
+    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls(), shopCtx.nm());
     const rerollBtn = document.getElementById("shop-reroll");
     const max = RLItems.SHOP.rerolls.max;
     const closed = gameOver;  // 쓰러진 판은 골드를 쓸 수 없음
@@ -3570,7 +3604,7 @@
   // 진열 바꾸기: 6개를 새로 진열하고 산 칸 표시를 초기화. 바꿀 때마다 비용이 2배
   function rerollShop() {
     if (gameOver || shopStale()) return;
-    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls());
+    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls(), shopCtx.nm());
     if (cost == null || player.gold < cost) return;
     player.gold -= cost;
     shopCtx.reroll();
@@ -4289,7 +4323,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1019:${owner}`;  // 75층·나이트메어·포션·포탈·흡혈 상한
+    const floorKey = `rl_notice_1020:${owner}`;  // 나이트메어 아이템의 힘 ×3·깊은 층 몬스터, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4298,9 +4332,9 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `일반 던전은 ${F}층까지(장비가 훨씬 많이 나와요), 완료하면 나이트메어 던전. ` +
-        `포션은 개수 제한 없이 10턴마다, 바닥의 !는 레어 이상 보물, 포탈을 타면 HP·포션 회복. ` +
-        `흡혈은 최대 ${RLItems.LIFESTEAL.max}%, 시험의 세트 5세트는 "받는 피해 −10%", 광란은 주변 피해 ${Math.round(RLItems.SPLASH.mul * 100)}%로 바뀌었어요.`);
+        `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요 ` +
+        `(대신 나이트메어는 깊은 층일수록 몬스터가 더 세져요). ` +
+        `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };

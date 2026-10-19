@@ -126,8 +126,9 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 
 ## 골드 던전
 
-- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요
-- 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요**: ${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스
+- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요. 문이 두 개예요
+- **왼쪽 문 (${M.GOLD_DUNGEON.floor}층)**: 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요** (${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스)
+- **오른쪽 문 (악몽 N층)**: 나이트메어에 들어가 본 뒤에 열려요. **나이트메어 최고 층과 같은 몬스터·보스**(속성 포함)가 나오고, 보상은 그 레벨(${M.NIGHTMARE.itemBase} + 층) 레전더리 고대 굴리기 ${M.GOLD_DUNGEON.rewardRolls}번 비용의 **×${I.NM_SHOP.priceMul}** (몬스터가 강한 만큼). 예: 악몽 10층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 10, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 25층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 25, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 50층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 50, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}골드. 몬스터 처치 골드도 그 레벨만큼
 - 보스를 쓰러뜨리고 계단을 밟으면 **완료 보상 골드 ${I.goldDungeonReward(M.GOLD_DUNGEON.floor, M.GOLD_DUNGEON.rewardRolls).toLocaleString()}** (= ${M.GOLD_DUNGEON.floor}레벨 레전더리 하나를 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드) ${M.GOLD_DUNGEON.rewardRolls}번 할 수 있는 골드). 몬스터 처치·골드 더미 골드도 ${M.GOLD_DUNGEON.floor}층만큼 따로 받아요 ([경제: 골드](economy.md#골드) 참고)
 - **장비는 나오지 않아요** (몬스터 드롭·보물·황금 고블린 없음). 골드를 모으는 곳이에요
 - 완료하면 로비로 돌아오고, 파란 포탈(\*)이나 건물로 새 골드 던전(새 지도·새 보스)에 다시 들어가요. 쓰러지면 일반 던전처럼 골드·레벨이 처음으로 돌아가요
@@ -140,7 +141,8 @@ ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요
 - 들어갈 수 있는 사람: 일반 던전 ${M.MAX_FLOOR}층 완료 + **장착한 장비가 모두 v4 이후** (예전 v3까지 장비는 가방에 있어도 되지만 끼고 있으면 못 들어가요. 안에서도 낄 수 없어요)
 - **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 층마다 ${N.monsters.perFloor}마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
 - 몬스터: 일반 던전 ${N.base}층 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${N.base}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
-- 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)})
+- 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)}). 깊이 갈수록 [나이트메어 아이템](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})(공격력·방어력·최대 HP ×${I.NM_POWER.mul})이 필요해요
+  - 예전에는 층마다 +2%였어요. 나이트메어 아이템을 ×${I.NM_POWER.mul}로 올리면서 1층은 그대로 두고 깊은 층을 세게 했어요 (잘 맞춘 장비 +10으로 50층 보스에게 쓰러질 확률 약 18%, 예전과 비슷)
 - 아이템 레벨은 **${N.itemBase} + 나이트메어 층** (${N.itemBase + 1}~${N.itemBase + N.floors}). 드롭 확률·등급 확률은 일반 던전과 같아요
 - 랭킹은 **나이트메어 탭**에 따로 기록돼요. 완료하면 "${N.floors}층 완료 ✓" (서버 기록값 ${N.clearStage})
 - 나이트메어 몬스터·보스는 **속성**(불·얼음·번개)을 하나씩 가져요. 이름에 "불꽃·서리·번개"가 붙고, 화면에서 오른쪽 위에 속성 색 점이 보여요
@@ -243,6 +245,7 @@ ${table(["층", "더미", "처치", "보스", "황금 고블린", "합계", "1�
 - 황금 고블린과 같은 등급표로 ${I.SHOP.slots}개를 진열해요: ${tableRates(I.TABLES[I.SHOP.table])}
 - 진열품은 (판 ID, 층)으로 정해져서 다시 열어도 같아요. 산 칸은 "판매 완료"로 남아요
 - 가격: 등급 기본값 × (1 + 아이템 레벨당 10%), 5골드 단위. 상점 아이템 레벨 = 그 층
+- **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
 
 ${table(["등급", "기본 가격", ...SHOP_FLOORS.map(d => `${d}층`)],
   Object.keys(I.SHOP.prices).map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
@@ -263,10 +266,11 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 - 로비 거래소·우편함 오른쪽 건물 \`&\`. 걸어 들어가면 열려요. 이름 옆에 다음 갱신까지 남은 분이 보여요
 - **매 시간 정각**(시간 번호 = 1970년부터 지난 시간 수)에 진열이 새로 바뀌어요. 던전 상점과 **같은 등급표·가격·진열 바꾸기(최대 ${I.SHOP.rerolls.max}번)**, 판의 골드로 사요 (쓰러진 판은 못 씀)
 - 아이템 레벨은 그 시간에 처음 열 때의 **최고 층(일반 던전, 최대 ${M.MAX_FLOOR})**으로 고정
+- **나이트메어 기록이 있으면 나이트메어 아이템**을 진열해요: 레벨 = ${M.NIGHTMARE.itemBase} + 나이트메어 최고 층 (최대 ${M.NIGHTMARE.itemBase + M.NIGHTMARE.floors}), 속성 줄과 [악몽의 힘](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})이 붙고, 가격·진열 바꾸기 비용은 ×${I.NM_SHOP.priceMul}
 - 진열은 사람(게스트·계정)마다 달라요. 시드 \`lobby|(사람마다 다른 8글자)|h(시간 번호)[|r바꾼 횟수]|s칸\`
 - 산 칸·바꾼 횟수는 그 기기에 저장해요. 이미 가진 아이템(다른 기기에서 산 같은 칸)은 다시 살 수 없어요
 - 창을 열어 둔 채 정각이 지나면 새 진열로 바뀌고, 지난 진열의 칸은 살 수 없어요
-- 서버는 시드를 다시 만들어 확인해요: 시간 번호가 서버 시각보다 미래면 안 되고, 레벨은 최고 층까지만
+- 서버는 시드를 다시 만들어 확인해요: 시간 번호가 서버 시각보다 미래면 안 되고, 레벨은 최고 층까지만 (나이트메어 진열은 시드에 \`|n층|\`, 레벨 = ${M.NIGHTMARE.itemBase} + 층)
 
 ## 판매와 강화
 
@@ -406,6 +410,15 @@ ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층�
   [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}
 
 - 결과는 아이템 ID와 몇 번째 굴림인지로 정해져서, 서버가 똑같이 다시 계산해요 (새로고침해도 같은 결과)
+
+## 나이트메어 아이템의 힘: 공격력·방어력·최대 HP ×${I.NM_POWER.mul}
+
+- [나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템은 **주 능력치 ★ 중 공격력·방어력·최대 HP가 ${I.NM_POWER.mul}배**예요. % 능력치(치명타 피해 등)와 추가 능력치 ◆는 그대로
+- 아이템에 저장된 굴린 값은 그대로이고, 효과와 화면에 보여줄 때 곱해요. 그래서 **이미 가진 나이트메어 아이템도 바로** 적용되고, 서버(랭킹 장비 보기)도 똑같이 계산해요. 화면의 [최소~최대] 범위도 ×${I.NM_POWER.mul}로 보여요
+- 강화는 ×${I.NM_POWER.mul}한 값에서 올라요 (단계마다 10%)
+- 왜: 일반 던전에서 시험의 세트를 다 맞추면, 나이트메어 아이템으로 한 부위만 바꿔도 5세트 효과가 꺼져서 바꿀 수가 없었어요. 시뮬레이션으로 보면 예전 규칙에서는 보통 나이트메어 레전더리 +10을 7부위 다 껴도 1층 보스에게 거의 쓰러졌어요
+  - 지금: 고대 시험의 세트 5부위(+10)에서 방어구를 나이트메어 레전더리(+5) 1·2·5부위로 바꾸면 1층 보스에게 쓰러질 확률이 세트 그대로 54% → 2%·14%·3%로 오히려 줄어요
+  - 대신 나이트메어 몬스터가 층마다 +${pct(M.NIGHTMARE.perFloor)}씩 세져서(예전 +2%), 깊은 층은 깊은 층에서 얻은 나이트메어 장비가 필요해요 (보통 레전더리 +10이면 25층쯤까지, 50층은 잘 맞춘 장비)
 
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r${I.RULES_REV})
 
