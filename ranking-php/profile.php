@@ -4,7 +4,7 @@
 //   GET  api.php?r=profile                → { rev, data | null, updatedAt }
 //   POST api.php?r=profile { rev, data }  → { ok: true, rev } 또는 { ok: false, conflict: true, rev, data } (다른 기기가 먼저 저장함)
 //
-// data: { v, save: { best, run, dead }, inv: { bag, equip, stones }, dex: { seen, kills }, boxMail: [...] }
+// data: { v, save: { best, run, dead }, inv: { bag, equip, stones, nmStones }, dex: { seen, kills }, boxMail: [...] }
 //   웹·앱·다른 기기에서 같은 계정이면 같은 가방과 진행 상황을 쓰도록 서버에 보관.
 //   rev(저장 번호)가 서버와 같을 때만 덮어씀 → 두 기기가 서로의 저장을 지우지 않게.
 // 아이템은 여기서 검증하지 않음 (가져가는 곳인 랭킹·거래소에서 시드로 검증하고, 남에게 넘어간 아이템은 막음).
@@ -27,6 +27,7 @@ function profile_valid($d): bool {
     if (!is_array($inv) || !is_array($inv['bag'] ?? null) || count($inv['bag']) > 60) return false;
     if (!is_array($inv['equip'] ?? null) || count($inv['equip']) > 7) return false;
     if (isset($inv['stones']) && (!is_int($inv['stones']) || $inv['stones'] < 0)) return false;
+    if (isset($inv['nmStones']) && (!is_int($inv['nmStones']) || $inv['nmStones'] < 0)) return false;  // 악몽 강화석
     if (isset($d['dex']) && !is_array($d['dex'])) return false;
     if (isset($d['save']) && !is_array($d['save'])) return false;
     if (isset($d['boxMail']) && (!is_array($d['boxMail']) || count($d['boxMail']) > 300)) return false;

@@ -190,18 +190,20 @@
   }
 
   // ---- 나이트메어 던전: 일반 던전(최대 층)을 완료하고 v4 이후 장비만 낀 사람이 들어가는 50층 던전 ----
-  // 몬스터 = 최대 층(75층) 몬스터 × 배율 × (1 + 층마다 9%). 아이템 레벨 = 75 + 나이트메어 층 (76~125)
-  // 층마다 2% → 9%: 나이트메어 아이템 공격력·방어력·HP ×3(items.js NM_POWER)과 함께. 1층은 그대로, 깊을수록 나이트메어 장비가 필요
-  // (잘 맞춘 장비 +10으로 50층 보스 쓰러질 확률 약 18%로 예전과 비슷, 보통 레전더리 +10은 25층쯤까지)
-  // 배율은 시뮬레이션으로 맞춤: 그 층 근처 레벨 장비를 잘 맞추면(+10) 40층까지 꾸준히, 50층에서 벽.
+  // 몬스터 = 최대 층(75층) 몬스터 × 배율 × 층 배율. 아이템 레벨 = 75 + 나이트메어 층 (76~125)
+  // 층 배율 = 1 + 2% × (층 − 1) + 0.3% × (층 − 1)²: 앞쪽 층은 천천히, 깊을수록 가파르게 (5층 ×1.13, 10층 ×1.42, 25층 ×3.2, 50층 ×9.2)
+  // 배율은 시뮬레이션으로 맞춤 (나이트메어 아이템 공격력·방어력·HP ×3, items.js NM_POWER와 함께):
+  //   보통 나이트메어 장비(1~5층에서 얻은 것 중 부위별로 고름, +4)로 5층 보스를 잡을 수 있게 (무기가 괜찮으면 쓰러질 확률 0%)
+  //   잘 맞춘 장비(+10)는 40층까지 꾸준히, 50층에서 벽 (보스 4%, 몬스터 3마리 21%)
+  //   예전(일반 ×1.6·HP ×4, 보스 공격 ×1.1·HP ×2.5, 층마다 9%)은 보통 장비로 1층 보스에게도 거의 쓰러졌음
   // 몬스터에 속성이 붙으면서(3단계) 일반·정예 공격 배율 2 → 1.6: 75층 장비로 들어가도 한 층 포션이 속성 전과 비슷하게(약 4~6개).
   // 보스 공격 1.3 → 1.1: 포션을 마시는 데 한 턴이 드는 것까지 넣고 다시 보니 1층 보스에게 3번 중 1번 쓰러짐 → 1.1이면 4%, 50층 9%
   const NIGHTMARE = {
-    floors: 50, perFloor: 0.09, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    floors: 50, perFloor: 0.02, perFloor2: 0.003, base: MAX_FLOOR, itemBase: MAX_FLOOR,
     // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (±3)
     // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
     monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },
-    hp: 4, atk: 1.6, bossHp: 2.5, bossAtk: 1.1,
+    hp: 2.5, atk: 1.0, bossHp: 1.5, bossAtk: 0.6,
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
   };
@@ -228,7 +230,7 @@
   const withElement = (m, el) => (el ? { ...m, name: `악몽의 ${ELEMENTS.prefix[el]} ${m.name.replace(/^악몽의 /, "")}`, el } : m);
 
   const nmMonsterCount = (n) => Math.min(NIGHTMARE.monsters.max, Math.floor(NIGHTMARE.monsters.start + NIGHTMARE.monsters.perFloor * (Math.max(1, n) - 1)));
-  const nmScale = (n) => 1 + NIGHTMARE.perFloor * (Math.max(1, n) - 1);
+  const nmScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + (NIGHTMARE.perFloor2 || 0) * k * k; };
   // 75층에 나오는 몬스터 + 그 뒤에 나오는 몬스터(대악마·타이탄·공허의 군주·고룡). 뒤쪽일수록 자주
   const nightmarePool = () => MONSTERS.filter(m => (m.until ?? Infinity) >= NIGHTMARE.base);
   function pickNightmareType(rand) {

@@ -464,6 +464,10 @@
   const ENHANCE = { max: 10, statPerLevel: 0.1, lineSteps: [4, 6, 8, 10], lineBoost: 0.5 };
   // 나이트메어 아이템은 강화석도 × NM_SHOP.priceMul
   const enhanceCost = (to, item) => to * (item ? nmCostMul(item) : 1);
+  // 강화석 종류: 나이트메어 아이템은 "악몽 강화석"(나이트메어 아이템을 판매해야 나옴)으로만 강화. 일반 아이템은 일반 강화석
+  // (일반 던전에서 모아 둔 강화석으로 나이트메어 아이템을 얻자마자 +10까지 올리던 것을 막음)
+  const STONE_NAMES = { stones: "강화석", nmStones: "악몽 강화석" };
+  const stoneKey = (item) => (isNightmareItem(item) ? "nmStones" : "stones");
   const enhanceChance = (to) => (to <= 4 ? 1 : Math.max(0.05, 0.5 - (to - 5) * 0.1));
 
   // 강화 결과는 (아이템 ID, 몇 번째 시도) 시드로 정해짐 → 새로고침해도 같은 결과, 서버에서 다시 계산 가능
@@ -645,7 +649,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
