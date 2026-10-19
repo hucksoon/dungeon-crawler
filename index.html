@@ -454,14 +454,9 @@
   <div id="log"></div>
   <p class="hint"><span class="keys-only">이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="touch-only">방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
-  로비 가운데 던전 입구의 왼쪽 문은 <b>1층부터</b>, 오른쪽 문은 <b>최고 층 − 10층부터</b> 들어가요 (12층까지 내려가면 열려요).<br>
-  던전에서 <b>포탈(P)</b>을 타면 골드·레벨·장비를 그대로 들고 바로 로비로 돌아오고, <b>HP와 포션이 모두 회복</b>돼요. 로비에 생긴 파란 <b>포탈(*)</b>로 들어가면 떠난 자리로 돌아가요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
-  로비 왼쪽 <b>거래소($)</b>로 걸어 들어가면 아이템을 사고팔고, 그 옆 빨간 <b>우편함(✉)</b>에서 판매 대금과 돌아온 아이템을 받아요.<br>
-  계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구, <b>]</b> 방패)를 떨어뜨리기도 해요. 보조 손에 무기를 끼면 한 턴에 두 번, 방패를 끼면 확률로 공격을 막아요.<br>
-  포션은 개수 제한 없이 <b>10턴마다 한 번</b> 마실 수 있어요(최대 HP 30% 회복). 바닥의 <b>보물(!)</b>을 주우면 레어 이상 장비가 나와요.<br>
-  금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요! 75층 보스를 쓰러뜨리면 일반 던전 완료! 그 뒤에는 로비의 파란 포탈(*)로 75층 새 구역에 들어가 파밍하거나, 오른쪽 문으로 65층부터 들어갈 수 있어요.<br>
-  완료한 뒤에는 로비 오른쪽 <b>나이트메어</b>(▼) 건물로 더 강한 던전(50층, 아이템 레벨 76~125, 따로 랭킹)에 들어갈 수 있어요. v4 이후 장비만 낄 수 있어요.<br>
-  나이트메어 몬스터는 속성이 있어요: <b>불</b>(화상), <b>얼음</b>(느려짐 — 2턴에 한 번 움직임), <b>번개</b>(한 번 더 맞음). 나이트메어 아이템의 속성 피해·저항으로 맞서요.<br>
+  적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>가 열려요.<br>
+  바닥의 <b>!</b>는 좋은 장비. 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
+  로비의 파란 <b>*</b>로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br>
   <a href="privacy.html" style="color: inherit">개인정보처리방침</a></p>
 </div>
 
@@ -1004,6 +999,16 @@
         return result;
       },
 
+      // 고대 다시 굴리기: 골드는 부르는 쪽(판의 골드)에서 냄. 결과 { ok, n } 또는 { error }
+      rerollAncient(id) {
+        const item = all().find(x => x.id === id);
+        if (!item || !RLItems.canRerollAncient(item)) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
+        const r = RLItems.rerollAncient(item);
+        record("ancient", item, { ok: r.ok, n: r.n });
+        write();
+        return r;
+      },
+
       // 상점 구매: "ok" | "full"
       buy(item, price) {
         if (data.bag.length >= BAG_SIZE) return "full";
@@ -1130,7 +1135,7 @@
       }
       // 서버는 (시드, 출처, 레벨, 규칙 버전, 강화)로 아이템을 다시 만들어 검증하고 능력치를 직접 계산함.
       // rarity·name은 Cloudflare 버전 서버용
-      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}) });
+      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}), ...(it.ar ? { ar: it.ar } : {}) });
       return {
         stage,
         ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
@@ -3239,6 +3244,16 @@
     const enhanceBtn = el("button", {
       type: "button", disabled: !canEnhance || Inv.stones() < RLItems.enhanceCost(to), onclick: () => enhanceItem(item),
     }, "강화");
+    // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
+    const AR = RLItems.ANCIENT_REROLL;
+    const canAncient = RLItems.canRerollAncient(item);
+    const arCost = RLItems.ancientRerollCost(item);
+    if ((item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient) rows.push(el("div", { className: "meta" }, canAncient
+      ? `고대 굴리기: ${Math.round(AR.chance * 100)}% 확률로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 · 남은 횟수 ${AR.max - (item.ar || 0)}/${AR.max}`
+      : `고대 굴리기를 ${AR.max}번 모두 썼어요.`));
+    const ancientBtn = canAncient ? el("button", {
+      type: "button", disabled: gameOver || !player || player.gold < arCost, onclick: () => ancientItem(item),
+    }, `고대 굴리기 (${arCost.toLocaleString()}골드)`) : null;
 
     const actions = el("div", { className: "row" });
     if (selected.from === "bag") {
@@ -3252,6 +3267,7 @@
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
     }
+    if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
@@ -3301,6 +3317,22 @@
     else if (r.ok) invMsg = { cls: "good", text: `강화 성공! ${before} → +${r.to}` };
     else invMsg = { cls: "bad", text: `강화 실패… (+${r.to} 성공 확률 ${Math.round(r.chance * 100)}%) 아이템은 그대로예요.` };
     if (!r.error) log(invMsg.text, invMsg.cls);
+    afterGearChange();
+  }
+
+  function ancientItem(item) {
+    const cost = RLItems.ancientRerollCost(item);
+    if (gameOver || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    const before = RLItems.itemName(item);
+    const r = Inv.rerollAncient(item.id);
+    if (r.error) invMsg = { cls: "bad", text: r.error };
+    else {
+      player.gold -= cost;
+      invMsg = r.ok ? { cls: "good", text: `✨ 고대가 됐어요! ${before} → ${RLItems.itemName(item)} (모든 능력치 최대치)` }
+        : { cls: "bad", text: `고대 굴리기 실패… (${r.n}/${RLItems.ANCIENT_REROLL.max}번째, -${cost.toLocaleString()}골드)` };
+      log(invMsg.text, r.ok ? "rainbow" : "bad");
+      saveGame(true);
+    }
     afterGearChange();
   }
 
@@ -3537,6 +3569,7 @@
     if (item.id !== ref.id) return null;
     item.enh = ref.enh || 0;
     if (ref.tries) item.tries = ref.tries;
+    if (ref.ar) RLItems.applyAncientRerolls(item, ref.ar);
     return item;
   }
 
@@ -3737,7 +3770,7 @@
     setMarketMsg("올리는 중…");
     renderMarket();
     try {
-      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}) };
+      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}) };
       const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: Math.max(bestDepth, depth || 0) } });
       Inv.remove(item.id, "list", { listing: r.listing.id, gold, cash });
       Market.sel = null;

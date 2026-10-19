@@ -129,6 +129,8 @@ const R_RARITY_MUL = ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' =
 const R_OFF_SLOT_MUL = 0.5;
 const R_MAX_ROLL_CHANCE = 0.2;
 const R_ANCIENT_CHANCE = 0.03;   // v4 r1부터
+// 고대 다시 굴리기 (items.js ANCIENT_REROLL): 고대가 아닌 v4 레전더리·세트를 골드로 굴림. 한 번에 5%, 최대 20번. 참조의 ar = 굴린 횟수
+const R_ANCIENT_REROLL = ['chance' => 0.05, 'max' => 20];
 const R_ENHANCE = ['max' => 10, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10], 'lineBoost' => 0.5];
 const R_SETS = [
     'trial' => [
@@ -353,13 +355,29 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     if ($rev) {
         $item['r'] = $rev;
         // 고대 굴림 (items.js와 같은 시드): 걸리면 모든 능력치·패링을 최대치로
-        if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) {
-            foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
-            foreach ($item['lines'] as $i => [$k, $v]) $item['lines'][$i][1] = r_line_range_of($k, $item)[1];
-            if (isset($item['parry'])) $item['parry'] = R_PARRY['ranges'][$rarity][1];
-        }
+        if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
     }
     $item['ancient'] = r_is_ancient($item);
+    return $item;
+}
+
+// 모든 능력치(주·추가·패링)를 범위의 최대치로
+function r_max_out(array $item): array {
+    foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
+    foreach ($item['lines'] as $i => [$k, $v]) $item['lines'][$i][1] = r_line_range_of($k, $item)[1];
+    if (isset($item['parry'])) $item['parry'] = R_PARRY['ranges'][$item['rarity']][1];
+    return $item;
+}
+
+// 고대 다시 굴리기: ar번째 굴림이 고대였으면 최대치로 (고대가 되면 더 굴리지 않으므로 마지막 굴림만 봄)
+function r_apply_ancient_rerolls(array $item, int $ar): array {
+    if ($ar < 1) return $item;
+    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return $item;
+    $item['ar'] = $ar;
+    if (!$item['ancient'] && $ar <= R_ANCIENT_REROLL['max'] && r_rng("anc|{$item['id']}|re{$ar}")() < R_ANCIENT_REROLL['chance']) {
+        $item = r_max_out($item);
+        $item['ancient'] = r_is_ancient($item);
+    }
     return $item;
 }
 

@@ -20,6 +20,10 @@
   //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름). 같은 때부터 포션 자리(시드 |p)는 보물 자리: 황금 고블린 등급표로 1개 (서버도 r3부터 인정)
   const RULES_REV = 3;
   const ANCIENT = { chance: 0.03 };
+  // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
+  // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
+  // 결과는 (아이템 ID, 몇 번째) 시드로 정해짐 → 서버가 아이템 참조의 ar(굴린 횟수)로 똑같이 다시 계산
+  const ANCIENT_REROLL = { chance: 0.05, max: 20 };
 
   // ---- 시드 기반 난수 ----
   function hashSeed(str) {
@@ -385,13 +389,38 @@
     if (rev) {
       item.r = rev;
       // 고대 굴림: (아이템 ID) 시드로 따로. 걸리면 주 능력치·추가 능력치·패링을 모두 최대치로
-      if ((rarity === "legendary" || rarity === "set") && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) {
-        item.main = item.main.map(([k]) => [k, mainRange(k, item)[1]]);
-        item.lines = item.lines.map(([k]) => [k, lineRangeOf(k, item)[1]]);
-        if (item.parry != null) item.parry = PARRY.ranges[rarity][1];
-      }
+      if ((rarity === "legendary" || rarity === "set") && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);
     }
     item.ancient = isAncient(item);
+    return item;
+  }
+
+  // 모든 능력치(주·추가·패링)를 범위의 최대치로
+  function maxOut(item) {
+    item.main = item.main.map(([k]) => [k, mainRange(k, item)[1]]);
+    item.lines = item.lines.map(([k]) => [k, lineRangeOf(k, item)[1]]);
+    if (item.parry != null) item.parry = PARRY.ranges[item.rarity][1];
+  }
+
+  // ---- 고대 다시 굴리기 ----
+  const canRerollAncient = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
+    !item.ancient && (item.ar || 0) < ANCIENT_REROLL.max;
+  const ancientRerollCost = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl);
+  // n번째 굴림이 고대인지 (1부터)
+  const ancientRerollHit = (item, n) => n >= 1 && n <= ANCIENT_REROLL.max && rngFrom(`anc|${item.id}|re${n}`)() < ANCIENT_REROLL.chance;
+  // 한 번 굴림: 아이템을 바꾸고 { ok, n }
+  function rerollAncient(item) {
+    const n = (item.ar || 0) + 1;
+    const ok = ancientRerollHit(item, n);
+    item.ar = n;
+    if (ok) { maxOut(item); item.ancient = isAncient(item); }
+    return { ok, n };
+  }
+  // 참조(ar)로 다시 만들 때: 마지막 굴림이 고대였으면 최대치로 (고대가 되면 더 굴리지 않으므로 마지막 굴림만 보면 됨)
+  function applyAncientRerolls(item, ar) {
+    if (!(ar > 0) || item.v !== 4 || !item.main || (item.rarity !== "legendary" && item.rarity !== "set")) return item;
+    item.ar = ar;
+    if (!item.ancient && ancientRerollHit(item, ar)) { maxOut(item); item.ancient = isAncient(item); }
     return item;
   }
 
@@ -578,7 +607,7 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
+    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,

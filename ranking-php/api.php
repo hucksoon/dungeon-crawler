@@ -432,6 +432,9 @@ function verify_item($q, int $maxLvl): ?array {
     if (!seed_origin_ok($v, $seed, $src, $lvl, $rev)) return null;
     $item = r_generate($v, $seed, $src, $lvl, $rev);
     if (isset($q['id']) && $q['id'] !== $item['id']) return null;
+    $ar = $q['ar'] ?? 0;  // 고대 다시 굴리기 횟수 (최대 20)
+    if (!is_int($ar) || $ar < 0 || $ar > R_ANCIENT_REROLL['max']) return null;
+    $item = r_apply_ancient_rerolls($item, $ar);
     $item['enh'] = $enh;
     return $item;
 }
