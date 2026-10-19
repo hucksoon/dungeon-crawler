@@ -999,6 +999,16 @@
         return result;
       },
 
+      // 고대 다시 굴리기: 골드는 부르는 쪽(판의 골드)에서 냄. 결과 { ok, n } 또는 { error }
+      rerollAncient(id) {
+        const item = all().find(x => x.id === id);
+        if (!item || !RLItems.canRerollAncient(item)) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
+        const r = RLItems.rerollAncient(item);
+        record("ancient", item, { ok: r.ok, n: r.n });
+        write();
+        return r;
+      },
+
       // 상점 구매: "ok" | "full"
       buy(item, price) {
         if (data.bag.length >= BAG_SIZE) return "full";
@@ -1125,7 +1135,7 @@
       }
       // 서버는 (시드, 출처, 레벨, 규칙 버전, 강화)로 아이템을 다시 만들어 검증하고 능력치를 직접 계산함.
       // rarity·name은 Cloudflare 버전 서버용
-      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}) });
+      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}), ...(it.ar ? { ar: it.ar } : {}) });
       return {
         stage,
         ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
@@ -3234,6 +3244,16 @@
     const enhanceBtn = el("button", {
       type: "button", disabled: !canEnhance || Inv.stones() < RLItems.enhanceCost(to), onclick: () => enhanceItem(item),
     }, "강화");
+    // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
+    const AR = RLItems.ANCIENT_REROLL;
+    const canAncient = RLItems.canRerollAncient(item);
+    const arCost = RLItems.ancientRerollCost(item);
+    if ((item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient) rows.push(el("div", { className: "meta" }, canAncient
+      ? `고대 굴리기: ${Math.round(AR.chance * 100)}% 확률로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 · 남은 횟수 ${AR.max - (item.ar || 0)}/${AR.max}`
+      : `고대 굴리기를 ${AR.max}번 모두 썼어요.`));
+    const ancientBtn = canAncient ? el("button", {
+      type: "button", disabled: gameOver || !player || player.gold < arCost, onclick: () => ancientItem(item),
+    }, `고대 굴리기 (${arCost.toLocaleString()}골드)`) : null;
 
     const actions = el("div", { className: "row" });
     if (selected.from === "bag") {
@@ -3247,6 +3267,7 @@
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
     }
+    if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
@@ -3296,6 +3317,22 @@
     else if (r.ok) invMsg = { cls: "good", text: `강화 성공! ${before} → +${r.to}` };
     else invMsg = { cls: "bad", text: `강화 실패… (+${r.to} 성공 확률 ${Math.round(r.chance * 100)}%) 아이템은 그대로예요.` };
     if (!r.error) log(invMsg.text, invMsg.cls);
+    afterGearChange();
+  }
+
+  function ancientItem(item) {
+    const cost = RLItems.ancientRerollCost(item);
+    if (gameOver || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    const before = RLItems.itemName(item);
+    const r = Inv.rerollAncient(item.id);
+    if (r.error) invMsg = { cls: "bad", text: r.error };
+    else {
+      player.gold -= cost;
+      invMsg = r.ok ? { cls: "good", text: `✨ 고대가 됐어요! ${before} → ${RLItems.itemName(item)} (모든 능력치 최대치)` }
+        : { cls: "bad", text: `고대 굴리기 실패… (${r.n}/${RLItems.ANCIENT_REROLL.max}번째, -${cost.toLocaleString()}골드)` };
+      log(invMsg.text, r.ok ? "rainbow" : "bad");
+      saveGame(true);
+    }
     afterGearChange();
   }
 
@@ -3532,6 +3569,7 @@
     if (item.id !== ref.id) return null;
     item.enh = ref.enh || 0;
     if (ref.tries) item.tries = ref.tries;
+    if (ref.ar) RLItems.applyAncientRerolls(item, ref.ar);
     return item;
   }
 
@@ -3732,7 +3770,7 @@
     setMarketMsg("올리는 중…");
     renderMarket();
     try {
-      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}) };
+      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}) };
       const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: Math.max(bestDepth, depth || 0) } });
       Inv.remove(item.id, "list", { listing: r.listing.id, gold, cash });
       Market.sel = null;

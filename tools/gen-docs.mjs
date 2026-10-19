@@ -370,6 +370,17 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
   - 아이템 ID로 정해지는 굴림이라 서버에서 똑같이 다시 계산해요
 - 아이템 버전은 그대로 v4이고, 이 규칙이 생기기 전에 얻은 v4 아이템은 예전처럼 **모든 능력치가 우연히 최대치일 때만** 고대예요 (능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 2만 개 중 1개꼴)
 
+### 고대 다시 굴리기 (골드)
+
+- 고대가 아닌 **v4 레전더리·세트**는 인벤토리에서 **골드로 고대를 다시 굴릴 수 있어요**
+- 한 번에 **${pct(I.ANCIENT_REROLL.chance)}** 확률로 고대(모든 능력치 최대치)가 돼요. 아이템마다 **최대 ${I.ANCIENT_REROLL.max}번** (다 굴리면 고대가 될 확률 ${pct(1 - (1 - I.ANCIENT_REROLL.chance) ** I.ANCIENT_REROLL.max)})
+- 비용은 그 아이템의 **상점 가격**이에요. 레벨이 높을수록 비싸요
+
+${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층에서 한 층에 모이는 골드 (평균)"],
+  [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}
+
+- 결과는 아이템 ID와 몇 번째 굴림인지로 정해져서, 서버가 똑같이 다시 계산해요 (새로고침해도 같은 결과)
+
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r${I.RULES_REV})
 
 [나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·보물·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
