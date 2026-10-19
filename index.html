@@ -913,11 +913,11 @@
       use(o) { owner = o; data = read(o); },
       owner: () => owner,
       // 서버에 올리는 부분 (얻은·버린 기록 log는 커서 이 기기에만)
-      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0 }),
+      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0 }),
       // 서버 저장본으로 바꿈 (기록은 이 기기 것 유지)
       load(o, inv) {
         owner = o;
-        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, log: read(o).log });
+        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, log: read(o).log });
         store.set(key(owner), JSON.stringify(data));
       },
       // 이 기기에만 있던 장비를 합침. 옮긴 개수
@@ -965,22 +965,27 @@
         return true;
       },
       stones: () => data.stones || 0,
+      nmStones: () => data.nmStones || 0,
+      stonesFor: (item) => data[RLItems.stoneKey(item)] || 0,   // 그 아이템을 강화하는 데 쓰는 강화석
 
       // 가방 전부 판매 (장착 중인 아이템은 제외). keep(item)이 true인 아이템은 남김. 아이템마다 판매 기록을 남김
+      // 나이트메어 아이템은 악몽 강화석으로
       sellAll(keep = () => false) {
-        let stones = 0, gold = 0;
+        const got = { stones: 0, nmStones: 0 };
+        let gold = 0;
         const sold = data.bag.filter(item => !keep(item));
         const count = sold.length;
         for (const item of sold) {
-          const gain = RLItems.sellStones(item);
-          stones += gain;
+          const gain = RLItems.sellStones(item), k = RLItems.stoneKey(item);
+          got[k] += gain;
           gold += RLItems.sellGold(item);
-          record("sell", item, { stones: gain, bulk: true });
+          record("sell", item, { [k]: gain, bulk: true });
         }
         data.bag = data.bag.filter(item => keep(item));
-        data.stones = (data.stones || 0) + stones;
+        data.stones = (data.stones || 0) + got.stones;
+        data.nmStones = (data.nmStones || 0) + got.nmStones;
         write();
-        return { count, stones, gold };
+        return { count, ...got, gold };
       },
 
       // 거래소에 올림: 가방에서 빼고 기록만 남김 (팔리면 구매자에게, 안 팔리면 우편함으로 돌아옴)
@@ -998,9 +1003,9 @@
         const i = data.bag.findIndex(x => x.id === id);
         if (i < 0) return 0;
         const item = data.bag.splice(i, 1)[0];
-        const gain = RLItems.sellStones(item);
-        data.stones = (data.stones || 0) + gain;
-        record("sell", item, { stones: gain });
+        const gain = RLItems.sellStones(item), k = RLItems.stoneKey(item);
+        data[k] = (data[k] || 0) + gain;
+        record("sell", item, { [k]: gain });
         write();
         return gain;
       },
@@ -1012,10 +1017,10 @@
         if (!item) return { error: "아이템이 없어요." };
         const to = (item.enh || 0) + 1;
         if (to > RLItems.ENHANCE.max) return { error: `+${RLItems.ENHANCE.max}이 최대예요.` };
-        const cost = RLItems.enhanceCost(to, item);
-        if ((data.stones || 0) < cost) return { error: `강화석이 부족해요. (필요 ${cost}개)` };
+        const cost = RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);
+        if ((data[k] || 0) < cost) return { error: `${RLItems.STONE_NAMES[k]}이 부족해요. (필요 ${cost}개)` };
         const result = RLItems.rollEnhance(item);
-        data.stones -= cost;
+        data[k] -= cost;
         item.tries = (item.tries || 0) + 1;
         if (result.ok) item.enh = to;
         record("enhance", item, { to, ok: result.ok, cost, tries: item.tries });
@@ -3219,7 +3224,7 @@
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
     document.getElementById("inv-count").textContent =
-      `골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
+      `골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
 
     invEquip.replaceChildren(...RLItems.SLOTS.map(slot => {
       const item = equip[slot];
@@ -3265,15 +3270,24 @@
       : [el("div", { className: "bag-empty" }, "가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요.")]));
 
     const sellAllBtn = document.getElementById("inv-sell-all");
-    const total = bag.reduce((s, item) => s + RLItems.sellStones(item), 0);
     const totalGold = bag.reduce((s, item) => s + RLItems.sellGold(item), 0);
-    sellAllBtn.textContent = bag.length ? `가방 전부 판매 (${bag.length}개 → 강화석 +${total} · 골드 +${totalGold.toLocaleString()})` : "가방 전부 판매";
+    sellAllBtn.textContent = bag.length ? `가방 전부 판매 (${bag.length}개 → ${stonesText(bag)} · 골드 +${totalGold.toLocaleString()})` : "가방 전부 판매";
     sellAllBtn.disabled = !bag.length;
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
 
     renderDetail();
   }
+
+  // 판매하면 받는 강화석: "강화석 +A · 악몽 강화석 +B" (0인 쪽은 빼고, 둘 다 0이면 "강화석 +0")
+  const showNmStones = () => Inv.nmStones() > 0 || Inv.items().some(RLItems.isNightmareItem);
+  function stonesText(items, sign = "+") {
+    const sum = { stones: 0, nmStones: 0 };
+    for (const item of items) sum[RLItems.stoneKey(item)] += RLItems.sellStones(item);
+    const parts = Object.keys(sum).filter(k => sum[k]).map(k => `${RLItems.STONE_NAMES[k]} ${sign}${sum[k]}`);
+    return parts.length ? parts.join(" · ") : `강화석 ${sign}0`;
+  }
+  const gainText = (r) => [r.stones ? `강화석 +${r.stones}` : "", r.nmStones ? `악몽 강화석 +${r.nmStones}` : ""].filter(Boolean).join(" · ") || "강화석 +0";
 
   // 가방 전부 판매: 레전더리·세트가 섞여 있으면 같이 팔지 물어봄 (안 팔면 가방에 남김).
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
@@ -3283,12 +3297,11 @@
     const bag = Inv.bag();
     if (!bag.length) return;
     if (bag.some(isPrecious)) { sellAsk = true; renderInventory(); return; }
-    const total = bag.reduce((s, item) => s + RLItems.sellStones(item), 0);
     const valuable = bag.filter(item => RARITY_ORDER.indexOf(item.rarity) <= RARITY_ORDER.indexOf("rare"));
     const detail = valuable.length
       ? ` 레어 이상 ${valuable.length}개(${valuable.map(RLItems.itemName).slice(0, 5).join(", ")}${valuable.length > 5 ? " …" : ""})도 포함돼요.`
       : "";
-    if (!confirm(`가방의 아이템 ${bag.length}개를 모두 판매하고 강화석 ${total}개를 받을까요?${detail} 장착 중인 아이템은 판매되지 않아요.`)) return;
+    if (!confirm(`가방의 아이템 ${bag.length}개를 모두 판매하고 ${stonesText(bag, "")}개를 받을까요?${detail} 장착 중인 아이템은 판매되지 않아요.`)) return;
     doSellAll(() => false);
   }
   function doSellAll(keep) {
@@ -3297,7 +3310,7 @@
     const kept = Inv.bag().length;
     const gold = sellGoldIn(r.gold);
     selected = null;
-    invMsg = { cls: "good", text: `아이템 ${r.count}개 판매 → 강화석 +${r.stones}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}${kept ? ` (레전더리·세트 ${kept}개는 가방에 남김)` : ""}` };
+    invMsg = { cls: "good", text: `아이템 ${r.count}개 판매 → ${gainText(r)}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}${kept ? ` (레전더리·세트 ${kept}개는 가방에 남김)` : ""}` };
     log(invMsg.text, "good");
     afterGearChange();
   }
@@ -3308,15 +3321,15 @@
     if (!sellAsk) return;
     const bag = Inv.bag();
     const precious = bag.filter(isPrecious), rest = bag.filter(item => !isPrecious(item));
-    const sum = (list) => list.reduce((s, item) => s + RLItems.sellStones(item), 0);
+    const sum = (list) => stonesText(list);
     const names = precious.map(RLItems.itemName);
     box.replaceChildren(
       el("div", {}, `레전더리·세트 ${precious.length}개도 같이 팔까요?`),
       el("div", { className: "meta" }, `${names.slice(0, 4).join(", ")}${names.length > 4 ? ` 외 ${names.length - 4}개` : ""}`),
       el("div", { className: "row" },
         el("button", { type: "button", className: "primary", disabled: !rest.length, onclick: () => doSellAll(isPrecious) },
-          rest.length ? `남기고 나머지 ${rest.length}개만 판매 (+${sum(rest)})` : "남길 것 빼면 팔 게 없어요"),
-        el("button", { type: "button", onclick: () => doSellAll(() => false) }, `모두 판매 ${bag.length}개 (+${sum(bag)})`),
+          rest.length ? `남기고 나머지 ${rest.length}개만 판매 (${sum(rest)})` : "남길 것 빼면 팔 게 없어요"),
+        el("button", { type: "button", onclick: () => doSellAll(() => false) }, `모두 판매 ${bag.length}개 (${sum(bag)})`),
         el("button", { type: "button", onclick: () => { sellAsk = false; renderInventory(); } }, "취소")),
     );
   }
@@ -3349,10 +3362,10 @@
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · 강화석 ${RLItems.enhanceCost(to, item)}개 (실패해도 아이템은 그대로)`
+      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개, 실패해도 아이템은 그대로)`
       : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
     const enhanceBtn = el("button", {
-      type: "button", disabled: !canEnhance || Inv.stones() < RLItems.enhanceCost(to, item), onclick: () => enhanceItem(item),
+      type: "button", disabled: !canEnhance || Inv.stonesFor(item) < RLItems.enhanceCost(to, item), onclick: () => enhanceItem(item),
     }, "강화");
     // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
     const AR = RLItems.ANCIENT_REROLL;
@@ -3377,7 +3390,7 @@
       actions.append(
         el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착"),
         enhanceBtn,
-        el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (강화석 +${RLItems.sellStones(item)} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
+        el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (${stonesText([item])} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
       );
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
@@ -3419,12 +3432,12 @@
 
   function sellItem(item) {
     const rank = RARITY_ORDER.indexOf(item.rarity);
-    const gain = RLItems.sellStones(item);
-    if (rank <= RARITY_ORDER.indexOf("rare") && !confirm(`${RLItems.itemName(item)}을(를) 강화석 ${gain}개에 판매할까요? 되돌릴 수 없어요.`)) return;
+    const gain = RLItems.sellStones(item), stone = RLItems.STONE_NAMES[RLItems.stoneKey(item)];
+    if (rank <= RARITY_ORDER.indexOf("rare") && !confirm(`${RLItems.itemName(item)}을(를) ${stone} ${gain}개에 판매할까요? 되돌릴 수 없어요.`)) return;
     Inv.sell(item.id);
     const gold = sellGoldIn(RLItems.sellGold(item));
     selected = null;
-    invMsg = { cls: "good", text: `${RLItems.itemName(item)} 판매 → 강화석 +${gain}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}` };
+    invMsg = { cls: "good", text: `${RLItems.itemName(item)} 판매 → ${stone} +${gain}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}` };
     afterGearChange();
   }
   // 판매 골드는 지금 판의 골드로 (쓰러진 판에는 들어가지 않음). 실제로 받은 골드
@@ -4324,7 +4337,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1020:${owner}`;  // 나이트메어 아이템의 힘 ×3·깊은 층 몬스터, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1020b:${owner}`;  // 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4333,8 +4346,8 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요 ` +
-        `(대신 나이트메어는 깊은 층일수록 몬스터가 더 세져요). ` +
+        `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요. ` +
+        `나이트메어 아이템은 판매하면 나오는 악몽 강화석으로 강화해요. 나이트메어 앞쪽 층은 쉬워지고 깊은 층일수록 세져요. ` +
         `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);
       const note = document.getElementById("update-note");
       note.hidden = false;

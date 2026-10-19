@@ -141,8 +141,9 @@ ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요
 - 들어갈 수 있는 사람: 일반 던전 ${M.MAX_FLOOR}층 완료 + **장착한 장비가 모두 v4 이후** (예전 v3까지 장비는 가방에 있어도 되지만 끼고 있으면 못 들어가요. 안에서도 낄 수 없어요)
 - **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 층마다 ${N.monsters.perFloor}마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
 - 몬스터: 일반 던전 ${N.base}층 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${N.base}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
-- 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)}). 깊이 갈수록 [나이트메어 아이템](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})(공격력·방어력·최대 HP ×${I.NM_POWER.mul})이 필요해요
-  - 예전에는 층마다 +2%였어요. 나이트메어 아이템을 ×${I.NM_POWER.mul}로 올리면서 1층은 그대로 두고 깊은 층을 세게 했어요 (잘 맞춘 장비 +10으로 50층 보스에게 쓰러질 확률 약 18%, 예전과 비슷)
+- 층 배율 = 1 + ${pct(N.perFloor)} × (층 − 1) + ${(N.perFloor2 * 100).toFixed(1)}% × (층 − 1)²: **앞쪽 층은 천천히, 깊을수록 가파르게** 강해져요 (${[5, 10, 25, N.floors].map(n => `${n}층 ×${M.nmScale(n).toFixed(2)}`).join(", ")}). 깊이 갈수록 [나이트메어 아이템](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})(공격력·방어력·최대 HP ×${I.NM_POWER.mul})이 필요해요
+  - 시뮬레이션으로 맞춘 목표: **보통 나이트메어 장비**(1~5층에서 얻은 것 중 부위별로 고름, +4)로 **5층 보스**를 잡을 수 있게 (무기가 괜찮으면 쓰러질 확률 0%, 공격력이 낮은 조합은 포탈로 회복하며 잡기), 잘 맞춘 장비(+10)는 40층까지 꾸준히, 50층이 벽
+  - 예전(일반 HP ×4·공격 ×1.6, 보스 HP ×2.5·공격 ×1.1, 층마다 +9%)에는 보통 나이트메어 장비로 1층 보스에게도 거의 쓰러졌어요
 - 아이템 레벨은 **${N.itemBase} + 나이트메어 층** (${N.itemBase + 1}~${N.itemBase + N.floors}). 드롭 확률·등급 확률은 일반 던전과 같아요
 - 랭킹은 **나이트메어 탭**에 따로 기록돼요. 완료하면 "${N.floors}층 완료 ✓" (서버 기록값 ${N.clearStage})
 - 나이트메어 몬스터·보스는 **속성**(불·얼음·번개)을 하나씩 가져요. 이름에 "불꽃·서리·번개"가 붙고, 화면에서 오른쪽 위에 속성 색 점이 보여요
@@ -275,6 +276,7 @@ ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 �
 ## 판매와 강화
 
 - 판매하면 등급에 따라 강화석을 받아요. 아이템 레벨이 높을수록 더 받아요: 기본값 × (1 + 레벨당 ${pct(I.SELL_PER_LEVEL)})
+- **나이트메어 아이템을 판매하면 "${I.STONE_NAMES.nmStones}"**을 받아요 (개수는 같은 표). 나이트메어 아이템은 ${I.STONE_NAMES.nmStones}으로만 강화하고, 일반 아이템은 일반 강화석으로 강화해요. 일반 던전에서 모아 둔 강화석으로 나이트메어 아이템을 얻자마자 +10까지 올리지 못하게
 
 ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_STONES).map(r => [I.RARITIES[r].name, I.SELL_STONES[r], ...[10, 30, 60, 120].map(lvl => I.sellStones({ rarity: r, lvl }))]))}
 
@@ -283,7 +285,7 @@ ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.ke
 ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_GOLD).map(r => [I.RARITIES[r].name, I.SELL_GOLD[r], ...[10, 30, 60, 120].map(lvl => I.sellGold({ rarity: r, lvl }))]))}
 
 - 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
-- +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요 (나이트메어 아이템은 강화석 ×${I.NM_SHOP.priceMul}: +N이면 ${I.NM_SHOP.priceMul}N개)
+- +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요 (나이트메어 아이템은 ${I.STONE_NAMES.nmStones} ${I.NM_SHOP.priceMul}N개)
 - 강화 1단계마다 수치 주 능력치가 +10% 올라요 (최소 +1). 치명타 같은 % 주 능력치는 2단계마다 +1%p
 - +${I.ENHANCE.lineSteps.join(", +")}이 되면 추가 능력치 중 하나가 올라요. 자세한 건 [장비 문서](items.md#강화)
 - 결과는 (아이템 ID, 몇 번째 시도)로 정해져서 새로고침해도 바뀌지 않아요
@@ -441,7 +443,7 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
   - 수치 능력치: 그 레벨 범위 **최대치의 ${pct(I.ENHANCE.lineBoost)}**(최소 +1)
   - % 능력치: 그 등급 범위 **최대치의 ${pct(I.PCT_LINE_BOOST)}**(최소 +1). 예: 레전더리 치명타 피해(최대 ${I.PCT_LINE.critDmg.legendary[1]}%)는 +${I.lineBoost({ v: I.RULES_VERSION, rarity: "legendary", lvl: 1 }, "critDmg")}%p
   - 어느 줄이 오를지는 (아이템 ID, 강화 단계)로 정해져요. 같은 줄이 여러 번 오를 수도 있어요
-- 성공 확률과 강화석은 [경제 문서](economy.md#판매와-강화)를 보세요. **나이트메어 아이템은 강화석이 ×${I.NM_SHOP.priceMul}** (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서)
+- 성공 확률과 강화석은 [경제 문서](economy.md#판매와-강화)를 보세요. **나이트메어 아이템은 ${I.STONE_NAMES.nmStones}(나이트메어 아이템을 판매하면 나옴)으로 강화하고 ×${I.NM_SHOP.priceMul}개** (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서)
 
 ## 세트
 
