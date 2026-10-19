@@ -520,6 +520,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'items' => array_map('item_view', $ordered),
         'sets' => array_map(function ($s) { return ['name' => $s['name'], 'count' => $s['count'], 'full' => $s['full'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
         'rejected' => $rejected,
+        'bal' => SNAPSHOT_BAL,
     ];
     return [$stage, $item, $snapshot, $nm];
 }
@@ -654,6 +655,28 @@ function get_me(): array {
     return array_merge(row_out($r, null), ['stageRank' => $stageRank, 'itemRank' => $itemRank]);
 }
 
+// 장비 기록(최고 층을 세운 순간의 장비·능력치)은 그때 계산한 값으로 저장됨. 규칙이 바뀌면 보여줄 때 지금 규칙으로 고침
+// bal 1: 흡혈 합계 최대 20%, 시험의 세트 5세트 흡혈 +8% → 받는 피해 −10%, 광란 주변 피해 50% (세트 설명도 지금 것으로)
+const SNAPSHOT_BAL = 1;
+function snapshot_now(?array $gear): ?array {
+    if (!$gear || (int)($gear['bal'] ?? 0) >= SNAPSHOT_BAL) return $gear;
+    $trial = 0;
+    foreach ($gear['sets'] ?? [] as $i => $set) {
+        foreach (R_SETS as $id => $def) {
+            if ($def['name'] !== ($set['name'] ?? '')) continue;
+            if ($id === 'trial') $trial = (int)$set['count'];
+            $gear['sets'][$i]['bonuses'] = array_map(function ($b) use ($set) { return ['count' => $b['count'], 'text' => $b['text'], 'on' => (int)$set['count'] >= $b['count']]; }, $def['bonuses']);
+        }
+    }
+    if (isset($gear['stats'])) {
+        $ls = (int)($gear['stats']['lifesteal'] ?? 0) - ($trial >= 5 ? 8 : 0);  // 예전 5세트 흡혈 +8%를 빼고
+        $gear['stats']['lifesteal'] = max(0, min(R_LIFESTEAL_MAX, $ls));
+        $gear['stats']['dmgReduce'] = $trial >= 5 ? 10 : 0;
+    }
+    $gear['bal'] = SNAPSHOT_BAL;
+    return $gear;
+}
+
 function get_player(): array {
     $id = (string)($_GET['id'] ?? '');
     if (!preg_match('/^[0-9a-f]{16}$/', $id)) throw new HttpError(400, 'bad_id');
@@ -665,7 +688,7 @@ function get_player(): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'stageAt' => $r['stage_at'] !== null ? (int)$r['stage_at'] : null,
-        'gear' => $gear,
+        'gear' => snapshot_now($gear),
         'bestItem' => $r['item_json'] ? json_decode($r['item_json'], true) : null,
     ];
 }
