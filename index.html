@@ -418,7 +418,7 @@
     <span id="guest-note" hidden>게스트는 이 기기에만 저장돼요. 계정을 연결하면 가방과 진행 상황이 서버에 보존돼요.</span>
   </div>
   <div id="stats">
-    <span>층 <b id="depth">1</b> (최고 <span id="best">0</span>)</span>
+    <span><span id="zone"></span>층 <b id="depth">1</b> (최고 <span id="best">0</span>)</span>
     <span class="hp">HP <b id="hp">--</b></span>
     <span>공격 <b id="atk">--</b></span>
     <span>방어 <b id="def">0</b></span>
@@ -455,7 +455,8 @@
   던전에서 <b>포탈</b>을 타면 골드·레벨·장비를 그대로 들고 로비로 돌아와요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
   로비 왼쪽 <b>거래소($)</b>로 걸어 들어가면 아이템을 사고팔고, 그 옆 빨간 <b>우편함(✉)</b>에서 판매 대금과 돌아온 아이템을 받아요.<br>
   계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구, <b>]</b> 방패)를 떨어뜨리기도 해요. 보조 손에 무기를 끼면 한 턴에 두 번, 방패를 끼면 확률로 공격을 막아요.<br>
-  금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요! 75층 보스를 쓰러뜨리면 일반 던전 완료! 그 뒤에는 로비의 포탈 문으로 75층에 다시 들어가 파밍해요.<br>
+  금색 테두리는 정예, 빨간 테두리는 보스예요. 5층마다 보스가 계단을 지키고, 그 바로 전 층(4, 9, 14…층) 계단 옆 상점(<b>&amp;</b>)에서 골드로 장비를 살 수 있어요. 금빛 칸의 황금 고블린을 놓치지 마세요! 75층 보스를 쓰러뜨리면 일반 던전 완료! 그 뒤에는 로비의 포탈 문으로 75층에 다시 들어가 파밍하거나, 왼쪽 문으로 65층부터 들어갈 수 있어요.<br>
+  완료한 뒤에는 로비 오른쪽 <b>나이트메어</b>(▼) 건물로 더 강한 던전(50층, 아이템 레벨 76~125, 따로 랭킹)에 들어갈 수 있어요. v4 이후 장비만 낄 수 있어요.<br>
   <a href="privacy.html" style="color: inherit">개인정보처리방침</a></p>
 </div>
 
@@ -1111,9 +1112,11 @@
       // 최대 층 보스까지 쓰러뜨렸으면 "완료"(CLEAR_STAGE)로 기록
       // 층은 이번 시즌(v4 베타)에 실제로 내려간 최고 층, 아이템은 이번 시즌 규칙(v4) 아이템만
       const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, bestDepth);
+      // 아이템 레벨은 얻은 층: 일반 던전 최고 층, 나이트메어를 갔으면 75 + 나이트메어 최고 층까지
+      const maxLvl = Math.max(stage, nmBest ? NM.itemBase + Math.min(nmBest, NM.floors) : 0);
       let item = null, best = -1;
       for (const it of Inv.items()) {
-        if (!(it.rarity in RANK) || !(it.lvl <= stage) || !(it.v >= SEASON)) continue;
+        if (!(it.rarity in RANK) || !(it.lvl <= maxLvl) || !(it.v >= SEASON)) continue;
         const score = RANK[it.rarity] * 100000 + (it.enh || 0) * 1000 + it.lvl;
         if (score > best) { best = score; item = it; }
       }
@@ -1122,6 +1125,7 @@
       const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}) });
       return {
         stage,
+        ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
         plvl: player?.plvl || 1,
         item: item && { ...ref(item), rarity: item.rarity, name: RLItems.itemName(item) },
         gear: Object.values(Inv.equipped()).filter(Boolean).map(ref),
@@ -1168,6 +1172,20 @@
   // 랭킹 시즌: v4 베타. 그 전(v3 베타까지) 기록은 랭킹 화면의 v3 베타 탭에 그대로 남고, 최고 층은 새로 셈
   const SEASON = 4;
   let bestDepth = 0;     // 이번 시즌에 내려간 최고 층
+  // 나이트메어 던전: player.zone이 "nm"이면 depth는 나이트메어 층(1~50). 최고 층·완료는 따로
+  const NM = RLMonsters.NIGHTMARE;
+  let nmBest = 0, nmCleared = false;
+  const inNM = () => player?.zone === "nm";
+  const maxFloor = () => (inNM() ? NM.floors : RLMonsters.MAX_FLOOR);
+  const itemLevel = () => (inNM() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125)
+  const floorTag = () => (inNM() ? "n" : "d");                       // 아이템 시드의 층 표시 (서버가 층·레벨을 검증)
+  const floorName = (n = depth, nm = inNM()) => (nm ? `나이트메어 ${n}층` : `${n}층`);
+  // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층으로 보내고 받음
+  const presenceFloor = (n, nm) => (n ? (nm ? NM.presence + n : n) : 0);
+  const presenceLabel = (n) => (n > NM.presence ? `악몽 ${n - NM.presence}층` : `${n}층`);
+  const SKIP_FLOOR = RLMonsters.MAX_FLOOR - 10;  // 일반 던전 완료자가 고를 수 있는 시작 층 (마지막 보스 세 번)
+  // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
+  const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() ? { tag: "n", level: itemLevel() } : {});
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
@@ -1302,7 +1320,7 @@
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = RLMonsters.makeBoss(depth);
+      const boss = inNM() ? RLMonsters.makeNightmareBoss(depth) : RLMonsters.makeBoss(depth);
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (!quiet) log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
@@ -1310,19 +1328,26 @@
     }
 
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
-    const count = between(4 + depth, 6 + depth * 2);
+    // 나이트메어: 한 층 50마리 안팎, 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
+    const count = inNM() ? between(NM.monsters - 5, NM.monsters + 5) : between(4 + depth, 6 + depth * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
-      const kind = Math.random() < RLMonsters.eliteChance(depth) ? "elite" : "normal";
-      enemies.push({ x: spot.x, y: spot.y, ...RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), kind, depth) });
+      const kind = Math.random() < RLMonsters.eliteChance(inNM() ? NM.base : depth) ? "elite" : "normal";
+      const m = inNM() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth)
+        : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), kind, depth);
+      enemies.push({ x: spot.x, y: spot.y, ...m });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
     if (depth >= RLMonsters.GOLDEN.from && Math.random() < RLMonsters.GOLDEN.chance) {
       let spot = null;
       for (let tries = 0; tries < 50 && (!spot || dist(spot, player) < 10); tries++) spot = randomFloor([player, ...enemies]);
-      if (spot) enemies.push({ ...spot, ...RLMonsters.makeGolden(depth, RLMonsters.goldenRank(depth, Math.random)), fleeAt: null });
+      if (spot) {
+        const g = inNM() ? RLMonsters.makeGolden(NM.base, RLMonsters.goldenRank(NM.base, Math.random)) : RLMonsters.makeGolden(depth, RLMonsters.goldenRank(depth, Math.random));
+        if (inNM()) g.hp = g.maxHp = Math.round(g.hp * NM.hp * RLMonsters.nmScale(depth));
+        enemies.push({ ...spot, ...g, fleeAt: null });
+      }
     }
 
     // 아이템 스폰
@@ -1337,7 +1362,7 @@
     const golds = between(...piles.count);
     for (let i = 0; i < golds; i++) {
       const spot = randomFloor([player, ...enemies, ...items]);
-      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, depth, Math.random) });
+      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) });
     }
 
     computeFOV();
@@ -1398,7 +1423,7 @@
         const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
         if (bossAlive()) log("보스가 살아 있는 동안 계단이 열리지 않는다.", "bad");
         else if (near) log(`주변 ${RLMonsters.STAIRS_BLOCK_RADIUS}칸 안에 몬스터가 ${near}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.`, "bad");
-        else if (depth >= RLMonsters.MAX_FLOOR) { completeFloor(); return; }
+        else if (depth >= maxFloor()) { completeFloor(); return; }
         else { descend(); return; }
       }
     }
@@ -1460,7 +1485,7 @@
     const s = stats();
     const xp = Math.round(e.xp * (1 + s.xp / 100));
     // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음
-    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], depth, Math.random) * (e.goldMul || 1) * (1 + s.gold / 100));
+    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100));
     player.gold += gold;
     log(`${e.name} 처치! (+${xp} XP, +${gold} 골드)`, "good");
     if (e.kind === "boss") log("보스를 쓰러뜨렸다! 계단이 열렸다.", null, BOSS_COLOR);
@@ -1498,8 +1523,8 @@
   function dropLoot(e) {
     const rolls = e.kind === "golden" ? (e.drops || RLMonsters.GOLDEN.ranks.normal.drops) : (RLItems.DROPS[e.kind]?.rolls || 1);
     for (let i = 0; i < rolls; i++) {
-      const seed = `${player.rid}|d${depth}|k${player.kills++}`;
-      const item = RLItems.rollDrop(seed, depth, e.kind);
+      const seed = `${player.rid}|${floorTag()}${depth}|k${player.kills++}`;
+      const item = RLItems.rollDrop(seed, itemLevel(), e.kind);
       if (!item) continue;
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
@@ -1510,8 +1535,8 @@
   // 포션 자리(!)에서는 몬스터와 같은 확률로 장비가, 아니면 포션이 나옴. 시드는 (판 ID, 층, 포션 자리 순번)
   // 장비가 나오면 true
   function potionLoot() {
-    const seed = `${player.rid}|d${depth}|p${player.potionPicks++}`;
-    const item = RLItems.rollDrop(seed, depth);
+    const seed = `${player.rid}|${floorTag()}${depth}|p${player.potionPicks++}`;
+    const item = RLItems.rollDrop(seed, itemLevel());
     if (!item) return false;
     gearLog(`포션 대신 ${RLItems.itemName(item)}을(를) 발견했다!`, item);
     const gear = { x: player.x, y: player.y, type: "gear", item, from: "potion" };
@@ -1575,9 +1600,10 @@
     shopBought = [];
     shopRerolls = 0;
     noteOldGear();
-    if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
-    log(`${depth}층으로 내려간다...`, "info");
-    if (depth === RLMonsters.MAX_FLOOR && !cleared) log(`마지막 층이다! ${depth}층 보스를 쓰러뜨리고 계단을 밟으면 일반 던전 완료.`, "good");
+    if (inNM()) nmBest = Math.max(nmBest, depth);
+    else if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
+    log(`${floorName()}으로 내려간다...`, "info");
+    if (depth === maxFloor() && !(inNM() ? nmCleared : cleared)) log(`마지막 층이다! ${floorName()} 보스를 쓰러뜨리고 계단을 밟으면 ${inNM() ? "나이트메어" : "일반 던전"} 완료.`, "good");
     const rooms = generateDungeon();
     newLevel(rooms);
     render();
@@ -1588,6 +1614,7 @@
   // 최대 층에서 보스를 쓰러뜨리고 계단을 밟음: 일반 던전 완료 → 안내 창과 함께 로비로.
   // 포탈 층은 최대 층의 새 구역(새 지도·새 보스)으로 만들어 두어서, 오른쪽 문(포탈)으로 다시 들어가 파밍
   function completeFloor() {
+    if (inNM()) { completeNightmare(); return; }
     noteOldGear();
     const counts = !player.oldGear;  // 예전 장비를 낀 판은 완료해도 v4 베타 랭킹에는 안 셈
     const first = counts && !cleared;
@@ -1614,9 +1641,27 @@
     ]);
   }
 
+  // 나이트메어 50층 보스를 쓰러뜨리고 계단을 밟음: 나이트메어 완료 → 로비로, 포탈 문으로 50층 새 구역
+  function completeNightmare() {
+    const first = !nmCleared;
+    nmCleared = true;
+    nmBest = Math.max(nmBest, depth);
+    shopBought = [];
+    shopRerolls = 0;
+    if (first) log(`🎉 ${floorName()} 보스를 쓰러뜨렸다! 나이트메어 완료!`, "rainbow");
+    newLevel(generateDungeon(), { quiet: true });
+    saveGame(true);
+    enterLobby({ from: "clear" });
+    updateStats();
+    showNotice(first ? "나이트메어 완료!" : `${floorName()} 클리어!`, first ? [
+      `${floorName()} 보스를 쓰러뜨려 나이트메어를 완료했어요. 나이트메어 랭킹에 "완료"로 기록돼요.`,
+      `로비 던전 입구의 오른쪽 문(포탈)으로 들어가면 ${floorName()}의 새 구역에서 계속 파밍할 수 있어요.`,
+    ] : [`${floorName()} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 오른쪽 문(포탈)으로 다시 들어갈 수 있어요.`]);
+  }
+
   function death() {
     gameOver = true;
-    log(`당신은 ${depth}층에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
+    log(`당신은 ${floorName()}에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
     saveGame(true);
     openDeath();
   }
@@ -1631,6 +1676,7 @@
     rid: player.rid, k: player.kills, pp: player.potionPicks, sb: shopBought, sr: shopRerolls,
     rv: player.revived ? 1 : 0,
     ...(player.oldGear ? { og: 1 } : {}),
+    ...(player.zone === "nm" ? { z: "nm" } : {}),
   });
   function makeSave() {
     return {
@@ -1638,6 +1684,8 @@
       season: SEASON,
       best: bestDepth,
       ...(cleared ? { clr: 1 } : {}),
+      ...(nmBest ? { nb: nmBest } : {}),
+      ...(nmCleared ? { nclr: 1 } : {}),
       run: gameOver ? null : runFields(),
       dead: gameOver && !player.revived ? runFields() : null,
     };
@@ -1648,7 +1696,7 @@
   function saveLevel() {
     if (gameOver || !map) { store.del(LEVEL_KEY); return; }
     store.set(LEVEL_KEY, JSON.stringify({
-      rid: player.rid, d: depth, turn,
+      rid: player.rid, d: depth, z: player.zone, turn,
       map: map.map(r => r.join("")).join(""),
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
       px: player.x, py: player.y, shop, enemies, items,
@@ -1661,7 +1709,7 @@
   function restoreLevel() {
     let L = null;
     try { L = JSON.parse(store.get(LEVEL_KEY)); } catch {}
-    if (!L || L.rid !== player.rid || L.d !== depth || L.map?.length !== MAP_W * MAP_H || L.seen?.length !== MAP_W * MAP_H) return false;
+    if (!L || L.rid !== player.rid || L.d !== depth || (L.z || "normal") !== (player.zone || "normal") || L.map?.length !== MAP_W * MAP_H || L.seen?.length !== MAP_W * MAP_H) return false;
     const grid = (str, f) => Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => f(str[y * MAP_W + x])));
     map = grid(L.map, Number);
     seen = grid(L.seen, c => c === "1");
@@ -1737,6 +1785,8 @@
     const sameSeason = s?.season === SEASON;
     bestDepth = sameSeason ? Math.min(RLMonsters.MAX_FLOOR, s?.best || 0) : 0;
     cleared = sameSeason && !!s?.clr;
+    nmBest = sameSeason ? Math.min(NM.floors, s?.nb || 0) : 0;
+    nmCleared = sameSeason && !!s?.nclr;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -1750,7 +1800,7 @@
     updateStats();
     // 로비에 있으면 던전 입구로 들어갈 때 쓰러진 화면을 보여줌
     if (scene !== "dungeon") return;
-    log(`${depth}층에서 쓰러진 상태다. 부활하거나 R을 눌러 로비에서 새로 시작.`, "bad");
+    log(`${floorName()}에서 쓰러진 상태다. 부활하거나 R을 눌러 로비에서 새로 시작.`, "bad");
     openDeath();
   }
 
@@ -1767,7 +1817,9 @@
       rid: r.rid || newRunId(), kills: r.k || 0, potionPicks: r.pp || 0,
       revived: !!r.rv,
       oldGear: !!r.og,
+      zone: r.z === "nm" ? "nm" : "normal",
     };
+    depth = Math.min(maxFloor(), depth);
     noteOldGear(true);  // 이 표시가 생기기 전의 판: 지금 예전 장비를 끼고 있으면 제외
     shopBought = Array.isArray(r.sb) ? r.sb : [];
     shopRerolls = r.sr || 0;
@@ -1775,9 +1827,9 @@
     logEl.innerHTML = "";
     const say = (msg) => { if (scene === "dungeon") log(msg, "info"); };
     if (restore && restoreLevel()) {
-      say(`${depth}층에서 이어서 시작한다. (떠났던 그 자리)`);
+      say(`${floorName()}에서 이어서 시작한다. (떠났던 그 자리)`);
     } else {
-      say(`${depth}층에서 이어서 시작한다.`);
+      say(`${floorName()}에서 이어서 시작한다.`);
       const rooms = generateDungeon();
       newLevel(rooms);
     }
@@ -2144,7 +2196,7 @@
     const shops = [
       { kind: "market", label: "거래소", x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
       { kind: "mailbox", label: "우편함", door: { x: 8, y: gate.y }, tab: "mail" },
-      { kind: "soon", label: "준비 중", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "×", tab: null },
+      { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
     ];
     for (const s of shops) {
       if (s.x0 == null) continue;
@@ -2158,7 +2210,7 @@
   let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
 
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
-  const resumeFloor = () => (!gameOver && depth >= 2 ? depth : 0);
+  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM()) ? depth : 0);
 
   function setScene(s) {
     scene = s;
@@ -2176,8 +2228,8 @@
     closeDeath();
     setScene("lobby");
     const msg = {
-      portal: [`포탈을 타고 로비로 돌아왔다. (골드 ${player.gold.toLocaleString()} · Lv ${player.plvl})${resumeFloor() ? ` 오른쪽 문으로 ${depth}층에 다시 들어갈 수 있다.` : ""}`, "good"],
-      clear: [`${depth}층을 완료하고 로비로 돌아왔다. 오른쪽 문(포탈)으로 ${depth}층의 새 구역에 들어가 계속 파밍할 수 있다.`, "good"],
+      portal: [`포탈을 타고 로비로 돌아왔다. (골드 ${player.gold.toLocaleString()} · Lv ${player.plvl})${resumeFloor() ? ` 오른쪽 문으로 ${floorName()}에 다시 들어갈 수 있다.` : ""}`, "good"],
+      clear: [`${floorName()}을 완료하고 로비로 돌아왔다. 오른쪽 문(포탈)으로 ${floorName()}의 새 구역에 들어가 계속 파밍할 수 있다.`, "good"],
       death: ["로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다.", "info"],
       start: ["로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 포탈을 탄 층으로 들어간다.", "info"],
     }[from];
@@ -2194,14 +2246,17 @@
     if (which === "resume") {
       if (!resumeFloor()) { log("포탈을 타고 돌아온 층이 없다. 왼쪽 문으로 1층부터 들어가자.", "bad"); return; }
       setScene("dungeon");
-      log(`포탈 문으로 ${depth}층에 다시 들어갔다.`, "info");
+      log(`포탈 문으로 ${floorName()}에 다시 들어갔다.`, "info");
     } else {
-      if (resumeFloor() && !confirm(`1층부터 들어갈까요?\n지금 기억된 포탈 층(${depth}층)은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+      if (resumeFloor() && !confirm(`새로 들어갈까요?\n지금 기억된 포탈 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+      // 일반 던전을 완료했으면 마지막 두 보스(65·70·75층) 앞에서 시작할 수 있음
+      const skip = cleared && confirm(`${SKIP_FLOOR}층부터 들어갈까요?\n(취소하면 1층부터)`);
       entering = true;
       let ok = false;
       try { ok = await allowEntry(); } finally { entering = false; }
       if (!ok || scene !== "lobby") return;
-      depth = 1;
+      depth = skip ? SKIP_FLOOR : 1;
+      player.zone = "normal";
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
       player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 v4 베타 랭킹에 기록됨
       noteOldGear();
@@ -2209,10 +2264,37 @@
       shopBought = [];
       shopRerolls = 0;
       setScene("dungeon");
-      log("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.", "info");
+      log(depth === 1 ? "던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라." : `던전 ${depth}층에 발을 들였다. ${RLMonsters.MAX_FLOOR}층까지 보스를 잡으며 파밍하자.`, "info");
       newLevel(generateDungeon());
       saveGame(true);
     }
+    render();
+    updateStats();
+  }
+
+  // 나이트메어 입구(로비 오른쪽 건물): 일반 던전을 완료하고, 장착한 장비가 모두 v4 이후일 때만
+  async function enterNightmare() {
+    if (gameOver) { openDeath(); return; }
+    if (entering) return;
+    if (!cleared) { log(`나이트메어는 일반 던전 ${RLMonsters.MAX_FLOOR}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
+    const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
+    if (old) { log(`예전(v3까지) 장비 ${old}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.`, "bad"); return; }
+    if (resumeFloor() && !confirm(`나이트메어 1층부터 들어갈까요?\n지금 기억된 포탈 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+    entering = true;
+    let ok = false;
+    try { ok = await allowEntry(); } finally { entering = false; }
+    if (!ok || scene !== "lobby") return;
+    player.zone = "nm";
+    depth = 1;
+    player.rid = newRunId();
+    player.oldGear = false;
+    nmBest = Math.max(nmBest, 1);
+    shopBought = [];
+    shopRerolls = 0;
+    setScene("dungeon");
+    log(`나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! ${NM.floors}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 ${NM.itemBase + 1}~${NM.itemBase + NM.floors}.`, "bad");
+    newLevel(generateDungeon());
+    saveGame(true);
     render();
     updateStats();
   }
@@ -2232,7 +2314,7 @@
     const shopDoor = LOBBY.shopAt(nx, ny);
     if (shopDoor) {
       if (shopDoor.tab) openMarket(shopDoor.tab);
-      else log("아직 준비 중인 건물이다. 다음 업데이트를 기다려 주세요.", "info");
+      else if (shopDoor.kind === "nightmare") enterNightmare();
       return;
     }
     if (LOBBY.blocked(nx, ny)) return;
@@ -2259,7 +2341,7 @@
       try {
         const headers = await serverHeaders();
         if (!headers) throw new Error("no token");
-        const body = scene === "lobby" ? { scene, x: lobbyPos.x, y: lobbyPos.y, portal: resumeFloor() } : { scene, depth: gameOver ? 0 : depth };
+        const body = scene === "lobby" ? { scene, x: lobbyPos.x, y: lobbyPos.y, portal: presenceFloor(resumeFloor(), inNM()) } : { scene, depth: gameOver ? 0 : presenceFloor(depth, inNM()) };
         const res = await fetch(rankingUrl("lobby"), { method: "POST", headers, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(res.status);
         const d = await res.json();
@@ -2299,9 +2381,9 @@
         staff ? el("span", { className: "crown-wrap", innerHTML: staffSvg(), title: "운영자" })
           : crown ? el("span", { className: "crown-wrap", innerHTML: crownSvg(crown), title: `층 랭킹 ${crown}위` }) : null,
         el("span", { className: "name", style: staff ? { color: STAFF_COLOR } : {} }, name), el("span", { className: "where" }, where));
-      const atLobby = (portal) => portal ? `로비 · 포탈 ${portal}층` : "로비";
-      const whereOf = (p) => p.scene === "lobby" ? atLobby(p.portal) : p.depth ? `${p.depth}층 탐험 중` : "던전";
-      const rows = [row(me ? `${me.name} (나)` : "나", scene === "lobby" ? atLobby(resumeFloor()) : `${depth}층 탐험 중`, "#ffffff", true, me?.crown, me?.staff)];
+      const atLobby = (portal) => portal ? `로비 · 포탈 ${presenceLabel(portal)}` : "로비";
+      const whereOf = (p) => p.scene === "lobby" ? atLobby(p.portal) : p.depth ? `${presenceLabel(p.depth)} 탐험 중` : "던전";
+      const rows = [row(me ? `${me.name} (나)` : "나", scene === "lobby" ? atLobby(presenceFloor(resumeFloor(), inNM())) : `${floorName()} 탐험 중`, "#ffffff", true, me?.crown, me?.staff)];
       for (const p of others) rows.push(row(p.name, whereOf(p), colorOf(p.id), false, p.crown, p.staff));
       if (failed) rows.push(el("li", { className: "note" }, "다른 사람 정보를 불러오지 못했어요. 혼자서도 던전에 들어갈 수 있어요."));
       else if (!others.length) rows.push(el("li", { className: "note" }, "아직 다른 사람이 없어요."));
@@ -2358,10 +2440,10 @@
           ctx.fillRect(px + 3, py + 3, TILE - 6, 3);
         } else if (kind === "torch") {
           drawGlyph("*", px, py, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + x))}, 60, 1)`);
-        } else if (kind === "market" || kind === "soon") {
-          ctx.fillStyle = kind === "market" ? "#24443f" : "#2c2a33";
+        } else if (kind === "market" || kind === "nightmare") {
+          ctx.fillStyle = kind === "market" ? "#24443f" : "#2e1a3a";
           ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = kind === "market" ? "#1a302c" : "#1f1d25";
+          ctx.fillStyle = kind === "market" ? "#1a302c" : "#1f1028";
           ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
           ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
         }
@@ -2389,7 +2471,7 @@
       }
       ctx.fillStyle = "#050608";
       ctx.fillRect(sx, sy, TILE, TILE);
-      const color = s.kind === "market" ? "#5ee7c8" : "#6b7080";
+      const color = s.kind === "market" ? "#5ee7c8" : (cleared ? "#d07bff" : "#7a5a8a");
       drawGlyph(s.glyph, sx, sy, color);
       drawLabel(s.label, sx + TILE / 2, (s.door.y - 2) * TILE - 4, color, 12);
     }
@@ -2408,7 +2490,7 @@
     };
     const floor = resumeFloor();
     drawDoor(doors.start, "▼", "255, 207, 92", "1층", true);
-    drawDoor(doors.resume, floor ? "◎" : "×", "190, 140, 255", floor ? `${floor}층` : "닫힘", !!floor);
+    drawDoor(doors.resume, floor ? "◎" : "×", "190, 140, 255", floor ? presenceLabel(presenceFloor(floor, inNM())) : "닫힘", !!floor);
     drawLabel("던전 입구", gate.x * TILE + TILE / 2, (gate.y - 2) * TILE - 4, "#ffcf5c", 12);
 
     // 다른 사람들 → 나 (내가 맨 위에 보이게). 이름 위에 그 사람이 포탈을 타고 나온 층(◎N층),
@@ -2421,11 +2503,11 @@
       const left = cx - ctx.measureText(name).width / 2;
       if (staff) drawStaffBadge(left - 13, by);
       else if (crown) drawCrown(left - 12, by, crown);
-      if (portal) drawLabel(`◎${portal}층`, cx, y * TILE - 14, "#be8cff", 10);
+      if (portal) drawLabel(`◎${presenceLabel(portal)}`, cx, y * TILE - 14, "#be8cff", 10);
     };
     for (const p of Lobby.people()) person(p.x, p.y, p.name, p.color, p.portal, p.crown, p.staff);
     const me = Lobby.me();
-    person(lobbyPos.x, lobbyPos.y, me?.name || "나", "#ffffff", resumeFloor(), me?.crown, me?.staff);
+    person(lobbyPos.x, lobbyPos.y, me?.name || "나", "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff);
   }
 
   // 캐릭터 머리 위 이름 (검은 테두리로 바닥 위에서도 잘 보이게)
@@ -2588,7 +2670,9 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("best").textContent = cleared ? `${bestDepth} 완료` : (bestDepth || "-");
+    document.getElementById("zone").textContent = inNM() ? "나이트메어 " : "";
+    document.getElementById("best").textContent = inNM() ? (nmCleared ? `${nmBest} 완료` : (nmBest || "-"))
+      : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = `포션 (${player.potions})`;
   }
 
@@ -2603,7 +2687,7 @@
       gold: 0,
       potions: 1,
       plvl: 1, xp: 0, xpNext: 10,
-      rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false,
+      rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false, zone: "normal",
     };
     shopBought = [];
     shopRerolls = 0;
@@ -2760,6 +2844,8 @@
     Dex.use(inventoryOwner());
     bestDepth = 0;
     cleared = false;
+    nmBest = 0;
+    nmCleared = false;
     newGame();
     log("로그아웃했다. 게스트로 새로 시작한다.", "info");
     renderAccount();
@@ -2998,6 +3084,11 @@
   }
 
   function equipItem(item) {
+    if (inNM() && isLegacy(item)) {
+      invMsg = { cls: "bad", text: "나이트메어에서는 예전(v3까지) 장비를 낄 수 없어요." };
+      renderInventory();
+      return;
+    }
     Inv.equip(item.id);
     noteOldGear();
     selected = { from: "equip", slot: item.slot };
@@ -3052,8 +3143,8 @@
 
   function renderShop() {
     document.getElementById("shop-gold").textContent = `보유 골드 ${player.gold}`;
-    const stock = RLItems.shopStock(player.rid, depth, shopRerolls);
-    const cost = RLItems.rerollCost(depth, shopRerolls);
+    const stock = currentStock();
+    const cost = RLItems.rerollCost(itemLevel(), shopRerolls);
     const rerollBtn = document.getElementById("shop-reroll");
     const max = RLItems.SHOP.rerolls.max;
     rerollBtn.textContent = cost == null
@@ -3077,7 +3168,7 @@
 
   function buyItem(i) {
     if (shopBought.includes(i)) return;
-    const item = RLItems.shopStock(player.rid, depth, shopRerolls)[i];
+    const item = currentStock()[i];
     const price = RLItems.shopPrice(item);
     if (player.gold < price) return;
     if (Inv.buy(item, price) === "full") {
@@ -3097,7 +3188,7 @@
 
   // 진열 바꾸기: 6개를 새로 진열하고 산 칸 표시를 초기화. 바꿀 때마다 비용이 2배
   function rerollShop() {
-    const cost = RLItems.rerollCost(depth, shopRerolls);
+    const cost = RLItems.rerollCost(itemLevel(), shopRerolls);
     if (cost == null || player.gold < cost) return;
     player.gold -= cost;
     shopRerolls++;
@@ -3834,7 +3925,7 @@
 
   async function openDeath() {
     deathModal.hidden = false;
-    document.getElementById("death-sub").textContent = `${depth}층에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.`;
+    document.getElementById("death-sub").textContent = `${floorName()}에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.`;
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
     if (player.revived) {

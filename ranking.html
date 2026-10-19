@@ -140,9 +140,12 @@
 
   // 랭킹 버전(시즌). 지금 시즌에만 기록이 올라가고, 예전 시즌은 최종 기록으로 그대로 보여줌
   const SEASONS = [
-    { id: "v4", name: "v4 베타", note: "진행 중", current: true,
+    { id: "v4", name: "v4 베타", note: "진행 중", current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
       stageSub: `가장 깊이 내려간 순서 · ${RLMonsters.MAX_FLOOR}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
       itemSub: "가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
+    { id: "nm", name: "나이트메어", note: "진행 중", current: true, clear: RLMonsters.NIGHTMARE.clearStage, max: RLMonsters.NIGHTMARE.floors,
+      stageSub: `나이트메어 던전에서 가장 깊이 내려간 순서 · ${RLMonsters.NIGHTMARE.floors}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
+      itemSub: "나이트메어에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
     { id: "v3", name: "v3 베타", note: "최종 기록", current: false,
       stageSub: "v3 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)",
       itemSub: "v3 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)" },
@@ -152,7 +155,7 @@
     $("seasons").replaceChildren(...SEASONS.map(s => {
       const b = el("button", {
         type: "button",
-        onclick: () => { if (s === season) return; season = s; history.replaceState(null, "", s.current ? location.pathname : `#${s.id}`); renderSeasons(); refresh(); },
+        onclick: () => { if (s === season) return; season = s; history.replaceState(null, "", s === SEASONS[0] ? location.pathname : `#${s.id}`); renderSeasons(); refresh(); },
       }, s.name, el("small", { textContent: s.note }));
       b.setAttribute("role", "tab");
       b.setAttribute("aria-selected", String(s === season));
@@ -266,7 +269,7 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
   // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
-  const stageText = (n) => season.current && n >= RLMonsters.CLEAR_STAGE ? `${RLMonsters.MAX_FLOOR}층 완료 ✓` : `${n}층`;
+  const stageText = (n) => season.clear && n >= season.clear ? `${season.max}층 완료 ✓` : `${n}층`;
   const stageValue = (r) => el("span", { className: "val", textContent: stageText(r.stage) });
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;

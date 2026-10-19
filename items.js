@@ -458,10 +458,13 @@
   const isShopFloor = (depth) => depth % SHOP.every === SHOP.every - 1;
 
   // 진열품은 (판 ID, 층, 진열 바꾼 횟수, 칸 번호) 시드로 정해짐. 처음 진열(0번)은 바꾼 횟수 없이 씀
-  function shopStock(runId, depth, reroll = 0) {
+  // 나이트메어 상점: opt = { tag: "n", level: 아이템 레벨 } (시드의 층 표시가 d 대신 n, 아이템 레벨은 75 + 나이트메어 층)
+  function shopStock(runId, depth, reroll = 0, opt = {}) {
     const r = reroll ? `|r${reroll}` : "";
-    return Array.from({ length: SHOP.slots }, (_, i) => generate(`${runId}|shop|d${depth}${r}|s${i}`, SHOP.table, depth));
+    const tag = opt.tag || "d", level = opt.level || depth;
+    return Array.from({ length: SHOP.slots }, (_, i) => generate(`${runId}|shop|${tag}${depth}${r}|s${i}`, SHOP.table, level));
   }
+
 
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
