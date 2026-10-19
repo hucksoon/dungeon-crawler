@@ -7,6 +7,7 @@
 //     예전(v2·v3) 아이템의 % 능력치는 효과 계산 때 v4 최대치로 잘림
 // v4 r1(규칙 개정, 아이템의 r): 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 그대로
 // v4 r2: 일반 던전 75층에 맞춰 드롭을 늘림 — 몬스터·보스 등급표(R_TABLES_R2)와 드롭 확률(R_DROP_CHANCE_R2)
+// v4 r3: 나이트메어에서 얻은 아이템(시드에 나이트메어 층)의 추가 능력치 후보에 속성 피해·저항 (R_STAT_KEYS_NM)
 
 declare(strict_types=1);
 
@@ -55,10 +56,31 @@ function r_tables_for(int $version, int $rev): array { return ($version === 4 &&
 function r_drop_chance_for(int $version, int $rev): array { return ($version === 4 && $rev >= 2) ? R_DROP_CHANCE_R2 : R_DROP_CHANCE; }
 const R_STAT_KEYS = ['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp'];
 const R_STAT_KEYS_V4 = ['atk', 'def', 'hp', 'crit', 'critDmg', 'atkPct', 'lifesteal', 'gold', 'xp'];
+// 나이트메어 아이템(r3): v4 후보 + 속성 피해 3종 + 속성 저항 3종 + 모든 속성 저항
+const R_ELEMENT_KEYS = ['fireDmg', 'iceDmg', 'boltDmg', 'fireRes', 'iceRes', 'boltRes', 'allRes'];
+const R_STAT_KEYS_NM = [...R_STAT_KEYS_V4, ...R_ELEMENT_KEYS];
+const R_ELEMENT_DMG_CAP = 11;   // 속성 피해는 강화해도 한 줄 최대 11%
+const R_RES_CAP = 75;           // 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
+const R_NM_SEED = '/\|(shop\|)?n\d+\|/';
+function r_is_element_dmg(string $k): bool { return $k === 'fireDmg' || $k === 'iceDmg' || $k === 'boltDmg'; }
+const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개'];
+// 나이트메어에서 얻은 아이템 (속성 줄은 r3부터). 이름 앞에 "악몽의 (속성)"
+function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_NM_SEED, (string)($item['seed'] ?? '')) === 1; }
+// 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
+function r_item_element(array $item): ?string {
+    $best = null; $bestV = 0;
+    foreach ($item['lines'] ?? [] as [$k, $v]) {
+        if (!r_is_element_dmg($k) || $v <= $bestV) continue;
+        $best = substr($k, 0, -3); $bestV = $v;
+    }
+    return $best;
+}
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
     'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true],
+    'fireDmg' => ['불 피해', true], 'iceDmg' => ['얼음 피해', true], 'boltDmg' => ['번개 피해', true],
+    'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
 const R_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'set'];
@@ -78,6 +100,14 @@ const R_PCT_LINE = [
     'lifesteal' => [[1, 1], [1, 1], [1, 2], [2, 3], [3, 4], [3, 3]],
     'gold' => [[3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]],
     'xp' => [[3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]],
+    // 나이트메어 아이템(r3)만
+    'fireDmg' => [[1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]],
+    'iceDmg' => [[1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]],
+    'boltDmg' => [[1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]],
+    'fireRes' => [[11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]],
+    'iceRes' => [[11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]],
+    'boltRes' => [[11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]],
+    'allRes' => [[6, 11], [6, 11], [6, 11], [6, 11], [6, 11], [6, 11]],
 ];
 const R_PCT_LINE_BOOST = 0.2;
 const R_MAIN_POOL_V4 = [
@@ -267,7 +297,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !(($rev === 1 || $rev === 2) && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 3 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -309,7 +339,8 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     $item['main'] = [];
     foreach ($mainStats as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
 
-    $stats = $version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS;
+    $nightmare = $version === 4 && $rev >= 3 && preg_match(R_NM_SEED, $seed) === 1;
+    $stats = $nightmare ? R_STAT_KEYS_NM : ($version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS);
     $item['lines'] = [];
     for ($i = 0; $i < R_RARITIES[$rarity]['lines']; $i++) {
         $stat = array_splice($stats, (int)floor($rng() * count($stats)), 1)[0];
@@ -377,6 +408,9 @@ function r_enhanced_lines(array $item): array {
         $lines[$i][1] += $add;
         $lines[$i][2] += $add;
     }
+    foreach ($lines as $i => [$k, $v]) {
+        if (r_is_element_dmg($k) && $v > R_ELEMENT_DMG_CAP) { $lines[$i][2] -= $v - R_ELEMENT_DMG_CAP; $lines[$i][1] = R_ELEMENT_DMG_CAP; }
+    }
     return $lines;
 }
 
@@ -413,7 +447,8 @@ function r_effective_lines(array $item): array {
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
-        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0];
+        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
         foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
@@ -439,7 +474,9 @@ function r_totals(array $equipped): array {
 }
 
 function r_item_name(array $item): string {
-    $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '');
+    $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
+    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] : '무속') . ' ' : '';
+    $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
     return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);
 }
@@ -469,5 +506,7 @@ function r_player_stats(int $plvl, array $totals): array {
         'parry' => $g['parry'],
         'dual' => (bool)$g['dual'],
         'splash' => (bool)$g['splash'],
+        'elem' => ['fire' => $g['fireDmg'], 'ice' => $g['iceDmg'], 'bolt' => $g['boltDmg']],
+        'res' => ['fire' => min(R_RES_CAP, $g['fireRes'] + $g['allRes']), 'ice' => min(R_RES_CAP, $g['iceRes'] + $g['allRes']), 'bolt' => min(R_RES_CAP, $g['boltRes'] + $g['allRes'])],
     ];
 }
