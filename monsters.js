@@ -74,6 +74,10 @@
   const MAX_FLOOR = 75;
   // 랭킹 기록값: 최대 층 보스까지 쓰러뜨리면 MAX_FLOOR + 1 ("75층 완료")
   const CLEAR_STAGE = MAX_FLOOR + 1;
+  // 골드 던전 (일반 던전 완료 후, 로비 나이트메어 옆): 75층과 같은 몬스터·보스가 있는 한 층.
+  // 보스를 쓰러뜨리고 계단을 밟으면 완료 보상 = 75레벨 레전더리 고대 굴리기 rewardRolls번 비용 (items.js에서 계산)
+  // 장비·보물·황금 고블린은 나오지 않음. presence: 접속자 목록에 보내는 층 번호 (2000 + 층)
+  const GOLD_DUNGEON = { floor: MAX_FLOOR, rewardRolls: 20, presence: 2000 };
   const BOSS_SCALE = 0.3;
   const BOSS_COLOR = "#ff5a5a";
   const BOSSES = [
@@ -258,7 +262,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, ELEMENTS, pickElement, nmScale, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

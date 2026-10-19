@@ -124,6 +124,15 @@ ${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
 - 로비에는 던전 입구 아래에 **파란 포탈(\*)**이 생겨요. 들어가면 **떠난 자리로** 돌아가요. 던전의 몬스터는 그대로라(HP도 그대로) 돌아가면 같은 자리에서 다시 싸워요
 - 옆 칸에 포탈을 열고 걸어 들어가는 방식도 시뮬레이션해 봤는데, 여는 턴에 맞아서 쓰러지는 경우가 늘어서(나이트메어 1층 보스 7% → 17%) 바로 가는 방식으로 했어요
 
+## 골드 던전
+
+- 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요
+- 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요**: ${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스
+- 보스를 쓰러뜨리고 계단을 밟으면 **완료 보상 골드 ${I.goldDungeonReward(M.GOLD_DUNGEON.floor, M.GOLD_DUNGEON.rewardRolls).toLocaleString()}** (= ${M.GOLD_DUNGEON.floor}레벨 레전더리 하나를 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드) ${M.GOLD_DUNGEON.rewardRolls}번 할 수 있는 골드). 몬스터 처치·골드 더미 골드도 ${M.GOLD_DUNGEON.floor}층만큼 따로 받아요 ([경제: 골드](economy.md#골드) 참고)
+- **장비는 나오지 않아요** (몬스터 드롭·보물·황금 고블린 없음). 골드를 모으는 곳이에요
+- 완료하면 로비로 돌아오고, 파란 포탈(\*)이나 건물로 새 골드 던전(새 지도·새 보스)에 다시 들어가요. 쓰러지면 일반 던전처럼 골드·레벨이 처음으로 돌아가요
+- 랭킹에는 영향이 없어요
+
 ## 나이트메어 던전
 
 ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요. 로비 오른쪽 **나이트메어(▼)** 건물이 입구예요.
@@ -389,7 +398,9 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - 고대가 아닌 **v4 레전더리·세트**는 인벤토리에서 **골드로 고대를 다시 굴릴 수 있어요**
 - 한 번에 **${pct(I.ANCIENT_REROLL.chance)}** 확률로 고대(모든 능력치 최대치)가 돼요. 아이템마다 **최대 ${I.ANCIENT_REROLL.max}번** (다 굴리면 고대가 될 확률 ${pct(1 - (1 - I.ANCIENT_REROLL.chance) ** I.ANCIENT_REROLL.max)})
-- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요
+- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요. 인벤토리 위쪽과 굴리기 줄에 지금 가진 골드가 보여요
+- ${I.ANCIENT_REROLL.max}번 모두 실패한 아이템은 버튼 자리에 **"고대 굴리기 ${I.ANCIENT_REROLL.max}/${I.ANCIENT_REROLL.max}번 실패"**가 (누를 수 없게) 그대로 남아요
+- 골드가 모자라면 [골드 던전](monsters.md#골드-던전)에서 한 번에 모을 수 있어요
 
 ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층에서 한 층에 모이는 골드 (평균)"],
   [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}
