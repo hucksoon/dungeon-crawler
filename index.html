@@ -415,7 +415,7 @@
     <button id="dex-btn" type="button">도감 (B)</button>
     <a id="shop-btn" class="btn" href="shop.html">상점</a>
     <a id="rank-btn" class="btn" href="ranking.html">랭킹</a>
-    <button id="portal-btn" class="keys-only dungeon-only" type="button">포탈 열기 (P)</button>
+    <button id="portal-btn" class="keys-only dungeon-only" type="button">포탈 (P)</button>
     <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-close" aria-label="안내 닫기">✕</button></div>
     <span id="guest-note" hidden>게스트는 이 기기에만 저장돼요. 계정을 연결하면 가방과 진행 상황이 서버에 보존돼요.</span>
   </div>
@@ -455,7 +455,7 @@
   <p class="hint"><span class="keys-only">이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="touch-only">방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
   로비 가운데 던전 입구의 왼쪽 문은 <b>1층부터</b>, 오른쪽 문은 <b>최고 층 − 10층부터</b> 들어가요 (12층까지 내려가면 열려요).<br>
-  던전에서 <b>P</b>를 누르면 옆에 파란 <b>포탈(*)</b>이 열리고, 그쪽으로 걸어가면 골드·레벨·장비를 그대로 들고 로비로 돌아와요. 로비의 파란 포탈(*)로 들어가면 떠난 자리로 돌아가요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
+  던전에서 <b>포탈(P)</b>을 타면 골드·레벨·장비를 그대로 들고 바로 로비로 돌아와요. 로비에 생긴 파란 <b>포탈(*)</b>로 들어가면 떠난 자리로 돌아가요. 쓰러지면 골드와 레벨은 처음부터예요.<br>
   로비 왼쪽 <b>거래소($)</b>로 걸어 들어가면 아이템을 사고팔고, 그 옆 빨간 <b>우편함(✉)</b>에서 판매 대금과 돌아온 아이템을 받아요.<br>
   계단(&gt;)을 밟으면 다음 층으로 내려갑니다. 적에게 부딪히면 공격합니다. 쓰러진 적이 장비(<b>)</b> 무기, <b>[</b> 방어구, <b>]</b> 방패)를 떨어뜨리기도 해요. 보조 손에 무기를 끼면 한 턴에 두 번, 방패를 끼면 확률로 공격을 막아요.<br>
   포션은 개수 제한 없이 <b>10턴마다 한 번</b> 마실 수 있어요(최대 HP 30% 회복). 바닥의 <b>보물(!)</b>을 주우면 레어 이상 장비가 나와요.<br>
@@ -1283,10 +1283,7 @@
 
   // ---- 스폰 ----
   const isShop = (x, y) => !!shop && shop.x === x && shop.y === y;
-  // 포탈(파란 *): P로 옆 칸에 열고, 걸어 들어가면 로비로. 로비의 파란 포탈로 돌아오면 닫힘
-  let townPortal = null;
-  const isPortal = (x, y) => !!townPortal && townPortal.x === x && townPortal.y === y;
-  const PORTAL_COLOR = "#4fa3ff";
+  const PORTAL_COLOR = "#4fa3ff";  // 로비의 파란 포탈(*)
 
   function randomFloor(exclude) {
     for (let tries = 0; tries < 500; tries++) {
@@ -1310,7 +1307,6 @@
   // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
   function newLevel(rooms, { quiet = false } = {}) {
     const start = rooms[0];
-    townPortal = null;
     clearStatus(player);  // 화상·느려짐은 층을 옮기면 풀림
     player.x = start.cx; player.y = start.cy;
 
@@ -1433,13 +1429,7 @@
 
     const foe = enemies.find(e => e.x === nx && e.y === ny);
     if (foe) { attack(player, foe); }
-    else if (isPortal(nx, ny)) {
-      // 포탈로 들어감: 그 자리를 기억하고 로비로 (로비의 파란 포탈로 다시 이 자리로)
-      player.x = nx; player.y = ny;
-      saveGame(true);
-      enterLobby({ from: "portal" });
-      return;
-    } else {
+    else {
       player.x = nx; player.y = ny;
       pickup();
       if (isShop(nx, ny)) openShop();
@@ -1597,7 +1587,7 @@
   // 아이템을 떨어뜨릴 칸: (x, y)에 아무것도 없으면 거기, 이미 있으면 걸어서 닿는 가까운 빈 바닥으로 한 칸씩 밀려남
   // (한 칸에 여러 개가 겹쳐 보이지 않게. 플레이어가 서 있는 칸·계단·상점 칸은 피함)
   function dropSpot(x, y) {
-    const free = (p) => map[p.y][p.x] === FLOOR && !isShop(p.x, p.y) && !isPortal(p.x, p.y) && !(p.x === player.x && p.y === player.y) &&
+    const free = (p) => map[p.y][p.x] === FLOOR && !isShop(p.x, p.y) && !(p.x === player.x && p.y === player.y) &&
       !items.some(i => i.x === p.x && i.y === p.y);
     const start = { x, y };
     if (free(start)) return start;
@@ -1795,7 +1785,7 @@
       rid: player.rid, d: depth, z: player.zone, turn,
       map: map.map(r => r.join("")).join(""),
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
-      px: player.x, py: player.y, shop, enemies, items, tp: townPortal,
+      px: player.x, py: player.y, shop, enemies, items,
       ps: { burn: player.burn || null, slow: player.slow || 0, immune: player.immune || 0 },  // 플레이어의 화상·느려짐
     }));
   }
@@ -1813,7 +1803,6 @@
     visible = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
     shop = L.shop || null;
     turn = L.turn || 0;
-    townPortal = L.tp && onFloor(L.tp) ? { x: L.tp.x, y: L.tp.y } : null;
     // 저장된 층 고치기: 예전 버전에서 자리를 못 받고 저장된 보스(좌표 없음) 때문에 화면을 그리다 멈춰
     // 플레이어가 안 보이던 문제. 플레이어 → 적 → 바닥 아이템 순서로 빈 바닥에 다시 놓고, 놓을 곳이 없으면 뺌
     enemies = [];
@@ -2295,7 +2284,6 @@
     if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) return false;
     if (map[ny][nx] === WALL) return false;
     if (nx === player.x && ny === player.y) return false;
-    if (isPortal(nx, ny)) return false;  // 몬스터는 포탈 칸에 못 들어감
     return !enemies.some(o => o !== e && o.x === nx && o.y === ny);
   }
 
@@ -2378,7 +2366,6 @@
     if (entering) return;
     if (which === "resume") {
       if (!resumeFloor()) return;
-      townPortal = null;  // 돌아오면 던전 쪽 포탈은 닫힘
       setScene("dungeon");
       log(`포탈을 타고 ${floorName()}의 떠난 자리로 돌아왔다.`, "info");
       saveGame(true);
@@ -2435,18 +2422,14 @@
     updateStats();
   }
 
-  // 포탈 열기(P): 바로 옆 빈 칸에 파란 포탈(*)을 엶 (한 턴). 걸어 들어가면 골드·레벨·장비를 그대로 들고 로비로.
-  // 로비의 파란 포탈로 들어가면 떠난 자리로 돌아오고, 이 포탈은 닫힘. 몬스터는 포탈 칸에 못 들어감
+  // 포탈(P): 쓰러지지 않았으면 골드·레벨·장비를 그대로 들고 바로 로비로 (턴이 들지 않음).
+  // 로비에 파란 포탈(*)이 생기고, 들어가면 떠난 자리로 돌아옴
+  // (옆 칸에 포탈을 열고 걸어 들어가는 방식도 해 봤지만, 여는 턴에 맞아 쓰러지는 경우가 늘어서 바로 가는 방식으로)
   function portal() {
     if (scene !== "dungeon") return;
     if (gameOver) { openDeath(); return; }
-    if (townPortal) { log("포탈이 이미 열려 있다. 파란 *로 걸어 들어가면 로비로 돌아간다.", "info"); return; }
-    const spot = DIRS.map(([dx, dy]) => ({ x: player.x + dx, y: player.y + dy }))
-      .find(p => map[p.y]?.[p.x] === FLOOR && !isShop(p.x, p.y) && !enemies.some(e => e.x === p.x && e.y === p.y) && !items.some(i => i.x === p.x && i.y === p.y));
-    if (!spot) { log("주변에 포탈을 열 빈 자리가 없다.", "bad"); return; }
-    townPortal = spot;
-    log("포탈을 열었다! 파란 *로 걸어 들어가면 로비로 돌아간다.", null, PORTAL_COLOR);
-    endTurn();
+    saveGame(true);
+    enterLobby({ from: "portal" });
   }
 
   function lobbyMove(dx, dy) {
@@ -2751,8 +2734,6 @@
 
     // 상점
     if (shop && seen[shop.y][shop.x]) drawGlyph("&", shop.x * TILE, shop.y * TILE, visible[shop.y][shop.x] ? SHOP_COLOR : "#2c6f7a");
-    // 포탈 (파란 *, 은은하게 빛남)
-    if (townPortal) drawPortal(townPortal.x * TILE, townPortal.y * TILE);
 
     // 아이템
     for (const it of items) {
