@@ -14,6 +14,7 @@ const require = createRequire(import.meta.url);
 const M = require("../monsters.js");
 const I = require("../items.js");
 const N = M.NIGHTMARE;
+const EL = M.ELEMENTS;
 
 const pct = (p) => `${Math.round(p * 1000) / 10}%`;
 const table = (head, rows) => [
@@ -125,10 +126,27 @@ ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요
 - 층마다 **+${pct(N.perFloor)}**씩 강해져요 (${N.floors}층은 1층의 ×${M.nmScale(N.floors).toFixed(2)})
 - 아이템 레벨은 **${N.itemBase} + 나이트메어 층** (${N.itemBase + 1}~${N.itemBase + N.floors}). 드롭 확률·등급 확률은 일반 던전과 같아요
 - 랭킹은 **나이트메어 탭**에 따로 기록돼요. 완료하면 "${N.floors}층 완료 ✓" (서버 기록값 ${N.clearStage})
-- 다음 단계: 장비·몬스터의 속성(불·얼음·번개)과 속성 저항이 붙어요
+- 나이트메어 몬스터·보스는 **속성**(불·얼음·번개)을 하나씩 가져요. 이름에 "불꽃·서리·번개"가 붙고, 화면에서 오른쪽 위에 속성 색 점이 보여요
+- 나이트메어에서 얻은 아이템에는 **속성 피해·속성 저항** 줄이 붙을 수 있어요 ([장비 문서](items.md#나이트메어-아이템-속성-피해와-저항-규칙-r${I.RULES_REV}))
 
 ${table(["나이트메어 층", "보스", "보스 HP", "보스 공격", "아이템 레벨"],
   [5, 10, 20, 30, 40, 50].map(n => { const b = M.makeNightmareBoss(n); return [n, b.name, b.hp, b.atk, N.itemBase + n]; }))}
+
+## 속성: 불·얼음·번개
+
+나이트메어 몬스터의 공격, 그리고 나이트메어 아이템의 속성 피해로 걸려요.
+
+${table(["속성", "몬스터가 걸 때 (플레이어가 맞음)", "플레이어가 걸 때 (장비에 속성 피해가 있으면)"], [
+  ["불 🔥", `화상: ${EL.burn.ticks * EL.burn.every}턴 동안 ${EL.burn.every}턴마다 **맞은 피해의 1/${Math.round(1 / EL.burn.mul)}** (불 저항만큼 줄어듦)`, `화상: ${EL.burn.ticks * EL.burn.every}턴 동안 ${EL.burn.every}턴마다 **공격력의 1/${Math.round(1 / EL.burn.mul)}**`],
+  ["얼음 ❄", `${pct(EL.ice.chance)} × (1 − 얼음 저항) 확률로 ${EL.ice.turns}턴 동안 느려짐: **2턴에 한 번만 움직임**`, `${pct(EL.ice.chance)} 확률로 몬스터가 ${EL.ice.turns}턴 동안 느려짐`],
+  ["번개 ⚡", `한 번 더 튕겨서 **2번 맞음** (두 번째는 맞은 피해의 1/${Math.round(1 / EL.bolt.mul)}, 번개 저항만큼 줄어듦)`, `맞은 몬스터에서 ${EL.bolt.range}칸 안의 가까운 몬스터 **${EL.bolt.jumps}마리**에게 차례로 튕김 (공격력의 1/${Math.round(1 / EL.bolt.mul)}, 한 마리에 한 번)`],
+])}
+
+- 화상은 다시 걸리면 **남은 횟수만 처음으로** 돌아가요(중첩 없음). ${EL.burn.every}턴마다 터지는 박자는 그대로예요
+- 느려짐이 풀리면 **${EL.ice.immune}턴 동안은 다시 안 걸려요**. 계속 느린 상태가 되지 않게
+- 화상·번개 튕김 피해는 방어력을 무시해요. 몬스터가 걸 때는 방어력으로 줄어든 뒤의 피해가 기준이라, 방어력도 그만큼 막아줘요
+- 저항은 속성마다 최대 ${EL.resCap}%. 저항이 없어도 나이트메어 아이템의 속성 피해로 빨리 잡는 쪽이 가장 큰 대비예요
+- 층을 옮기면 화상·느려짐이 풀려요. 화면 위 능력치 줄에 지금 걸린 상태(🔥 화상, ❄ 느려짐·면역)가 보여요
 
 ## 장비 드롭 요약
 
@@ -297,7 +315,7 @@ ${table(["등급", "무기 공격력", "도끼 공격력", "방어구 방어력"
 ### 추가 능력치: % 능력치 (등급별 고정)
 
 ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
-  Object.keys(I.PCT_LINE).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
+  Object.keys(I.PCT_LINE).filter(k => I.STAT_KEYS_V4.includes(k)).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
 
 ### 추가 능력치: 수치 능력치 (등급과 상관없이 아이템 레벨로)
 
@@ -333,9 +351,22 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - **최고 등급(레전더리·세트)** 이면서 **모든 능력치(주 + 추가, 방패는 패링도)가 최대치**로 붙은 아이템이에요. 이름 앞에 **"고대"**가 붙고, 인벤토리에서 금빛으로 빛나요
 - 그 아래 등급은 능력치가 모두 최대치여도 고대가 아니에요 (예전에 고대로 표시되던 낮은 등급 아이템도 이제 보통 아이템으로 보여요)
-- **새로 얻는 레전더리·세트의 ${pct(I.ANCIENT.chance)}가 고대**예요. 고대로 나오면 모든 능력치가 범위의 최대치로 붙어요. 1~150층을 한 번 내려가면 레전더리·세트를 40~50개쯤 얻으니, 한 판에 고대 1개 남짓이에요
+- **새로 얻는 레전더리·세트의 ${pct(I.ANCIENT.chance)}가 고대**예요. 고대로 나오면 모든 능력치가 범위의 최대치로 붙어요. 1~${M.MAX_FLOOR}층을 한 번 내려가면 레전더리·세트를 40~50개쯤 얻으니, 한 판에 고대 1개 남짓이에요
   - 아이템 ID로 정해지는 굴림이라 서버에서 똑같이 다시 계산해요
 - 아이템 버전은 그대로 v4이고, 이 규칙이 생기기 전에 얻은 v4 아이템은 예전처럼 **모든 능력치가 우연히 최대치일 때만** 고대예요 (능력치 하나가 최대치일 확률이 ${pct(I.MAX_ROLL_CHANCE)}라 2만 개 중 1개꼴)
+
+## 나이트메어 아이템: 속성 피해와 저항 (규칙 r${I.RULES_REV})
+
+[나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·포션 자리·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
+
+${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
+  I.ELEMENT_LINES.keys.map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
+
+- 후보가 ${I.STAT_KEYS_V4.length}가지 → ${I.STAT_KEYS_NM.length}가지가 돼서, 나이트메어 아이템은 대신 치명타 같은 공격 줄이 붙을 확률이 조금 낮아요
+- **속성 피해**: 공격할 때 **공격력의 N%를 그 속성 피해로 더해요.** 방어력에 줄지 않고, 치명타면 같이 커져요. 그리고 그 속성의 효과가 걸려요 (불 화상, 얼음 느려짐, 번개 튕김 — [몬스터 문서](monsters.md#속성-불얼음번개))
+  - 강화(+${I.ENHANCE.lineSteps.join("·+")})로 오르지만, 강화하거나 고대여도 **한 줄 최대 ${I.ELEMENT_LINES.dmgCap}%**
+- **속성 저항**: 그 속성의 화상·튕김 피해와 얼음에 걸릴 확률을 줄여요. 속성마다 (그 속성 저항 + 모든 속성 저항) **최대 ${I.ELEMENT_LINES.resCap}%**
+- 이 규칙(r${I.RULES_REV}) 전에 나이트메어에서 얻은 아이템은 속성 줄 없이 그대로예요
 
 ## 강화
 

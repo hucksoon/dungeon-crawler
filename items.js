@@ -16,7 +16,9 @@
   // 같은 버전 안의 규칙 개정 (아이템 r). 버전 표기·랭킹 시즌은 그대로 두고, 그 뒤에 얻은 아이템에만 적용
   // r1: 레전더리·세트의 3%가 고대 (모든 능력치 최대치). r이 없는 v4 아이템은 예전 그대로
   // r2: 일반 던전이 75층으로 줄면서 드롭을 늘림 — 몬스터·보스 등급표가 좋아지고(TABLES), 드롭 확률이 오름(DROPS)
-  const RULES_REV = 2;
+  // r3: 나이트메어에서 얻은 아이템(시드에 나이트메어 층)의 추가 능력치에 속성 피해·속성 저항이 붙을 수 있음 (ELEMENT_LINES).
+  //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름)
+  const RULES_REV = 3;
   const ANCIENT = { chance: 0.03 };
 
   // ---- 시드 기반 난수 ----
@@ -146,6 +148,14 @@
     critDmg: { name: "치명타 피해", pct: true },
     killHealPct: { name: "처치 시 최대 HP 회복", pct: true },
     splash: { name: "주변 1칸 피해", pct: false },
+    // 나이트메어 아이템(r3)의 추가 능력치에만 있음. 속성 피해: 공격할 때 공격력의 N%를 그 속성 피해로 더함
+    fireDmg: { name: "불 피해", pct: true },
+    iceDmg: { name: "얼음 피해", pct: true },
+    boltDmg: { name: "번개 피해", pct: true },
+    fireRes: { name: "불 저항", pct: true },
+    iceRes: { name: "얼음 저항", pct: true },
+    boltRes: { name: "번개 저항", pct: true },
+    allRes: { name: "모든 속성 저항", pct: true },
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것 (v2·v3)
   const STAT_KEYS_V4 = ["atk", "def", "hp", "crit", "critDmg", "atkPct", "lifesteal", "gold", "xp"];  // v4: 치명타 피해·공격력% 추가
@@ -171,7 +181,31 @@
     lifesteal: byRarity([1, 1], [1, 1], [1, 2], [2, 3], [3, 4], [3, 3]),
     gold: byRarity([3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]),
     xp: byRarity([3, 6], [5, 8], [8, 12], [12, 16], [18, 25], [15, 20]),
+    // 나이트메어 아이템(r3)만: 속성 피해는 등급별, 속성 저항 11~34%, 모든 속성 저항 6~11% (등급과 상관없이)
+    fireDmg: byRarity([1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]),
+    iceDmg: byRarity([1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]),
+    boltDmg: byRarity([1, 2], [2, 3], [3, 4], [4, 6], [6, 8], [5, 7]),
+    fireRes: byRarity([11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]),
+    iceRes: byRarity([11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]),
+    boltRes: byRarity([11, 34], [11, 34], [11, 34], [11, 34], [11, 34], [11, 34]),
+    allRes: byRarity([6, 11], [6, 11], [6, 11], [6, 11], [6, 11], [6, 11]),
   };
+  // ---- 속성 (나이트메어 아이템, r3) ----
+  // 나이트메어에서 얻은 아이템에만 속성 피해·저항 줄이 붙음 (기존 v4 아이템의 추가 능력치 확률은 그대로)
+  // 속성 피해는 강화하거나 고대여도 한 줄 최대 11%. 저항은 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
+  // 효과(불 화상·얼음 느려짐·번개 튕김)는 monsters.js ELEMENTS
+  const ELEMENT_LINES = {
+    keys: ["fireDmg", "iceDmg", "boltDmg", "fireRes", "iceRes", "boltRes", "allRes"],
+    dmg: { fire: "fireDmg", ice: "iceDmg", bolt: "boltDmg" },
+    res: { fire: "fireRes", ice: "iceRes", bolt: "boltRes" },
+    dmgCap: 11,
+    resCap: 75,
+  };
+  const STAT_KEYS_NM = [...STAT_KEYS_V4, ...ELEMENT_LINES.keys];
+  const isElementDmg = (stat) => stat === "fireDmg" || stat === "iceDmg" || stat === "boltDmg";
+  // 나이트메어에서 얻은 아이템: r3 이후이고 시드에 나이트메어 층(|n12| 또는 |shop|n9|)이 있음
+  const NM_SEED = /\|(shop\|)?n\d+\|/;
+  const isNightmareItem = (item) => item.v === 4 && (item.r || 0) >= 3 && NM_SEED.test(item.seed || "");
   // v4 % 능력치 강화: 주 능력치는 2단계마다 +1%p (+10이면 +5), 추가 능력치는 +4·6·8·10 때 최대치의 20%(최소 +1)
   const PCT_LINE_BOOST = 0.2;
   const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat] ? table[stat][item.rarity] : null);
@@ -290,7 +324,7 @@
     if (latest) version = RULES_VERSION;
     rev = rev ?? (latest ? RULES_REV : 0);
     if (version < 2 || version > 4) throw new Error(`unsupported item version ${version}`);
-    if (rev !== 0 && !((rev === 1 || rev === 2) && version === 4)) throw new Error(`unsupported item rev ${rev}`);
+    if (rev !== 0 && !(rev >= 1 && rev <= RULES_REV && version === 4)) throw new Error(`unsupported item rev ${rev}`);
     const lv = Math.max(1, Math.floor(level));
     const rng = rngFrom(`v${version}|${seed}`);
     const rarity = pickWeighted(rng, tablesFor(version, rev)[source]);
@@ -317,8 +351,9 @@
     while (mainStats.length < count) mainStats.push(rest.splice(Math.floor(rng() * rest.length), 1)[0]);
     item.main = mainStats.map(stat => [stat, rollRange(rng, mainRange(stat, item))]);
 
-    // 추가 능력치: 등급별 줄 수만큼, 서로 다른 종류
-    const stats = (version >= 4 ? STAT_KEYS_V4 : STAT_KEYS).slice();
+    // 추가 능력치: 등급별 줄 수만큼, 서로 다른 종류 (나이트메어 아이템은 속성 피해·저항도 후보)
+    const nightmare = version === 4 && rev >= 3 && NM_SEED.test(seed);
+    const stats = (nightmare ? STAT_KEYS_NM : version >= 4 ? STAT_KEYS_V4 : STAT_KEYS).slice();
     item.lines = [];
     for (let i = 0; i < RARITIES[rarity].lines; i++) {
       const stat = stats.splice(Math.floor(rng() * stats.length), 1)[0];
@@ -442,6 +477,8 @@
       lines[i][1] += add;
       lines[i][2] += add;
     }
+    // 속성 피해는 강화해도 한 줄 최대 11%
+    for (const l of lines) if (isElementDmg(l[0]) && l[1] > ELEMENT_LINES.dmgCap) { l[2] -= l[1] - ELEMENT_LINES.dmgCap; l[1] = ELEMENT_LINES.dmgCap; }
     return lines;
   }
 
@@ -496,7 +533,8 @@
   function totals(equipped) {
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, parry: 0, splash: 0, dual: 0 };
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, parry: 0, splash: 0, dual: 0,
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
     for (const item of equipped) {
       if (!item) continue;
@@ -521,7 +559,7 @@
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
     OFFHAND, PARRY, DUAL_WIELD, isWeaponLike, kindName, setsFor, setFull,
-    STAT_KEYS_V4, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
+    STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,

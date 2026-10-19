@@ -251,6 +251,8 @@
           ["공격력", s.atk], ["방어력", s.def], ["최대 HP", s.maxHp], ["치명타", `${s.crit}% (×${Number(s.critMul).toFixed(1)})`],
           ["흡혈", `${s.lifesteal}%`], ["처치 시 회복", s.killHeal ? `HP +${s.killHeal}` : "-"], ["골드 획득", `+${s.gold}%`], ["경험치 획득", `+${s.xp}%`],
           ...(s.parry ? [["패링", `${s.parry}%`]] : []), ...(s.dual ? [["두 손 무기", "한 턴 2번 공격"]] : []), ...(s.splash ? [["광란", "주변 1칸 피해"]] : []),
+          ...(s.elem && (s.elem.fire || s.elem.ice || s.elem.bolt) ? [["속성 피해", `불 +${s.elem.fire}% · 얼음 +${s.elem.ice}% · 번개 +${s.elem.bolt}%`]] : []),
+          ...(s.res && (s.res.fire || s.res.ice || s.res.bolt) ? [["속성 저항", `불 ${s.res.fire}% · 얼음 ${s.res.ice}% · 번개 ${s.res.bolt}%`]] : []),
         ].map(([k, v]) => el("div", {}, k, el("b", { textContent: String(v) })))));
       const bySlot = Object.fromEntries((g.items || []).map(it => [it.slot, it]));
       body.push(el("h4", { textContent: "장착 장비" }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
