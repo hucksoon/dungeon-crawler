@@ -245,7 +245,7 @@ ${table(["층", "더미", "처치", "보스", "황금 고블린", "합계", "1�
 - 황금 고블린과 같은 등급표로 ${I.SHOP.slots}개를 진열해요: ${tableRates(I.TABLES[I.SHOP.table])}
 - 진열품은 (판 ID, 층)으로 정해져서 다시 열어도 같아요. 산 칸은 "판매 완료"로 남아요
 - 가격: 등급 기본값 × (1 + 아이템 레벨당 10%), 5골드 단위. 상점 아이템 레벨 = 그 층
-- **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
+- **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (강화석·고대 굴리기도 ×${I.NM_SHOP.priceMul}) (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
 
 ${table(["등급", "기본 가격", ...SHOP_FLOORS.map(d => `${d}층`)],
   Object.keys(I.SHOP.prices).map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
@@ -283,7 +283,7 @@ ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.ke
 ${table(["등급", "기본", ...[10, 30, 60, 120].map(l => `Lv${l}`)], Object.keys(I.SELL_GOLD).map(r => [I.RARITIES[r].name, I.SELL_GOLD[r], ...[10, 30, 60, 120].map(lvl => I.sellGold({ rarity: r, lvl }))]))}
 
 - 가방 전부 판매에 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요. 안 팔면 가방에 남아요
-- +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요
+- +N으로 강화할 때 강화석 N개가 들어요. 실패해도 아이템과 강화 단계는 그대로이고 강화석만 사라져요 (나이트메어 아이템은 강화석 ×${I.NM_SHOP.priceMul}: +N이면 ${I.NM_SHOP.priceMul}N개)
 - 강화 1단계마다 수치 주 능력치가 +10% 올라요 (최소 +1). 치명타 같은 % 주 능력치는 2단계마다 +1%p
 - +${I.ENHANCE.lineSteps.join(", +")}이 되면 추가 능력치 중 하나가 올라요. 자세한 건 [장비 문서](items.md#강화)
 - 결과는 (아이템 ID, 몇 번째 시도)로 정해져서 새로고침해도 바뀌지 않아요
@@ -402,7 +402,7 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - 고대가 아닌 **v4 레전더리·세트**는 인벤토리에서 **골드로 고대를 다시 굴릴 수 있어요**
 - 한 번에 **${pct(I.ANCIENT_REROLL.chance)}** 확률로 고대(모든 능력치 최대치)가 돼요. 아이템마다 **최대 ${I.ANCIENT_REROLL.max}번** (다 굴리면 고대가 될 확률 ${pct(1 - (1 - I.ANCIENT_REROLL.chance) ** I.ANCIENT_REROLL.max)})
-- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요. 인벤토리 위쪽과 굴리기 줄에 지금 가진 골드가 보여요
+- 비용은 그 아이템 **상점 가격의 1/3**이에요. 레벨이 높을수록 비싸요. 나이트메어 아이템은 상점 가격이 ×${I.NM_SHOP.priceMul}라 굴리기도 ×${I.NM_SHOP.priceMul}. 인벤토리 위쪽과 굴리기 줄에 지금 가진 골드가 보여요
 - ${I.ANCIENT_REROLL.max}번 모두 실패한 아이템은 버튼 자리에 **"고대 굴리기 ${I.ANCIENT_REROLL.max}/${I.ANCIENT_REROLL.max}번 실패"**가 (누를 수 없게) 그대로 남아요
 - 골드가 모자라면 [골드 던전](monsters.md#골드-던전)에서 한 번에 모을 수 있어요
 
@@ -441,7 +441,7 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
   - 수치 능력치: 그 레벨 범위 **최대치의 ${pct(I.ENHANCE.lineBoost)}**(최소 +1)
   - % 능력치: 그 등급 범위 **최대치의 ${pct(I.PCT_LINE_BOOST)}**(최소 +1). 예: 레전더리 치명타 피해(최대 ${I.PCT_LINE.critDmg.legendary[1]}%)는 +${I.lineBoost({ v: I.RULES_VERSION, rarity: "legendary", lvl: 1 }, "critDmg")}%p
   - 어느 줄이 오를지는 (아이템 ID, 강화 단계)로 정해져요. 같은 줄이 여러 번 오를 수도 있어요
-- 성공 확률과 강화석은 [경제 문서](economy.md#판매와-강화)를 보세요
+- 성공 확률과 강화석은 [경제 문서](economy.md#판매와-강화)를 보세요. **나이트메어 아이템은 강화석이 ×${I.NM_SHOP.priceMul}** (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서)
 
 ## 세트
 
