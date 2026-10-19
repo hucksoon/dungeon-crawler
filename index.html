@@ -241,7 +241,7 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
   }
   .modal h2 { margin: 0 0 6px; font-size: 17px; color: var(--accent); }
-  .modal.notice { max-width: 440px; display: flex; flex-direction: column; gap: 8px; }
+  .modal.notice { max-width: 440px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
   .modal.notice h2 { color: var(--accent, #ffcf5c); margin: 0; }
   .modal.notice ul { margin: 0; padding-left: 20px; line-height: 1.6; }
   .modal.notice li + li { margin-top: 4px; }
@@ -1569,7 +1569,8 @@
     depth++;
     shopBought = [];
     shopRerolls = 0;
-    bestDepth = Math.max(bestDepth, depth);
+    noteOldGear();
+    if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
     log(`${depth}층으로 내려간다...`, "info");
     if (depth === RLMonsters.MAX_FLOOR && !cleared) log(`마지막 층이다! ${depth}층 보스를 쓰러뜨리고 계단을 밟으면 일반 던전 완료.`, "good");
     const rooms = generateDungeon();
@@ -1582,9 +1583,13 @@
   // 최대 층에서 보스를 쓰러뜨리고 계단을 밟음: 일반 던전 완료 → 안내 창과 함께 로비로.
   // 포탈 층은 최대 층의 새 구역(새 지도·새 보스)으로 만들어 두어서, 오른쪽 문(포탈)으로 다시 들어가 파밍
   function completeFloor() {
-    const first = !cleared;
-    cleared = true;
-    bestDepth = Math.max(bestDepth, depth);
+    noteOldGear();
+    const counts = !player.oldGear;  // 예전 장비를 낀 판은 완료해도 v4 베타 랭킹에는 안 셈
+    const first = counts && !cleared;
+    if (counts) {
+      cleared = true;
+      bestDepth = Math.max(bestDepth, depth);
+    }
     shopBought = [];
     shopRerolls = 0;
     if (first) log(`🎉 ${depth}층 보스를 쓰러뜨렸다! 일반 던전 완료!`, "rainbow");
@@ -1598,7 +1603,8 @@
       "골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요.",
     ]);
     else showNotice(`${depth}층 클리어!`, [
-      `${depth}층 보스를 또 쓰러뜨리고 로비로 돌아왔어요.`,
+      `${depth}층 보스를 ${counts ? "또 " : ""}쓰러뜨리고 로비로 돌아왔어요.`,
+      ...(counts ? [] : ["이번 판은 예전(v3까지) 장비를 써서 v4 베타 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요."]),
       `오른쪽 문(포탈)으로 ${depth}층의 새 구역에 다시 들어갈 수 있어요.`,
     ]);
   }
@@ -1619,6 +1625,7 @@
     p: player.potions, l: player.plvl, x: player.xp, xn: player.xpNext,
     rid: player.rid, k: player.kills, pp: player.potionPicks, sb: shopBought, sr: shopRerolls,
     rv: player.revived ? 1 : 0,
+    ...(player.oldGear ? { og: 1 } : {}),
   });
   function makeSave() {
     return {
@@ -1754,7 +1761,9 @@
       plvl: r.l, xp: r.x, xpNext: r.xn,
       rid: r.rid || newRunId(), kills: r.k || 0, potionPicks: r.pp || 0,
       revived: !!r.rv,
+      oldGear: !!r.og,
     };
+    noteOldGear(true);  // 이 표시가 생기기 전의 판: 지금 예전 장비를 끼고 있으면 제외
     shopBought = Array.isArray(r.sb) ? r.sb : [];
     shopRerolls = r.sr || 0;
     player.hp = Math.min(player.hp, stats().maxHp);
@@ -2188,8 +2197,10 @@
       try { ok = await allowEntry(); } finally { entering = false; }
       if (!ok || scene !== "lobby") return;
       depth = 1;
-      bestDepth = Math.max(bestDepth, 1);
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
+      player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 v4 베타 랭킹에 기록됨
+      noteOldGear();
+      if (!player.oldGear) bestDepth = Math.max(bestDepth, 1);
       shopBought = [];
       shopRerolls = 0;
       setScene("dungeon");
@@ -2587,11 +2598,12 @@
       gold: 0,
       potions: 1,
       plvl: 1, xp: 0, xpNext: 10,
-      rid: newRunId(), kills: 0, potionPicks: 0,
+      rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false,
     };
     shopBought = [];
     shopRerolls = 0;
-    bestDepth = Math.max(bestDepth, 1);
+    noteOldGear(true);
+    if (!player.oldGear) bestDepth = Math.max(bestDepth, 1);
     player.hp = stats().maxHp;  // 장비로 늘어난 최대 HP까지 채우고 시작
     closeDeath();
     logEl.innerHTML = "";
@@ -2853,6 +2865,7 @@
     invSummary.replaceChildren(
       el("h3", {}, "능력치"), ...statRows.map(t => el("div", {}, t)),
       ...(oldEquipped ? [el("div", { className: "meta" }, `예전 규칙 장비 ${oldEquipped}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.`)] : []),
+      ...(player?.oldGear ? [el("div", { className: "msg-bad" }, "이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.")] : []),
       ...sets.map(set => el("div", { style: { marginTop: "6px" } },
         el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
         ...set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, `${b.count}세트: ${b.text}`)))),
@@ -2981,6 +2994,7 @@
 
   function equipItem(item) {
     Inv.equip(item.id);
+    noteOldGear();
     selected = { from: "equip", slot: item.slot };
     invMsg = null;
     afterGearChange();
@@ -3766,13 +3780,21 @@
     document.getElementById("notice-title").textContent = title;
     document.getElementById("notice-body").replaceChildren(...lines.map(t => Object.assign(document.createElement("li"), { textContent: t })));
     noticeModal.hidden = false;
-    document.getElementById("notice-ok").focus();
+    document.getElementById("notice-ok").focus({ preventScroll: true });  // 긴 안내도 제목부터 보이게
+    noticeModal.querySelector(".modal").scrollTop = 0;
   }
   const closeNotice = () => { noticeModal.hidden = true; };
   document.getElementById("notice-ok").addEventListener("click", closeNotice);
 
   // 예전 규칙(v1~v3) 장비를 가진 사용자에게 한 번 안내: 150층 최대 층, v4 규칙, 새로 파밍 권장 (계정·게스트마다 한 번)
   const isLegacy = (it) => !(it.v >= RLItems.RULES_VERSION);
+  // 이번 판에 예전(v3까지) 장비를 한 번이라도 끼면 그 판은 v4 베타 랭킹에서 제외 (가방에 두는 건 괜찮음)
+  function noteOldGear(quiet = false) {
+    if (!player || player.oldGear) return;
+    if (!Object.values(Inv.equipped()).some(it => it && isLegacy(it))) return;
+    player.oldGear = true;
+    if (!quiet) log("예전(v3까지) 장비를 껴서 이번 판은 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.", "bad");
+  }
   function legacyNotice() {
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
@@ -3785,6 +3807,7 @@
       `가지고 계신 예전 장비 ${old}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 "적용 N%"로 보여요)`,
       `지금 장비로는 ${RLMonsters.MAX_FLOOR}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.`,
       "지금까지의 랭킹 기록은 랭킹 화면의 \"v3 베타\"에 그대로 남아요. \"v4 베타\" 랭킹은 새로 시작해요.",
+      "예전 장비를 끼고 한 판은 v4 베타 랭킹에 기록되지 않아요. 가방에 보관하거나 거래소에 파는 건 괜찮아요.",
     ]);
   }
 
