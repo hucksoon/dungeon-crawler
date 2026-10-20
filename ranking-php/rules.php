@@ -151,6 +151,17 @@ const R_SETS = [
             ['count' => 2, 'text' => '공격하면 대상 주변 1칸의 적도 피해의 50%를 입어요', 'stats' => ['splash' => 1]],
         ],
     ],
+    // 화염의 세트 (나이트메어 전용, r4)
+    'inferno' => [
+        'name' => '화염의 세트',
+        'nightmare' => true,
+        'pieces' => ['head' => '화염의 투구', 'chest' => '화염의 갑옷', 'arms' => '화염의 팔보호구', 'pants' => '화염의 바지', 'boots' => '화염의 장화'],
+        'bonuses' => [
+            ['count' => 2, 'text' => '파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)', 'stats' => ['fireball' => 1]],
+            ['count' => 4, 'text' => '파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%', 'stats' => ['fireballPct' => 50, 'hpPct' => 15, 'fireRes' => 20]],
+            ['count' => 5, 'text' => '파이어볼에 맞은 적이 모두 화상을 입어요', 'stats' => ['fireballBurn' => 1]],
+        ],
+    ],
     'sturdy' => [
         'name' => '견고의 세트',
         'weapon' => 'axe', 'offhand' => 'shield',
@@ -165,10 +176,10 @@ const R_SETS = [
 function r_weapon_like(array $item): bool {
     return $item['slot'] === 'weapon' || ($item['slot'] === 'offhand' && !empty($item['type']) && $item['type'] !== 'shield');
 }
-// 그 부위로 나올 수 있는 세트 (R_SETS 순서)
-function r_sets_for(string $slot): array {
+// 그 부위로 나올 수 있는 세트 (R_SETS 순서). $nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
+function r_sets_for(string $slot, bool $nm4 = false): array {
     $out = [];
-    foreach (R_SETS as $id => $set) if (isset($set['pieces'][$slot])) $out[] = $id;
+    foreach (R_SETS as $id => $set) if (isset($set['pieces'][$slot]) && (empty($set['nightmare']) || $nm4)) $out[] = $id;
     return $out;
 }
 function r_set_full(string $id): int { return max(array_column(R_SETS[$id]['bonuses'], 'count')); }
@@ -301,7 +312,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 3 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 4 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -314,7 +325,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
     } else {
         $slot = r_pick($rng, R_SLOTS);
-        $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot)) : null;
+        $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot, $version === 4 && $rev >= 4 && preg_match(R_NM_SEED, $seed) === 1)) : null;
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
         elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, array_keys(R_WEAPONS)));
     }
@@ -475,6 +486,7 @@ function r_effective_lines(array $item): array {
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
+        'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {

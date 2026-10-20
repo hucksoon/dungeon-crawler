@@ -864,12 +864,17 @@
       return empty();
     }
     // 예전에 저장한 가방 맞추기: 새 부위(보조 손) 칸 추가, 고대 표시는 지금 규칙으로 (레전더리·세트만)
+    // 가방 기록(얻기·판매·강화…)은 최근 LOG_MAX개만 남김. 예전에는 끝없이 쌓여서 저장소 한도(약 5MB)에 닿으면
+    // 가방 저장이 조용히 실패할 수 있었음 (75층 한 번에 약 2,000개 · 45만 글자). 기록은 게임에서 읽지 않음
+    const LOG_MAX = 200;
+    const trimLog = (d) => { if (d.log.length > LOG_MAX) d.log.splice(0, d.log.length - LOG_MAX); };
     function normalize(d) {
+      if (Array.isArray(d.log)) trimLog(d);
       d.equip = fullEquip(d.equip);
       for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
       return d;
     }
-    const write = () => { store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
+    const write = () => { trimLog(data); store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
     const fullEquip = (eq) => Object.fromEntries(RLItems.SLOTS.map(s => [s, eq?.[s] || null]));
 
@@ -1268,6 +1273,8 @@
       parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
+      // 화염의 세트: 파이어볼 (2세트), 파이어볼 피해 +% (4세트), 맞은 적 화상 (5세트)
+      fireball: g.fireball > 0, fireballPct: g.fireballPct, fireballBurn: g.fireballBurn > 0,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes)])),
@@ -2239,7 +2246,39 @@
   let turn = 0;
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
+  // ---- 세트 스킬: 파이어볼 (화염의 세트 2세트, 규칙은 items.js FIREBALL) ----
+  // 플레이어가 행동한 뒤, 몬스터가 움직이기 전에 자동으로 나감. FB.every턴마다 (쏠 적이 없으면 준비된 채로 기다림)
+  // 대상: 보이는 적 중 FB.range칸 안(대각선도 한 칸)에서 가장 가까운 적 (같으면 폭발에 더 많이 걸리는 쪽). 그 적을 중심으로 3×3
+  const FB = RLItems.FIREBALL;
+  let fireFx = null;  // 폭발 칸 번쩍임 { cells, until }
+  function castSkills(s) {
+    if (!s.fireball) return;
+    if (player.fbCd > 0) player.fbCd--;
+    if (player.fbCd > 0) return;
+    const inBlast = (c) => enemies.filter(e => e.hp > 0 && near8(e, c) <= FB.radius).length;
+    const targets = enemies.filter(e => e.hp > 0 && visible[e.y]?.[e.x] && near8(e, player) <= FB.range)
+      .sort((a, b) => near8(a, player) - near8(b, player) || inBlast(b) - inBlast(a));
+    const center = targets[0];
+    if (!center) return;
+    player.fbCd = FB.every;
+    const crit = Math.random() * 100 < s.crit;
+    const dmg = Math.max(1, Math.round(s.atk * FB.mul * (1 + (s.fireballPct + s.elem.fire) / 100) * (crit ? s.critMul : 1)));
+    const hit = enemies.filter(e => e.hp > 0 && near8(e, center) <= FB.radius);
+    const cells = [];
+    for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
+    fireFx = { cells, until: performance.now() + 280 };
+    setTimeout(render, 300);  // 번쩍임 지우기 (애니메이션 루프 없이 한 번만 다시 그림)
+    log(`🔥 파이어볼! ${hit.length}마리에게 ${dmg} 피해${crit ? " (치명타)" : ""}${s.fireballBurn ? " · 화상" : ""}`, null, EL.colors.fire);
+    for (const e of hit) {
+      e.hp -= dmg;
+      showDamage(e, dmg, crit, EL.colors.fire);
+      if (e.hp <= 0) killEnemy(e);
+      else if (s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
+    }
+  }
+
   function endTurn() {
+    if (!gameOver && scene === "dungeon") { computeFOV(); castSkills(stats()); }
     worldTurn();
     // 얼어서 느려진 동안은 2턴에 한 번만 움직임: 쉬는 턴은 몬스터만 한 번 더 움직임
     if (!gameOver && scene === "dungeon" && player.slow > 0 && (turn + 1) % 2 === 1) {
@@ -2657,12 +2696,15 @@
   // 던전은 보이는 곳에 레전더리·세트 장비가 떨어져 있을 때만 계속 다시 그림 (무지개색)
   let lobbyFrame = 0;
   const rainbowInSight = () => !reduceMotion && items?.some(it => it.type === "gear" && isRainbow(it.item) && visible?.[it.y]?.[it.x]);
+  // 로비·무지개 아이템 애니메이션: 초당 LOBBY_FPS번만 다시 그림 (매 프레임 그리면 로비에서 CPU 약 21% → 휴대폰 배터리)
+  const LOBBY_FPS = 20;
   function lobbyLoop(t) {
+    requestAnimationFrame(lobbyLoop);
+    if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
     if (scene === "lobby" && !document.hidden) { Lobby.step(dt); render(); }
     else if (scene === "dungeon" && !document.hidden && rainbowInSight()) render();
-    requestAnimationFrame(lobbyLoop);
   }
 
   function renderLobby() {
@@ -2921,6 +2963,12 @@
     // 플레이어
     drawStatus(player, player.x * TILE, player.y * TILE);
     drawGlyph("@", player.x * TILE, player.y * TILE, "#ffffff");
+
+    // 파이어볼 폭발 칸 (잠깐 번쩍임)
+    if (fireFx && performance.now() < fireFx.until) {
+      ctx.fillStyle = "rgba(255, 122, 61, 0.38)";
+      for (const c of fireFx.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
+    } else fireFx = null;
   }
 
   // 느려짐은 칸을 파랗게, 화상은 아래쪽에 주황 줄
@@ -2969,6 +3017,7 @@
       : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? `포션 (${player.potCd}턴)` : "포션 (준비됨)";
     const st = [
+      ...(stats().fireball ? [player.fbCd > 0 ? `🔥 파이어볼 ${player.fbCd}턴` : "🔥 파이어볼 준비됨"] : []),
       ...(player.burn ? [`🔥 화상 ${player.burn.left}회`] : []),
       ...(player.slow > 0 ? [`❄ 느려짐 ${player.slow}턴`] : player.immune > 0 ? [`❄ 면역 ${player.immune}턴`] : []),
     ];
@@ -3192,6 +3241,7 @@
     const set = RLItems.SETS[id];
     const counts = set.bonuses.map(b => b.count);
     if (id === "trial") return `${set.name}: ${counts.join("·")}개를 입으면 효과가 켜져요. 6부위 중 아무거나 5개면 전부 켜져서 무기는 자유롭게 골라도 돼요.`;
+    if (set.bonuses.length > 1) return `${set.name}: 방어구 ${Object.keys(set.pieces).length}부위 중 ${counts.join("·")}개를 입으면 효과가 하나씩 켜져요. 나이트메어에서만 나와요. 다른 세트와 나눠 입을 수 있어요 (예: 시험의 세트 2 + ${set.name} 3).`;
     return `${set.name}: ${Object.values(set.pieces).join(" + ")} — 둘 다 끼면 ${set.bonuses.map(b => b.text).join(", ")}`;
   }
 
@@ -3257,6 +3307,7 @@
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
+      ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
       ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
     ];
@@ -4347,7 +4398,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1020b:${owner}`;  // 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1020c:${owner}`;  // 화염의 세트(파이어볼), 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4356,6 +4407,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `나이트메어에서 화염의 세트(2세트부터 파이어볼)가 나와요. ` +
         `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요. ` +
         `나이트메어 아이템은 판매하면 나오는 악몽 강화석으로 강화해요. 나이트메어 앞쪽 층은 쉬워지고 깊은 층일수록 세져요. ` +
         `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);

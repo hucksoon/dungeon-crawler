@@ -18,7 +18,8 @@
   // r2: 일반 던전이 75층으로 줄면서 드롭을 늘림 — 몬스터·보스 등급표가 좋아지고(TABLES), 드롭 확률이 오름(DROPS)
   // r3: 나이트메어에서 얻은 아이템(시드에 나이트메어 층)의 추가 능력치에 속성 피해·속성 저항이 붙을 수 있음 (ELEMENT_LINES).
   //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름). 같은 때부터 포션 자리(시드 |p)는 보물 자리: 황금 고블린 등급표로 1개 (서버도 r3부터 인정)
-  const RULES_REV = 3;
+  // r4: 나이트메어 아이템의 세트 방어구는 시험의 세트 또는 속성 세트(화염의 세트…) 중 하나 (일반 던전 아이템은 r3과 똑같이 나옴, ID만 다름)
+  const RULES_REV = 4;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -317,6 +318,18 @@
         { count: 2, text: "공격하면 대상 주변 1칸의 적도 피해의 50%를 입어요", stats: { splash: 1 } },
       ],
     },
+    // 화염의 세트 (나이트메어 전용, r4): 방어구 5부위. 2세트부터 파이어볼 스킬이 자동으로 나감 (FIREBALL)
+    inferno: {
+      name: "화염의 세트",
+      nightmare: true,
+      element: "fire",
+      pieces: { head: "화염의 투구", chest: "화염의 갑옷", arms: "화염의 팔보호구", pants: "화염의 바지", boots: "화염의 장화" },
+      bonuses: [
+        { count: 2, text: "파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)", stats: { fireball: 1 } },
+        { count: 4, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
+        { count: 5, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
+      ],
+    },
     sturdy: {
       name: "견고의 세트",
       weapon: "axe", offhand: "shield",
@@ -326,8 +339,11 @@
       ],
     },
   };
-  // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, sturdy)
-  const setsFor = (slot) => Object.keys(SETS).filter(id => SETS[id].pieces[slot]);
+  // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, inferno, sturdy). nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
+  const setsFor = (slot, nm4 = false) => Object.keys(SETS).filter(id => SETS[id].pieces[slot] && (!SETS[id].nightmare || nm4));
+  // 파이어볼 (화염의 세트 2세트): every턴마다, range칸 안(가로·세로·대각 모두 한 칸) 가장 가까운 적을 중심으로 (2·radius+1)² 칸
+  // 피해 = 공격력 × mul × (1 + 파이어볼 피해% + 불 피해%) — 방어력 무시, 치명타 가능. 5세트면 맞은 적에게 화상
+  const FIREBALL = { every: 2, range: 3, radius: 1, mul: 0.8 };
   // 세트를 다 맞추는 개수 (효과가 모두 켜지는 개수)
   const setFull = (id) => Math.max(...SETS[id].bonuses.map(b => b.count));
 
@@ -358,7 +374,7 @@
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
     } else {
       slot = pick(rng, SLOTS);
-      set = rarity === "set" ? pick(rng, setsFor(slot)) : null;
+      set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && NM_SEED.test(seed))) : null;
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
       else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, Object.keys(WEAPONS)));
     }
@@ -620,6 +636,7 @@
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
+      fireball: 0, fireballPct: 0, fireballBurn: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
     for (const item of equipped) {
@@ -644,7 +661,7 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
+    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
