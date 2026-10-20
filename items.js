@@ -18,7 +18,8 @@
   // r2: 일반 던전이 75층으로 줄면서 드롭을 늘림 — 몬스터·보스 등급표가 좋아지고(TABLES), 드롭 확률이 오름(DROPS)
   // r3: 나이트메어에서 얻은 아이템(시드에 나이트메어 층)의 추가 능력치에 속성 피해·속성 저항이 붙을 수 있음 (ELEMENT_LINES).
   //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름). 같은 때부터 포션 자리(시드 |p)는 보물 자리: 황금 고블린 등급표로 1개 (서버도 r3부터 인정)
-  const RULES_REV = 3;
+  // r4: 나이트메어 아이템의 세트 방어구는 시험의 세트 또는 속성 세트(화염의 세트…) 중 하나 (일반 던전 아이템은 r3과 똑같이 나옴, ID만 다름)
+  const RULES_REV = 4;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -230,7 +231,12 @@
   }
   // v4 % 능력치 강화: 주 능력치는 2단계마다 +1%p (+10이면 +5), 추가 능력치는 +4·6·8·10 때 최대치의 20%(최소 +1)
   const PCT_LINE_BOOST = 0.2;
-  const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat] ? table[stat][item.rarity] : null);
+  // 속성 저항 줄 (r4부터): 속성 저항 7~20%, 모든 속성 저항 4~7%. 강화(+4·6·8·10)로는 오르지 않음 (오를 줄을 고를 때 저항 줄은 빼고 고름)
+  // 예전(11~34%, 6~11%)에는 저항만 노리면 아이템 70개쯤으로 세 저항 모두 75%를 쉽게 맞췄음. r3까지 얻은 아이템은 효과를 계산할 때 새 최대치까지만
+  const RES_R4 = { fireRes: [7, 20], iceRes: [7, 20], boltRes: [7, 20], allRes: [4, 7] };
+  const isResLine = (stat) => !!RES_R4[stat];
+  const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat]
+    ? (table === PCT_LINE && RES_R4[stat] && (item.r || 0) >= 4 ? RES_R4[stat] : table[stat][item.rarity]) : null);
 
   // 주 능력치: 강화하면 함께 오르는 능력치. 무기는 공격력, 방어구는 방어력이 항상 첫 번째로 붙고
   // 나머지는 부위별 후보에서 무작위. 개수는 커먼·언커먼 1~2개, 레어 이상 3~4개
@@ -317,6 +323,42 @@
         { count: 2, text: "공격하면 대상 주변 1칸의 적도 피해의 50%를 입어요", stats: { splash: 1 } },
       ],
     },
+    // 화염의 세트 (나이트메어 전용, r4): 방어구 5부위. 2세트부터 파이어볼 스킬이 자동으로 나감 (FIREBALL)
+    inferno: {
+      name: "화염의 세트",
+      nightmare: true,
+      element: "fire",
+      pieces: { head: "화염의 투구", chest: "화염의 갑옷", arms: "화염의 팔보호구", pants: "화염의 바지", boots: "화염의 장화" },
+      bonuses: [
+        { count: 2, text: "파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)", stats: { fireball: 1 } },
+        { count: 4, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
+        { count: 5, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
+      ],
+    },
+    // 서리의 세트 (나이트메어 전용, r4): 2세트부터 프로스트 노바 (FROST_NOVA). 생존 쪽
+    frost: {
+      name: "서리의 세트",
+      nightmare: true,
+      element: "ice",
+      pieces: { head: "서리의 투구", chest: "서리의 갑옷", arms: "서리의 팔보호구", pants: "서리의 바지", boots: "서리의 장화" },
+      bonuses: [
+        { count: 2, text: "프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)", stats: { nova: 1 } },
+        { count: 4, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
+        { count: 5, text: "프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)", stats: { novaSlow: 1 } },
+      ],
+    },
+    // 뇌전의 세트 (나이트메어 전용, r4): 2세트부터 체인 라이트닝 (CHAIN). 보스·단일 대상 쪽
+    storm: {
+      name: "뇌전의 세트",
+      nightmare: true,
+      element: "bolt",
+      pieces: { head: "뇌전의 투구", chest: "뇌전의 갑옷", arms: "뇌전의 팔보호구", pants: "뇌전의 바지", boots: "뇌전의 장화" },
+      bonuses: [
+        { count: 2, text: "체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)", stats: { chain: 1 } },
+        { count: 4, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
+        { count: 5, text: "번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%", stats: { chainMax: 1 } },
+      ],
+    },
     sturdy: {
       name: "견고의 세트",
       weapon: "axe", offhand: "shield",
@@ -326,8 +368,17 @@
       ],
     },
   };
-  // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, sturdy)
-  const setsFor = (slot) => Object.keys(SETS).filter(id => SETS[id].pieces[slot]);
+  // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, inferno, sturdy). nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
+  const setsFor = (slot, nm4 = false) => Object.keys(SETS).filter(id => SETS[id].pieces[slot] && (!SETS[id].nightmare || nm4));
+  // 파이어볼 (화염의 세트 2세트): every턴마다, range칸 안(가로·세로·대각 모두 한 칸) 가장 가까운 적을 중심으로 (2·radius+1)² 칸
+  // 피해 = 공격력 × mul × (1 + 파이어볼 피해% + 불 피해%) — 방어력 무시, 치명타 가능. 5세트면 맞은 적에게 화상
+  const FIREBALL = { every: 2, range: 3, radius: 1, mul: 0.8 };
+  // 프로스트 노바 (서리의 세트 2세트): every턴마다, 내 주변 radius칸(대각선 포함 8칸)에 적이 있으면 그 적 모두에게
+  // 피해 = 공격력 × mul × (1 + 노바 피해% + 얼음 피해%). 5세트면 맞은 적이 느려짐 (얼음 면역 규칙 그대로)
+  const FROST_NOVA = { every: 2, radius: 1, mul: 0.7 };
+  // 체인 라이트닝 (뇌전의 세트 2세트): every턴마다, range칸 안 가장 가까운 적부터 strikes번 (다음은 앞에 맞은 적에서 range칸 안 가장 가까운 다른 적)
+  // 한 번에 공격력 × mul × (1 + 체인 피해% + 번개 피해%). 5세트: strikesMax번, 다른 적이 없으면 같은 적이 다시 맞음 + 감전(받는 피해 +shock.pct%, shock.turns턴)
+  const CHAIN = { every: 2, range: 3, strikes: 2, strikesMax: 4, mul: 0.4, shock: { turns: 3, pct: 20 } };
   // 세트를 다 맞추는 개수 (효과가 모두 켜지는 개수)
   const setFull = (id) => Math.max(...SETS[id].bonuses.map(b => b.count));
 
@@ -358,12 +409,13 @@
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
     } else {
       slot = pick(rng, SLOTS);
-      set = rarity === "set" ? pick(rng, setsFor(slot)) : null;
+      set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && NM_SEED.test(seed))) : null;
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
       else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, Object.keys(WEAPONS)));
     }
 
     const item = { v: version, seed, src: source, lvl: lv, slot, type, rarity, set };
+    if (rev) item.r = rev;   // 줄 범위가 개정마다 다를 수 있어서 먼저 (저항 줄 r4)
 
     // 주 능력치: 첫 번째는 고정, 나머지는 후보에서 무작위 (v2·v3는 무기/방어구 후보, v4는 부위별 후보)
     const pool = version >= 4 ? mainPoolV4(item) : MAIN.pool[isWeaponLike(item) ? "weapon" : "armor"];
@@ -441,6 +493,31 @@
     return item.main.every(([k, v]) => v === mainRange(k, item)[1]) &&
       item.lines.every(([k, v]) => v === lineRangeOf(k, item)[1]);
   }
+
+  // ---- 전설의 힘 (v4 레전더리, 세트 아님) ----
+  // 완성도 = 주 능력치·추가 능력치(방패는 패링도)가 각자 범위 안에서 얼마나 높은지의 평균 (0~1, 고대 = 1)
+  // 레전더리 하나마다 공격력·방어력·최대 HP +max% × c², c = (완성도 − start) / (1 − start) (start 아래는 0)
+  //   → 평범한 레전더리(완성도 50% 안팎)는 그대로, 거의 완벽한 레전더리만 세트보다 좋아짐 (고대 레전더리 5부위 = 각 +12%)
+  //   시뮬레이션: 나이트메어 25층 고대 레전더리 5부위가 보스 6턴·5마리 0%로 가장 고르게 강함 (+20%면 모든 세트를 압도해서 12%)
+  // allRes: 모든 속성 저항도 +allRes% × c² (고대 레전더리 5부위 = +20%. 하나에 +20%면 고대 4개만으로 세 저항이 모두 75%라 저항 줄이 쓸모없어짐)
+  const LEGEND = { start: 0.6, max: 12, allRes: 4 };
+  function completeness(item) {
+    if (!item.main) return 0;
+    let sum = 0, n = 0;
+    const add = ([lo, hi], v) => { sum += hi > lo ? (v - lo) / (hi - lo) : 1; n++; };
+    for (const [k, v] of item.main) add(mainRange(k, item), v);
+    for (const [k, v] of item.lines) add(lineRangeOf(k, item), v);
+    if (item.parry != null) add(PARRY.ranges[item.rarity], item.parry);
+    return n ? sum / n : 0;
+  }
+  // c² (0~1): 완성도 start 아래는 0, 100%(고대)면 1
+  function legendCurve(item) {
+    if (item.v !== 4 || item.rarity !== "legendary" || !item.main) return 0;
+    const c = Math.max(0, Math.min(1, (completeness(item) - LEGEND.start) / (1 - LEGEND.start)));
+    return c * c;
+  }
+  const legendPower = (item) => Math.round(LEGEND.max * legendCurve(item));    // 공격력·방어력·최대 HP +%
+  const legendRes = (item) => Math.round(LEGEND.allRes * legendCurve(item));   // 모든 속성 저항 +%
 
   // 처치 1회(또는 포션 자리 1곳)의 결과: 드롭 없으면 null. kind: "normal" | "elite" | "boss"
   function rollDrop(seed, level, kind = "normal") {
@@ -529,17 +606,21 @@
     for (const k of Object.keys(out)) { const cap = oldCap(item, "main", k); if (cap != null) out[k] = Math.min(out[k], cap); }
     return out;
   }
+  // r3까지 얻은 나이트메어 아이템의 저항 줄: 새 최대치(RES_R4)까지만 적용
+  const oldResCap = (item, stat) => (item.v === 4 && RES_R4[stat] && (item.r || 0) < 4 ? RES_R4[stat][1] : null);
   function effectiveLines(item) {
-    return enhancedLines(item).map(([k, v, plus]) => { const cap = oldCap(item, "line", k); return [k, cap != null ? Math.min(v, cap) : v, plus]; });
+    return enhancedLines(item).map(([k, v, plus]) => { const cap = oldCap(item, "line", k) ?? oldResCap(item, k); return [k, cap != null ? Math.min(v, cap) : v, plus]; });
   }
 
   // 강화가 반영된 추가 능력치 [[stat, 값, 강화로 오른 양]]. 어느 줄이 오를지는 (아이템 ID, 단계) 시드로 정해짐
   function enhancedLines(item) {
     const lines = item.lines.map(([k, v]) => [k, v, 0]);
     if (!lines.length) return lines;
+    // 오를 줄: 저항 줄은 빼고 고름 (저항 줄이 없는 아이템은 예전과 똑같음)
+    const can = lines.map((_, i) => i).filter(i => !isResLine(lines[i][0]));
     for (const step of ENHANCE.lineSteps) {
-      if ((item.enh || 0) < step) break;
-      const i = Math.floor(rngFrom(`enhline|${item.id}|${step}`)() * lines.length);
+      if ((item.enh || 0) < step || !can.length) break;
+      const i = can[Math.floor(rngFrom(`enhline|${item.id}|${step}`)() * can.length)];
       const add = lineBoost(item, lines[i][0]);
       lines[i][1] += add;
       lines[i][2] += add;
@@ -620,6 +701,7 @@
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
+      legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
     for (const item of equipped) {
@@ -629,6 +711,10 @@
       if (item.parry) sum.parry += item.parry;
       if (item.slot === "offhand" && isWeaponLike(item)) sum.dual = 1;
       if (item.set) setCounts[item.set] = (setCounts[item.set] || 0) + 1;
+      // 전설의 힘: 공격력·방어력·최대 HP +%
+      const lp = legendPower(item);
+      if (lp) { sum.atkPct += lp; sum.defPct += lp; sum.hpPct += lp; sum.legend += lp; }
+      sum.allRes += legendRes(item);
     }
     const activeSets = [];
     for (const [id, count] of Object.entries(setCounts)) {
@@ -644,13 +730,13 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS,
+    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

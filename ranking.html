@@ -225,7 +225,8 @@
       el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}` }),
       el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),
       ...it.main.map(l => line("★", l, false)),
-      ...it.lines.map(l => line("◆", l, true)));
+      ...it.lines.map(l => line("◆", l, true)),
+      it.legend ? el("div", { className: "plus", textContent: `전설의 힘: 공격력·방어력·최대 HP +${it.legend}%${it.legendRes ? `, 모든 속성 저항 +${it.legendRes}%` : ""}`, style: "color:#ff9f2e" }) : null);
   }
 
   async function openPlayer(id) {

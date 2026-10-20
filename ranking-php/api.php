@@ -432,7 +432,7 @@ function verify_item($q, int $maxLvl): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄)
-    if (!in_array($rev, [0, 1, 2, 3], true) || ($rev > 0 && $v !== 4)) return null;
+    if (!in_array($rev, [0, 1, 2, 3, 4], true) || ($rev > 0 && $v !== 4)) return null;
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
@@ -484,6 +484,7 @@ function item_view(array $it): array {
         'name' => r_item_name($it), 'rarity' => $it['rarity'], 'rarityName' => R_RARITIES[$it['rarity']]['name'],
         'slot' => $it['slot'], 'slotName' => SLOT_NAMES[$it['slot']], 'lvl' => $it['lvl'], 'enh' => $it['enh'],
         'ancient' => !empty($it['ancient']), 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
+        'legend' => r_legend_power($it), 'legendRes' => r_legend_res($it),   // 전설의 힘 (레전더리 완성도): 공격력·방어력·최대 HP +%, 모든 속성 저항 +%
         'main' => $main, 'lines' => $lines,
     ];
 }
