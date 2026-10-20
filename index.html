@@ -1419,12 +1419,12 @@
       const spot = randomFloor([player, ...enemies, ...items]);
       if (spot) items.push({ x: spot.x, y: spot.y, type: "treasure" });
     }
-    // 골드 더미 (층이 깊을수록 많음)
+    // 골드 더미 (층이 깊을수록 많음, 나이트메어는 ×8)
     const piles = RLMonsters.GOLD.piles;
     const golds = between(...piles.count);
     for (let i = 0; i < golds; i++) {
       const spot = randomFloor([player, ...enemies, ...items]);
-      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) });
+      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (nmMobs() ? NM.gold.pile : 1) });
     }
 
     computeFOV();
@@ -1623,8 +1623,8 @@
     Dex.kill(e.id);
     const s = stats();
     const xp = Math.round(e.xp * (1 + s.xp / 100));
-    // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음
-    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100));
+    // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음. 나이트메어 몬스터는 ×3 (NIGHTMARE.gold)
+    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (nmMobs() ? NM.gold.kill : 1));
     player.gold += gold;
     log(`${e.name} 처치! (+${xp} XP, +${gold} 골드)`, "good");
     if (e.kind === "boss") log("보스를 쓰러뜨렸다! 계단이 열렸다.", null, BOSS_COLOR);
