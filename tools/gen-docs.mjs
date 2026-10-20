@@ -206,8 +206,10 @@ function expectedGoldNM(n) {
   const kills = M.nmMonsterCount(n) * ((1 - elite) * avg(GOLD.kill.normal) + elite * avg(GOLD.kill.elite)) * mul * NG.kill;
   const boss = M.isBossFloor(n) ? avg(GOLD.kill.boss) * mul * NG.kill : 0;
   const golden = G.chance * avg(GOLD.kill.golden) * mul * NG.kill;
-  return { piles, kills, boss, golden, total: piles + kills + boss + golden };
+  const floor = nmFloorGold(n);
+  return { piles, kills, boss, golden, floor, total: piles + kills + boss + golden + floor };
 }
+const nmFloorGold = (n) => Math.round(I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + n }) * I.NM_SHOP.priceMul * M.NIGHTMARE.gold.floor / 5) * 5;
 let nmRunning = 0;
 const nmCumulative = Array.from({ length: M.NIGHTMARE.floors }, (_, i) => { nmRunning += expectedGoldNM(i + 1).total; return nmRunning; });
 let running = 0;
@@ -254,11 +256,12 @@ ${table(["층", "더미", "처치", "보스", "황금 고블린", "합계", "1�
 ### 나이트메어 골드
 
 - 나이트메어는 한 층 몬스터가 일반 75층보다 적어서, 예전에는 한 층 골드가 75층보다 적었어요. 그래서 **몬스터 처치 골드 ×${M.NIGHTMARE.gold.kill}, 바닥의 골드 더미(\$) ×${M.NIGHTMARE.gold.pile}**이에요 (아이템 레벨 = ${M.NIGHTMARE.itemBase} + 층으로 층 배율도 높음). 나이트메어 골드 던전(오른쪽 문)의 몬스터도 같아요
+- **층 돌파 보상**: 계단을 밟아 다음 층으로 갈 때(${M.NIGHTMARE.floors}층은 완료할 때) 그 층 나이트메어 레전더리 상점 가격의 ${pct(M.NIGHTMARE.gold.floor)} (1층 ${nmFloorGold(1).toLocaleString()} ~ ${M.NIGHTMARE.floors}층 ${nmFloorGold(M.NIGHTMARE.floors).toLocaleString()}). 몬스터가 적은 앞쪽 층도 확실히 모이게
 - 나이트메어 아이템을 판매하면 골드도 ×${I.NM_SHOP.sellMul} ([판매와 강화](#판매와-강화))
 
-${table(["나이트메어 층", "더미", "처치", "보스", "황금 고블린", "합계", "1층부터 누적"], [1, 5, 10, 25, 40, 50].map(n => {
+${table(["나이트메어 층", "더미", "처치", "보스", "황금 고블린", "층 돌파", "합계", "1층부터 누적"], [1, 5, 10, 25, 40, 50].map(n => {
   const e = expectedGoldNM(n);
-  return [n, Math.round(e.piles), Math.round(e.kills), Math.round(e.boss) || "-", Math.round(e.golden), Math.round(e.total), Math.round(nmCumulative[n - 1]).toLocaleString()];
+  return [n, Math.round(e.piles), Math.round(e.kills), Math.round(e.boss) || "-", Math.round(e.golden), e.floor, Math.round(e.total), Math.round(nmCumulative[n - 1]).toLocaleString()];
 }))}
 
 1~${M.NIGHTMARE.floors}층을 한 번 깨면 평균 약 **${(Math.round(nmCumulative[M.NIGHTMARE.floors - 1] / 1000) * 1000).toLocaleString()}골드** (장비의 골드 획득 +% 빼고). 참고: 나이트메어 레전더리 상점 가격 ${M.NIGHTMARE.itemBase + 25}레벨 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}, 고대 굴리기 ${I.ancientRerollCost({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}

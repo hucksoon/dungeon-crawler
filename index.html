@@ -1732,7 +1732,16 @@
     endTurn();
   }
 
+  // 나이트메어 층 돌파 보상: 그 층 나이트메어 레전더리 상점 가격 × NM.gold.floor (5골드 단위)
+  const nmFloorGold = (n) => Math.round(RLItems.shopPrice({ rarity: "legendary", lvl: NM.itemBase + n }) * RLItems.NM_SHOP.priceMul * NM.gold.floor / 5) * 5;
+  function nmFloorReward() {
+    const g = nmFloorGold(depth);
+    player.gold += g;
+    log(`${floorName()} 돌파! 층 보상 골드 +${g.toLocaleString()}`, null, "#ffcf5c");
+  }
+
   function descend() {
+    if (inNM()) nmFloorReward();
     depth++;
     shopBought = [];
     shopRerolls = 0;
@@ -1798,6 +1807,7 @@
 
   // 나이트메어 50층 보스를 쓰러뜨리고 계단을 밟음: 나이트메어 완료 → 로비로, 포탈 문으로 50층 새 구역
   function completeNightmare() {
+    nmFloorReward();
     const first = !nmCleared;
     nmCleared = true;
     nmBest = Math.max(nmBest, depth);
