@@ -211,8 +211,15 @@ function r_pct_of(array $table, string $stat, string $rarity): ?array {
     return $i === false ? null : $table[$stat][$i];
 }
 // v4 아이템의 % 능력치 고정 범위
+// 속성 저항 줄 (r4부터, items.js RES_R4): 범위가 줄고 강화로는 오르지 않음. r3까지 얻은 아이템은 효과에서 새 최대치까지만
+const R_RES_R4 = ['fireRes' => [7, 20], 'iceRes' => [7, 20], 'boltRes' => [7, 20], 'allRes' => [4, 7]];
 function r_fixed_pct(array $item, array $table, string $stat): ?array {
-    return ($item['v'] ?? 0) >= 4 ? r_pct_of($table, $stat, $item['rarity']) : null;
+    if (($item['v'] ?? 0) < 4) return null;
+    if ($table === R_PCT_LINE && isset(R_RES_R4[$stat]) && ($item['r'] ?? 0) >= 4) return R_RES_R4[$stat];
+    return r_pct_of($table, $stat, $item['rarity']);
+}
+function r_old_res_cap(array $item, string $stat): ?int {
+    return ($item['v'] ?? 0) === 4 && isset(R_RES_R4[$stat]) && ($item['r'] ?? 0) < 4 ? R_RES_R4[$stat][1] : null;
 }
 function r_main_pool_v4(array $item): array {
     if ($item['slot'] === 'offhand') return R_MAIN_POOL_V4[$item['type'] === 'shield' ? 'shield' : 'offhandWeapon'];
@@ -351,6 +358,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, array_keys(R_WEAPONS)));
     }
     $item = ['v' => $version, 'seed' => $seed, 'src' => $source, 'lvl' => $lv, 'slot' => $slot, 'type' => $type, 'rarity' => $rarity, 'set' => $set];
+    if ($rev) $item['r'] = $rev;   // 줄 범위가 개정마다 다를 수 있어서 먼저 (저항 줄 r4)
 
     if ($version === 1) {
         $stats = R_STAT_KEYS;
@@ -414,6 +422,25 @@ function r_apply_ancient_rerolls(array $item, int $ar): array {
 }
 
 // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 최대치
+// 전설의 힘 (items.js LEGEND): v4 레전더리의 완성도에 따라 공격력·방어력·최대 HP +%
+const R_LEGEND = ['start' => 0.6, 'max' => 12, 'allRes' => 4];
+function r_completeness(array $item): float {
+    if (!isset($item['main'])) return 0;
+    $sum = 0; $n = 0;
+    $add = function (array $r, int $v) use (&$sum, &$n) { [$lo, $hi] = $r; $sum += $hi > $lo ? ($v - $lo) / ($hi - $lo) : 1; $n++; };
+    foreach ($item['main'] as [$k, $v]) $add(r_main_range($k, $item), $v);
+    foreach ($item['lines'] as [$k, $v]) $add(r_line_range_of($k, $item), $v);
+    if (isset($item['parry'])) $add(R_PARRY['ranges'][$item['rarity']], $item['parry']);
+    return $n ? $sum / $n : 0;
+}
+function r_legend_curve(array $item): float {
+    if (($item['v'] ?? 0) !== 4 || $item['rarity'] !== 'legendary' || !isset($item['main'])) return 0;
+    $c = max(0, min(1, (r_completeness($item) - R_LEGEND['start']) / (1 - R_LEGEND['start'])));
+    return $c * $c;
+}
+function r_legend_power(array $item): int { return r_round(R_LEGEND['max'] * r_legend_curve($item)); }
+function r_legend_res(array $item): int { return r_round(R_LEGEND['allRes'] * r_legend_curve($item)); }
+
 function r_is_ancient(array $item): bool {
     if (!isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return false;
     if (isset($item['parry']) && $item['parry'] !== R_PARRY['ranges'][$item['rarity']][1]) return false;
@@ -459,10 +486,13 @@ function r_enhanced_lines(array $item): array {
     $lines = [];
     foreach ($item['lines'] as [$k, $v]) $lines[] = [$k, $v, 0];
     if (!$lines) return $lines;
+    // 오를 줄: 저항 줄은 빼고 고름
+    $can = [];
+    foreach ($lines as $i => [$k]) if (!isset(R_RES_R4[$k])) $can[] = $i;
     foreach (R_ENHANCE['lineSteps'] as $step) {
-        if ((int)($item['enh'] ?? 0) < $step) break;
+        if ((int)($item['enh'] ?? 0) < $step || !$can) break;
         $rng = r_rng("enhline|{$item['id']}|{$step}");
-        $i = (int)floor($rng() * count($lines));
+        $i = $can[(int)floor($rng() * count($can))];
         $add = r_line_boost($item, $lines[$i][0]);
         $lines[$i][1] += $add;
         $lines[$i][2] += $add;
@@ -500,14 +530,14 @@ function r_effective_base(array $item): array {
 }
 function r_effective_lines(array $item): array {
     $out = [];
-    foreach (r_enhanced_lines($item) as [$k, $v, $plus]) { $cap = r_old_cap($item, 'line', $k); $out[] = [$k, $cap !== null ? min($v, $cap) : $v, $plus]; }
+    foreach (r_enhanced_lines($item) as [$k, $v, $plus]) { $cap = r_old_cap($item, 'line', $k) ?? r_old_res_cap($item, $k); $out[] = [$k, $cap !== null ? min($v, $cap) : $v, $plus]; }
     return $out;
 }
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
-        'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
+        'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
@@ -516,6 +546,10 @@ function r_totals(array $equipped): array {
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
+        // 전설의 힘: 공격력·방어력·최대 HP +%
+        $lp = r_legend_power($item);
+        if ($lp) { $sum['atkPct'] += $lp; $sum['defPct'] += $lp; $sum['hpPct'] += $lp; $sum['legend'] += $lp; }
+        $sum['allRes'] += r_legend_res($item);
     }
     $sets = [];
     foreach ($setCounts as $id => $count) {

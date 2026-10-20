@@ -96,6 +96,7 @@
   @media (prefers-reduced-motion: reduce) { .rainbow { animation: none; } }
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
   .nm-note { color: #d07bff; font-size: 12px; margin: 2px 0 4px; }
+  .legend-note { color: #ff9f2e; font-size: 12px; margin: 2px 0 4px; }
   #game {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -3382,6 +3383,7 @@
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
+      ...(g.legend ? [`전설의 힘: 공격력·방어력·최대 HP +${g.legend}% (레전더리 완성도)`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
@@ -3497,6 +3499,13 @@
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
     );
     if (item.set) rows.push(el("div", { className: "meta" }, setNote(item.set)));
+    // 전설의 힘: v4 레전더리의 완성도 (주·추가 능력치가 범위 안에서 얼마나 높은지)
+    if (item.v === 4 && item.rarity === "legendary" && item.main) {
+      const q = Math.round(RLItems.completeness(item) * 100), lp = RLItems.legendPower(item);
+      rows.push(el("div", { className: lp ? "legend-note" : "meta" }, lp
+        ? `완성도 ${q}% · 전설의 힘: 공격력·방어력·최대 HP +${lp}%${RLItems.legendRes(item) ? `, 모든 속성 저항 +${RLItems.legendRes(item)}%` : ""} (완성도 100%면 +${RLItems.LEGEND.max}%, 저항 +${RLItems.LEGEND.allRes}%)`
+        : `완성도 ${q}% · 전설의 힘은 완성도 ${Math.round(RLItems.LEGEND.start * 100)}%부터 붙어요 (100%면 공격력·방어력·최대 HP +${RLItems.LEGEND.max}%, 모든 속성 저항 +${RLItems.LEGEND.allRes}%)`));
+    }
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
@@ -4476,7 +4485,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1020c:${owner}`;  // 속성 세트(화염·서리·뇌전), 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1020c:${owner}`;  // 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4488,7 +4497,9 @@
         `나이트메어에서 속성 세트(화염·서리·뇌전, 2세트부터 파이어볼·프로스트 노바·체인 라이트닝)가 나와요. ` +
         `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요. ` +
         `나이트메어 아이템은 판매하면 나오는 악몽 강화석으로 강화해요. 나이트메어 앞쪽 층은 쉬워지고 깊은 층일수록 세져요. ` +
-        `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);
+        `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요. ` +
+        `속성 저항 줄은 ${RLItems.RES_R4.fireRes[0]}~${RLItems.RES_R4.fireRes[1]}%로 줄고 강화로 오르지 않아요 (예전 아이템은 ${RLItems.RES_R4.fireRes[1]}%까지만 적용). ` +
+        `거의 완벽한 레전더리에는 전설의 힘(공격력·방어력·최대 HP 최대 +${RLItems.LEGEND.max}%)이 붙어요.`);
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };

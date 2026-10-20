@@ -484,6 +484,7 @@ function item_view(array $it): array {
         'name' => r_item_name($it), 'rarity' => $it['rarity'], 'rarityName' => R_RARITIES[$it['rarity']]['name'],
         'slot' => $it['slot'], 'slotName' => SLOT_NAMES[$it['slot']], 'lvl' => $it['lvl'], 'enh' => $it['enh'],
         'ancient' => !empty($it['ancient']), 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
+        'legend' => r_legend_power($it), 'legendRes' => r_legend_res($it),   // 전설의 힘 (레전더리 완성도): 공격력·방어력·최대 HP +%, 모든 속성 저항 +%
         'main' => $main, 'lines' => $lines,
     ];
 }
