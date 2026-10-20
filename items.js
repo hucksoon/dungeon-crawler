@@ -456,7 +456,7 @@
   const sellStones = (item) => Math.max(1, Math.round(SELL_STONES[item.rarity] * (1 + SELL_PER_LEVEL * ((item.lvl || 1) - 1))));
   // 판매하면 골드도 조금 (상점 가격처럼 레벨당 10%씩, 5골드 단위. 50레벨 레전더리 약 235골드 ≈ 상점 가격의 1/10)
   const SELL_GOLD = { common: 2, uncommon: 4, rare: 8, epic: 15, legendary: 40, set: 30 };
-  const sellGold = (item) => Math.max(1, levelPrice(SELL_GOLD[item.rarity] || 1, item.lvl || 1));
+  const sellGold = (item) => Math.max(1, levelPrice(SELL_GOLD[item.rarity] || 1, item.lvl || 1)) * (isNightmareItem(item) ? NM_SHOP.sellMul : 1);
 
   // +N으로 강화할 때: 강화석 N개. +4까지는 항상 성공, +5는 50%, 이후 10%p씩 낮아져 최저 5%.
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
@@ -587,7 +587,8 @@
   // 레벨(층)에 따른 보정: × (1 + 레벨당 10%), 5골드 단위
   const levelPrice = (base, lvl) => Math.round(base * (1 + (lvl - 1) * 0.1) / 5) * 5;
   // 나이트메어 아이템(공격력·방어력·HP ×3)은 상점 가격·진열 바꾸기·강화석·고대 굴리기 비용이 priceMul배. 나이트메어 골드 던전 보상도 같은 배율
-  const NM_SHOP = { priceMul: 2 };
+  // sellMul: 나이트메어 아이템을 판매할 때 받는 골드 배율 (나이트메어에서 버는 골드도 처치 ×3이라 같이)
+  const NM_SHOP = { priceMul: 2, sellMul: 3 };
   const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl) * nmCostMul(item);
   // n번째(0부터) 진열 바꾸기 비용: 기본값 × (1 + 0.25 × (층 − 1)), 5골드 단위. 더 바꿀 수 없으면 null. nm: 나이트메어 아이템 상점
   const rerollCost = (depth, n, nm = false) => (n < SHOP.rerolls.max
