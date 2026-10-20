@@ -330,6 +330,30 @@
         { count: 5, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
       ],
     },
+    // 서리의 세트 (나이트메어 전용, r4): 2세트부터 프로스트 노바 (FROST_NOVA). 생존 쪽
+    frost: {
+      name: "서리의 세트",
+      nightmare: true,
+      element: "ice",
+      pieces: { head: "서리의 투구", chest: "서리의 갑옷", arms: "서리의 팔보호구", pants: "서리의 바지", boots: "서리의 장화" },
+      bonuses: [
+        { count: 2, text: "프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)", stats: { nova: 1 } },
+        { count: 4, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
+        { count: 5, text: "프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)", stats: { novaSlow: 1 } },
+      ],
+    },
+    // 뇌전의 세트 (나이트메어 전용, r4): 2세트부터 체인 라이트닝 (CHAIN). 보스·단일 대상 쪽
+    storm: {
+      name: "뇌전의 세트",
+      nightmare: true,
+      element: "bolt",
+      pieces: { head: "뇌전의 투구", chest: "뇌전의 갑옷", arms: "뇌전의 팔보호구", pants: "뇌전의 바지", boots: "뇌전의 장화" },
+      bonuses: [
+        { count: 2, text: "체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)", stats: { chain: 1 } },
+        { count: 4, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
+        { count: 5, text: "번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%", stats: { chainMax: 1 } },
+      ],
+    },
     sturdy: {
       name: "견고의 세트",
       weapon: "axe", offhand: "shield",
@@ -344,6 +368,12 @@
   // 파이어볼 (화염의 세트 2세트): every턴마다, range칸 안(가로·세로·대각 모두 한 칸) 가장 가까운 적을 중심으로 (2·radius+1)² 칸
   // 피해 = 공격력 × mul × (1 + 파이어볼 피해% + 불 피해%) — 방어력 무시, 치명타 가능. 5세트면 맞은 적에게 화상
   const FIREBALL = { every: 2, range: 3, radius: 1, mul: 0.8 };
+  // 프로스트 노바 (서리의 세트 2세트): every턴마다, 내 주변 radius칸(대각선 포함 8칸)에 적이 있으면 그 적 모두에게
+  // 피해 = 공격력 × mul × (1 + 노바 피해% + 얼음 피해%). 5세트면 맞은 적이 느려짐 (얼음 면역 규칙 그대로)
+  const FROST_NOVA = { every: 2, radius: 1, mul: 0.7 };
+  // 체인 라이트닝 (뇌전의 세트 2세트): every턴마다, range칸 안 가장 가까운 적부터 strikes번 (다음은 앞에 맞은 적에서 range칸 안 가장 가까운 다른 적)
+  // 한 번에 공격력 × mul × (1 + 체인 피해% + 번개 피해%). 5세트: strikesMax번, 다른 적이 없으면 같은 적이 다시 맞음 + 감전(받는 피해 +shock.pct%, shock.turns턴)
+  const CHAIN = { every: 2, range: 3, strikes: 2, strikesMax: 4, mul: 0.4, shock: { turns: 3, pct: 20 } };
   // 세트를 다 맞추는 개수 (효과가 모두 켜지는 개수)
   const setFull = (id) => Math.max(...SETS[id].bonuses.map(b => b.count));
 
@@ -636,7 +666,7 @@
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
-      fireball: 0, fireballPct: 0, fireballBurn: 0,
+      fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
     for (const item of equipped) {
@@ -661,7 +691,7 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL,
+    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,

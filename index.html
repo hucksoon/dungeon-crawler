@@ -1275,6 +1275,9 @@
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
       // 화염의 세트: 파이어볼 (2세트), 파이어볼 피해 +% (4세트), 맞은 적 화상 (5세트)
       fireball: g.fireball > 0, fireballPct: g.fireballPct, fireballBurn: g.fireballBurn > 0,
+      // 서리의 세트: 프로스트 노바·피해 +%·느려짐 / 뇌전의 세트: 체인 라이트닝·피해 +%·4번 튕김과 감전
+      nova: g.nova > 0, novaPct: g.novaPct, novaSlow: g.novaSlow > 0,
+      chain: g.chain > 0, chainPct: g.chainPct, chainMax: g.chainMax > 0,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes)])),
@@ -1586,9 +1589,10 @@
         .sort((a, b) => near8(a, at) - near8(b, at))[0];
       if (!next) break;
       hit.add(next);
-      next.hp -= dmg;
-      showDamage(next, dmg, false, EL.colors.bolt);
-      log(`번개가 ${next.name}에게 튕겨 ${dmg} 피해!`, null, EL.colors.bolt);
+      const d = Math.round(dmg * shockMul(next));
+      next.hp -= d;
+      showDamage(next, d, false, EL.colors.bolt);
+      log(`번개가 ${next.name}에게 튕겨 ${d} 피해!`, null, EL.colors.bolt);
       if (next.hp <= 0) killEnemy(next);
       at = next;
     }
@@ -1611,7 +1615,7 @@
   // 플레이어가 적 하나를 때림. raw: 방어력 빼기 전 피해. tag: "왼손 " / "광란 " (로그 앞머리)
   // elem: 속성 피해 (방어력에 줄지 않음)
   function hitEnemy(target, raw, crit, s, tag, elem = 0) {
-    const dmg = Math.max(1, Math.round(raw) - target.def) + Math.round(elem);
+    const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem)) * shockMul(target));  // 감전이면 받는 피해 +%
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
@@ -2246,35 +2250,100 @@
   let turn = 0;
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
-  // ---- 세트 스킬: 파이어볼 (화염의 세트 2세트, 규칙은 items.js FIREBALL) ----
-  // 플레이어가 행동한 뒤, 몬스터가 움직이기 전에 자동으로 나감. FB.every턴마다 (쏠 적이 없으면 준비된 채로 기다림)
-  // 대상: 보이는 적 중 FB.range칸 안(대각선도 한 칸)에서 가장 가까운 적 (같으면 폭발에 더 많이 걸리는 쪽). 그 적을 중심으로 3×3
-  const FB = RLItems.FIREBALL;
-  let fireFx = null;  // 폭발 칸 번쩍임 { cells, until }
-  function castSkills(s) {
-    if (!s.fireball) return;
-    if (player.fbCd > 0) player.fbCd--;
-    if (player.fbCd > 0) return;
-    const inBlast = (c) => enemies.filter(e => e.hp > 0 && near8(e, c) <= FB.radius).length;
-    const targets = enemies.filter(e => e.hp > 0 && visible[e.y]?.[e.x] && near8(e, player) <= FB.range)
-      .sort((a, b) => near8(a, player) - near8(b, player) || inBlast(b) - inBlast(a));
-    const center = targets[0];
-    if (!center) return;
-    player.fbCd = FB.every;
-    const crit = Math.random() * 100 < s.crit;
-    const dmg = Math.max(1, Math.round(s.atk * FB.mul * (1 + (s.fireballPct + s.elem.fire) / 100) * (crit ? s.critMul : 1)));
-    const hit = enemies.filter(e => e.hp > 0 && near8(e, center) <= FB.radius);
-    const cells = [];
-    for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
-    fireFx = { cells, until: performance.now() + 280 };
+  // ---- 세트 스킬 (속성 세트 2세트부터, 규칙은 items.js FIREBALL·FROST_NOVA·CHAIN) ----
+  // 플레이어가 행동한 뒤, 몬스터가 움직이기 전에 자동으로 나감. 스킬마다 every턴마다 (쏠 적이 없으면 준비된 채로 기다림)
+  // 파이어볼: 보이는 적 중 3칸 안에서 가장 가까운 적(같으면 폭발에 더 많이 걸리는 쪽)을 중심으로 3×3
+  // 프로스트 노바: 내 주변 8칸의 적 모두 / 체인 라이트닝: 가장 가까운 적부터 튕김 (5세트는 4번, 다른 적이 없으면 같은 적)
+  const FB = RLItems.FIREBALL, NOVA = RLItems.FROST_NOVA, CHAIN = RLItems.CHAIN;
+  let skillFx = [];  // 스킬 칸 번쩍임 [{ cells, color, until }]
+  const shocked = (e) => e.shock > turn;  // 감전: 받는 피해 +CHAIN.shock.pct%
+  const shockMul = (e) => (shocked(e) ? 1 + CHAIN.shock.pct / 100 : 1);
+  function flash(cells, color) {
+    skillFx.push({ cells, color, until: performance.now() + 280 });
     setTimeout(render, 300);  // 번쩍임 지우기 (애니메이션 루프 없이 한 번만 다시 그림)
-    log(`🔥 파이어볼! ${hit.length}마리에게 ${dmg} 피해${crit ? " (치명타)" : ""}${s.fireballBurn ? " · 화상" : ""}`, null, EL.colors.fire);
-    for (const e of hit) {
-      e.hp -= dmg;
-      showDamage(e, dmg, crit, EL.colors.fire);
-      if (e.hp <= 0) killEnemy(e);
-      else if (s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
+  }
+  // 스킬 피해 한 번: 방어력 무시, 감전이면 더 아픔. 쓰러지면 처치
+  function skillHit(e, dmg, crit, color) {
+    const d = Math.max(1, Math.round(dmg * shockMul(e)));
+    e.hp -= d;
+    showDamage(e, d, crit, color);
+    if (e.hp <= 0) { killEnemy(e); return false; }
+    return true;
+  }
+  const ready = (key) => {
+    if (player[key] > 0) player[key]--;
+    return !(player[key] > 0);
+  };
+  const skillRoll = (s, mul, pct) => {
+    const crit = Math.random() * 100 < s.crit;
+    return { crit, dmg: s.atk * mul * (1 + pct / 100) * (crit ? s.critMul : 1) };
+  };
+  function castSkills(s) {
+    const alive = () => enemies.filter(e => e.hp > 0);
+    // 파이어볼 (화염의 세트)
+    if (s.fireball && ready("fbCd")) {
+      const inBlast = (c) => alive().filter(e => near8(e, c) <= FB.radius).length;
+      const center = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= FB.range)
+        .sort((a, b) => near8(a, player) - near8(b, player) || inBlast(b) - inBlast(a))[0];
+      if (center) {
+        player.fbCd = FB.every;
+        const { crit, dmg } = skillRoll(s, FB.mul, s.fireballPct + s.elem.fire);
+        const hit = alive().filter(e => near8(e, center) <= FB.radius);
+        const cells = [];
+        for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
+        flash(cells, "rgba(255, 122, 61, 0.38)");
+        log(`🔥 파이어볼! ${hit.length}마리에게 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${s.fireballBurn ? " · 화상" : ""}`, null, EL.colors.fire);
+        for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.fire) && s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
+      }
     }
+    // 프로스트 노바 (서리의 세트)
+    if (s.nova && ready("novaCd")) {
+      const hit = alive().filter(e => near8(e, player) <= NOVA.radius);
+      if (hit.length) {
+        player.novaCd = NOVA.every;
+        const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
+        const cells = [];
+        for (let dy = -NOVA.radius; dy <= NOVA.radius; dy++) for (let dx = -NOVA.radius; dx <= NOVA.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
+        flash(cells, "rgba(111, 211, 255, 0.4)");
+        let slowed = 0;
+        for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice) && s.novaSlow && chill(e, 1)) slowed++;
+        log(`❄ 프로스트 노바! ${hit.length}마리에게 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${slowed ? ` · ${slowed}마리 느려짐` : ""}`, null, EL.colors.ice);
+      }
+    }
+    // 체인 라이트닝 (뇌전의 세트)
+    if (s.chain && ready("chainCd")) {
+      let at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= CHAIN.range).sort((a, b) => near8(a, player) - near8(b, player))[0];
+      if (at) {
+        player.chainCd = CHAIN.every;
+        const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
+        const strikes = s.chainMax ? CHAIN.strikesMax : CHAIN.strikes;
+        const hitOnce = new Set(), cells = [];
+        let n = 0;
+        for (let k = 0; k < strikes && at; k++) {
+          hitOnce.add(at); n++;
+          cells.push({ x: at.x, y: at.y });
+          const from = { x: at.x, y: at.y };
+          const stillAlive = skillHit(at, dmg, crit, EL.colors.bolt);
+          // 감전: 맞은 뒤부터 (다음 번개·공격부터 더 아픔), 플레이어의 다음 shock.turns턴 동안
+          if (s.chainMax && stillAlive) at.shock = turn + CHAIN.shock.turns + 1;
+          // 다음: 앞에 맞은 적에서 3칸 안 가장 가까운 다른 적. 없으면 5세트만 같은 적(살아 있으면)
+          const next = alive().filter(e => !hitOnce.has(e) && near8(e, from) <= CHAIN.range).sort((a, b) => near8(a, from) - near8(b, from))[0];
+          at = next || (s.chainMax && stillAlive ? at : null);
+        }
+        flash(cells, "rgba(255, 225, 77, 0.45)");
+        log(`⚡ 체인 라이트닝! ${n}번 튕겨 한 번에 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${s.chainMax ? " · 감전" : ""}`, null, EL.colors.bolt);
+      }
+    }
+  }
+
+  // 화면 위 능력치 줄: 세트 스킬 쿨타임
+  function skillHud() {
+    const s = stats(), out = [];
+    const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
+    one(s.fireball, "🔥", "파이어볼", player.fbCd);
+    one(s.nova, "❄", "노바", player.novaCd);
+    one(s.chain, "⚡", "체인", player.chainCd);
+    return out;
   }
 
   function endTurn() {
@@ -2296,8 +2365,9 @@
     turn++;
     if (player.potCd > 0) player.potCd--;
     for (const e of [...enemies]) {
-      const b = burnTick(e);
-      if (!b) continue;
+      const b0 = burnTick(e);
+      if (!b0) continue;
+      const b = Math.round(b0 * shockMul(e));
       e.hp -= b;
       showDamage(e, b, false, EL.colors.fire);
       if (e.hp <= 0) { log(`${e.name}이(가) 불타 쓰러졌다!`, null, EL.colors.fire); killEnemy(e); }
@@ -2964,11 +3034,13 @@
     drawStatus(player, player.x * TILE, player.y * TILE);
     drawGlyph("@", player.x * TILE, player.y * TILE, "#ffffff");
 
-    // 파이어볼 폭발 칸 (잠깐 번쩍임)
-    if (fireFx && performance.now() < fireFx.until) {
-      ctx.fillStyle = "rgba(255, 122, 61, 0.38)";
-      for (const c of fireFx.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
-    } else fireFx = null;
+    // 세트 스킬 칸 (잠깐 번쩍임)
+    const now = performance.now();
+    skillFx = skillFx.filter(f => now < f.until);
+    for (const f of skillFx) {
+      ctx.fillStyle = f.color;
+      for (const c of f.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
+    }
   }
 
   // 느려짐은 칸을 파랗게, 화상은 아래쪽에 주황 줄
@@ -2980,6 +3052,10 @@
     if (u.burn) {
       ctx.fillStyle = EL.colors.fire;
       ctx.fillRect(px + 2, py + TILE - 4, TILE - 4, 2);
+    }
+    if (u.shock > turn) {   // 감전: 위쪽에 노란 줄
+      ctx.fillStyle = EL.colors.bolt;
+      ctx.fillRect(px + 2, py + 2, TILE - 4, 2);
     }
   }
 
@@ -3017,7 +3093,7 @@
       : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? `포션 (${player.potCd}턴)` : "포션 (준비됨)";
     const st = [
-      ...(stats().fireball ? [player.fbCd > 0 ? `🔥 파이어볼 ${player.fbCd}턴` : "🔥 파이어볼 준비됨"] : []),
+      ...(skillHud()),
       ...(player.burn ? [`🔥 화상 ${player.burn.left}회`] : []),
       ...(player.slow > 0 ? [`❄ 느려짐 ${player.slow}턴`] : player.immune > 0 ? [`❄ 면역 ${player.immune}턴`] : []),
     ];
@@ -3308,6 +3384,8 @@
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
+      ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
+      ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every}턴마다 ${s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
       ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
     ];
@@ -4398,7 +4476,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1020c:${owner}`;  // 화염의 세트(파이어볼), 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1020c:${owner}`;  // 속성 세트(화염·서리·뇌전), 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4407,7 +4485,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `나이트메어에서 화염의 세트(2세트부터 파이어볼)가 나와요. ` +
+        `나이트메어에서 속성 세트(화염·서리·뇌전, 2세트부터 파이어볼·프로스트 노바·체인 라이트닝)가 나와요. ` +
         `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요. ` +
         `나이트메어 아이템은 판매하면 나오는 악몽 강화석으로 강화해요. 나이트메어 앞쪽 층은 쉬워지고 깊은 층일수록 세져요. ` +
         `로비에 시간 상점(매 시간 정각에 진열이 바뀜)과 골드 던전(일반 던전 ${F}층 완료 후)이 생겼어요.`);

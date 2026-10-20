@@ -162,6 +162,27 @@ const R_SETS = [
             ['count' => 5, 'text' => '파이어볼에 맞은 적이 모두 화상을 입어요', 'stats' => ['fireballBurn' => 1]],
         ],
     ],
+    // 서리의 세트·뇌전의 세트 (나이트메어 전용, r4)
+    'frost' => [
+        'name' => '서리의 세트',
+        'nightmare' => true,
+        'pieces' => ['head' => '서리의 투구', 'chest' => '서리의 갑옷', 'arms' => '서리의 팔보호구', 'pants' => '서리의 바지', 'boots' => '서리의 장화'],
+        'bonuses' => [
+            ['count' => 2, 'text' => '프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)', 'stats' => ['nova' => 1]],
+            ['count' => 4, 'text' => '프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%', 'stats' => ['novaPct' => 50, 'defPct' => 10, 'iceRes' => 20]],
+            ['count' => 5, 'text' => '프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)', 'stats' => ['novaSlow' => 1]],
+        ],
+    ],
+    'storm' => [
+        'name' => '뇌전의 세트',
+        'nightmare' => true,
+        'pieces' => ['head' => '뇌전의 투구', 'chest' => '뇌전의 갑옷', 'arms' => '뇌전의 팔보호구', 'pants' => '뇌전의 바지', 'boots' => '뇌전의 장화'],
+        'bonuses' => [
+            ['count' => 2, 'text' => '체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)', 'stats' => ['chain' => 1]],
+            ['count' => 4, 'text' => '체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%', 'stats' => ['chainPct' => 50, 'crit' => 10, 'boltRes' => 20]],
+            ['count' => 5, 'text' => '번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%', 'stats' => ['chainMax' => 1]],
+        ],
+    ],
     'sturdy' => [
         'name' => '견고의 세트',
         'weapon' => 'axe', 'offhand' => 'shield',
@@ -486,7 +507,7 @@ function r_effective_lines(array $item): array {
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
-        'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0,
+        'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
     foreach ($equipped as $item) {
