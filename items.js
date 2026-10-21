@@ -473,8 +473,28 @@
       // 고대 굴림: (아이템 ID) 시드로 따로. 걸리면 주 능력치·추가 능력치·패링을 모두 최대치로
       if ((rarity === "legendary" || rarity === "set") && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);
     }
+    if (nightmare) oneElementDmg(item, stats, `v${version}|${seed}`);
     item.ancient = isAncient(item);
     return item;
+  }
+
+  // 속성 피해 줄은 하나만: 가장 큰 것(같으면 먼저 붙은 것)만 남기고, 나머지 속성 피해 줄은 아직 안 붙은 다른 능력치로 다시 굴림
+  // (따로 시드 el1|… 를 써서 원래 굴림 순서는 그대로 → 패링 등 다른 값은 안 바뀜). 아이템 이름의 속성(itemElement)도 그대로.
+  // 고대 굴림 뒤에 고름(고대면 모두 최대치라 먼저 붙은 것 = 예전 이름의 속성), 고대면 새 줄도 최대치.
+  // 개정과 상관없이 모든 나이트메어 아이템에 적용 → 예전에 얻은 아이템도 다시 만들면 바뀜 (ID는 같음)
+  function oneElementDmg(item, left, seed) {
+    const dmg = item.lines.map((l, i) => i).filter(i => isElementDmg(item.lines[i][0]));
+    if (dmg.length < 2) return;
+    let keep = dmg[0];
+    for (const i of dmg) if (item.lines[i][1] > item.lines[keep][1]) keep = i;
+    const maxed = isAncient(item);
+    const pool = left.filter(k => !isElementDmg(k) && k !== "socket");
+    const rng = rngFrom(`el1|${seed}`);
+    for (const i of dmg) {
+      if (i === keep) continue;
+      const stat = pool.splice(Math.floor(rng() * pool.length), 1)[0], range = lineRangeOf(stat, item), v = rollRange(rng, range);
+      item.lines[i] = [stat, maxed ? range[1] : v];
+    }
   }
 
   // 모든 능력치(주·추가·패링)를 범위의 최대치로

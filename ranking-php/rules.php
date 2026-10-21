@@ -76,6 +76,25 @@ const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개']
 // 나이트메어에서 얻은 아이템 (속성 줄은 r3부터). 이름 앞에 "악몽의 (속성)"
 function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_NM_SEED, (string)($item['seed'] ?? '')) === 1; }
 // 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
+// 속성 피해 줄은 하나만 (items.js oneElementDmg): 가장 큰 것만 남기고 나머지는 다른 능력치로 (시드 el1|…)
+function r_one_element_dmg(array $item, array $left, string $seed): array {
+    $dmg = [];
+    foreach ($item['lines'] as $i => [$k]) if (r_is_element_dmg($k)) $dmg[] = $i;
+    if (count($dmg) < 2) return $item;
+    $keep = $dmg[0];
+    foreach ($dmg as $i) if ($item['lines'][$i][1] > $item['lines'][$keep][1]) $keep = $i;
+    $maxed = r_is_ancient($item);
+    $pool = array_values(array_filter($left, function ($k) { return !r_is_element_dmg($k) && $k !== 'socket'; }));
+    $rng = r_rng("el1|{$seed}");
+    foreach ($dmg as $i) {
+        if ($i === $keep) continue;
+        $stat = array_splice($pool, (int)floor($rng() * count($pool)), 1)[0];
+        $range = r_line_range_of($stat, $item);
+        $v = r_roll_range($rng, $range);
+        $item['lines'][$i] = [$stat, $maxed ? $range[1] : $v];
+    }
+    return $item;
+}
 function r_item_element(array $item): ?string {
     $best = null; $bestV = 0;
     foreach ($item['lines'] ?? [] as [$k, $v]) {
@@ -457,6 +476,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         // 고대 굴림 (items.js와 같은 시드): 걸리면 모든 능력치·패링을 최대치로
         if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
     }
+    if ($nightmare) $item = r_one_element_dmg($item, $stats, "v{$version}|{$seed}");
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }

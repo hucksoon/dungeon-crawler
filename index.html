@@ -857,6 +857,7 @@
   // 계정(로그인) 또는 게스트(기기 ID)마다 따로 저장. 로그인하면 게임 서버에도 저장 (Profile), 게스트는 이 브라우저에만.
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
+  const canLock = (item) => item.rarity === "legendary" || item.rarity === "set";   // 자물쇠는 레전더리·세트만
   const Inv = (() => {
     let owner = null;
     let data = null;  // { bag: [item], equip: { slot: item|null }, log: [entry] }
@@ -885,10 +886,14 @@
       for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
       return d;
     }
-    // 규칙이 바뀌어 저장된 모습과 달라진 아이템을 시드로 다시 만듦 (견고의 도끼 → 견고의 장검). 강화·시도·고대 굴림 등은 그대로
+    // 규칙이 바뀌어 저장된 모습과 달라진 아이템을 시드로 다시 만듦 (견고의 도끼 → 견고의 장검, 속성 피해 줄 여러 개 → 하나).
+    // 강화·시도·고대 굴림·넣은 보석·잠금은 그대로
     let remade = 0;   // 읽으면서 다시 만든 아이템 수 (있으면 바로 저장)
+    // 나이트메어 아이템의 속성 피해 줄이 여러 개면 다시 만들어 하나만 (RLItems oneElementDmg)
+    const staleSturdy = (it) => it?.set === "sturdy" && it.slot === "weapon" && it.type !== RLItems.SETS.sturdy.weapon && it.v >= 3;
+    const multiElement = (it) => RLItems.isNightmareItem(it) && (it.lines || []).filter(([k]) => RLItems.isElementDmg(k)).length > 1;
     function remake(it) {
-      if (!(it?.set === "sturdy" && it.slot === "weapon" && it.type !== RLItems.SETS.sturdy.weapon && it.v >= 3)) return it;
+      if (!staleSturdy(it) && !multiElement(it)) return it;
       try {
         const fresh = RLItems.generate(it.seed, it.src, it.lvl, it.v, it.r || 0);
         if (fresh.id !== it.id) return it;
@@ -1002,6 +1007,15 @@
       },
       stones: () => data.stones || 0,
       nmStones: () => data.nmStones || 0,
+      // 자물쇠 (레전더리·세트): 잠긴 아이템은 판매(하나씩·전부)되지 않음. 바뀐 잠금 상태
+      toggleLock(id) {
+        const item = all().find(x => x.id === id);
+        if (!item || !canLock(item)) return null;
+        item.lock = !item.lock;
+        if (!item.lock) delete item.lock;
+        write();
+        return !!item.lock;
+      },
       // 보석 주머니: { 종류: [조각, 보석, 완벽한 보석] }
       gems: () => data.gems || {},
       gemCount: (kind) => (data.gems?.[kind] || [0, 0, 0]).slice(),
@@ -1030,7 +1044,7 @@
       sellAll(keep = () => false) {
         const got = { stones: 0, nmStones: 0 };
         let gold = 0;
-        const kept = (item) => keep(item) || !!item.gems?.length;   // 보석을 넣은 아이템은 하나씩 팔 때만
+        const kept = (item) => keep(item) || !!item.gems?.length || !!item.lock;   // 보석을 넣은 아이템은 하나씩 팔 때만, 잠긴 아이템은 안 팖
         const sold = data.bag.filter(item => !kept(item));
         const count = sold.length;
         for (const item of sold) {
@@ -1059,7 +1073,7 @@
       // 판매: 가방에서 빼고 등급만큼 강화석을 받음
       sell(id) {
         const i = data.bag.findIndex(x => x.id === id);
-        if (i < 0) return 0;
+        if (i < 0 || data.bag[i].lock) return 0;   // 잠긴 아이템은 못 팖
         const item = data.bag.splice(i, 1)[0];
         const gain = RLItems.sellStones(item), k = RLItems.stoneKey(item);
         data[k] = (data[k] || 0) + gain;
@@ -3435,7 +3449,7 @@
         className: `slot${item ? "" : " empty"}${sel ? " sel" : ""}${item?.ancient ? " ancient" : ""}`,
         onclick: () => { selected = item ? { from: "equip", slot } : null; invMsg = null; renderInventory(); },
         title: item ? RLItems.itemName(item) : "",
-      }, el("small", {}, RLItems.SLOT_NAMES[slot]), item ? itemLabel(item) : "비어 있음");
+      }, el("small", {}, RLItems.SLOT_NAMES[slot]), item?.lock ? "🔒 " : "", item ? itemLabel(item) : "비어 있음");
     }));
 
     // 능력치 합계와 세트 효과
@@ -3476,13 +3490,13 @@
       type: "button",
       className: `bag-item${selected?.from === "bag" && selected.id === item.id ? " sel" : ""}${item.ancient ? " ancient" : ""}`,
       onclick: () => { selected = { from: "bag", id: item.id }; invMsg = null; renderInventory(); },
-    }, itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)))
+    }, item.lock ? "🔒 " : "", itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)))
       : [el("div", { className: "bag-empty" }, "가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요.")]));
 
     const sellAllBtn = document.getElementById("inv-sell-all");
     const sellBag = sellable(), gemKept = bag.length - sellBag.length;
     const totalGold = sellBag.reduce((s, item) => s + RLItems.sellGold(item), 0);
-    sellAllBtn.textContent = sellBag.length ? `가방 전부 판매 (${sellBag.length}개 → ${stonesText(sellBag)} · 골드 +${totalGold.toLocaleString()}${gemKept ? ` · 보석 넣은 ${gemKept}개 빼고` : ""})` : "가방 전부 판매";
+    sellAllBtn.textContent = sellBag.length ? `가방 전부 판매 (${sellBag.length}개 → ${stonesText(sellBag)} · 골드 +${totalGold.toLocaleString()}${gemKept ? ` · 잠금·보석 ${gemKept}개 빼고` : ""})` : "가방 전부 판매";
     sellAllBtn.disabled = !sellBag.length;
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
@@ -3504,8 +3518,8 @@
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
   const isPrecious = (item) => item.rarity === "legendary" || item.rarity === "set";
   let sellAsk = false;  // 레전더리·세트를 같이 팔지 묻는 중
-  // 가방 전부 판매에 들어가는 아이템 (보석을 넣은 아이템은 빼고 — 하나씩 팔 때만)
-  const sellable = () => Inv.bag().filter(item => !item.gems?.length);
+  // 가방 전부 판매에 들어가는 아이템 (잠긴 아이템과 보석을 넣은 아이템은 빼고)
+  const sellable = () => Inv.bag().filter(item => !item.gems?.length && !item.lock);
   function sellAll() {
     const bag = sellable();
     if (!bag.length) return;
@@ -3514,7 +3528,7 @@
     const detail = valuable.length
       ? ` 레어 이상 ${valuable.length}개(${valuable.map(RLItems.itemName).slice(0, 5).join(", ")}${valuable.length > 5 ? " …" : ""})도 포함돼요.`
       : "";
-    if (!confirm(`가방의 아이템 ${bag.length}개를 모두 판매하고 ${stonesText(bag, "")}개를 받을까요?${detail} 장착 중인 아이템과 보석을 넣은 아이템은 판매되지 않아요.`)) return;
+    if (!confirm(`가방의 아이템 ${bag.length}개를 모두 판매하고 ${stonesText(bag, "")}개를 받을까요?${detail} 장착 중인 아이템, 잠긴 아이템, 보석을 넣은 아이템은 판매되지 않아요.`)) return;
     doSellAll(() => false);
   }
   function doSellAll(keep) {
@@ -3664,11 +3678,15 @@
       actions.append(
         el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착"),
         enhanceBtn,
-        el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (${stonesText([item])} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
+        item.lock ? el("button", { type: "button", disabled: true }, "판매 (잠김)")
+          : el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (${stonesText([item])} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
       );
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
     }
+    if (canLock(item)) actions.append(el("button", { type: "button", className: "lock-btn", title: "잠긴 아이템은 판매(가방 전부 판매 포함)되지 않아요",
+      onclick: () => { const on = Inv.toggleLock(item.id); invMsg = { cls: "good", text: on ? "🔒 잠갔어요. 판매되지 않아요 (가방 전부 판매에서도 남아요)." : "🔓 잠금을 풀었어요." }; renderInventory(); } },
+      item.lock ? "🔓 잠금 풀기" : "🔒 잠그기"));
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isNightmareItem(item) ? 1 : 0);
@@ -4247,7 +4265,7 @@
     const old = !item.v || item.v < 2;  // v1(예전 규칙) 아이템만 못 올림
     const gold = el("input", { type: "number", min: 0, step: 1, inputMode: "numeric", id: "sell-gold", value: "0" });
     const cash = el("input", { type: "number", min: needCash ? 1 : 0, step: 1, inputMode: "numeric", id: "sell-cash", value: needCash ? "1" : "0" });
-    const blocked = old ? "예전 규칙 아이템은 올릴 수 없어요" : item.gems?.length ? "보석을 넣은 아이템은 올릴 수 없어요" : active >= max ? `${max}개까지 올릴 수 있어요` : null;
+    const blocked = old ? "예전 규칙 아이템은 올릴 수 없어요" : item.gems?.length ? "보석을 넣은 아이템은 올릴 수 없어요" : item.lock ? "잠긴 아이템이에요 (인벤토리에서 잠금을 풀어 주세요)" : active >= max ? `${max}개까지 올릴 수 있어요` : null;
     parts.push(el("div", { className: "detail" },
       el("h3", {}, itemLabel(item)), ...statLines(item),
       el("div", { className: "sell-form" },
@@ -4612,7 +4630,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021b:${owner}`;  // 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021c:${owner}`;  // 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4620,6 +4638,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `레전더리·세트는 인벤토리에서 🔒 잠글 수 있어요 (잠긴 아이템은 가방 전부 판매에서도 남아요). 속성 피해 줄은 아이템마다 하나만 붙어요 (여러 개였던 아이템은 가장 큰 것만 남고 나머지는 다른 능력치로 바뀌었어요). ` +
         `새 아이템에는 추가 능력치로 홈(바지 빼고)이 붙을 수 있어요. 몬스터가 가끔 떨어뜨리는 보석(♦ 루비·사파이어·에메랄드·토파즈·다이아몬드)을 인벤토리에서 홈에 넣어요 (조각 3개 = 보석 1개, 자동으로 합치거나 쪼갬, 넣으면 뺄 수 없음). ` +
         `새 무기 장검이 나와요: 보조 손에는 방패만 낄 수 있는 대신 공격력 ×${RLItems.WEAPONS.longsword.atkMul}, 방어력·치명타 확률·모든 속성 저항도 붙어요. ` +
         `견고의 세트 무기는 견고의 장검으로 바뀌었어요 (가지고 있던 견고의 도끼도). ` +
