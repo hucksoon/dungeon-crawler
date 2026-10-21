@@ -323,6 +323,7 @@
 
   // ---- 세트 ----
   // 시험의 세트: 2·3·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음)
+  // 속성 세트(화염·서리·뇌전)는 3세트에 특수 효과(화상·느려짐·4번 튕김), 5세트에 스킬 피해 +50%·능력치·저항 (예전엔 반대)
   // 방어구 세트는 모두 2·3·5 (예전 2·4·5: 방어구 5부위를 세트 둘로 나누면 2+3이라 두 세트 모두 2세트 효과뿐이었음 → 이제 2세트 + 3세트 효과)
   // 광란의 세트: 오른손·왼손 무기 2개 → 때린 적 주변 1칸의 적도 같은 피해
   // 견고의 세트: 장검·방패 2개 → 패링 확률 +15% (방패 최대 25%와 합쳐 최대 40%)
@@ -360,8 +361,8 @@
       pieces: { head: "화염의 투구", chest: "화염의 갑옷", arms: "화염의 팔보호구", pants: "화염의 바지", boots: "화염의 장화" },
       bonuses: [
         { count: 2, text: "파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)", stats: { fireball: 1 } },
-        { count: 3, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
-        { count: 5, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
+        { count: 3, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
+        { count: 5, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
       ],
     },
     // 서리의 세트 (나이트메어 전용, r4): 2세트부터 프로스트 노바 (FROST_NOVA). 생존 쪽
@@ -372,8 +373,8 @@
       pieces: { head: "서리의 투구", chest: "서리의 갑옷", arms: "서리의 팔보호구", pants: "서리의 바지", boots: "서리의 장화" },
       bonuses: [
         { count: 2, text: "프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)", stats: { nova: 1 } },
-        { count: 3, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
-        { count: 5, text: "프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)", stats: { novaSlow: 1 } },
+        { count: 3, text: "프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)", stats: { novaSlow: 1 } },
+        { count: 5, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
       ],
     },
     // 뇌전의 세트 (나이트메어 전용, r4): 2세트부터 체인 라이트닝 (CHAIN). 보스·단일 대상 쪽
@@ -384,8 +385,8 @@
       pieces: { head: "뇌전의 투구", chest: "뇌전의 갑옷", arms: "뇌전의 팔보호구", pants: "뇌전의 바지", boots: "뇌전의 장화" },
       bonuses: [
         { count: 2, text: "체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)", stats: { chain: 1 } },
-        { count: 3, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
-        { count: 5, text: "번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%", stats: { chainMax: 1 } },
+        { count: 3, text: "번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%", stats: { chainMax: 1 } },
+        { count: 5, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
       ],
     },
     sturdy: {
@@ -400,13 +401,13 @@
   // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, inferno, sturdy). nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
   const setsFor = (slot, nm4 = false) => Object.keys(SETS).filter(id => SETS[id].pieces[slot] && (!SETS[id].nightmare || nm4));
   // 파이어볼 (화염의 세트 2세트): every턴마다, range칸 안(가로·세로·대각 모두 한 칸) 가장 가까운 적을 중심으로 (2·radius+1)² 칸
-  // 피해 = 공격력 × mul × (1 + 파이어볼 피해% + 불 피해%) — 방어력 무시, 치명타 가능. 5세트면 맞은 적에게 화상
+  // 피해 = 공격력 × mul × (1 + 파이어볼 피해% + 불 피해%) — 방어력 무시, 치명타 가능. 3세트면 맞은 적에게 화상
   const FIREBALL = { every: 2, range: 3, radius: 1, mul: 0.8 };
   // 프로스트 노바 (서리의 세트 2세트): every턴마다, 내 주변 radius칸(대각선 포함 8칸)에 적이 있으면 그 적 모두에게
-  // 피해 = 공격력 × mul × (1 + 노바 피해% + 얼음 피해%). 5세트면 맞은 적이 느려짐 (얼음 면역 규칙 그대로)
+  // 피해 = 공격력 × mul × (1 + 노바 피해% + 얼음 피해%). 3세트면 맞은 적이 느려짐 (얼음 면역 규칙 그대로)
   const FROST_NOVA = { every: 2, radius: 1, mul: 0.7 };
   // 체인 라이트닝 (뇌전의 세트 2세트): every턴마다, range칸 안 가장 가까운 적부터 strikes번 (다음은 앞에 맞은 적에서 range칸 안 가장 가까운 다른 적)
-  // 한 번에 공격력 × mul × (1 + 체인 피해% + 번개 피해%). 5세트: strikesMax번, 다른 적이 없으면 같은 적이 다시 맞음 + 감전(받는 피해 +shock.pct%, shock.turns턴)
+  // 한 번에 공격력 × mul × (1 + 체인 피해% + 번개 피해%). 3세트: strikesMax번, 다른 적이 없으면 같은 적이 다시 맞음 + 감전(받는 피해 +shock.pct%, shock.turns턴)
   const CHAIN = { every: 2, range: 3, strikes: 2, strikesMax: 4, mul: 0.4, shock: { turns: 3, pct: 20 } };
   // 세트를 다 맞추는 개수 (효과가 모두 켜지는 개수)
   const setFull = (id) => Math.max(...SETS[id].bonuses.map(b => b.count));
