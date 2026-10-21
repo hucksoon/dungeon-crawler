@@ -506,12 +506,14 @@
   }
 
   // ---- 고대 다시 굴리기 ----
-  const canRerollAncient = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
-    !item.ancient && (item.ar || 0) < ANCIENT_REROLL.max;
+  // unlimited: 운영자(테스트)는 횟수 제한 없이
+  const canRerollAncient = (item, unlimited = false) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
+    !item.ancient && (unlimited || (item.ar || 0) < ANCIENT_REROLL.max);
   // 나이트메어 아이템은 × NM_SHOP.priceMul (상점 가격처럼)
   const ancientRerollCost = (item) => Math.max(5, Math.round(levelPrice(SHOP.prices[item.rarity], item.lvl) * ANCIENT_REROLL.costMul / 5) * 5) * nmCostMul(item);
   // n번째 굴림이 고대인지 (1부터)
-  const ancientRerollHit = (item, n) => n >= 1 && n <= ANCIENT_REROLL.max && rngFrom(`anc|${item.id}|re${n}`)() < ANCIENT_REROLL.chance;
+  // (횟수 상한 max는 굴릴 수 있는지(canRerollAncient)·서버 검증에서만 봄 — 운영자는 테스트로 max번 넘게 굴릴 수 있음)
+  const ancientRerollHit = (item, n) => n >= 1 && rngFrom(`anc|${item.id}|re${n}`)() < ANCIENT_REROLL.chance;
   // 한 번 굴림: 아이템을 바꾸고 { ok, n }
   function rerollAncient(item) {
     const n = (item.ar || 0) + 1;
