@@ -114,6 +114,13 @@ function db(): PDO {
         seen_at      BIGINT NOT NULL,
         staff        INTEGER NOT NULL DEFAULT 0
     )');
+    // 운영자 기기 (최대 STAFF_DEVICES_MAX대): 운영자 혜택(골드·강화석·보석·횟수 제한 없음)은 여기 등록한 기기에서만.
+    // 기기 ID(게임의 rl_device_id)는 그대로 저장하지 않고 HMAC만. 등록·삭제는 admin.php devices
+    $pdo->exec('CREATE TABLE IF NOT EXISTS staff_devices (
+        dhash        VARCHAR(64) PRIMARY KEY,
+        label        VARCHAR(40) NOT NULL DEFAULT \'\',
+        created_at   BIGINT NOT NULL
+    )');
     // v4 베타 시즌 표, 나이트메어 표 (players와 같은 모양)
     foreach (['players_v4', 'players_nm'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
         pkey         VARCHAR(64) PRIMARY KEY,
@@ -201,7 +208,7 @@ function cors_headers(): void {
     $allowed = array_filter(array_map('trim', explode(',', (string)config()['allowed_origins'])));
     header('Vary: Origin');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Guest-Id');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Guest-Id, X-Device-Id');
     header('Access-Control-Max-Age: 86400');
     if (in_array($origin, $allowed, true)) header('Access-Control-Allow-Origin: ' . $origin);
 }
@@ -248,6 +255,15 @@ function header_value(string $name): string {
 }
 
 const OPERATOR_NAME = '운영자';
+const STAFF_DEVICES_MAX = 2;
+const DEVICE_ID_RE = '/^[0-9a-zA-Z-]{8,64}$/';
+function device_hash(string $device): string { return hmac_hex('dev:' . $device); }
+// 이 요청의 기기(X-Device-Id)가 운영자 기기로 등록돼 있는지
+function staff_device_ok(): bool {
+    $device = header_value('X-Device-Id');
+    if (!preg_match(DEVICE_ID_RE, $device)) return false;
+    return (bool)q_val('SELECT COUNT(*) FROM staff_devices WHERE dhash = ?', [device_hash($device)]);
+}
 
 function identify(): array {
     $auth = header_value('Authorization');
@@ -267,11 +283,13 @@ function identify(): array {
             'display' => $developer ? OPERATOR_NAME : ($email !== '' ? mask_email($email) : ($phone !== '' ? mask_phone($phone) : ('사용자 #' . substr((string)$claims['sub'], 0, 6)))),
             'email_hmac' => $email !== '' ? hmac_hex('e:' . $email) : null,
             'developer' => $developer,
+            // 운영자 혜택(테스트용 무제한)은 운영자 계정 + 등록한 기기(최대 2대)에서만
+            'unlimited' => $developer && staff_device_ok(),
         ];
     }
     $guest = header_value('X-Guest-Id');
     if (preg_match('/^[0-9a-zA-Z-]{8,64}$/', $guest)) {
-        return ['kind' => 'guest', 'key' => hmac_hex('g:' . $guest), 'display' => '게스트 #' . substr($guest, 0, 6), 'email_hmac' => null, 'developer' => false];
+        return ['kind' => 'guest', 'key' => hmac_hex('g:' . $guest), 'display' => '게스트 #' . substr($guest, 0, 6), 'email_hmac' => null, 'developer' => false, 'unlimited' => false];
     }
     throw new HttpError(401, 'unauthorized');
 }
@@ -383,7 +401,9 @@ function jwk_to_pem(array $jwk): string {
 const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기', 'offhand' => '보조'];
 
 // 게임이 실제로 만드는 시드인지, 층·출처가 맞는지 (items.js / index.html / shop.html 의 시드 형식)
-function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 0): bool {
+// $dev: 운영자는 상점 진열 바꾸기 횟수 제한이 없어서 |r4| 이상도 인정 (검사할 때만 |r1|로 보고, 아이템은 원래 시드로 만듦)
+function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 0, bool $dev = false): bool {
+    if ($dev) $seed = preg_replace('/\|r\d{1,6}\|s([0-5])$/', '|r1|s$1', $seed);
     $chance = r_drop_chance_for($v, $rev);  // r2부터 일반 15% / 정예 60% (그 전 8% / 40%)
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|k\d{1,8}$/', $seed, $m)) {           // 몬스터 처치
         if ((int)$m[1] !== $lvl) return false;
@@ -428,7 +448,8 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
 }
 
 // 게임이 보낸 아이템 참조 { seed, src, lvl, v, enh } → 서버가 다시 만든 아이템. 형식이 틀리거나 위조면 null
-function verify_item($q, int $maxLvl): ?array {
+// $dev: 운영자 계정 (테스트로 고대 굴리기·재련을 횟수 제한 없이 함)
+function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
@@ -437,15 +458,15 @@ function verify_item($q, int $maxLvl): ?array {
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;
-    if (!seed_origin_ok($v, $seed, $src, $lvl, $rev)) return null;
+    if (!seed_origin_ok($v, $seed, $src, $lvl, $rev, $dev)) return null;
     $item = r_generate($v, $seed, $src, $lvl, $rev);
     if (isset($q['id']) && $q['id'] !== $item['id']) return null;
     $ar = $q['ar'] ?? 0;  // 고대 다시 굴리기 횟수 (최대 20)
-    if (!is_int($ar) || $ar < 0 || $ar > R_ANCIENT_REROLL['max']) return null;
+    if (!is_int($ar) || $ar < 0 || $ar > ($dev ? 100000 : R_ANCIENT_REROLL['max'])) return null;
     $item = r_apply_ancient_rerolls($item, $ar);
     // 대장간 옵션 재련 (rf: 고른 줄 번호 목록, 고대 굴림 다음에)
     $rf = $q['rf'] ?? [];
-    if (!is_array($rf) || count($rf) > 300) return null;
+    if (!is_array($rf) || count($rf) > ($dev ? 5000 : 300)) return null;
     if ($rf) { $item = r_apply_reforges($item, array_values($rf)); if (!$item) return null; }
     $item['enh'] = $enh;
     // 홈에 넣은 보석 (g): 종류·등급과 개수(홈 개수까지)만 확인. 보석은 시드로 다시 계산할 수 없어서 얻은 경로는 검증하지 않음
@@ -786,7 +807,7 @@ function lobby_ping(): array {
     }
     $me = ['id' => $pub, 'name' => $who['display']];
     if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
-    if ($who['developer']) $me['staff'] = true;
+    if ($who['developer']) { $me['staff'] = true; $me['unlimited'] = $who['unlimited']; }   // unlimited: 이 기기가 운영자 기기
     return [
         'me' => $me, 'players' => $players, 'at' => $now,
         'mail' => $who['kind'] === 'user' ? mail_count($who['key']) : 0,  // 우편함에 받을 것

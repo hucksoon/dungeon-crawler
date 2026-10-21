@@ -526,7 +526,7 @@ function r_apply_ancient_rerolls(array $item, int $ar): array {
     if ($ar < 1) return $item;
     if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return $item;
     $item['ar'] = $ar;
-    if (!$item['ancient'] && $ar <= R_ANCIENT_REROLL['max'] && r_rng("anc|{$item['id']}|re{$ar}")() < R_ANCIENT_REROLL['chance']) {
+    if (!$item['ancient'] && r_rng("anc|{$item['id']}|re{$ar}")() < R_ANCIENT_REROLL['chance']) {
         $item = r_max_out($item);
         $item['ancient'] = r_is_ancient($item);
     }

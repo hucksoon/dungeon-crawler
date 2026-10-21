@@ -858,6 +858,12 @@
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
   const canLock = (item) => item.rarity === "legendary" || item.rarity === "set";   // 자물쇠는 레전더리·세트만
+  // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 2대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
+  // 고대 굴리기·진열 바꾸기 횟수 제한도 없음. 운영자는 랭킹에 기록되지 않아서 랭킹에는 영향 없음
+  const isStaff = () => !!Lobby.me()?.unlimited;
+  const canPay = (cost) => isStaff() || (!!player && !gameOver && player.gold >= cost);
+  const pay = (cost) => { if (!isStaff()) player.gold -= cost; };
+  const costText = (cost) => (isStaff() ? "운영자 무료" : `-${cost.toLocaleString()}골드`);
   const Inv = (() => {
     let owner = null;
     let data = null;  // { bag: [item], equip: { slot: item|null }, log: [entry] }
@@ -1047,8 +1053,10 @@
       socketGem(id, kind, grade) {
         const item = all().find(x => x.id === id);
         if (!item || (item.gems?.length || 0) >= RLItems.socketCount(item)) return null;
-        const plan = RLItems.gemPlan(data.gems?.[kind], grade);
+        // 운영자는 보석을 쓰지 않음 (주머니 그대로). 나중에 룬도 같은 방식
+        const plan = isStaff() ? { left: Inv.gemCount(kind), used: [0, 0, 0], got: [0, 0, 0], free: true } : RLItems.gemPlan(data.gems?.[kind], grade);
         if (!plan) return null;
+        data.gems ||= {};
         data.gems[kind] = plan.left;
         item.gems = [...(item.gems || []), [kind, grade]];
         record("gem", item, { gem: kind, grade, used: plan.used });
@@ -1107,10 +1115,11 @@
         if (!item) return { error: "아이템이 없어요." };
         const to = (item.enh || 0) + 1;
         if (to > RLItems.ENHANCE.max) return { error: `+${RLItems.ENHANCE.max}이 최대예요.` };
-        const cost = RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);
+        const cost = isStaff() ? 0 : RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);   // 운영자는 강화석 안 씀
         if ((data[k] || 0) < cost) return { error: `${RLItems.STONE_NAMES[k]}이 부족해요. (필요 ${cost}개)` };
         const result = RLItems.rollEnhance(item);
-        data[k] -= cost;
+        if (isStaff()) result.ok = true;   // 운영자 테스트: 강화는 항상 성공 (서버는 강화 단계만 확인)
+        data[k] = (data[k] || 0) - cost;
         item.tries = (item.tries || 0) + 1;
         if (result.ok) item.enh = to;
         record("enhance", item, { to, ok: result.ok, cost, tries: item.tries });
@@ -1121,8 +1130,8 @@
       // 고대 다시 굴리기: 골드는 부르는 쪽(판의 골드)에서 냄. 결과 { ok, n } 또는 { error }
       rerollAncient(id) {
         const item = all().find(x => x.id === id);
-        if (!item || !RLItems.canRerollAncient(item)) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
-        const r = RLItems.rerollAncient(item);
+        if (!item || !RLItems.canRerollAncient(item, isStaff())) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
+        const r = RLItems.rerollAncient(item, isStaff());   // 운영자는 항상 성공
         record("ancient", item, { ok: r.ok, n: r.n });
         write();
         return r;
@@ -1231,6 +1240,7 @@
       const t = await Account.token();
       if (!t) return null;
       headers.Authorization = `Bearer ${t}`;
+      headers["X-Device-Id"] = Account.deviceId();   // 운영자 기기 확인용 (운영자 계정일 때만 서버가 봄)
     } else {
       headers["X-Guest-Id"] = Account.deviceId();
     }
@@ -3467,7 +3477,7 @@
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
     document.getElementById("inv-count").textContent =
-      `골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
+      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
 
     invEquip.replaceChildren(...RLItems.SLOTS.map(slot => {
       const item = equip[slot];
@@ -3601,36 +3611,36 @@
         if (!RLItems.reforgeableLine(item, i)) return;
         out.push(el("div", { className: "sock-pick" },
           el("span", { className: "stat-line" }, `◆ ${RLItems.formatStat(k, v)}`),
-          el("button", { type: "button", className: "reforge-btn", disabled: gold < cost, onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)));
+          el("button", { type: "button", className: "reforge-btn", disabled: !canPay(cost), onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)));
       });
     } else out.push(el("div", { className: "meta" }, "옵션 재련은 레전더리·세트(v4)만 할 수 있어요."));
     if (item.gems?.length) {
       const cost = RLItems.socketResetCost(item);
       out.push(el("div", { className: "sock-pick" },
         el("span", { className: "meta" }, `홈 초기화: 넣은 보석 ${item.gems.length}개를 모두 지워요 (보석은 사라져요)`),
-        el("button", { type: "button", className: "socket-reset-btn", disabled: gold < cost, onclick: () => resetSockets(item) }, `홈 초기화 (${cost.toLocaleString()}골드)`)));
+        el("button", { type: "button", className: "socket-reset-btn", disabled: !canPay(cost), onclick: () => resetSockets(item) }, `홈 초기화 (${cost.toLocaleString()}골드)`)));
     } else if (RLItems.socketCount(item)) out.push(el("div", { className: "meta" }, "홈 초기화: 넣은 보석이 없어요."));
     return out;
   }
   function reforgeItem(item, i) {
     const cost = RLItems.reforgeCost(item);
-    if (gameOver || !player || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
     const before = RLItems.formatStat(...item.lines[i]);
     const line = Inv.reforge(item.id, i);
     if (!line) return;
-    player.gold -= cost;
-    invMsg = { cls: "good", text: `⚒ 재련: ${before} → ${RLItems.formatStat(...line)} (-${cost.toLocaleString()}골드)` };
+    pay(cost);
+    invMsg = { cls: "good", text: `⚒ 재련: ${before} → ${RLItems.formatStat(...line)} (${costText(cost)})` };
     log(invMsg.text, "good");
     saveGame(true);
     afterGearChange();
   }
   function resetSockets(item) {
     const cost = RLItems.socketResetCost(item);
-    if (gameOver || !player || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
     if (!confirm(`${RLItems.itemName(item)}의 홈을 초기화할까요? 넣은 보석 ${item.gems.length}개가 사라져요. (${cost.toLocaleString()}골드)`)) return;
     if (!Inv.resetSockets(item.id)) return;
-    player.gold -= cost;
-    invMsg = { cls: "good", text: `⚒ 홈을 초기화했어요. 다시 보석을 넣을 수 있어요. (-${cost.toLocaleString()}골드)` };
+    pay(cost);
+    invMsg = { cls: "good", text: `⚒ 홈을 초기화했어요. 다시 보석을 넣을 수 있어요. (${costText(cost)})` };
     log(invMsg.text, "good");
     saveGame(true);
     afterGearChange();
@@ -3642,8 +3652,11 @@
   const fxText = (fx) => Object.entries(fx).map(([k, v]) => RLItems.formatStat(k, v)).join(", ");
   const countText = (n) => RLItems.GEM_GRADES.map((g, i) => n[i] ? `${g} ${n[i]}` : "").filter(Boolean).join(" · ") || "없음";
   // 보석을 어떻게 만들어 넣는지 설명
+  // 운영자는 보석을 쓰지 않고 넣음
+  const gemPlanFor = (kind, grade) => (isStaff() ? { free: true, used: [0, 0, 0], got: [0, 0, 0] } : RLItems.gemPlan(Inv.gemCount(kind), grade));
   function planText(kind, grade, plan) {
     const name = RLItems.gemName(kind, grade);
+    if (plan?.free) return "운영자: 보석을 쓰지 않고 넣어요";
     if (!plan) return `${name}이(가) 없어요 (가진 ${RLItems.GEMS[kind].name}을 합쳐도 모자라요)`;
     const list = (n) => n.map((c, i) => c ? `${RLItems.gemName(kind, i)} ${c}개` : "").filter(Boolean).join(", ");
     if (plan.got.some(Boolean)) return `${list(plan.used)}를 쪼개서 넣어요 (남는 ${list(plan.got)}는 주머니에)`;
@@ -3660,7 +3673,7 @@
     }
     if (put.length >= sockets) return out;
     const { kind, grade } = gemPick;
-    const plan = RLItems.gemPlan(Inv.gemCount(kind), grade);
+    const plan = gemPlanFor(kind, grade);
     out.push(el("div", { className: "sock-pick" },
       el("select", { title: "보석 종류", className: "gem-kind", onchange: (e) => { gemPick.kind = e.target.value; renderDetail(); } },
         ...RLItems.GEM_KINDS.map(k => el("option", { value: k, selected: k === kind }, `${RLItems.GEMS[k].name} (${countText(Inv.gemCount(k))})`))),
@@ -3673,7 +3686,7 @@
   }
   function putGem(item) {
     const { kind, grade } = gemPick;
-    const plan = RLItems.gemPlan(Inv.gemCount(kind), grade);
+    const plan = gemPlanFor(kind, grade);
     const how = planText(kind, grade, plan);
     if (!plan || !confirm(`${RLItems.itemName(item)}의 홈에 ${RLItems.gemName(kind, grade)}을(를) 넣을까요?\n${how}\n한 번 넣으면 뺄 수 없어요.`)) return;
     if (!Inv.socketGem(item.id, kind, grade)) return;
@@ -3728,25 +3741,25 @@
     const canEnhance = to <= RLItems.ENHANCE.max;
     const enhGold = canEnhance ? RLItems.enhanceGold(to, item) : 0, myGold = player && !gameOver ? player.gold : 0;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
+      ? `다음 강화 +${to}: 성공 ${isStaff() ? "100% (운영자)" : `${Math.round(RLItems.enhanceChance(to) * 100)}%`} · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
       : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
     const enhanceBtn = el("button", {
-      type: "button", disabled: !canEnhance || Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold), onclick: () => enhanceItem(item),
+      type: "button", disabled: !canEnhance || (!isStaff() && (Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold))), onclick: () => enhanceItem(item),
     }, enhGold ? `강화 (${enhGold.toLocaleString()}골드)` : "강화");
     // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
     const AR = RLItems.ANCIENT_REROLL;
-    const canAncient = RLItems.canRerollAncient(item);
+    const canAncient = RLItems.canRerollAncient(item, isStaff());
     const arCost = RLItems.ancientRerollCost(item);
     // 20번 모두 실패한 아이템은 버튼 자리에 "20/20번 실패"를 눌리지 않는 버튼으로 고정
     const gold = player && !gameOver ? player.gold : 0;
     const arUsed = item.ar || 0;
-    const arOver = (item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient && arUsed >= AR.max;
+    const arOver = (item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient && arUsed >= AR.max && !isStaff();
     if (canAncient) rows.push(el("div", { className: "meta" },
-      `고대 굴리기: ${Math.round(AR.chance * 100)}% 확률로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 (보유 ${gold.toLocaleString()}골드) · 남은 횟수 ${AR.max - arUsed}/${AR.max}`));
+      `고대 굴리기: ${isStaff() ? "100%(운영자)" : `${Math.round(AR.chance * 100)}% 확률`}로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 (보유 ${gold.toLocaleString()}골드) · ${isStaff() ? `운영자: 횟수 제한 없음 (${arUsed}번 굴림)` : `남은 횟수 ${AR.max - arUsed}/${AR.max}`}`));
     else if (arOver) rows.push(el("div", { className: "meta" }, `고대 굴리기를 ${AR.max}번 모두 실패했어요. 이 아이템은 더 굴릴 수 없어요.`));
     const ancientBtn = canAncient ? el("button", {
-      type: "button", disabled: gameOver || !player || gold < arCost, onclick: () => ancientItem(item),
-    }, gold < arCost ? `고대 굴리기 (${arCost.toLocaleString()}골드 · 골드 부족)` : `고대 굴리기 (${arCost.toLocaleString()}골드)`)
+      type: "button", disabled: !canPay(arCost), onclick: () => ancientItem(item),
+    }, !canPay(arCost) ? `고대 굴리기 (${arCost.toLocaleString()}골드 · 골드 부족)` : `고대 굴리기 (${arCost.toLocaleString()}골드)`)
       : arOver ? el("button", { type: "button", className: "ancient-done", disabled: true }, `고대 굴리기 ${AR.max}/${AR.max}번 실패`) : null;
 
     const actions = el("div", { className: "row" });
@@ -3823,9 +3836,9 @@
     const before = RLItems.itemName(item);
     // +11부터는 골드도 (판의 골드)
     const gold = RLItems.enhanceGold((item.enh || 0) + 1, item);
-    if (gold && (gameOver || !player || player.gold < gold)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${gold.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (gold && !canPay(gold)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${gold.toLocaleString()}골드)` }; renderInventory(); return; }
     const r = Inv.enhance(item.id);
-    if (!r.error && gold) { player.gold -= gold; saveGame(true); }
+    if (!r.error && gold) { pay(gold); saveGame(true); }
     if (r.error) invMsg = { cls: "bad", text: r.error };
     else if (r.ok) invMsg = { cls: "good", text: `강화 성공! ${before} → +${r.to}` };
     else invMsg = { cls: "bad", text: `강화 실패… (+${r.to} 성공 확률 ${Math.round(r.chance * 100)}%) 아이템은 그대로예요.` };
@@ -3835,14 +3848,14 @@
 
   function ancientItem(item) {
     const cost = RLItems.ancientRerollCost(item);
-    if (gameOver || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
     const before = RLItems.itemName(item);
     const r = Inv.rerollAncient(item.id);
     if (r.error) invMsg = { cls: "bad", text: r.error };
     else {
-      player.gold -= cost;
+      pay(cost);
       invMsg = r.ok ? { cls: "good", text: `✨ 고대가 됐어요! ${before} → ${RLItems.itemName(item)} (모든 능력치 최대치)` }
-        : { cls: "bad", text: `고대 굴리기 실패… (${r.n}/${RLItems.ANCIENT_REROLL.max}번째, -${cost.toLocaleString()}골드 · 남은 골드 ${player.gold.toLocaleString()})` };
+        : { cls: "bad", text: `고대 굴리기 실패… (${isStaff() ? `${r.n}번째, 운영자` : `${r.n}/${RLItems.ANCIENT_REROLL.max}번째, -${cost.toLocaleString()}골드 · 남은 골드 ${player.gold.toLocaleString()}`})` };
       log(invMsg.text, r.ok ? "rainbow" : "bad");
       saveGame(true);
     }
@@ -3939,14 +3952,15 @@
     document.getElementById("shop-gold").textContent = `보유 골드 ${player.gold}`;
     const stock = shopCtx.stock();
     const bought = shopCtx.bought();
-    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls(), shopCtx.nm());
+    const cost = shopRerollCost();
     const rerollBtn = document.getElementById("shop-reroll");
     const max = RLItems.SHOP.rerolls.max;
     const closed = gameOver;  // 쓰러진 판은 골드를 쓸 수 없음
     rerollBtn.textContent = cost == null
       ? `진열 바꾸기 (이번 상점은 ${max}번 모두 사용)`
+      : isStaff() ? `진열 바꾸기 (운영자: 횟수 제한 없음 · ${shopCtx.rerolls()}번 바꿈)`
       : `진열 바꾸기 (${cost} 골드 · 남은 횟수 ${max - shopCtx.rerolls()}/${max})`;
-    rerollBtn.disabled = closed || cost == null || player.gold < cost;
+    rerollBtn.disabled = closed || cost == null || !canPay(cost);
     document.getElementById("shop-items").replaceChildren(...stock.map((item, i) => {
       const price = RLItems.shopPrice(item);
       const sold = bought.includes(i);
@@ -3957,9 +3971,15 @@
         ...statLines(item, "span"),
         el("span", { className: "price" }, sold ? "판매 완료" : `${price} 골드`),
         sold ? null : el("button", {
-          type: "button", className: "primary", disabled: closed || player.gold < price, onclick: () => buyItem(i),
-        }, player.gold < price ? "골드 부족" : "구매"));
+          type: "button", className: "primary", disabled: closed || !canPay(price), onclick: () => buyItem(i),
+        }, !canPay(price) ? "골드 부족" : "구매"));
     }));
+  }
+
+  // 진열 바꾸기 비용 (더 못 바꾸면 null). 운영자는 횟수 제한 없음 (마지막 단계 비용으로 계산하지만 골드는 안 씀)
+  function shopRerollCost() {
+    const n = shopCtx.rerolls(), max = RLItems.SHOP.rerolls.max;
+    return RLItems.rerollCost(shopCtx.level(), isStaff() ? Math.min(n, max - 1) : n, shopCtx.nm());
   }
 
   // 정각이 지난 뒤 누른 버튼은 무시하고 새 진열을 보여줌 (예전 진열의 칸을 사지 않게)
@@ -3975,7 +3995,7 @@
     if (gameOver || shopStale() || shopCtx.bought().includes(i)) return;
     const item = shopCtx.stock()[i];
     const price = RLItems.shopPrice(item);
-    if (player.gold < price) return;
+    if (!canPay(price)) return;
     const res = Inv.buy(item, price);
     if (res === "owned") {
       shopCtx.markBought(i);
@@ -3989,7 +4009,7 @@
       shopMsg.textContent = "가방이 가득 찼어요. 인벤토리에서 판매해 공간을 만들어 주세요.";
       return;
     }
-    player.gold -= price;
+    pay(price);
     shopCtx.markBought(i);
     shopMsg.className = "msg-good";
     shopMsg.textContent = `${RLItems.itemName(item)}을(를) ${price} 골드에 샀어요.`;
@@ -4002,12 +4022,12 @@
   // 진열 바꾸기: 6개를 새로 진열하고 산 칸 표시를 초기화. 바꿀 때마다 비용이 2배
   function rerollShop() {
     if (gameOver || shopStale()) return;
-    const cost = RLItems.rerollCost(shopCtx.level(), shopCtx.rerolls(), shopCtx.nm());
-    if (cost == null || player.gold < cost) return;
-    player.gold -= cost;
+    const cost = shopRerollCost();
+    if (cost == null || !canPay(cost)) return;
+    pay(cost);
     shopCtx.reroll();
     shopMsg.className = "msg-good";
-    shopMsg.textContent = `진열을 바꿨어요. (-${cost} 골드)`;
+    shopMsg.textContent = `진열을 바꿨어요. (${costText(cost)})`;
     log(`${shopCtx.title} 진열을 바꿨다. (-${cost} 골드)`, "info");
     updateStats();
     shopCtx.save();
