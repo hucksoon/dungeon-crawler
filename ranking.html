@@ -286,7 +286,7 @@
     if (me === "expired") { box.hidden = false; box.textContent = "로그인이 만료됐어요. 게임을 한 번 열면 내 순위가 보여요."; return; }
     if (!me) { box.hidden = true; return; }
     box.hidden = false;
-    if (me.developer) { box.textContent = "개발자 계정이라 랭킹에서 빠져 있어요."; return; }
+    if (me.developer) { box.textContent = me.staffDevice ? "운영자 기기라 랭킹에서 빠져 있어요." : "개발자 계정이라 랭킹에서 빠져 있어요."; return; }
     if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), season.current ? " · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요." : ` · ${season.name}에는 기록이 없어요.`); return; }
     box.replaceChildren(
       el("b", { textContent: me.name }), ` · ${season.name}`,

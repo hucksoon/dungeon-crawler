@@ -258,11 +258,20 @@ const OPERATOR_NAME = '운영자';
 const STAFF_DEVICES_MAX = 3;
 const DEVICE_ID_RE = '/^[0-9a-zA-Z-]{8,64}$/';
 function device_hash(string $device): string { return hmac_hex('dev:' . $device); }
-// 이 요청의 기기(X-Device-Id)가 운영자 기기로 등록돼 있는지
-function staff_device_ok(): bool {
-    $device = header_value('X-Device-Id');
+// 이 기기 ID가 운영자 기기로 등록돼 있는지
+function staff_device_registered(string $device): bool {
     if (!preg_match(DEVICE_ID_RE, $device)) return false;
     return (bool)q_val('SELECT COUNT(*) FROM staff_devices WHERE dhash = ?', [device_hash($device)]);
+}
+// 이 요청의 기기(X-Device-Id)가 운영자 기기인지
+function staff_device_ok(): bool { return staff_device_registered(header_value('X-Device-Id')); }
+// 운영자 기기에서 게스트로 플레이 중인지 (게스트 ID = 기기 ID). 랭킹에서 빠짐
+function staff_guest(array $who): bool { return $who['kind'] === 'guest' && staff_device_registered(header_value('X-Guest-Id')); }
+// 랭킹 표(모든 시즌)에서 이 키의 기록을 지움. 지운 줄 수
+function purge_board_rows(string $pkey): int {
+    $n = 0;
+    foreach (SEASONS as $s) { $st = db()->prepare('DELETE FROM ' . $s['table'] . ' WHERE pkey = ?'); $st->execute([$pkey]); $n += $st->rowCount(); }
+    return $n;
 }
 
 function identify(): array {
@@ -605,10 +614,10 @@ function pub_id(string $pkey): string { return substr(hmac_hex('p:' . $pkey), 0,
 function submit_score(): array {
     $who = identify();
     $pdo = db();
-    if ($who['developer']) {
-        // 개발자 계정은 저장하지 않음 (예전에 저장된 게 있으면 지움)
-        foreach (SEASONS as $s) $pdo->prepare('DELETE FROM ' . $s['table'] . ' WHERE pkey = ?')->execute([$who['key']]);
-        return ['ok' => true, 'ranked' => false, 'reason' => 'developer'];
+    if ($who['developer'] || staff_guest($who)) {
+        // 개발자 계정과 운영자 기기의 게스트는 저장하지 않음 (예전에 저장된 게 있으면 지움)
+        purge_board_rows($who['key']);
+        return ['ok' => true, 'ranked' => false, 'reason' => $who['developer'] ? 'developer' : 'staff_device'];
     }
     $raw = file_get_contents('php://input');
     if (strlen((string)$raw) > 8192) throw new HttpError(413, 'too_large');
@@ -696,6 +705,7 @@ function get_ranking(): array {
 function get_me(): array {
     $who = identify();
     if ($who['developer']) return ['developer' => true];
+    if (staff_guest($who)) return ['developer' => true, 'staffDevice' => true];
     $t = season_table(req_season());
     $r = q_row("SELECT * FROM {$t} WHERE pkey = ?", [$who['key']]);
     if (!$r) return ['name' => $who['display'], 'stageRank' => null, 'itemRank' => null];
