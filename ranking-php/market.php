@@ -27,7 +27,7 @@ const MARKET_HOURS = 24;
 const MARKET_MAX_ACTIVE = 10;
 const MARKET_MAX_GOLD = 10000000;
 const MARKET_MAX_CASH = 100000;
-const MARKET_CASH_REQUIRED = ['legendary', 'set'];
+const MARKET_CASH_REQUIRED = ['legendary', 'set', 'unique'];
 
 function market_tables(PDO $pdo): void {
     $pdo->exec('CREATE TABLE IF NOT EXISTS listings (

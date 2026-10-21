@@ -95,6 +95,7 @@
   .rw-tag { display: inline-block; font-size: 10px; font-weight: bold; padding: 0 4px; margin-right: 4px; border-radius: 3px; background: rgba(255, 107, 211, 0.18); }
   .rw-list div { margin-top: 2px; }
   /* 레전더리·세트: 이름이 무지개색으로 계속 바뀜 (득템 표시) */
+  .unique-glow { text-shadow: 0 0 6px rgba(255, 215, 106, 0.7); font-weight: bold; }
   .rainbow { animation: rainbow 2.4s linear infinite; text-shadow: 0 0 6px rgba(255, 255, 255, 0.25); }
   @keyframes rainbow {
     0% { color: #ff5a5a; } 17% { color: #ffb347; } 33% { color: #fff36b; } 50% { color: #6bff8f; }
@@ -912,7 +913,7 @@
   // 계정(로그인) 또는 게스트(기기 ID)마다 따로 저장. 로그인하면 게임 서버에도 저장 (Profile), 게스트는 이 브라우저에만.
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
-  const canLock = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordHighlight(item);   // 자물쇠는 레전더리·세트·(헬) 룬워드 재료만
+  const canLock = (item) => item.rarity === "legendary" || item.rarity === "set" || item.rarity === "unique" || RLItems.runewordHighlight(item);   // 자물쇠는 레전더리·세트·유니크·(헬) 룬워드 재료만
   // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 3대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
   // 고대 굴리기·진열 바꾸기 횟수 제한도 없음. 운영자는 랭킹에 기록되지 않아서 랭킹에는 영향 없음
   const isStaff = () => !!Lobby.me()?.unlimited;
@@ -1324,7 +1325,7 @@
     return headers;
   }
   const Ranking = (() => {
-    const RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, set: 4, legendary: 5 };
+    const RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, set: 4, legendary: 5, unique: 6 };
     let timer = null;
     let sent = "";  // 마지막으로 서버가 받은 내용 (같으면 다시 보내지 않음)
 
@@ -1433,6 +1434,8 @@
   const rainbowColor = (offset = 0) => `hsl(${Math.round(performance.now() / 6 + offset * 40) % 360}, 100%, 65%)`;
   // 장비 얻기·떨어뜨리기 메시지: 레전더리·세트면 무지개색 줄
   const gearLog = (msg, item) => log(msg, isRainbow(item) ? "rainbow" : null, rarityColor(item));
+  // 유니크: 바닥에서 금빛으로 크게 빛남 (이름은 금색 + .unique-glow)
+  const isUnique = (item) => item?.rarity === "unique";
 
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과
   function stats() {
@@ -1441,8 +1444,8 @@
     const maxHp = pct(player.maxHp + g.hp, g.hpPct);
     return {
       maxHp,
-      atk: pct(player.atk + g.atk, g.atkPct),
-      def: Math.round(pct(g.def, g.defPct) * (1 - (player.shred || 0) / 100)),   // 불가사리에게 갉아먹힌 만큼
+      atk: pct(player.atk + g.atk, g.atkPct + (player.reap || 0)),   // 사자의 낫: 처치할 때마다 +%
+      def: Math.round(pct(g.def, g.defPct + (player.iron || 0)) * (1 - (player.shred || 0) / 100)),   // 쇠비늘 갑옷 +%, 불가사리에게 갉아먹힌 만큼 −%
       crit: Math.min(75, g.crit),
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
       lifesteal: g.lifesteal,  // 합계 최대 20% (RLItems.LIFESTEAL)
@@ -1464,6 +1467,8 @@
       res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball
       rw: T.runewords.special,
+      // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
+      uq: T.uniques.special,
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
     };
   }
@@ -1735,6 +1740,12 @@
       });
     } else {
       const s = stats();
+      // 구미호의 비녀: 확률로 공격을 피함
+      if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
+        showDamage(target, "피함", false, RLItems.RARITIES.unique.color);
+        log(`${attacker.name}의 공격을 피했다! (홀림)`, "good");
+        return;
+      }
       // 방패: 확률로 공격을 막아냄 (피해 없음)
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, "막음", false);
@@ -1747,6 +1758,16 @@
       const took = hurtPlayer(dmg);
       log(`${attacker.name}에게 ${dmg} 피해를 입음.${took < dmg ? ` (보호막이 ${dmg - took} 막음)` : ""}`, "bad");
       if (target.hp <= 0) { death(); return; }
+      // 쇠비늘 갑옷: 맞을 때마다 방어력 +% (이 층에서, 최대치까지)
+      if (s.uq.ironHide && (player.iron || 0) < UQ_FX.ironHide.max) player.iron = Math.min(UQ_FX.ironHide.max, (player.iron || 0) + s.uq.ironHide);
+      // 업경대: 받은 피해의 %를 때린 몬스터에게 되돌림
+      if (s.uq.reflect && attacker.hp > 0) {
+        const back = Math.max(1, Math.round(dmg * s.uq.reflect / 100));
+        attacker.hp -= back;
+        showDamage(attacker, back, false, RLItems.RARITIES.unique.color);
+        log(`업보: ${attacker.name}에게 ${back} 피해를 되돌렸다!`, null, RLItems.RARITIES.unique.color);
+        if (attacker.hp <= 0) { killEnemy(attacker); return; }
+      }
       // 불가사리: 공격이 들어갈 때마다 방어력을 갉아먹음 (이 층을 떠나거나 쓰러뜨리면 풀림)
       if (attacker.pattern === "shred" && (player.shred || 0) < attacker.shred.max) {
         player.shred = Math.min(attacker.shred.max, (player.shred || 0) + attacker.shred.per);
@@ -1783,7 +1804,8 @@
     if (u.slow > 0) { if (--u.slow === 0) u.immune = EL.ice.immune; }
     else if (u.immune > 0) u.immune--;
   }
-  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; u.shred = 0; } }
+  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; u.shred = 0; u.iron = 0; u.reap = 0; } }   // 층을 옮기면 풀림 (방어력 갉기·쇠비늘·영혼 수확도)
+  const UQ_FX = RLItems.UNIQUE_FX;
 
   // ---- 헬 네임드 보스 패턴 (수치는 monsters.js NAMED) ----
   // 저승사자: 한 번 보이면(engaged) 쓰러뜨릴 때까지 포탈 불가, 흡혈 × reaper.lifesteal
@@ -1893,7 +1915,7 @@
   // 플레이어가 적 하나를 때림. raw: 방어력 빼기 전 피해. tag: "왼손 " / "광란 " (로그 앞머리)
   // elem: 속성 피해 (방어력에 줄지 않음)
   function hitEnemy(target, raw, crit, s, tag, elem = 0) {
-    const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMix(target, s))) * shockMul(target));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
+    const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMix(target, s))) * shockMul(target) * bossMul(target, s));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
@@ -1903,6 +1925,7 @@
     log(`${tag}${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
     const drain = Math.floor(taken * s.lifesteal / 100 * lsMul());
     if (drain > 0) heal(drain);
+    if (target.hp > 0 && s.uq.bite) { target.biteUntil = turn + UQ_FX.bite.turns + 1; target.bitePct = s.uq.bite; }   // 송곳니: 다음 공격부터
     if (target.hp <= 0) killEnemy(target);
     else if (target.kind === "golden" && target.blink && Math.random() < target.blink) goldenBlink(target);
   }
@@ -1926,6 +1949,7 @@
     if (e.kind === "boss") log("보스를 쓰러뜨렸다! 계단이 열렸다.", null, BOSS_COLOR);
     if (e.kind === "golden") log(`${e.name}을(를) 잡았다! 보물이 쏟아진다!`, null, RLMonsters.GOLDEN.color);
     if (s.killHeal) heal(s.killHeal);
+    if (s.uq.reap && (player.reap || 0) < UQ_FX.reap.max) player.reap = Math.min(UQ_FX.reap.max, (player.reap || 0) + s.uq.reap);   // 사자의 낫
     dropLoot(e);
     gainXp(xp);
   }
@@ -1979,6 +2003,15 @@
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "rune", rune: k });
         log(`${e.name}이(가) ${RLItems.runeName(k)}을(를) 떨어뜨렸다! ✨`, "rainbow");
+      }
+    }
+    // 유니크: 헬 네임드 보스만, UNIQUE.chance 확률로 그 보스의 유니크 2개 중 하나 (시드 |u처치 순번 → 서버가 똑같이 검증)
+    if (inHell() && e.named) {
+      const u = RLItems.rollUnique(`${player.rid}|${floorTag()}${depth}|u${player.kills}`, itemLevel());
+      if (u) {
+        const spot = dropSpot(e.x, e.y);
+        items.push({ x: spot.x, y: spot.y, type: "gear", item: u, from: "boss" });
+        log(`✦✦ ${e.name}이(가) 유니크 ${RLItems.itemName(u)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
       }
     }
   }
@@ -2171,6 +2204,14 @@
   // 천하무적 불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번, 이 판의 이 층)
   const floorKey = () => `${player.rid}|${player.zone || "normal"}|${depth}`;
   function death() {
+    // 염라의 관복: 쓰러질 때마다 확률로 HP 1로 버팀
+    const ls = stats().uq.lastStand;
+    if (ls && Math.random() * 100 < ls) {
+      player.hp = 1;
+      showDamage(player, "버팀", true, RLItems.RARITIES.unique.color);
+      log(`✦ 염라의 관복: 쓰러질 피해를 버텨냈다! HP 1`, null, RLItems.RARITIES.unique.color);
+      return;
+    }
     if (stats().rw.undying && player.ud !== floorKey()) {
       player.ud = floorKey();
       player.hp = 1;
@@ -2609,7 +2650,10 @@
   const FB = RLItems.FIREBALL, NOVA = RLItems.FROST_NOVA, CHAIN = RLItems.CHAIN;
   let skillFx = [];  // 스킬 칸 번쩍임 [{ cells, color, until }]
   const shocked = (e) => e.shock > turn;  // 감전: 받는 피해 +CHAIN.shock.pct%
-  const shockMul = (e) => (shocked(e) ? 1 + CHAIN.shock.pct / 100 : 1);
+  // 감전(받는 피해 +CHAIN.shock.pct%)과 송곳니 물어뜯기(받는 피해 +bitePct%)
+  const shockMul = (e) => (shocked(e) ? 1 + CHAIN.shock.pct / 100 : 1) * (e.biteUntil > turn ? 1 + (e.bitePct || 0) / 100 : 1);
+  // 명부의 사슬: 정예·보스에게 주는 피해 +%
+  const bossMul = (e, s) => (s?.uq?.bossDmg && e.kind !== "normal" ? 1 + s.uq.bossDmg / 100 : 1);
   // 몬스터의 속성 저항 e.res = { fire, ice, bolt } (일반·나이트메어 몬스터는 0, 헬 몬스터는 자기 속성 50%·다른 속성 10~40%)
   // 폭풍전야 디버프면 −vulnPct% → 속성 피해가 그만큼 더 들어감
   const RW_FX = RLItems.RUNEWORD_FX;
@@ -2625,7 +2669,7 @@
   // 스킬 피해는 속성 피해 (몬스터 속성 저항만큼). 룬워드(태산·마음가짐·몰래)면 스킬에도 흡혈
   function skillHit(e, dmg, crit, color, s) {
     const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : "bolt";   // 파이어볼 불·노바 얼음·체인 번개
-    const d = Math.max(1, Math.round(dmg * shockMul(e) * elemMul(e, el)));
+    const d = Math.max(1, Math.round(dmg * shockMul(e) * elemMul(e, el) * bossMul(e, s)));
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     showDamage(e, d, crit, color);
@@ -2688,7 +2732,7 @@
       if (at) {
         player.chainCd = CHAIN.every - fast;
         const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
-        const strikes = s.chainMax ? CHAIN.strikesMax : CHAIN.strikes;
+        const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0);   // 여의주 검 +2
         const hitOnce = new Set(), cells = [];
         let n = 0;
         for (let k = 0; k < strikes && at; k++) {
@@ -2719,7 +2763,9 @@
     if (reaperOn()) out.push(`☠ 포탈 봉인 · 흡혈 ${Math.round(lsMul() * 100)}%`);
     const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
     one(s.fireball || s.rw.fireball, "🔥", "파이어볼", player.fbCd);
-    if (s.rw.shield) out.push(`🛡 보호막 ${player.shield || 0}`);
+    if (s.rw.shield || s.uq.shield) out.push(`🛡 보호막 ${player.shield || 0}`);
+    if (player.iron > 0) out.push(`🐉 쇠비늘 방어력 +${player.iron}%`);
+    if (player.reap > 0) out.push(`💀 영혼 수확 공격력 +${player.reap}%`);
     if (s.rw.undying) out.push(player.ud === floorKey() ? "✦ 불사 사용함" : "✦ 불사 준비됨");
     one(s.nova, "❄", "노바", player.novaCd);
     one(s.chain, "⚡", "체인", player.chainCd);
@@ -2746,8 +2792,9 @@
     if (player.potCd > 0) player.potCd--;
     // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음), 치유는 HP가 낮으면 every턴마다 포션 자동 (쿨타임과 따로)
     const s0 = stats(), rw = s0.rw;
-    if (!rw.shield) player.shield = 0;
-    else if (turn % RW_FX.shield.every === 0) player.shield = Math.round(s0.maxHp * rw.shield / 100);
+    const shieldPct = Math.max(rw.shield || 0, s0.uq.shield || 0);   // 룬워드(태산·선견지명)·용비늘 장화 중 큰 것
+    if (!shieldPct) player.shield = 0;
+    else if (turn % RW_FX.shield.every === 0) player.shield = Math.round(s0.maxHp * shieldPct / 100);
     if (rw.autoPotion && player.hp > 0 && player.hp <= s0.maxHp * RW_FX.autoPotion.below / 100 && turn - (player.apAt ?? -99) >= RW_FX.autoPotion.every) {
       player.apAt = turn;
       const before = player.hp;
@@ -3263,7 +3310,7 @@
   // 로비 화면은 계속 다시 그림 (다른 사람 움직임, 입구 빛).
   // 던전은 보이는 곳에 레전더리·세트 장비나 룬이 떨어져 있을 때만 계속 다시 그림 (무지개색)
   let lobbyFrame = 0;
-  const rainbowInSight = () => !reduceMotion && items?.some(it => (it.type === "rune" || (it.type === "gear" && isRainbow(it.item))) && visible?.[it.y]?.[it.x]);
+  const rainbowInSight = () => !reduceMotion && items?.some(it => (it.type === "rune" || (it.type === "gear" && (isRainbow(it.item) || isUnique(it.item)))) && visible?.[it.y]?.[it.x]);
   // 로비·무지개 아이템 애니메이션: 초당 LOBBY_FPS번만 다시 그림 (매 프레임 그리면 로비에서 CPU 약 21% → 휴대폰 배터리)
   const LOBBY_FPS = 20;
   function lobbyLoop(t) {
@@ -3556,7 +3603,14 @@
       if (it.type === "treasure" || it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
       else if (it.type === "gear") {
         const glyph = RLItems.isWeaponLike(it.item) ? ")" : it.item.type === "shield" ? "]" : "[";
-        if (isRainbow(it.item) && !reduceMotion) {
+        if (isUnique(it.item)) {
+          // 유니크: 금빛으로 강하게 빛남 (깜빡이듯 밝기가 바뀜)
+          ctx.save();
+          ctx.shadowColor = "#ffd76a";
+          ctx.shadowBlur = reduceMotion ? 12 : 10 + 8 * Math.abs(Math.sin(performance.now() / 300));
+          drawGlyph(glyph, px, py, RLItems.RARITIES.unique.color);
+          ctx.restore();
+        } else if (isRainbow(it.item) && !reduceMotion) {
           // 레전더리·세트: 무지개색으로 계속 바뀌고 은은하게 빛남
           const color = rainbowColor(it.x + it.y);
           ctx.save();
@@ -3877,7 +3931,7 @@
   const invSummary = document.getElementById("inv-summary");
   const invBag = document.getElementById("inv-bag");
   const invDetail = document.getElementById("inv-detail");
-  const RARITY_ORDER = ["set", "legendary", "epic", "rare", "uncommon", "common"];
+  const RARITY_ORDER = ["unique", "set", "legendary", "epic", "rare", "uncommon", "common"];
   const invSide = document.getElementById("inv-side");
   const invGuide = document.getElementById("inv-guide");
   let selected = null;  // { from: "bag", id } | { from: "equip", slot }
@@ -3908,7 +3962,7 @@
     return node;
   }
 
-  const itemLabel = (item) => el("span", { className: isRainbow(item) ? "rainbow" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item));
+  const itemLabel = (item) => el("span", { className: isRainbow(item) ? "rainbow" : isUnique(item) ? "unique-glow" : "", style: { color: rarityColor(item) } }, RLItems.itemName(item));
 
   // 세트 설명 한 줄
   function setNote(id) {
@@ -3987,11 +4041,12 @@
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
-      ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
+      ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${(s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0)}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
       ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
       // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
       ...(Inv.totals().runewords.names.length ? [`✦ 룬워드: ${Inv.totals().runewords.names.join(" · ")}`, ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
+      ...(Inv.totals().uniques.names.length ? [`✦ 유니크: ${Inv.totals().uniques.names.join(" · ")}`, ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
       ...(!s.fireball && s.rw.fireball ? [`파이어볼(나무): ${RLItems.RUNEWORD_FX.fireball.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.RUNEWORD_FX.fireball.mul * (1 + (s.fireballPct + s.elem.fire) / 100))}`] : []),
     ];
     const oldEquipped = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
@@ -4055,7 +4110,7 @@
 
   // 가방 전부 판매: 레전더리·세트·룬워드 재료가 섞여 있으면 같이 팔지 물어봄 (안 팔면 가방에 남김).
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
-  const isPrecious = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordHighlight(item);   // (헬) 룬워드 재료(커먼)도
+  const isPrecious = (item) => item.rarity === "legendary" || item.rarity === "set" || item.rarity === "unique" || RLItems.runewordHighlight(item);   // (헬) 룬워드 재료(커먼)도
   let sellAsk = false;  // 레전더리·세트를 같이 팔지 묻는 중
   // 가방 전부 판매에 들어가는 아이템 (잠긴 아이템과 보석을 넣은 아이템은 빼고)
   const sellable = () => Inv.bag().filter(item => !item.gems?.length && !item.lock);
@@ -4179,6 +4234,18 @@
   function rwTag(item) {
     const ws = RLItems.runewordHighlight(item) ? RLItems.runewordsFor(item) : [];
     return ws.length ? el("span", { className: "rw-tag rainbow", title: `룬워드 재료: ${ws.map(w => w.name).join(", ")}` }, "✦ 룬워드") : null;
+  }
+  // 유니크: 어느 네임드 보스의 것인지, 유니크 능력치·특수 효과
+  function uniqueRows(item) {
+    const U = RLItems.uniqueOf(item);
+    if (!U) return [];
+    const boss = RLMonsters.namedAt(U.boss);
+    return [el("div", { className: "rw-done" },
+      el("h3", { className: "unique-glow", style: { color: RLItems.RARITIES.unique.color } }, `✦ 유니크 ${U.name}`),
+      el("div", { className: "meta" }, `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
+      el("div", { className: "stat-line set-on", style: { color: RLItems.RARITIES.unique.color } }, `✦ ${U.text}`),
+      ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`)),
+      el("div", { className: "stat-line set-on" }, `✦ 유니크의 힘: 공격력·방어력·최대 HP +${RLItems.UNIQUE.power.pct}%, 모든 속성 저항 +${RLItems.UNIQUE.power.allRes}%`))];
   }
   function runewordRows(item) {
     // 완성된 룬워드: 능력치(아이템 단계 배율)와 특수 효과
@@ -4341,7 +4408,7 @@
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
     );
     // 홈과 보석
-    rows.push(...runewordRows(item));
+    rows.push(...runewordRows(item), ...uniqueRows(item));
     if (RLItems.socketCount(item)) { const [h, ...rest] = socketRows(item); rows.push(fold("sock", h.textContent, rest)); }
     // 이 부위의 추천 능력치 (끝판 목표)
     rows.push(...recommendRows(item));
@@ -4814,7 +4881,7 @@
   const Market = {
     tab: "buy", list: null, mine: null, cash: null, sel: null, busy: false, mailCount: 0, mailKnown: false,
     filter: { slot: "", rarity: "", sort: "new" },
-    rules: { fee: 1, hours: 24, maxActive: 10, cashRequired: ["legendary", "set"] },
+    rules: { fee: 1, hours: 24, maxActive: 10, cashRequired: ["legendary", "set", "unique"] },
   };
 
   const priceText = (gold, cash) => [cash ? `◆ ${cash}` : null, gold ? `${gold.toLocaleString()} 골드` : null].filter(Boolean).join(" + ") || "0";
@@ -5376,7 +5443,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021i:${owner}`;  // 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021j:${owner}`;  // 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5384,6 +5451,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120% + 유니크의 힘(공격·방어·HP +15%)과 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
         `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
         `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +
         `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ` +

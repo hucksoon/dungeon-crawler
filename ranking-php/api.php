@@ -28,7 +28,7 @@ require_once __DIR__ . '/market.php';
 require_once __DIR__ . '/ads.php';
 require_once __DIR__ . '/profile.php';
 
-const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5];
+const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5, 'unique' => 6];
 const MAX_STAGE = 10000;
 // 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
 const MAX_FLOOR = 75;
@@ -49,6 +49,7 @@ const NM_CLEAR = NM_FLOORS + 1;
 const HELL_FLOORS = 50;
 const HELL_ITEM_BASE = NM_ITEM_BASE + NM_FLOORS;
 const HELL_CLEAR = HELL_FLOORS + 1;
+const HELL_NAMED = [10, 20, 30, 40, 50];   // 네임드 보스 층 (monsters.js NAMED): 유니크를 떨어뜨림
 const CURRENT_SEASON = 'v4';
 const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
@@ -434,10 +435,12 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         if ($src === 'boss') return $n % 5 === 0;
         return $src === 'golden';
     }
-    // 헬 (v4 r6): 층 j는 1~50, 아이템 레벨 = 125 + j
-    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
+    // 헬 (v4 r6): 층 j는 1~50, 아이템 레벨 = 125 + j. u = 네임드 보스의 유니크 (R_UNIQUE['chance'] 안에 들어야 떨어짐)
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kpu])\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[1];
         if ($v !== 4 || $rev < 6 || $n < 1 || $n > HELL_FLOORS || $lvl !== HELL_ITEM_BASE + $n) return false;
+        if ($m[2] === 'u') return $src === 'unique' && $rev === 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'];
+        if ($src === 'unique') return false;
         if ($m[2] === 'p') return $src === 'golden';   // 보물 자리
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
         if ($src === 'boss') return $n % 5 === 0;
@@ -481,7 +484,7 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
     if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6], true) || ($rev > 0 && $v !== 4)) return null;
-    if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
+    if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || (!isset(R_TABLES[$src]) && $src !== 'unique')) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;

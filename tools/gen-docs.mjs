@@ -16,6 +16,7 @@ const I = require("../items.js");
 const N = M.NIGHTMARE;
 const EL = M.ELEMENTS;
 
+const RAR = Object.keys(I.RARITIES).filter(r => r !== "unique");   // 보통 등급 (유니크는 따로 정리)
 const pct = (p) => `${Math.round(p * 1000) / 10}%`;
 const table = (head, rows) => [
   `| ${head.join(" | ")} |`,
@@ -176,18 +177,18 @@ ${table(["나이트메어 층", "보스", "보스 HP", "보스 공격", "아이�
 - 아이템 레벨은 **${M.HELL.itemBase} + 헬 층** (${M.HELL.itemBase + 1}~${M.HELL.itemBase + M.HELL.floors}), 이름에 **"지옥의"**가 붙어요 ([지옥의 아이템](items.md#지옥의-아이템))
 - 골드: 처치 ×${M.HELL.gold.kill}, 골드 더미 ×${M.HELL.gold.pile}, 층 돌파 보상 = 그 층 지옥의 레전더리 상점 가격 × ${M.HELL.gold.floor}
 - 랭킹은 **헬 탭**에 따로 기록돼요. 완료하면 "${M.HELL.floors}층 완료 ✓" (서버 기록값 ${M.HELL.clearStage})
-- ${M.HELL.milestones.join("·")}층 보스는 [네임드 보스](#헬-네임드-보스) (고유 유니크 아이템은 다음 단계)
+- ${M.HELL.milestones.join("·")}층 보스는 [네임드 보스](#헬-네임드-보스), 고유 [유니크 아이템](items.md#유니크-최종-목표-아이템)을 떨어뜨려요
 
 ${table(["헬 층", "보스", "보스 HP", "보스 공격", "속성 저항 (자기 / 다른)", "아이템 레벨"],
   [5, 15, 25, 35, 45].map(n => { const b = M.makeHellBoss(n, "fire"); return [n, b.name, b.hp, b.atk, `${b.res.fire}% / ${b.res.ice}%`, M.HELL.itemBase + n]; }))}
 
 ### 헬 네임드 보스
 
-헬 ${M.HELL.milestones.join("·")}층은 보통 보스 대신 이름 있는 **네임드 보스**가 계단을 지켜요 (분홍 테두리 두 겹). 저마다 고유한 패턴이 있고, 쓰러뜨리면 장비와 함께 **룬 ${M.NAMED.runes}개**를 떨어뜨려요 (룬 확률은 나이트메어 50층 보스와 같아요). 오른쪽 문으로 완료한 층을 골라 들어가면 바로 그 네임드를 다시 잡으러 갈 수 있어요.
+헬 ${M.HELL.milestones.join("·")}층은 보통 보스 대신 이름 있는 **네임드 보스**가 계단을 지켜요 (분홍 테두리 두 겹). 저마다 고유한 패턴이 있고, 쓰러뜨리면 장비와 함께 **룬 ${M.NAMED.runes}개**를 떨어뜨리고 (룬 확률은 나이트메어 50층 보스와 같아요), **${Math.round(I.UNIQUE.chance * 100)}% 확률로 그 보스의 [유니크](items.md#유니크-최종-목표-아이템)** 2개 중 하나를 떨어뜨려요. 오른쪽 문으로 완료한 층을 골라 들어가면 바로 그 네임드를 다시 잡으러 갈 수 있어요.
 
 - 능력치 = 그 층 헬 보스 × HP 배율 × 공격 배율 (보스 속성 저항: 자기 속성 ${M.HELL.res.own + M.HELL.res.boss}%, 다른 속성 +${M.HELL.res.boss}%)
 - 시뮬레이션 (그 층 추천 조합 고대 레전더리 +10, 1:1): 쓰러질 확률 10층 1% · 20층 15% · 30층 14% · 40층 22% · 50층 26%. 패턴을 끈 같은 능력치면 모두 0% — 패턴이 난이도를 만들어요
-- 헬은 아직 줄이 최고치에 가까운 장비를 기준으로 맞춰져 있어요 (중간 줄 장비는 헬 몬스터 무리에게도 쓰러져요). 유니크 아이템이 나오면 다시 맞출 예정
+- 헬은 아직 줄이 최고치에 가까운 장비를 기준으로 맞춰져 있어요 (중간 줄 장비는 헬 몬스터 무리에게도 쓰러져요). 유니크와 함께 다시 맞출 예정 (헬 4단계)
 
 ${table(["헬 층", "네임드", "속성", "HP", "공격", "HP·공격 배율", "패턴"],
   Object.entries(M.NAMED.bosses).map(([n, N]) => { const b = M.makeNamedBoss(+n); return [n, `**${N.name}** (${N.title})`, N.pattern === "judge" ? "불 → 얼음 → 번개" : M.ELEMENTS.names[N.el], b.hp, b.atk, `×${N.hpMul} · ×${N.atkMul}`, {
@@ -321,7 +322,7 @@ ${table(["나이트메어 층", "더미", "처치", "보스", "황금 고블린"
 - **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (강화석·고대 굴리기도 ×${I.NM_SHOP.priceMul}) (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
 
 ${table(["등급", "기본 가격", ...SHOP_FLOORS.map(d => `${d}층`)],
-  Object.keys(I.SHOP.prices).map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
+  Object.keys(I.SHOP.prices).filter(r => r !== "unique").map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
 
 ### 진열 바꾸기
 
@@ -398,14 +399,14 @@ ${table(["부위", "항상", "후보"], [["무기", "weapon"], ["장검 (무기)
 - 방패는 여기에 더해 패링 확률이 붙어요 (아래 [보조 손](#보조-손-보조무기와-방패))
 
 ${table(["등급", "주 능력치 개수", "추가 능력치 줄 수", "수치 능력치 범위 배율"],
-  Object.entries(I.RARITIES).map(([r, x]) => [x.name, I.MAIN_V4.count[r][0] === I.MAIN_V4.count[r][1] ? I.MAIN_V4.count[r][0] + "개" : I.MAIN_V4.count[r].join("~") + "개", x.lines + "줄", `×${I.MAIN.rarityMul[r]}`]))}
+  RAR.map(r => [r, I.RARITIES[r]]).map(([r, x]) => [x.name, I.MAIN_V4.count[r][0] === I.MAIN_V4.count[r][1] ? I.MAIN_V4.count[r][0] + "개" : I.MAIN_V4.count[r].join("~") + "개", x.lines + "줄", `×${I.MAIN.rarityMul[r]}`]))}
 
 - 후보가 적은 부위(방패)는 후보 수만큼만 붙어요
 
 ### 주 능력치: % 능력치 (등급별 고정)
 
-${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
-  Object.keys(I.PCT_MAIN).filter(k => k !== "allRes").map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_MAIN[k][r]))]))}
+${table(["능력치", ...RAR.map(r => I.RARITIES[r].name)],
+  Object.keys(I.PCT_MAIN).filter(k => k !== "allRes").map(k => [I.STATS[k].name + "%", ...RAR.map(r => fmtR(k, I.PCT_MAIN[k][r]))]))}
 
 ### 주 능력치: 수치 능력치 (커먼 기준, 등급 배율을 곱함)
 
@@ -417,7 +418,7 @@ ${table(["아이템 레벨", "공격력 (무기)", "방어력", "최대 HP (방�
 ### 예: 레벨 10 장비의 수치 주 능력치 범위
 
 ${table(["등급", "무기 공격력", "도끼 공격력", "장검 공격력", "방어구 방어력", "방어구 최대 HP"],
-  Object.keys(I.RARITIES).map(r => [I.RARITIES[r].name,
+  RAR.map(r => [I.RARITIES[r].name,
     fmtR("atk", I.mainRange("atk", sample("weapon", r, 10))), fmtR("atk", I.mainRange("atk", sample("weapon", r, 10, "axe"))), fmtR("atk", I.mainRange("atk", sample("weapon", r, 10, "longsword"))),
     fmtR("def", I.mainRange("def", sample("chest", r, 10))), fmtR("hp", I.mainRange("hp", sample("chest", r, 10)))]))}
 
@@ -427,8 +428,8 @@ ${table(["등급", "무기 공격력", "도끼 공격력", "장검 공격력", "
 
 ### 추가 능력치: % 능력치 (등급별 고정)
 
-${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
-  Object.keys(I.PCT_LINE).filter(k => I.STAT_KEYS_V4.includes(k)).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
+${table(["능력치", ...RAR.map(r => I.RARITIES[r].name)],
+  Object.keys(I.PCT_LINE).filter(k => I.STAT_KEYS_V4.includes(k)).map(k => [I.STATS[k].name + "%", ...RAR.map(r => fmtR(k, I.PCT_LINE[k][r]))]))}
 
 ### 추가 능력치: 수치 능력치 (등급과 상관없이 아이템 레벨로)
 
@@ -475,7 +476,7 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 - 공격력 ×${I.WEAPONS.longsword.atkMul}. 주 능력치 후보는 공격력(항상)·방어력·치명타 확률·모든 속성 저항이고, 공격력이 아닌 것도 **다른 부위 범위의 ${I.WEAPONS.longsword.mainMul}배**예요
 
 ${table(["등급", "공격력 (Lv10)", "방어력 (Lv10)", "치명타 확률", "모든 속성 저항"],
-  Object.keys(I.RARITIES).map(r => { const it = { ...sample("weapon", r, 10, "longsword"), v: 4 }; return [I.RARITIES[r].name, ...["atk", "def", "crit", "allRes"].map(k => fmtR(k, I.mainRange(k, it)))]; }))}
+  RAR.map(r => { const it = { ...sample("weapon", r, 10, "longsword"), v: 4 }; return [I.RARITIES[r].name, ...["atk", "def", "crit", "allRes"].map(k => fmtR(k, I.mainRange(k, it)))]; }))}
 
 - 모든 속성 저항은 강화로 오르지 않아요 (추가 능력치의 저항 줄처럼)
 - **견고의 세트** 무기도 장검이에요. 예전에 얻은 **견고의 도끼는 견고의 장검으로 바뀌었어요** (같은 아이템 ID, 강화 단계 그대로, 능력치는 장검 규칙으로 다시 정해짐)
@@ -604,12 +605,26 @@ ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층�
 - 강화는 **지옥 강화석**으로 (지옥의 아이템을 팔면 나와요). 강화석·강화 골드·상점 가격 ×${I.HELL_SHOP.priceMul}, 판매 골드 ×${I.HELL_SHOP.sellMul}
 - 지옥의 커먼이 룬워드 재료면 줍는 순간 알려 주고 인벤토리에서 눈에 띄게 보여요. 룬워드 능력치 ×1 (최대)
 
+## 유니크 (최종 목표 아이템)
+
+[헬 네임드 보스](monsters.md#헬-네임드-보스)만 떨어뜨리는 고정 아이템이에요. 네임드를 쓰러뜨릴 때마다 **${pct(I.UNIQUE.chance)}** 확률로 그 보스의 유니크 2개 중 하나 (금빛으로 빛나요).
+
+- 시드 …|j층|u처치 순번, 출처 "unique" → 서버가 똑같이 다시 만들어 검증 (네임드 층이 아니거나 안 나오는 순번이면 거절)
+- **주 능력치는 그 부위 후보 전부** (레전더리는 2~3개), 범위는 **레전더리 × ${I.UNIQUE.mul}**. 추가 능력치 **4줄은 아이템마다 고정**이고 값만 굴려요 (범위 × ${I.UNIQUE.mul})
+- **유니크의 힘**: 하나마다 공격력·방어력·최대 HP **+${I.UNIQUE.power.pct}%**, 모든 속성 저항 **+${I.UNIQUE.power.allRes}%** (고대 레전더리의 전설의 힘 +${I.LEGEND.max}%·+${I.LEGEND.allRes}%보다 조금 크게)
+- 고유 효과는 아래 표. 같은 종류 효과는 가장 큰 것 하나 (용비늘 장화 보호막과 룬워드 보호막도)
+- 지옥의 아이템이라 지옥의 힘 ×${I.HELL_POWER.mul}·지옥 강화석. 고대·고대 다시 굴리기·옵션 재련·홈은 없어요. 거래소에 올리려면 캐시 연결 필요 (레전더리·세트처럼)
+- 시뮬레이션 (헬 50층 추천 조합 고대 레전더리 +10, 네임드 염라대왕 1:1 · 몰려오는 20마리): 그대로 27% · 23% → 한 부위만 유니크로 바꿔도 대부분 5~18% (쇠비늘 18%·명부의 사슬 13%·송곳니 6%), **방어구 유니크 5부위 0% · 0%**. 방패 유니크(업경대)는 두 손 단검보다 느려서 혼자 끼면 오히려 위험해요 (여의주 검 + 업경대 + 방어구 5부위면 0%)
+
+${table(["네임드", "유니크", "부위", "추가 능력치 (고정)", "고유 효과"],
+  Object.values(I.UNIQUE.items).map(U => [`${U.boss}층 ${M.namedAt(U.boss).name}`, `**${U.name}**`, U.type ? I.kindName({ slot: U.slot, type: U.type }) : I.ARMOR[U.slot].name, U.lines.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", "), U.text]))}
+
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r3)
 
 [나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·보물·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
 
-${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
-  I.ELEMENT_LINES.keys.map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.RES_R4[k] || I.PCT_LINE[k][r]))]))}
+${table(["능력치", ...RAR.map(r => I.RARITIES[r].name)],
+  I.ELEMENT_LINES.keys.map(k => [I.STATS[k].name + "%", ...RAR.map(r => fmtR(k, I.RES_R4[k] || I.PCT_LINE[k][r]))]))}
 
 (저항 줄은 규칙 r4부터의 범위. r3까지 얻은 아이템은 ${fmtR("fireRes", I.PCT_LINE.fireRes.rare)} · 모든 속성 저항 ${fmtR("allRes", I.PCT_LINE.allRes.rare)}로 붙어 있고, 효과는 새 최대치(${I.RES_R4.fireRes[1]}% · ${I.RES_R4.allRes[1]}%)까지만 적용돼요. 화면에 "(적용 N%)")
 
