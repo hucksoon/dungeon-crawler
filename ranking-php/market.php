@@ -227,6 +227,7 @@ function market_list(): array {
     if (in_array($item['rarity'], MARKET_CASH_REQUIRED, true) && $cash < 1) throw new HttpError(400, 'cash_required');
     $tries = is_int($ref['tries'] ?? null) ? max(0, min(1000, $ref['tries'])) : 0;
     $cleanRef = ['seed' => $item['seed'], 'src' => $item['src'], 'lvl' => $item['lvl'], 'v' => $item['v'], 'enh' => $item['enh'], 'r' => $item['r'] ?? 0, 'id' => $item['id'], 'tries' => $tries, 'ar' => (int)($item['ar'] ?? 0)];
+    if (!empty($item['rf'])) $cleanRef['rf'] = $item['rf'];   // 대장간 옵션 재련
 
     $now = now_ms();
     $id = tx(function (PDO $pdo) use ($who, $item, $cleanRef, $gold, $cash, $now) {

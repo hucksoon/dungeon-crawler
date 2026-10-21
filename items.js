@@ -322,7 +322,8 @@
   }
 
   // ---- 세트 ----
-  // 시험의 세트: 2·4·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음)
+  // 시험의 세트: 2·3·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음)
+  // 방어구 세트는 모두 2·3·5 (예전 2·4·5: 방어구 5부위를 세트 둘로 나누면 2+3이라 두 세트 모두 2세트 효과뿐이었음 → 이제 2세트 + 3세트 효과)
   // 광란의 세트: 오른손·왼손 무기 2개 → 때린 적 주변 1칸의 적도 같은 피해
   // 견고의 세트: 장검·방패 2개 → 패링 확률 +15% (방패 최대 25%와 합쳐 최대 40%)
   //   무기는 도끼였다가 장검으로 바뀜. 세트 무기 종류는 굴리지 않아서 예전에 얻은 견고의 도끼도 다시 만들면 견고의 장검 (ID는 같음)
@@ -338,7 +339,7 @@
       // 구하기 아주 어려운 만큼 강하게: 전체 능력치에 % 로 붙음
       bonuses: [
         { count: 2, text: "최대 HP +20%, 방어력 +20%", stats: { hpPct: 20, defPct: 20 } },
-        { count: 4, text: "공격력 +25%, 치명타 확률 +10%", stats: { atkPct: 25, crit: 10 } },
+        { count: 3, text: "공격력 +25%, 치명타 확률 +10%", stats: { atkPct: 25, crit: 10 } },
         // 5세트: 흡혈 +8% → 받는 피해 −10% (흡혈이 최대 20%가 되면서 묻히지 않게)
         { count: 5, text: "치명타 피해 +100%, 받는 피해 −10%, 적을 쓰러뜨리면 최대 HP의 15% 회복", stats: { critDmg: 100, dmgReduce: 10, killHealPct: 15 } },
       ],
@@ -359,7 +360,7 @@
       pieces: { head: "화염의 투구", chest: "화염의 갑옷", arms: "화염의 팔보호구", pants: "화염의 바지", boots: "화염의 장화" },
       bonuses: [
         { count: 2, text: "파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)", stats: { fireball: 1 } },
-        { count: 4, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
+        { count: 3, text: "파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%", stats: { fireballPct: 50, hpPct: 15, fireRes: 20 } },
         { count: 5, text: "파이어볼에 맞은 적이 모두 화상을 입어요", stats: { fireballBurn: 1 } },
       ],
     },
@@ -371,7 +372,7 @@
       pieces: { head: "서리의 투구", chest: "서리의 갑옷", arms: "서리의 팔보호구", pants: "서리의 바지", boots: "서리의 장화" },
       bonuses: [
         { count: 2, text: "프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)", stats: { nova: 1 } },
-        { count: 4, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
+        { count: 3, text: "프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%", stats: { novaPct: 50, defPct: 10, iceRes: 20 } },
         { count: 5, text: "프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)", stats: { novaSlow: 1 } },
       ],
     },
@@ -383,7 +384,7 @@
       pieces: { head: "뇌전의 투구", chest: "뇌전의 갑옷", arms: "뇌전의 팔보호구", pants: "뇌전의 바지", boots: "뇌전의 장화" },
       bonuses: [
         { count: 2, text: "체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)", stats: { chain: 1 } },
-        { count: 4, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
+        { count: 3, text: "체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%", stats: { chainPct: 50, crit: 10, boltRes: 20 } },
         { count: 5, text: "번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%", stats: { chainMax: 1 } },
       ],
     },
@@ -587,7 +588,8 @@
   // +N으로 강화할 때: 강화석 N개. +4까지는 항상 성공, +5는 50%, 이후 10%p씩 낮아져 최저 5%.
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
   // +4, +6, +8, +10이 되면 추가 능력치 중 하나가 그 능력치 최대치의 50%(최소 +1)만큼 오름
-  const ENHANCE = { max: 10, statPerLevel: 0.1, lineSteps: [4, 6, 8, 10], lineBoost: 0.5 };
+  // +11·+12 (대장간 업데이트): 강화석에 골드도 듦 (enhanceGold), 성공 확률은 +10처럼 최저 5%. +12에서 추가 능력치 하나 더 오름
+  const ENHANCE = { max: 12, statPerLevel: 0.1, lineSteps: [4, 6, 8, 10, 12], lineBoost: 0.5, goldFrom: 11, goldBase: 300 };
   // 나이트메어 아이템은 강화석도 × NM_SHOP.priceMul
   const enhanceCost = (to, item) => to * (item ? nmCostMul(item) : 1);
   // 강화석 종류: 나이트메어 아이템은 "악몽 강화석"(나이트메어 아이템을 판매해야 나옴)으로만 강화. 일반 아이템은 일반 강화석
@@ -595,6 +597,8 @@
   const STONE_NAMES = { stones: "강화석", nmStones: "악몽 강화석" };
   const stoneKey = (item) => (isNightmareItem(item) ? "nmStones" : "stones");
   const enhanceChance = (to) => (to <= 4 ? 1 : Math.max(0.05, 0.5 - (to - 5) * 0.1));
+  // +11부터 한 번 시도할 때 드는 골드: 기본값 × (+N − 10) × 레벨 보정 (나이트메어 아이템 × NM_SHOP.priceMul). 100레벨 나이트메어 +11 약 6,000
+  const enhanceGold = (to, item) => (to >= ENHANCE.goldFrom ? levelPrice(ENHANCE.goldBase * (to - 10), item.lvl || 1) * nmCostMul(item) : 0);
 
   // 강화 결과는 (아이템 ID, 몇 번째 시도) 시드로 정해짐 → 새로고침해도 같은 결과, 서버에서 다시 계산 가능
   function rollEnhance(item) {
@@ -679,6 +683,39 @@
     // 속성 피해는 강화해도 한 줄 최대 11%
     for (const l of lines) if (isElementDmg(l[0]) && l[1] > ELEMENT_LINES.dmgCap) { l[2] -= l[1] - ELEMENT_LINES.dmgCap; l[1] = ELEMENT_LINES.dmgCap; }
     return lines;
+  }
+
+  // ---- 대장간 ----
+  // 옵션 재련: 골드를 내고 추가 능력치 한 줄(홈 빼고)을 골라 다시 굴림. 아이템마다 할 때마다 growth배씩 비싸짐 (끝없이 골드를 쓸 곳)
+  //   새 능력치는 그 아이템이 가질 수 있는 후보 중 다른 줄에 없는 것 (지금 줄의 능력치도 다시 나올 수 있음). 속성 피해 줄은 하나만 규칙 그대로
+  //   고대 아이템이면 새 줄도 최대치 (고대가 풀리지 않게). 결과는 (아이템 ID, 몇 번째 재련) 시드 → 서버가 rf(고른 줄 번호 목록)로 다시 계산
+  // 홈 초기화: 수수료를 내고 홈에 넣은 보석을 모두 지움 (보석은 사라짐, 홈 개수는 그대로)
+  const FORGE = { reforge: { mul: 0.5, growth: 1.5 }, socketReset: { base: 500 } };
+  const canReforge = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set");
+  const reforgeableLine = (item, i) => !!item.lines?.[i] && item.lines[i][0] !== "socket";
+  const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * FORGE.reforge.growth ** (item.rf || []).length / 5) * 5;
+  const socketResetCost = (item) => levelPrice(FORGE.socketReset.base, item.lvl || 1) * nmCostMul(item);
+  function reforgeLine(item, i) {
+    if (!canReforge(item) || !reforgeableLine(item, i)) return null;
+    const n = (item.rf || []).length + 1;
+    const rng = rngFrom(`rf|${item.id}|${n}`);
+    const nightmare = isNightmareItem(item) && (item.r || 0) >= 3;
+    const others = item.lines.filter((_, j) => j !== i).map(([k]) => k);
+    const elemTaken = others.some(isElementDmg);
+    const pool = (nightmare ? STAT_KEYS_NM : STAT_KEYS_V4).filter(k => !others.includes(k) && !(elemTaken && isElementDmg(k)));
+    const stat = pool[Math.floor(rng() * pool.length)], range = lineRangeOf(stat, item), v = rollRange(rng, range);
+    item.lines[i] = [stat, item.ancient ? range[1] : v];
+    item.rf = [...(item.rf || []), i];
+    item.ancient = isAncient(item);
+    return item.lines[i];
+  }
+  // 참조(rf)로 다시 만들 때: 고른 줄 번호를 차례로 다시 재련 (고대 굴림 ar 다음에). 줄 번호가 이상하면 아이템을 바꾸지 않고 null
+  // (재련은 줄 수·홈 줄 자리를 바꾸지 않아서 미리 다 확인할 수 있음 — 서버 r_apply_reforges와 같음)
+  function applyReforges(item, rf) {
+    if (!Array.isArray(rf) || !rf.length) return item;
+    if (!canReforge(item) || !rf.every(i => Number.isInteger(i) && reforgeableLine(item, i))) return null;
+    for (const i of rf) reforgeLine(item, i);
+    return item;
   }
 
   // ---- 상점 ----
@@ -854,7 +891,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, rollEnhance, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, FORGE, canReforge, reforgeableLine, reforgeCost, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

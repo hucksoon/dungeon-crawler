@@ -200,6 +200,9 @@
   // 보스 공격 1.3 → 1.1: 포션을 마시는 데 한 턴이 드는 것까지 넣고 다시 보니 1층 보스에게 3번 중 1번 쓰러짐 → 1.1이면 4%, 50층 9%
   const NIGHTMARE = {
     floors: 50, perFloor: 0.02, perFloor2: 0.003, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    // 공격력만 층 배율의 제곱 항을 낮게 (HP는 perFloor2 그대로): 40층 ×6.3 → ×4.8, 50층 ×9.2 → ×6.8
+    // 장비는 아이템 레벨만큼만(완만하게) 강해져서, 고대 장비로도 40층에서 몰려오는 몬스터에게 100% 쓰러졌음 (시뮬레이션)
+    atkPerFloor2: 0.002,
     // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (±3)
     // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
     monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },
@@ -213,6 +216,11 @@
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
   };
+  // 둘러싸임 방어: 플레이어 주변 8칸에 몬스터가 from마리 이상 붙어 있으면 받는 피해(방어력으로 줄어든 뒤) −per × (수 − from + 1), 최대 max
+  // (3마리 −8% … 8마리 −40%). 몬스터가 계속 몰려오면 흡혈·포션으로 버틸 수 없어서 고대 장비로도 나이트메어 40층에서 쓰러졌음
+  const CROWD = { from: 3, per: 0.08, max: 0.4 };
+  const crowdCut = (n) => (n >= CROWD.from ? Math.min(CROWD.max, (n - CROWD.from + 1) * CROWD.per) : 0);
+
   // ---- 속성: 불·얼음·번개 ----
   // 나이트메어 몬스터·보스는 속성을 하나씩 가짐. 플레이어는 나이트메어 아이템의 속성 피해(items.js ELEMENT_LINES)로 같은 효과를 냄
   // 불: 맞으면 화상 — 10턴 동안 2턴마다 1/10 피해. 다시 맞으면 남은 횟수만 처음으로(갱신, 2턴 박자는 그대로)
@@ -237,6 +245,7 @@
 
   const nmMonsterCount = (n) => Math.min(NIGHTMARE.monsters.max, Math.floor(NIGHTMARE.monsters.start + NIGHTMARE.monsters.perFloor * (Math.max(1, n) - 1)));
   const nmScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + (NIGHTMARE.perFloor2 || 0) * k * k; };
+  const nmAtkScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + NIGHTMARE.atkPerFloor2 * k * k; };
   // 75층에 나오는 몬스터 + 그 뒤에 나오는 몬스터(대악마·타이탄·공허의 군주·고룡). 뒤쪽일수록 자주
   const nightmarePool = () => MONSTERS.filter(m => (m.until ?? Infinity) >= NIGHTMARE.base);
   function pickNightmareType(rand) {
@@ -249,12 +258,12 @@
   function makeNightmare(t, kind, n, el = null) {
     const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(m.hp * NIGHTMARE.hp * k);
-    return withElement({ ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * k), nm: 1 }, el);
+    return withElement({ ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), nm: 1 }, el);
   }
   function makeNightmareBoss(n, el = null) {
     const b = makeBoss(NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(b.hp * NIGHTMARE.bossHp * k);
-    return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * k), nm: 1 }, el);
+    return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), nm: 1 }, el);
   }
 
   // rank: "normal" | "elite" | "king". kind는 모두 "golden" (드롭 등급표·서버 검증은 같음)
@@ -272,7 +281,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

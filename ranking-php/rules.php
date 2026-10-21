@@ -161,7 +161,7 @@ const R_MAX_ROLL_CHANCE = 0.2;
 const R_ANCIENT_CHANCE = 0.03;   // v4 r1부터
 // 고대 다시 굴리기 (items.js ANCIENT_REROLL): 고대가 아닌 v4 레전더리·세트를 골드로 굴림. 한 번에 5%, 최대 20번. 참조의 ar = 굴린 횟수
 const R_ANCIENT_REROLL = ['chance' => 0.05, 'max' => 20];
-const R_ENHANCE = ['max' => 10, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10], 'lineBoost' => 0.5];
+const R_ENHANCE = ['max' => 12, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10, 12], 'lineBoost' => 0.5];   // +11·+12: 대장간 업데이트
 const R_SETS = [
     'trial' => [
         'name' => '시험의 세트',
@@ -169,7 +169,7 @@ const R_SETS = [
         'pieces' => ['head' => '시험의 투구', 'chest' => '시험의 갑옷', 'arms' => '시험의 팔보호구', 'pants' => '시험의 바지', 'boots' => '시험의 장화', 'weapon' => '시험의 도끼'],
         'bonuses' => [
             ['count' => 2, 'text' => '최대 HP +20%, 방어력 +20%', 'stats' => ['hpPct' => 20, 'defPct' => 20]],
-            ['count' => 4, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
+            ['count' => 3, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
             ['count' => 5, 'text' => '치명타 피해 +100%, 받는 피해 −10%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'dmgReduce' => 10, 'killHealPct' => 15]],
         ],
     ],
@@ -188,7 +188,7 @@ const R_SETS = [
         'pieces' => ['head' => '화염의 투구', 'chest' => '화염의 갑옷', 'arms' => '화염의 팔보호구', 'pants' => '화염의 바지', 'boots' => '화염의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)', 'stats' => ['fireball' => 1]],
-            ['count' => 4, 'text' => '파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%', 'stats' => ['fireballPct' => 50, 'hpPct' => 15, 'fireRes' => 20]],
+            ['count' => 3, 'text' => '파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%', 'stats' => ['fireballPct' => 50, 'hpPct' => 15, 'fireRes' => 20]],
             ['count' => 5, 'text' => '파이어볼에 맞은 적이 모두 화상을 입어요', 'stats' => ['fireballBurn' => 1]],
         ],
     ],
@@ -199,7 +199,7 @@ const R_SETS = [
         'pieces' => ['head' => '서리의 투구', 'chest' => '서리의 갑옷', 'arms' => '서리의 팔보호구', 'pants' => '서리의 바지', 'boots' => '서리의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)', 'stats' => ['nova' => 1]],
-            ['count' => 4, 'text' => '프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%', 'stats' => ['novaPct' => 50, 'defPct' => 10, 'iceRes' => 20]],
+            ['count' => 3, 'text' => '프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%', 'stats' => ['novaPct' => 50, 'defPct' => 10, 'iceRes' => 20]],
             ['count' => 5, 'text' => '프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)', 'stats' => ['novaSlow' => 1]],
         ],
     ],
@@ -209,7 +209,7 @@ const R_SETS = [
         'pieces' => ['head' => '뇌전의 투구', 'chest' => '뇌전의 갑옷', 'arms' => '뇌전의 팔보호구', 'pants' => '뇌전의 바지', 'boots' => '뇌전의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)', 'stats' => ['chain' => 1]],
-            ['count' => 4, 'text' => '체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%', 'stats' => ['chainPct' => 50, 'crit' => 10, 'boltRes' => 20]],
+            ['count' => 3, 'text' => '체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%', 'stats' => ['chainPct' => 50, 'crit' => 10, 'boltRes' => 20]],
             ['count' => 5, 'text' => '번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%', 'stats' => ['chainMax' => 1]],
         ],
     ],
@@ -486,6 +486,38 @@ function r_max_out(array $item): array {
     foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
     foreach ($item['lines'] as $i => [$k, $v]) $item['lines'][$i][1] = r_line_range_of($k, $item)[1];
     if (isset($item['parry'])) $item['parry'] = R_PARRY['ranges'][$item['rarity']][1];
+    return $item;
+}
+
+// 대장간 옵션 재련 (items.js reforgeLine): rf = 고른 추가 능력치 줄 번호 목록. n번째 재련은 시드 rf|ID|n
+// 후보는 그 아이템의 추가 능력치 후보 중 다른 줄에 없는 것 (속성 피해는 하나만), 고대면 최대치. 레전더리·세트(v4)만, 홈 줄은 안 됨
+function r_reforge_line(array $item, int $i): ?array {
+    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return null;
+    if (!isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
+    $n = count($item['rf'] ?? []) + 1;
+    $rng = r_rng("rf|{$item['id']}|{$n}");
+    $nightmare = r_is_nightmare_item($item) && ($item['r'] ?? 0) >= 3;
+    $others = [];
+    foreach ($item['lines'] as $j => [$k]) if ($j !== $i) $others[] = $k;
+    $elemTaken = false;
+    foreach ($others as $k) if (r_is_element_dmg($k)) $elemTaken = true;
+    $pool = [];
+    foreach ($nightmare ? R_STAT_KEYS_NM : R_STAT_KEYS_V4 as $k) if (!in_array($k, $others, true) && !($elemTaken && r_is_element_dmg($k))) $pool[] = $k;
+    $stat = $pool[(int)floor($rng() * count($pool))];
+    $range = r_line_range_of($stat, $item);
+    $v = r_roll_range($rng, $range);
+    $item['lines'][$i] = [$stat, !empty($item['ancient']) ? $range[1] : $v];
+    $item['rf'] = array_merge($item['rf'] ?? [], [$i]);
+    $item['ancient'] = r_is_ancient($item);
+    return $item;
+}
+function r_apply_reforges(array $item, array $rf): ?array {
+    foreach ($rf as $i) if (!is_int($i) || !isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
+    foreach ($rf as $i) {
+        if (!is_int($i)) return null;
+        $item = r_reforge_line($item, $i);
+        if ($item === null) return null;
+    }
     return $item;
 }
 

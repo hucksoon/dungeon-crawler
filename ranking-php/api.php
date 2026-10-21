@@ -45,7 +45,7 @@ const NM_FLOORS = 50;
 const NM_ITEM_BASE = MAX_FLOOR;
 const NM_CLEAR = NM_FLOORS + 1;
 const CURRENT_SEASON = 'v4';
-const MAX_ENH = 10;
+const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
 final class HttpError extends Exception {
     public $status;
@@ -443,6 +443,10 @@ function verify_item($q, int $maxLvl): ?array {
     $ar = $q['ar'] ?? 0;  // 고대 다시 굴리기 횟수 (최대 20)
     if (!is_int($ar) || $ar < 0 || $ar > R_ANCIENT_REROLL['max']) return null;
     $item = r_apply_ancient_rerolls($item, $ar);
+    // 대장간 옵션 재련 (rf: 고른 줄 번호 목록, 고대 굴림 다음에)
+    $rf = $q['rf'] ?? [];
+    if (!is_array($rf) || count($rf) > 300) return null;
+    if ($rf) { $item = r_apply_reforges($item, array_values($rf)); if (!$item) return null; }
     $item['enh'] = $enh;
     // 홈에 넣은 보석 (g): 종류·등급과 개수(홈 개수까지)만 확인. 보석은 시드로 다시 계산할 수 없어서 얻은 경로는 검증하지 않음
     $gems = $q['g'] ?? [];

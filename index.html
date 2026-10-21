@@ -1007,6 +1007,24 @@
       },
       stones: () => data.stones || 0,
       nmStones: () => data.nmStones || 0,
+      // 대장간 옵션 재련: 골드는 부르는 쪽(판의 골드)에서 냄. 바뀐 줄 [능력치, 값] 또는 null
+      reforge(id, i) {
+        const item = all().find(x => x.id === id);
+        if (!item) return null;
+        const before = item.lines[i]?.slice();
+        const line = RLItems.reforgeLine(item, i);
+        if (line) { record("reforge", item, { line: i, from: before, to: line, n: item.rf.length }); write(); }
+        return line;
+      },
+      // 대장간 홈 초기화: 넣은 보석을 모두 지움 (보석은 사라짐)
+      resetSockets(id) {
+        const item = all().find(x => x.id === id);
+        if (!item?.gems?.length) return false;
+        record("socketReset", item, { gems: item.gems });
+        delete item.gems;
+        write();
+        return true;
+      },
       // 자물쇠 (레전더리·세트): 잠긴 아이템은 판매(하나씩·전부)되지 않음. 바뀐 잠금 상태
       toggleLock(id) {
         const item = all().find(x => x.id === id);
@@ -1237,7 +1255,7 @@
       }
       // 서버는 (시드, 출처, 레벨, 규칙 버전, 강화)로 아이템을 다시 만들어 검증하고 능력치를 직접 계산함.
       // rarity·name은 Cloudflare 버전 서버용
-      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}), ...(it.ar ? { ar: it.ar } : {}), ...(it.gems?.length ? { g: it.gems } : {}) });
+      const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}), ...(it.ar ? { ar: it.ar } : {}), ...(it.rf?.length ? { rf: it.rf } : {}), ...(it.gems?.length ? { g: it.gems } : {}) });
       return {
         stage,
         ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
@@ -1340,7 +1358,7 @@
       parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
-      // 화염의 세트: 파이어볼 (2세트), 파이어볼 피해 +% (4세트), 맞은 적 화상 (5세트)
+      // 화염의 세트: 파이어볼 (2세트), 파이어볼 피해 +% (3세트), 맞은 적 화상 (5세트)
       fireball: g.fireball > 0, fireballPct: g.fireballPct, fireballBurn: g.fireballBurn > 0,
       // 서리의 세트: 프로스트 노바·피해 +%·느려짐 / 뇌전의 세트: 체인 라이트닝·피해 +%·4번 튕김과 감전
       nova: g.nova > 0, novaPct: g.novaPct, novaSlow: g.novaSlow > 0,
@@ -1358,7 +1376,8 @@
   const ELITE_COLOR = "#ffcf5c";
   const SHOP_COLOR = "#5ee7ff";
   // 로비 건물 벽돌색 [벽, 줄눈]
-  const BUILDING_COLORS = { market: ["#24443f", "#1a302c"], nightmare: ["#2e1a3a", "#1f1028"], hourshop: ["#1d3a44", "#132a32"], golddungeon: ["#4a3d16", "#33290c"] };
+  const BUILDING_COLORS = { market: ["#24443f", "#1a302c"], nightmare: ["#2e1a3a", "#1f1028"], hourshop: ["#1d3a44", "#132a32"], golddungeon: ["#4a3d16", "#33290c"], forge: ["#42291c", "#2c1a10"] };
+  const FORGE_COLOR = "#ff9f5c";
   const bossAlive = () => enemies.some(e => e.kind === "boss");
 
   // ---- 던전 생성 (방 + 통로) ----
@@ -1601,8 +1620,9 @@
         log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
         return;
       }
-      // 받는 피해 감소(시험의 세트 5세트)는 방어력으로 줄어든 뒤에 (최소 1)
-      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100)));
+      // 받는 피해 감소(시험의 세트 5세트·보석)와 둘러싸임 방어는 방어력으로 줄어든 뒤에 (최소 1)
+      const crowd = RLMonsters.crowdCut(adjacentFoes());
+      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
       target.hp -= dmg;
       log(`${attacker.name}에게 ${dmg} 피해를 입음.`, "bad");
       if (target.hp <= 0) { death(); return; }
@@ -2415,8 +2435,12 @@
   }
 
   // 화면 위 능력치 줄: 세트 스킬 쿨타임
+  // 플레이어 주변 8칸에 붙어 있는 몬스터 수 (둘러싸임 방어)
+  const adjacentFoes = () => (scene === "dungeon" && player ? enemies.filter(e => e.hp > 0 && near8(e, player) === 1).length : 0);
   function skillHud() {
     const s = stats(), out = [];
+    const cut = RLMonsters.crowdCut(adjacentFoes());
+    if (cut) out.push(`🛡 둘러싸임 −${Math.round(cut * 100)}%`);
     const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
     one(s.fireball, "🔥", "파이어볼", player.fbCd);
     one(s.nova, "❄", "노바", player.novaCd);
@@ -2590,8 +2614,10 @@
       { kind: "golddungeon", label: "골드 던전", x0: 20, x1: 22, door: { x: 20, y: gate.y }, glyph: "▼", tab: null },
       { kind: "golddungeonNM", door: { x: 22, y: gate.y }, glyph: "▼", tab: null },
       { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
+      // 아래쪽 가운데 대장간 (문이 위쪽): 옵션 재련·홈 초기화 — 인벤토리를 대장간 모드로 엶
+      { kind: "forge", label: "대장간", x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
     ];
-    for (const s of shops) if (s.x0 != null) for (let y = gate.y - 2; y <= gate.y; y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
+    for (const s of shops) if (s.x0 != null) for (let y = s.y0 ?? gate.y - 2; y <= (s.y1 ?? gate.y); y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
     for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
     const shopAt = (x, y) => shops.find(s => s.door.x === x && s.door.y === y) || null;
     const doorAt = (x, y) => Object.keys(doors).find(k => doors[k].x === x && doors[k].y === y) || null;
@@ -2749,6 +2775,7 @@
       if (shopDoor.tab) openMarket(shopDoor.tab);
       else if (shopDoor.kind === "nightmare") enterNightmare();
       else if (shopDoor.kind === "hourshop") openHourShop();
+      else if (shopDoor.kind === "forge") openForge();
       else if (shopDoor.kind === "golddungeon") enterGoldDungeon(false);
       else if (shopDoor.kind === "golddungeonNM") enterGoldDungeon(true);
       return;
@@ -2919,7 +2946,7 @@
         if (s.label) drawLabel(s.label, (s.x0 + s.x1 + 1) / 2 * TILE, (s.door.y - 2) * TILE - 4, cleared ? "#ffcf5c" : "#7a6a3a", 12);
         continue;
       }
-      const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR
+      const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR : s.kind === "forge" ? FORGE_COLOR
         : (cleared ? "#d07bff" : "#7a5a8a");
       drawGlyph(s.glyph, sx, sy, color);
       // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
@@ -3561,6 +3588,53 @@
     );
   }
 
+  // ---- 대장간 ----
+  let forgeMode = false;   // 로비 대장간에서 인벤토리를 열었을 때
+  function forgeRows(item) {
+    const out = [el("h3", { style: { color: FORGE_COLOR } }, "⚒ 대장간")];
+    const gold = player && !gameOver ? player.gold : 0;
+    if (RLItems.canReforge(item)) {
+      const cost = RLItems.reforgeCost(item);
+      out.push(el("div", { className: "meta" }, `옵션 재련: 추가 능력치 한 줄을 다시 굴려요 (다른 줄에 없는 능력치 중 무작위${item.ancient ? ", 고대라 새 줄도 최대치" : ""}). ${cost.toLocaleString()}골드 · 이 아이템 ${(item.rf || []).length}번째 다음은 ×${RLItems.FORGE.reforge.growth} (보유 ${gold.toLocaleString()}골드)`));
+      item.lines.forEach(([k, v], i) => {
+        if (!RLItems.reforgeableLine(item, i)) return;
+        out.push(el("div", { className: "sock-pick" },
+          el("span", { className: "stat-line" }, `◆ ${RLItems.formatStat(k, v)}`),
+          el("button", { type: "button", className: "reforge-btn", disabled: gold < cost, onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)));
+      });
+    } else out.push(el("div", { className: "meta" }, "옵션 재련은 레전더리·세트(v4)만 할 수 있어요."));
+    if (item.gems?.length) {
+      const cost = RLItems.socketResetCost(item);
+      out.push(el("div", { className: "sock-pick" },
+        el("span", { className: "meta" }, `홈 초기화: 넣은 보석 ${item.gems.length}개를 모두 지워요 (보석은 사라져요)`),
+        el("button", { type: "button", className: "socket-reset-btn", disabled: gold < cost, onclick: () => resetSockets(item) }, `홈 초기화 (${cost.toLocaleString()}골드)`)));
+    } else if (RLItems.socketCount(item)) out.push(el("div", { className: "meta" }, "홈 초기화: 넣은 보석이 없어요."));
+    return out;
+  }
+  function reforgeItem(item, i) {
+    const cost = RLItems.reforgeCost(item);
+    if (gameOver || !player || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    const before = RLItems.formatStat(...item.lines[i]);
+    const line = Inv.reforge(item.id, i);
+    if (!line) return;
+    player.gold -= cost;
+    invMsg = { cls: "good", text: `⚒ 재련: ${before} → ${RLItems.formatStat(...line)} (-${cost.toLocaleString()}골드)` };
+    log(invMsg.text, "good");
+    saveGame(true);
+    afterGearChange();
+  }
+  function resetSockets(item) {
+    const cost = RLItems.socketResetCost(item);
+    if (gameOver || !player || player.gold < cost) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (!confirm(`${RLItems.itemName(item)}의 홈을 초기화할까요? 넣은 보석 ${item.gems.length}개가 사라져요. (${cost.toLocaleString()}골드)`)) return;
+    if (!Inv.resetSockets(item.id)) return;
+    player.gold -= cost;
+    invMsg = { cls: "good", text: `⚒ 홈을 초기화했어요. 다시 보석을 넣을 수 있어요. (-${cost.toLocaleString()}골드)` };
+    log(invMsg.text, "good");
+    saveGame(true);
+    afterGearChange();
+  }
+
   // ---- 홈·보석 ----
   // 넣을 보석을 고르면(종류·등급) 가진 보석을 자동으로 합치거나 쪼개서 넣음. 넣으면 뺄 수 없음
   let gemPick = { kind: RLItems.GEM_KINDS[0], grade: 0 };
@@ -3593,7 +3667,7 @@
         ...RLItems.GEM_GRADES.map((g, i) => el("option", { value: String(i), selected: i === grade }, g))),
       el("button", { type: "button", className: "primary gem-put", disabled: !plan, onclick: () => putGem(item) }, "홈에 넣기")));
     out.push(el("div", { className: "meta" },
-      `${RLItems.gemName(kind, grade)}: ${fxText(RLItems.gemEffect(kind, grade, item))} · ${planText(kind, grade, plan)} · 넣으면 뺄 수 없어요`));
+      `${RLItems.gemName(kind, grade)}: ${fxText(RLItems.gemEffect(kind, grade, item))} · ${planText(kind, grade, plan)} · 넣으면 뺄 수 없어요 (로비 대장간에서 홈 초기화)`));
     return out;
   }
   function putGem(item) {
@@ -3633,6 +3707,8 @@
     );
     // 홈과 보석
     if (RLItems.socketCount(item)) rows.push(...socketRows(item));
+    // 대장간 (로비 대장간에서 열었을 때만)
+    if (forgeMode) rows.push(...forgeRows(item));
     if (item.set) {
       rows.push(el("div", { className: "meta" }, setNote(item.set)));
       // 세트의 모든 단계 (지금 입은 개수로 켜진 단계는 밝게)
@@ -3649,12 +3725,13 @@
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
+    const enhGold = canEnhance ? RLItems.enhanceGold(to, item) : 0, myGold = player && !gameOver ? player.gold : 0;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개, 실패해도 아이템은 그대로)`
+      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
       : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
     const enhanceBtn = el("button", {
-      type: "button", disabled: !canEnhance || Inv.stonesFor(item) < RLItems.enhanceCost(to, item), onclick: () => enhanceItem(item),
-    }, "강화");
+      type: "button", disabled: !canEnhance || Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold), onclick: () => enhanceItem(item),
+    }, enhGold ? `강화 (${enhGold.toLocaleString()}골드)` : "강화");
     // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
     const AR = RLItems.ANCIENT_REROLL;
     const canAncient = RLItems.canRerollAncient(item);
@@ -3743,7 +3820,11 @@
 
   function enhanceItem(item) {
     const before = RLItems.itemName(item);
+    // +11부터는 골드도 (판의 골드)
+    const gold = RLItems.enhanceGold((item.enh || 0) + 1, item);
+    if (gold && (gameOver || !player || player.gold < gold)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${gold.toLocaleString()}골드)` }; renderInventory(); return; }
     const r = Inv.enhance(item.id);
+    if (!r.error && gold) { player.gold -= gold; saveGame(true); }
     if (r.error) invMsg = { cls: "bad", text: r.error };
     else if (r.ok) invMsg = { cls: "good", text: `강화 성공! ${before} → +${r.to}` };
     else invMsg = { cls: "bad", text: `강화 실패… (+${r.to} 성공 확률 ${Math.round(r.chance * 100)}%) 아이템은 그대로예요.` };
@@ -3767,14 +3848,23 @@
     afterGearChange();
   }
 
-  function openInventory() {
+  function openInventory(forge = false) {
     selected = null;
     invMsg = null;
+    forgeMode = forge;
+    document.getElementById("inv-title").textContent = forge ? "대장간" : "인벤토리";
     invModal.hidden = false;
     renderInventory();
     document.getElementById("inv-close").focus();
   }
-  function closeInventory() { invModal.hidden = true; }
+  // 대장간: 인벤토리와 같은 창에서 아이템을 고르면 옵션 재련·홈 초기화가 보임
+  function openForge() {
+    if (gameOver) { openDeath(); return; }
+    openInventory(true);
+    invMsg = { cls: "good", text: "⚒ 대장간이에요. 아이템을 고르면 옵션 재련(레전더리·세트)과 홈 초기화를 할 수 있어요." };
+    renderDetail();
+  }
+  function closeInventory() { invModal.hidden = true; forgeMode = false; }
 
   document.getElementById("inv-btn").addEventListener("click", (e) => { e.currentTarget.blur(); openInventory(); });
   document.getElementById("inv-close").addEventListener("click", closeInventory);
@@ -4089,6 +4179,7 @@
     item.enh = ref.enh || 0;
     if (ref.tries) item.tries = ref.tries;
     if (ref.ar) RLItems.applyAncientRerolls(item, ref.ar);
+    if (ref.rf?.length && !RLItems.applyReforges(item, ref.rf)) return null;   // 대장간 옵션 재련
     return item;
   }
 
@@ -4289,7 +4380,7 @@
     setMarketMsg("올리는 중…");
     renderMarket();
     try {
-      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}) };
+      const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}), ...(item.rf?.length ? { rf: item.rf } : {}) };
       const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: Math.max(bestDepth, depth || 0) } });
       Inv.remove(item.id, "list", { listing: r.listing.id, gold, cash });
       Market.sel = null;
@@ -4630,7 +4721,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021c:${owner}`;  // 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021e:${owner}`;  // 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4638,11 +4729,10 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `레전더리·세트는 인벤토리에서 🔒 잠글 수 있어요 (잠긴 아이템은 가방 전부 판매에서도 남아요). 속성 피해 줄은 아이템마다 하나만 붙어요 (여러 개였던 아이템은 가장 큰 것만 남고 나머지는 다른 능력치로 바뀌었어요). ` +
-        `새 아이템에는 추가 능력치로 홈(바지 빼고)이 붙을 수 있어요. 몬스터가 가끔 떨어뜨리는 보석(♦ 루비·사파이어·에메랄드·토파즈·다이아몬드)을 인벤토리에서 홈에 넣어요 (조각 3개 = 보석 1개, 자동으로 합치거나 쪼갬, 넣으면 뺄 수 없음). ` +
-        `새 무기 장검이 나와요: 보조 손에는 방패만 낄 수 있는 대신 공격력 ×${RLItems.WEAPONS.longsword.atkMul}, 방어력·치명타 확률·모든 속성 저항도 붙어요. ` +
-        `견고의 세트 무기는 견고의 장검으로 바뀌었어요 (가지고 있던 견고의 도끼도). ` +
-        `나이트메어 속성 세트(화염·서리·뇌전)와 레전더리 전설의 힘도 있어요. 자세한 규칙은 개발 일기와 규칙 문서에서.`);
+        `방어구 세트 효과가 2·3·5세트로 바뀌었어요 (효과는 그대로, 예전 4세트 효과가 3세트에서 켜짐 → 두 세트를 2 + 3으로 나눠 입으면 한쪽은 2세트, 다른 쪽은 3세트 효과까지). ` +
+        `로비 아래쪽에 ⚒ 대장간이 생겼어요: 옵션 재련(레전더리·세트의 추가 능력치 한 줄 다시 굴리기)과 홈 초기화. 강화는 +${RLItems.ENHANCE.max}까지 (+${RLItems.ENHANCE.goldFrom}부터 골드도). ` +
+        `몬스터가 ${RLMonsters.CROWD.from}마리 이상 붙으면 둘러싸임 방어로 받는 피해가 줄어요 (최대 −${Math.round(RLMonsters.CROWD.max * 100)}%). 나이트메어 깊은 층 몬스터의 공격력이 조금 낮아졌어요. ` +
+        `레전더리·세트는 🔒 잠글 수 있고(가방 전부 판매에서 남음), 속성 피해 줄은 아이템마다 하나만 붙어요. 새 아이템에는 홈이 붙을 수 있고 ♦ 보석을 넣어요. 새 무기 장검(보조 손은 방패만). 자세한 규칙은 개발 일기와 규칙 문서에서.`);
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };
