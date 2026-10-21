@@ -906,20 +906,33 @@
   const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
   const CHO_RUNE = "가가나다다라마바바사사아자자차카타파하";
   const runesOfName = (name) => [...name].map(c => RUNES.findIndex(r => r.name === CHO_RUNE[CHO.indexOf(CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)])]));
+  // stats: 지옥의(헬) 아이템일 때 수치 (악몽의 ×0.75, 일반 ×0.5 — RUNEWORD_TIER_MUL). 특수 효과(special)는 단계와 상관없이 같음
+  // special: undying 쓰러질 피해를 받으면 HP 1로 버팀(층마다 1번) · teleport 주변에 적이 안 보이면 N칸씩 이동(경로의 아이템도 주움)
+  //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 주변 8칸 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔)
+  //   splash 광란 세트 효과(주변 1칸 50%) · shield 매 every턴 최대 HP pct%의 보호막(다시 채움, 쌓이지 않음)
+  //   skillLs 세트 스킬(룬워드 스킬 포함)에도 흡혈 · lsCap 흡혈 최대치 +N%p · autoPotion HP below% 이하면 every턴마다 포션 자동(쿨타임과 따로)
+  //   skillFast 세트 스킬을 1턴 더 자주 · fireball 약한 파이어볼 (화염 세트 파이어볼이 있으면 그쪽)
+  // 같은 종류의 특수 효과는 겹치지 않음 (가장 큰 것 하나). 능력치는 더해짐
   const RUNEWORDS = [
-    { name: "천하무적", bases: ["chest"] },
-    { name: "폭풍전야", bases: ["longsword"] },
-    { name: "필살일격", bases: ["longsword"] },
-    { name: "태산", bases: ["chest", "weapon"] },
-    { name: "카리스마", bases: ["longsword"] },
-    { name: "치유", bases: ["head"] },
-    { name: "마음가짐", bases: ["longsword", "shield"] },
-    { name: "선견지명", bases: ["longsword"] },
-    { name: "도원결의", bases: ["shield"] },
-    { name: "기억", bases: ["head"] },
-    { name: "몰래", bases: ["chest"] },
-    { name: "나무", bases: ["staff"] },
+    { name: "천하무적", bases: ["chest"], stats: { atkPct: 25, defPct: 25, hpPct: 25, dmgReduce: 10 }, special: { undying: 1, teleport: 3 } },
+    { name: "폭풍전야", bases: ["longsword"], stats: { boltDmg: 20, critDmg: 40 }, special: { chain: 1, vuln: 20 } },
+    { name: "필살일격", bases: ["longsword"], stats: { atkPct: 35, crit: 10, critDmg: 50 }, special: { splash: 1 } },
+    { name: "태산", bases: ["chest", "weapon"], stats: { defPct: 30, hpPct: 10, allRes: 15 }, special: { shield: 20, skillLs: 1 } },
+    { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 3 }, special: { lsCap: 3 } },
+    { name: "치유", bases: ["head"], stats: { killHealPct: 5 }, special: { autoPotion: 1 } },
+    { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
+    { name: "선견지명", bases: ["longsword"], stats: { crit: 8, xp: 25 }, special: { shield: 10 } },
+    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15 }, special: {} },
+    { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3 }, special: { lsCap: 2 } },
+    { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3 }, special: { skillLs: 1 } },
+    { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20 }, special: { fireball: 1 } },
   ].map((w, i) => ({ ...w, rank: i + 1, runes: runesOfName(w.name) }));
+  const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
+  // 특수 효과의 고정 수치
+  const RUNEWORD_FX = {
+    teleport: { steps: 3 }, vuln: { every: 2, turns: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
+    skillLs: { share: 1 }, fireball: { every: 3, mul: 0.4 },
+  };
   const BASE_NAMES = { chest: "갑옷", head: "투구", shield: "방패", longsword: "장검", weapon: "무기(단검·도끼·지팡이)", staff: "지팡이" };
   function runewordBaseKeys(item) {
     if (item.slot === "chest" || item.slot === "head") return [item.slot];
@@ -940,6 +953,19 @@
   // 일반·악몽의 아이템도 룬워드는 만들 수 있지만 룬을 얻기 전에 줍는 아이템이라 표시하지 않음 (상세에만)
   const RUNEWORD_HIGHLIGHT_TIERS = ["hell"];
   const runewordHighlight = (item) => !!item && RUNEWORD_HIGHLIGHT_TIERS.includes(itemTier(item)) && runewordsFor(item).length > 0;
+  // 완성된 룬워드 (커먼, 홈을 모두 그 순서의 룬으로 채움). 없으면 null
+  function runewordOf(item) {
+    const n = item?.gems?.length || 0;
+    if (!n || n !== socketCount(item)) return null;
+    return runewordsFor(item).find(w => w.runes.length === n) || null;
+  }
+  // 그 룬워드 아이템에 붙는 능력치 (아이템 단계 배율, 반올림·최소 1)
+  function runewordStats(item) {
+    const w = runewordOf(item);
+    if (!w) return {};
+    const mul = RUNEWORD_TIER_MUL[itemTier(item)] ?? 1;
+    return Object.fromEntries(Object.entries(w.stats).map(([k, v]) => [k, Math.max(1, Math.round(v * mul))]));
+  }
   // 나이트메어 50층 보스가 떨어뜨리는 룬 번호들 (RUNE_DROP.count개)
   function rollRunes(seed) {
     const rng = rngFrom(`rune|${seed}`);
@@ -978,8 +1004,8 @@
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0 };
-    const setCounts = {};
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0 };
+    const setCounts = {}, rw = {}, rwNames = [];
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
       if (!item) continue;
@@ -987,6 +1013,10 @@
       for (const [k, v] of Object.entries(effectiveBase(item))) sum[k] += v;
       for (const [k, v] of effectiveLines(item)) if (k !== "socket") sum[k] += v;
       for (const [k, v] of Object.entries(gemStats(item))) sum[k] += v;
+      for (const [k, v] of Object.entries(runewordStats(item))) sum[k] += v;
+      // 룬워드 특수 효과: 같은 종류는 가장 큰 것 하나
+      const w = runewordOf(item);
+      if (w) { rwNames.push(w.name); for (const [k, v] of Object.entries(w.special)) rw[k] = Math.max(rw[k] || 0, v); }
       if (item.parry) sum.parry += item.parry;
       if (item.slot === "offhand" && isWeaponLike(item)) sum.dual = 1;
       if (item.set) setCounts[item.set] = (setCounts[item.set] || 0) + 1;
@@ -1005,12 +1035,17 @@
     sum.parry = Math.min(PARRY.max, sum.parry);
     // guard: 장검 + 방패 (흡혈 보너스·상한)
     if (shieldOnly && equipped.some(it => it && it.slot === "offhand" && it.type === "shield")) { sum.guard = 1; sum.lifesteal += SHIELD_GUARD.lifesteal; }
-    sum.lifesteal = Math.min(sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max, sum.lifesteal);
+    // 룬워드: 광란 세트 효과·체인 라이트닝(세트 없이도), 흡혈 최대치 +N%p
+    if (rw.splash) sum.splash = 1;
+    if (rw.chain) sum.chain = Math.max(sum.chain, 1);
+    sum.lsCap = (sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max) + (rw.lsCap || 0);
+    sum.lifesteal = Math.min(sum.lsCap, sum.lifesteal);
     sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
     // 스킬 피해 (룬 "타"): 세 스킬 모두에
     for (const k of ["fireballPct", "novaPct", "chainPct"]) sum[k] += sum.skillPct;
-    return { stats: sum, sets: activeSets };
+    // runewords: 낀 룬워드 이름과 합친 특수 효과 (전투에서 씀)
+    return { stats: sum, sets: activeSets, runewords: { names: rwNames, special: rw } };
   }
 
   const api = {
@@ -1018,6 +1053,7 @@
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
+    RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,

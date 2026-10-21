@@ -409,6 +409,51 @@ function r_socketed_effect(array $g, array $item): array {
     foreach (R_GEMS[$g[0]][$place] as $k => $vals) $out[$k] = $vals[$g[1]];
     return $out;
 }
+// 룬워드 (items.js RUNEWORDS): 이름의 초성 = 룬. 커먼 아이템의 홈을 모두 그 순서의 룬으로 채우면 완성
+// 능력치는 아이템 단계 배율 (일반 ×0.5, 악몽의 ×0.75, 지옥의 ×1). 특수 효과 중 합계에 들어가는 건 splash·chain·lsCap
+const R_RUNEWORDS = [
+    ['name' => '천하무적', 'bases' => ['chest'], 'runes' => [9, 13, 4, 8], 'stats' => ['atkPct' => 25, 'defPct' => 25, 'hpPct' => 25, 'dmgReduce' => 10], 'special' => ['undying' => 1, 'teleport' => 3]],
+    ['name' => '폭풍전야', 'bases' => ['longsword'], 'runes' => [12, 12, 8, 7], 'stats' => ['boltDmg' => 20, 'critDmg' => 40], 'special' => ['chain' => 1, 'vuln' => 20]],
+    ['name' => '필살일격', 'bases' => ['longsword'], 'runes' => [12, 6, 7, 0], 'stats' => ['atkPct' => 35, 'crit' => 10, 'critDmg' => 50], 'special' => ['splash' => 1]],
+    ['name' => '태산', 'bases' => ['chest', 'weapon'], 'runes' => [11, 6], 'stats' => ['defPct' => 30, 'hpPct' => 10, 'allRes' => 15], 'special' => ['shield' => 20, 'skillLs' => 1]],
+    ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 3], 'special' => ['lsCap' => 3]],
+    ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5], 'special' => ['autoPotion' => 1]],
+    ['name' => '마음가짐', 'bases' => ['longsword', 'shield'], 'runes' => [4, 7, 0, 8], 'stats' => ['skillPct' => 30], 'special' => ['skillFast' => 1, 'skillLs' => 1]],
+    ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['crit' => 8, 'xp' => 25], 'special' => ['shield' => 10]],
+    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15], 'special' => []],
+    ['name' => '기억', 'bases' => ['head'], 'runes' => [0, 7], 'stats' => ['xp' => 25, 'crit' => 3], 'special' => ['lsCap' => 2]],
+    ['name' => '몰래', 'bases' => ['chest'], 'runes' => [4, 3], 'stats' => ['defPct' => 10, 'dmgReduce' => 3], 'special' => ['skillLs' => 1]],
+    ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20], 'special' => ['fireball' => 1]],
+];
+const R_RUNEWORD_TIER_MUL = ['normal' => 0.5, 'nightmare' => 0.75, 'hell' => 1];
+function r_item_tier(array $item): string { return r_is_nightmare_item($item) ? 'nightmare' : 'normal'; }
+function r_runeword_base_keys(array $item): array {
+    if ($item['slot'] === 'chest' || $item['slot'] === 'head') return [$item['slot']];
+    if ($item['slot'] === 'offhand') return ($item['type'] ?? null) === 'shield' ? ['shield'] : [];
+    if ($item['slot'] !== 'weapon') return [];
+    return r_is_shield_only($item) ? ['longsword'] : (($item['type'] ?? null) === 'staff' ? ['weapon', 'staff'] : ['weapon']);
+}
+function r_runeword_of(array $item): ?array {
+    $gems = $item['gems'] ?? [];
+    $n = count($gems);
+    if (($item['rarity'] ?? '') !== 'common' || !$n || $n !== r_socket_count($item)) return null;
+    $keys = r_runeword_base_keys($item);
+    foreach (R_RUNEWORDS as $w) {
+        if (count($w['runes']) !== $n || !array_intersect($w['bases'], $keys)) continue;
+        $ok = true;
+        foreach ($gems as $i => $g) if (!r_is_rune($g) || $g[1] !== $w['runes'][$i]) { $ok = false; break; }
+        if ($ok) return $w;
+    }
+    return null;
+}
+function r_runeword_stats(array $item): array {
+    $w = r_runeword_of($item);
+    if (!$w) return [];
+    $mul = R_RUNEWORD_TIER_MUL[r_item_tier($item)];
+    $out = [];
+    foreach ($w['stats'] as $k => $v) $out[$k] = max(1, (int)round($v * $mul));
+    return $out;
+}
 function r_gem_stats(array $item): array {
     $out = [];
     foreach (array_slice($item['gems'] ?? [], 0, r_socket_count($item)) as $g) {
@@ -673,8 +718,9 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0];
     $setCounts = [];
+    $rw = [];
     $shieldOnly = false;
     foreach ($equipped as $item) if (r_is_shield_only($item)) $shieldOnly = true;
     foreach ($equipped as $item) {
@@ -682,6 +728,9 @@ function r_totals(array $equipped): array {
         foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
         foreach (r_effective_lines($item) as [$k, $v]) if ($k !== 'socket') $sum[$k] += $v;
         foreach (r_gem_stats($item) as $k => $v) $sum[$k] += $v;
+        foreach (r_runeword_stats($item) as $k => $v) $sum[$k] += $v;
+        $w = r_runeword_of($item);
+        if ($w) foreach ($w['special'] as $k => $v) $rw[$k] = max($rw[$k] ?? 0, $v);
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
@@ -706,7 +755,11 @@ function r_totals(array $equipped): array {
     $shieldWorn = false;
     foreach ($equipped as $item) if ($item['slot'] === 'offhand' && ($item['type'] ?? null) === 'shield') $shieldWorn = true;
     if ($shieldOnly && $shieldWorn) { $sum['guard'] = 1; $sum['lifesteal'] += R_SHIELD_GUARD['lifesteal']; }
-    $sum['lifesteal'] = min($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX, $sum['lifesteal']);
+    // 룬워드: 광란 세트 효과·체인 라이트닝, 흡혈 최대치 +N%p
+    if (!empty($rw['splash'])) $sum['splash'] = 1;
+    if (!empty($rw['chain'])) $sum['chain'] = max($sum['chain'], 1);
+    $sum['lsCap'] = ($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX) + ($rw['lsCap'] ?? 0);
+    $sum['lifesteal'] = min($sum['lsCap'], $sum['lifesteal']);
     $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
     // 스킬 피해 (룬 "타"): 세 스킬 모두에
