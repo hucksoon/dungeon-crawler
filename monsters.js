@@ -273,10 +273,14 @@
   const HELL = {
     floors: 50, itemBase: NIGHTMARE.itemBase + NIGHTMARE.floors, startNm: NIGHTMARE.floors,
     // 층 배율: 나이트메어 곡선(50층 ×9.2) 그대로면 지옥의 장비가 따라가지 못해 헬 25층에서 고대 +10도 몰려오는 몬스터에게 100% 쓰러짐
-    //   → 완만하게 (50층 HP ×2.55, 공격 ×2.39). 시뮬레이션 (추천 조합 고대 레전더리 +10, 몰려오는 20마리 · 보스 1:1):
-    //   악몽 50층 장비로 헬 1층 21% · 0%, 헬 40층 장비로 40층 2% · 0%, 헬 50층 장비로 50층 26% · 0% (유니크·룬워드로 넘는 벽)
-    perFloor: 0.017, perFloor2: 0.0003, atkPerFloor2: 0.00023,
+    //   → 완만하게. 처음(0.017 / 0.0003 / 0.00023, 50층 ×2.55)은 40층부터 가팔라서 줄 품질 90% 장비가 40층 48% → 50층 99%
+    //   → 4단계: 앞을 조금 올리고 뒤를 낮춤 (50층 HP ×2.32·공격 ×2.15). 시뮬레이션 (그 층 추천 조합 +10, 몰려오는 20마리, 줄 품질 90 · 95 · 100%):
+    //   30층 4 · 0 · 0%, 40층 25 · 6 · 0%, 50층 42 · 23 · 3% (유니크·룬워드로 넘는 벽)
+    perFloor: 0.022, perFloor2: 0.0001, atkPerFloor2: 0.00003,
     hp: 1.0, atk: 1.0, bossHp: 1.0, bossAtk: 1.0,
+    // 입구: 1~until층 몬스터 HP·공격 × mul. 나이트메어 장비(악몽의 힘 ×3)로 들어오는 층이라, 그대로면 나이트메어 50층보다 어려웠음
+    //   (줄 품질 95% 장비로 몰려오는 20마리 48% vs 나이트메어 50층 37%). 5층 보스부터 지옥의 장비(×5)가 나와서 그 뒤로는 그대로
+    entry: { until: 4, mul: 0.9 },
     monsters: NIGHTMARE.monsters,
     res: { own: 50, otherFrom: 10, otherTo: 40, boss: 10 },
     playerResCut: 10,
@@ -295,9 +299,9 @@
   }
   const toHell = (m, n, el, boss) => ({ ...m, name: m.name.replace(/^악몽의 /, "지옥의 "), nm: 0, hell: 1, res: hellRes(n, el, boss) });
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
-    const m = makeNightmare(t, kind, HELL.startNm, el);
-    const hp = Math.round(m.hp * HELL.hp * hellScale(n));
-    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n)) }, n, el, false);
+    const m = makeNightmare(t, kind, HELL.startNm, el), e = n <= HELL.entry.until ? HELL.entry.mul : 1;
+    const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
+    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * e) }, n, el, false);
   }
   function makeHellBoss(n, el = pickElement(Math.random)) {
     const b = makeNightmareBoss(HELL.startNm, el);
@@ -306,6 +310,8 @@
   }
 
   // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
+  // atkMul은 시뮬레이션으로 하나씩 (그 층 추천 조합 +10, 1:1): 줄 품질 95% 장비로 10층 3% · 20층 11% · 30층 16% · 40층 15% · 50층 30%
+  //   (고대면 1~7%, 90%면 22~57%). 처음(3단계)에는 고대 기준이라 줄 품질 90%가 49~97% 쓰러졌음
   // 쓰러뜨리면 룬 runes개 (RLItems.rollRunes). 패턴은 index.html 전투에서:
   //   shred  불가사리: 공격이 들어갈 때마다 내 방어력 −per% (최대 max%, 이 층을 떠나거나 쓰러뜨리면 풀림)
   //   clones 구미호: HP가 at 이하로 처음 내려가면 분신 count마리 (HP = 구미호 최대 HP × hp, 공격 × atk, 장비·골드 없음)
@@ -316,11 +322,11 @@
   const NAMED = {
     runes: 2,
     bosses: {
-      10: { id: "bulgasari", ch: "B", name: "불가사리", title: "쇠를 먹는 괴수", el: "fire", hpMul: 3, atkMul: 3.4, pattern: "shred", shred: { per: 5, max: 25 } },
-      20: { id: "gumiho", ch: "F", name: "구미호", title: "아홉 꼬리 여우", el: "ice", hpMul: 3, atkMul: 2.1, pattern: "clones", clones: { at: 0.5, count: 2, hp: 0.15, atk: 0.6 } },
-      30: { id: "imugi", ch: "S", name: "이무기", title: "용이 되지 못한 뱀", el: "bolt", hpMul: 3, atkMul: 2.35, pattern: "sweep", sweep: { every: 3, radius: 2, mul: 1.5 } },
-      40: { id: "jeoseung", ch: "R", name: "저승사자", title: "명부의 사자", el: "ice", hpMul: 3, atkMul: 1.77, pattern: "reaper", reaper: { lifesteal: 0.5 } },
-      50: { id: "yeomra", ch: "Y", name: "염라대왕", title: "저승의 왕", el: "fire", hpMul: 3, atkMul: 1.3, pattern: "judge", judge: { every: 3, enrageAt: 0.3, enrageMul: 2 } },
+      10: { id: "bulgasari", ch: "B", name: "불가사리", title: "쇠를 먹는 괴수", el: "fire", hpMul: 3, atkMul: 3.1, pattern: "shred", shred: { per: 5, max: 25 } },
+      20: { id: "gumiho", ch: "F", name: "구미호", title: "아홉 꼬리 여우", el: "ice", hpMul: 3, atkMul: 1.9, pattern: "clones", clones: { at: 0.5, count: 2, hp: 0.15, atk: 0.6 } },
+      30: { id: "imugi", ch: "S", name: "이무기", title: "용이 되지 못한 뱀", el: "bolt", hpMul: 3, atkMul: 2.15, pattern: "sweep", sweep: { every: 3, radius: 2, mul: 1.5 } },
+      40: { id: "jeoseung", ch: "R", name: "저승사자", title: "명부의 사자", el: "ice", hpMul: 3, atkMul: 1.7, pattern: "reaper", reaper: { lifesteal: 0.5 } },
+      50: { id: "yeomra", ch: "Y", name: "염라대왕", title: "저승의 왕", el: "fire", hpMul: 3, atkMul: 1.35, pattern: "judge", judge: { every: 3, enrageAt: 0.3, enrageMul: 2 } },
     },
   };
   const namedAt = (n) => NAMED.bosses[n] || null;
