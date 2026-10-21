@@ -84,6 +84,7 @@
   .stat-line.max .range { opacity: 1; color: #ffd700; }
   .guide-btn { margin-top: 6px; width: 100%; }
   .guide-slot { margin: 4px 0; line-height: 1.5; }
+  .slot .fit { opacity: 0.75; }
   .sock-pick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
   .sock-pick select { font: inherit; background: var(--panel, #1a1d24); color: var(--text, #e8e8e8); border: 1px solid #444; border-radius: 4px; padding: 2px 4px; }
   .ancient { border-color: #ffd700 !important; box-shadow: 0 0 0 1px #ffd700 inset, 0 0 10px rgba(255, 215, 0, 0.45); animation: ancient-glow 1.8s ease-in-out infinite; }
@@ -3531,7 +3532,8 @@
         className: `slot${item ? "" : " empty"}${sel ? " sel" : ""}${item?.ancient ? " ancient" : ""}`,
         onclick: () => { selected = item ? { from: "equip", slot } : null; invMsg = null; renderInventory(); },
         title: item ? RLItems.itemName(item) : "",
-      }, el("small", {}, RLItems.SLOT_NAMES[slot]), item?.lock ? "🔒 " : "", item ? itemLabel(item) : "비어 있음");
+      }, el("small", {}, RLItems.SLOT_NAMES[slot], item && recommendFit(item) ? el("span", { className: "fit" }, ` · 추천 ${recommendFit(item).got}/${recommendFit(item).of}`) : null),
+        item?.lock ? "🔒 " : "", item ? itemLabel(item) : "비어 있음");
     }));
 
     // 능력치 합계와 세트 효과
@@ -3751,6 +3753,27 @@
   // ---- 추천 능력치 (끝판 목표, RLItems.RECOMMEND) ----
   // 목표(저항 75·흡혈 20·치명타 75·고대 레전더리 7·+10)와 지금 값, 부위별 추천 주·추가 능력치 (장착한 아이템에 이미 있으면 ✓)
   const statLabel = (k) => RLItems.STATS[k].name + (RLItems.STATS[k].pct ? "%" : "");
+  // 그 아이템이 부위 추천 추가 능력치를 몇 개 가졌는지 { got, of }
+  function recommendFit(item) {
+    const r = RLItems.RECOMMEND.slots[item?.slot];
+    if (!r || !item?.lines) return null;
+    const has = new Set(item.lines.map(([k]) => k));
+    return { got: r.lines.filter(k => has.has(k)).length, of: r.lines.length };
+  }
+  // 아이템 상세의 "이 부위 추천": 주·추가 능력치 추천, 이 아이템에 있으면 ✓
+  function recommendRows(item) {
+    const r = RLItems.RECOMMEND.slots[item.slot];
+    if (!r) return [];
+    const has = new Set([...(item.main || []), ...(item.lines || [])].map(([k]) => k)), fit = recommendFit(item);
+    const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
+    const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
+    const kindOk = !(item.slot === "weapon" && RLItems.isShieldOnly(item)) && !(item.slot === "offhand" && item.type === "shield");
+    return [el("div", { className: "guide-slot" },
+      el("b", {}, `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (끝판 목표) · 추가 능력치 ${fit.got}/${fit.of}`), el("br"),
+      ...(r.kind ? [el("span", { className: kindOk ? "meta" : "msg-bad" }, `${kindOk ? "" : "추천 종류가 아니에요: "}${r.kind}`), el("br")] : []),
+      "★ ", ...join(r.main), el("br"),
+      "◆ ", ...join(r.lines))];
+  }
   function renderGuide() {
     const R = RLItems.RECOMMEND, T = R.targets, s = stats(), eq = Inv.equipped();
     const worn = Object.values(eq).filter(Boolean);
@@ -3773,8 +3796,9 @@
       const has = new Set([...(it?.main || []), ...(it?.lines || [])].map(([k]) => k));
       const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
       const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
+      const fit = it ? recommendFit(it) : null;
       rows.push(el("div", { className: "guide-slot" },
-        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}`), el("br"),
+        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}${fit ? ` · ${fit.got}/${fit.of}` : " · 비어 있음"}`), el("br"),
         "★ ", ...join(r.main), el("br"),
         "◆ ", ...join(r.lines)));
     }
@@ -3813,6 +3837,8 @@
     );
     // 홈과 보석
     if (RLItems.socketCount(item)) rows.push(...socketRows(item));
+    // 이 부위의 추천 능력치 (끝판 목표)
+    rows.push(...recommendRows(item));
     // 대장간 (로비 대장간에서 열었을 때만)
     if (forgeMode) rows.push(...forgeRows(item));
     if (item.set) {
