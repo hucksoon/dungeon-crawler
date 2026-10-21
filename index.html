@@ -2951,7 +2951,8 @@
       drawGlyph(s.glyph, sx, sy, color);
       // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
       const label = s.kind === "hourshop" ? `${s.label} ${HourShop.minutesLeft()}분` : s.label;
-      drawLabel(label, sx + TILE / 2, (s.door.y - 2) * TILE - 4, color, 12);
+      // 이름은 건물 맨 윗줄 바로 위 (대장간처럼 문이 위쪽에 있는 건물은 y0)
+      drawLabel(label, sx + TILE / 2, (s.y0 ?? s.door.y - 2) * TILE - 4, color, 12);
     }
     // 던전 입구: 왼쪽 문(1층부터, 금색 ▼), 오른쪽 문(최고 층 − 10층부터, 보라색 ▼ · 12층 전에는 닫힘). 그 아래 파란 포탈(*)
     const pulse = Math.sin(t * 3);
