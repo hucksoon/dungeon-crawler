@@ -76,6 +76,11 @@ function r_is_element_dmg(string $k): bool { return $k === 'fireDmg' || $k === '
 const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개'];
 // 나이트메어에서 얻은 아이템 (속성 줄은 r3부터). 이름 앞에 "악몽의 (속성)"
 function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_NM_SEED, (string)($item['seed'] ?? '')) === 1; }
+// 헬 던전 아이템 ("지옥의", items.js HELL_SEED): 시드에 |j층|. 나이트메어처럼 속성 줄·속성 세트
+const R_HELL_SEED = '/\|(shop\|)?j\d+\|/';
+const R_DEEP_SEED = '/\|(shop\|)?[nj]\d+\|/';
+function r_is_hell_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_HELL_SEED, (string)($item['seed'] ?? '')) === 1; }
+function r_is_deep_item(array $item): bool { return r_is_nightmare_item($item) || r_is_hell_item($item); }
 // 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
 // 속성 피해 줄은 하나만 (items.js oneElementDmg): 가장 큰 것만 남기고 나머지는 다른 능력치로 (시드 el1|…)
 function r_one_element_dmg(array $item, array $left, string $seed): array {
@@ -426,7 +431,7 @@ const R_RUNEWORDS = [
     ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20, 'lifesteal' => 4], 'special' => ['fireball' => 1]],
 ];
 const R_RUNEWORD_TIER_MUL = ['normal' => 0.5, 'nightmare' => 0.75, 'hell' => 1];
-function r_item_tier(array $item): string { return r_is_nightmare_item($item) ? 'nightmare' : 'normal'; }
+function r_item_tier(array $item): string { return r_is_hell_item($item) ? 'hell' : (r_is_nightmare_item($item) ? 'nightmare' : 'normal'); }
 function r_runeword_base_keys(array $item): array {
     if ($item['slot'] === 'chest' || $item['slot'] === 'head') return [$item['slot']];
     if ($item['slot'] === 'offhand') return ($item['type'] ?? null) === 'shield' ? ['shield'] : [];
@@ -497,7 +502,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, R_WEAPON_TYPES_OLD);
     } else {
         $slot = r_pick($rng, R_SLOTS);
-        $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot, $version === 4 && $rev >= 4 && preg_match(R_NM_SEED, $seed) === 1)) : null;
+        $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot, $version === 4 && $rev >= 4 && preg_match(R_DEEP_SEED, $seed) === 1)) : null;
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, r_weapon_types($version === 4 ? $rev : 0));
         elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, R_WEAPON_TYPES_OLD));
     }
@@ -527,7 +532,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     $item['main'] = [];
     foreach ($mainStats as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
 
-    $nightmare = $version === 4 && $rev >= 3 && preg_match(R_NM_SEED, $seed) === 1;
+    $nightmare = $version === 4 && $rev >= 3 && preg_match(R_DEEP_SEED, $seed) === 1;   // 나이트메어·헬
     $stats = $nightmare ? R_STAT_KEYS_NM : ($version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS);
     if ($version === 4 && $rev >= 6 && r_socket_range($item)) $stats[] = 'socket';
     $item['lines'] = [];
@@ -562,7 +567,7 @@ function r_reforge_line(array $item, int $i): ?array {
     if (!isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
     $n = count($item['rf'] ?? []) + 1;
     $rng = r_rng("rf|{$item['id']}|{$n}");
-    $nightmare = r_is_nightmare_item($item) && ($item['r'] ?? 0) >= 3;
+    $nightmare = r_is_deep_item($item) && ($item['r'] ?? 0) >= 3;
     $others = [];
     foreach ($item['lines'] as $j => [$k]) if ($j !== $i) $others[] = $k;
     $elemTaken = false;
@@ -657,8 +662,10 @@ function r_main_stats(array $item): array {
 
 // 나이트메어 아이템의 힘 (items.js NM_POWER): 주 능력치 공격력·방어력·최대 HP가 mul배. 굴린 값은 그대로, 계산할 때 곱함
 const R_NM_POWER = ['mul' => 3, 'stats' => ['atk', 'def', 'hp']];
+const R_HELL_POWER = ['mul' => 5];   // 지옥의 힘 (items.js HELL_POWER)
 function r_nm_power(array $item, string $stat): int {
-    return r_is_nightmare_item($item) && in_array($stat, R_NM_POWER['stats'], true) ? R_NM_POWER['mul'] : 1;
+    if (!in_array($stat, R_NM_POWER['stats'], true)) return 1;
+    return r_is_hell_item($item) ? R_HELL_POWER['mul'] : (r_is_nightmare_item($item) ? R_NM_POWER['mul'] : 1);
 }
 
 function r_enhanced_base(array $item): array {
@@ -784,8 +791,8 @@ function r_item_name(array $item): string {
     // 룬워드: "+10 천하무적" (고대·강화만 앞에)
     $rw = r_runeword_of($item);
     if ($rw) return (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $rw['name'];
-    $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
-    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
+    $el = r_is_deep_item($item) ? r_item_element($item) : null;
+    $nm = r_is_deep_item($item) ? (r_is_hell_item($item) ? '지옥의 ' : '악몽의 ') . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
     return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);

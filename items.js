@@ -236,6 +236,11 @@
   // 나이트메어에서 얻은 아이템: 시드에 나이트메어 층(|n12| 또는 |shop|n9|)이 있음 (속성 줄은 r3부터)
   const NM_SEED = /\|(shop\|)?n\d+\|/;
   const isNightmareItem = (item) => item.v === 4 && NM_SEED.test(item.seed || "");
+  // 헬 던전 아이템 ("지옥의"): 시드에 |j층| (h는 로비 시간 상점의 시간 번호라 j). 나이트메어처럼 속성 줄·속성 세트가 붙음
+  const HELL_SEED = /\|(shop\|)?j\d+\|/;
+  const isHellItem = (item) => item.v === 4 && HELL_SEED.test(item.seed || "");
+  const DEEP_SEED = /\|(shop\|)?[nj]\d+\|/;   // 나이트메어·헬 (속성 줄·속성 세트 후보)
+  const isDeepItem = (item) => isNightmareItem(item) || isHellItem(item);
   // 나이트메어 아이템의 속성: 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄). 강화 전 값으로 정해서 강화해도 이름이 안 바뀜. 없으면 null
   function itemElement(item) {
     let best = null, bestV = 0;
@@ -443,7 +448,7 @@
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, WEAPON_TYPES_OLD);
     } else {
       slot = pick(rng, SLOTS);
-      set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && NM_SEED.test(seed))) : null;
+      set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && DEEP_SEED.test(seed))) : null;
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, weaponTypes(version === 4 ? rev : 0));
       else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, WEAPON_TYPES_OLD));
     }
@@ -461,7 +466,7 @@
     item.main = mainStats.map(stat => [stat, rollRange(rng, mainRange(stat, item))]);
 
     // 추가 능력치: 등급별 줄 수만큼, 서로 다른 종류 (나이트메어 아이템은 속성 피해·저항도 후보)
-    const nightmare = version === 4 && rev >= 3 && NM_SEED.test(seed);
+    const nightmare = version === 4 && rev >= 3 && DEEP_SEED.test(seed);   // 나이트메어·헬
     const stats = (nightmare ? STAT_KEYS_NM : version >= 4 ? STAT_KEYS_V4 : STAT_KEYS).slice();
     if (version === 4 && rev >= 6 && socketRange(item)) stats.push("socket");
     item.lines = [];
@@ -602,7 +607,7 @@
   const sellStones = (item) => Math.max(1, Math.round(SELL_STONES[item.rarity] * (1 + SELL_PER_LEVEL * ((item.lvl || 1) - 1))));
   // 판매하면 골드도 조금 (상점 가격처럼 레벨당 10%씩, 5골드 단위. 50레벨 레전더리 약 235골드 ≈ 상점 가격의 1/10)
   const SELL_GOLD = { common: 2, uncommon: 4, rare: 8, epic: 15, legendary: 40, set: 30 };
-  const sellGold = (item) => Math.max(1, levelPrice(SELL_GOLD[item.rarity] || 1, item.lvl || 1)) * (isNightmareItem(item) ? NM_SHOP.sellMul : 1);
+  const sellGold = (item) => Math.max(1, levelPrice(SELL_GOLD[item.rarity] || 1, item.lvl || 1)) * (isHellItem(item) ? HELL_SHOP.sellMul : isNightmareItem(item) ? NM_SHOP.sellMul : 1);
 
   // +N으로 강화할 때: 강화석 N개. +4까지는 항상 성공, +5는 50%, 이후 10%p씩 낮아져 최저 5%.
   // 실패해도 장비와 강화 단계는 그대로이고 강화석만 사라짐. 강화 1단계마다 주 능력치 +10% (최소 +1, % 능력치는 2단계마다 +1)
@@ -613,8 +618,8 @@
   const enhanceCost = (to, item) => to * (item ? nmCostMul(item) : 1);
   // 강화석 종류: 나이트메어 아이템은 "악몽 강화석"(나이트메어 아이템을 판매해야 나옴)으로만 강화. 일반 아이템은 일반 강화석
   // (일반 던전에서 모아 둔 강화석으로 나이트메어 아이템을 얻자마자 +10까지 올리던 것을 막음)
-  const STONE_NAMES = { stones: "강화석", nmStones: "악몽 강화석" };
-  const stoneKey = (item) => (isNightmareItem(item) ? "nmStones" : "stones");
+  const STONE_NAMES = { stones: "강화석", nmStones: "악몽 강화석", hellStones: "지옥 강화석" };
+  const stoneKey = (item) => (isHellItem(item) ? "hellStones" : isNightmareItem(item) ? "nmStones" : "stones");
   const enhanceChance = (to) => (to <= 4 ? 1 : Math.max(0.05, 0.5 - (to - 5) * 0.1));
   // +11부터 한 번 시도할 때 드는 골드: 기본값 × (+N − 10) × 레벨 보정 (나이트메어 아이템 × NM_SHOP.priceMul). 100레벨 나이트메어 +11 약 6,000
   const enhanceGold = (to, item) => (to >= ENHANCE.goldFrom ? levelPrice(ENHANCE.goldBase * (to - 10), item.lvl || 1) * nmCostMul(item) : 0);
@@ -633,9 +638,12 @@
   // 시뮬레이션: 고대 시험의 세트 5부위(+10)에서 방어구를 나이트메어 레전더리(+5)로 1·2·5부위 바꿔도 1층 보스에게 덜 쓰러짐
   // (세트 54% → 2·14·3%). 대신 나이트메어 몬스터가 층마다 더 세짐 (monsters.js NIGHTMARE.perFloor)
   const NM_POWER = { mul: 3, stats: ["atk", "def", "hp"] };
+  // 헬(지옥의) 아이템: 주 능력치 공격력·방어력·최대 HP ×5 (헬 몬스터에 맞춤, 시뮬레이션)
+  const HELL_POWER = { mul: 5 };
   // 나이트메어 아이템 비용 배율 (NM_SHOP은 상점 쪽에 있음)
-  const nmCostMul = (item) => (isNightmareItem(item) ? NM_SHOP.priceMul : 1);
-  const nmPower = (item, stat) => (isNightmareItem(item) && NM_POWER.stats.includes(stat) ? NM_POWER.mul : 1);
+  const nmCostMul = (item) => (isHellItem(item) ? HELL_SHOP.priceMul : isNightmareItem(item) ? NM_SHOP.priceMul : 1);
+  // 악몽의 힘 ×3, 지옥의 힘 ×HELL_POWER.mul (주 능력치 공격력·방어력·최대 HP)
+  const nmPower = (item, stat) => (!NM_POWER.stats.includes(stat) ? 1 : isHellItem(item) ? HELL_POWER.mul : isNightmareItem(item) ? NM_POWER.mul : 1);
 
   function enhancedBase(item) {
     const n = item.enh || 0;
@@ -724,7 +732,7 @@
     if (!canReforge(item) || !reforgeableLine(item, i)) return null;
     const n = (item.rf || []).length + 1;
     const rng = rngFrom(`rf|${item.id}|${n}`);
-    const nightmare = isNightmareItem(item) && (item.r || 0) >= 3;
+    const nightmare = isDeepItem(item) && (item.r || 0) >= 3;
     const others = item.lines.filter((_, j) => j !== i).map(([k]) => k);
     const elemTaken = others.some(isElementDmg);
     const pool = (nightmare ? STAT_KEYS_NM : STAT_KEYS_V4).filter(k => !others.includes(k) && !(elemTaken && isElementDmg(k)));
@@ -802,6 +810,7 @@
   // 나이트메어 아이템(공격력·방어력·HP ×3)은 상점 가격·진열 바꾸기·강화석·고대 굴리기 비용이 priceMul배. 나이트메어 골드 던전 보상도 같은 배율
   // sellMul: 나이트메어 아이템을 판매할 때 받는 골드 배율 (나이트메어에서 버는 골드도 처치 ×3이라 같이)
   const NM_SHOP = { priceMul: 2, sellMul: 3 };
+  const HELL_SHOP = { priceMul: 4, sellMul: 5 };   // 지옥의 아이템: 가격·강화석·강화 골드 ×4, 판매 골드 ×5
   const shopPrice = (item) => levelPrice(SHOP.prices[item.rarity], item.lvl) * nmCostMul(item);
   // n번째(0부터) 진열 바꾸기 비용: 기본값 × (1 + 0.25 × (층 − 1)), 5골드 단위. 더 바꿀 수 없으면 null. nm: 나이트메어 아이템 상점
   const rerollCost = (depth, n, nm = false) => (n < SHOP.rerolls.max
@@ -958,7 +967,7 @@
     return RUNEWORDS.filter(w => w.runes.length === n && w.bases.some(b => keys.includes(b)) && put.every((g, i) => isRune(g) && g[1] === w.runes[i]));
   }
   // 아이템 단계: 일반 → 악몽의 → (헬 난이도가 생기면) 지옥의
-  const itemTier = (item) => (isNightmareItem(item) ? "nightmare" : "normal");
+  const itemTier = (item) => (isHellItem(item) ? "hell" : isNightmareItem(item) ? "nightmare" : "normal");
   // 룬워드 재료를 눈에 띄게 표시할지: 룬은 나이트메어 50층부터 나오니 그 뒤에 얻는 헬(지옥의) 아이템만.
   // 일반·악몽의 아이템도 룬워드는 만들 수 있지만 룬을 얻기 전에 줍는 아이템이라 표시하지 않음 (상세에만)
   const RUNEWORD_HIGHLIGHT_TIERS = ["hell"];
@@ -1010,7 +1019,7 @@
     const rw = runewordOf(item);
     if (rw) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + rw.name;
     const el = ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none;
-    const nm = isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
+    const nm = isHellItem(item) ? `지옥의 ${el ? el + " " : ""}` : isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
     const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + nm;
     if (item.set) return plus + SETS[item.set].pieces[item.slot];
     return `${plus}${RARITIES[item.rarity].name} ${kindName(item)}`;
@@ -1084,7 +1093,7 @@
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
-    STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
+    STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,

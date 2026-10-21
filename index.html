@@ -104,6 +104,7 @@
   @media (prefers-reduced-motion: reduce) { .rainbow { animation: none; } }
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
   .nm-note { color: #d07bff; font-size: 12px; margin: 2px 0 4px; }
+  .nm-note.hell-note { color: #ff6a3d; }
   .legend-note { color: #ff9f2e; font-size: 12px; margin: 2px 0 4px; }
   .set-on { color: #2fd6b5; }
   #game {
@@ -263,6 +264,10 @@
   .modal.notice ul { margin: 0; padding-left: 20px; line-height: 1.6; }
   .modal.notice li + li { margin-top: 4px; }
   .modal.notice button { width: 100%; padding: 10px; margin-top: 6px; }
+  .modal.hellpick h2 { color: #ff5a2e; text-shadow: 0 0 10px rgba(255, 90, 46, 0.7); }
+  .hellpick-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+  .hellpick-list button { border-color: #ff5a2e; color: #ffb38a; }
+  .hellpick-list button:disabled { border-color: #444; color: #666; }
   .modal.death { max-width: 360px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.death h2 { color: #ff6b6b; }
   .modal.death button { width: 100%; padding: 10px; }
@@ -578,6 +583,15 @@
     <h2 id="notice-title"></h2>
     <ul id="notice-body"></ul>
     <button id="notice-ok" type="button">확인</button>
+  </div>
+</div>
+
+<div id="hellpick-modal" class="overlay" hidden>
+  <div class="modal notice hellpick" role="dialog" aria-modal="true" aria-labelledby="hellpick-title">
+    <h2 id="hellpick-title">🔥 헬 던전 · 층 고르기</h2>
+    <p class="meta">완료한 10·20·30·40·50층 중에서 골라 그 층(네임드 보스 층)부터 들어가요.</p>
+    <div id="hellpick-list" class="hellpick-list"></div>
+    <button id="hellpick-close" type="button">닫기</button>
   </div>
 </div>
 
@@ -994,11 +1008,11 @@
       use(o) { owner = o; data = read(o); if (remade) { remade = 0; store.set(key(owner), JSON.stringify(data)); } },
       owner: () => owner,
       // 서버에 올리는 부분 (얻은·버린 기록 log는 커서 이 기기에만)
-      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, gems: data.gems || {}, runes: data.runes || [] }),
+      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, hellStones: data.hellStones || 0, gems: data.gems || {}, runes: data.runes || [] }),
       // 서버 저장본으로 바꿈 (기록은 이 기기 것 유지)
       load(o, inv) {
         owner = o;
-        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], log: read(o).log });
+        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, hellStones: inv?.hellStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], log: read(o).log });
         store.set(key(owner), JSON.stringify(data));
       },
       // 이 기기에만 있던 장비를 합침. 옮긴 개수
@@ -1054,6 +1068,7 @@
       },
       stones: () => data.stones || 0,
       nmStones: () => data.nmStones || 0,
+      hellStones: () => data.hellStones || 0,   // 지옥 강화석 (지옥의 아이템 강화)
       // 대장간 옵션 재련: 골드는 부르는 쪽(판의 골드)에서 냄. 바뀐 줄 [능력치, 값] 또는 null
       reforge(id, i) {
         const item = all().find(x => x.id === id);
@@ -1129,7 +1144,7 @@
       // 가방 전부 판매 (장착 중인 아이템은 제외). keep(item)이 true인 아이템은 남김. 아이템마다 판매 기록을 남김
       // 나이트메어 아이템은 악몽 강화석으로
       sellAll(keep = () => false) {
-        const got = { stones: 0, nmStones: 0 };
+        const got = { stones: 0, nmStones: 0, hellStones: 0 };
         let gold = 0;
         const kept = (item) => keep(item) || !!item.gems?.length || !!item.lock;   // 보석을 넣은 아이템은 하나씩 팔 때만, 잠긴 아이템은 안 팖
         const sold = data.bag.filter(item => !kept(item));
@@ -1143,6 +1158,7 @@
         data.bag = data.bag.filter(kept);
         data.stones = (data.stones || 0) + got.stones;
         data.nmStones = (data.nmStones || 0) + got.nmStones;
+        data.hellStones = (data.hellStones || 0) + got.hellStones;
         write();
         return { count, ...got, gold };
       },
@@ -1317,7 +1333,7 @@
       // 층은 이번 시즌(v4 베타)에 실제로 내려간 최고 층, 아이템은 이번 시즌 규칙(v4) 아이템만
       const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, bestDepth);
       // 아이템 레벨은 얻은 층: 일반 던전 최고 층, 나이트메어를 갔으면 75 + 나이트메어 최고 층까지
-      const maxLvl = Math.max(stage, nmBest ? NM.itemBase + Math.min(nmBest, NM.floors) : 0);
+      const maxLvl = Math.max(stage, nmBest ? NM.itemBase + Math.min(nmBest, NM.floors) : 0, hellBest ? HELL.itemBase + Math.min(hellBest, HELL.floors) : 0);
       let item = null, best = -1;
       for (const it of Inv.items()) {
         if (!(it.rarity in RANK) || !(it.lvl <= maxLvl) || !(it.v >= SEASON)) continue;
@@ -1330,6 +1346,7 @@
       return {
         stage,
         ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
+        ...(hellBest ? { hell: hellCleared ? HELL.clearStage : hellBest } : {}),  // 헬 랭킹 (따로)
         plvl: player?.plvl || 1,
         item: item && { ...ref(item), rarity: item.rarity, name: RLItems.itemName(item) },
         gear: Object.values(Inv.equipped()).filter(Boolean).map(ref),
@@ -1386,19 +1403,24 @@
   // 나이트메어 난이도 골드 던전: player.gn = 나이트메어 층 (0이면 일반 75층 난이도). 그 층 나이트메어 몬스터·보스, 보상 ×2
   const goldNM = () => inGold() && player.gn > 0;
   const nmMobs = () => inNM() || goldNM();   // 나이트메어 몬스터가 나오는 곳
+  // 헬 던전: player.zone이 "hell"이면 depth는 헬 층(1~50). 나이트메어를 완료하면 열림. 최고 층·완료는 따로
+  // 몬스터는 속성 저항을 가지고, 헬에서는 플레이어의 속성 저항이 HELL.playerResCut%p 낮아짐. 아이템은 "지옥의" (126~175레벨)
+  const HELL = RLMonsters.HELL;
+  let hellBest = 0, hellCleared = false;
+  const inHell = () => player?.zone === "hell";
   const goldReward = (gn = goldNM() ? player.gn : 0) => RLItems.goldDungeonReward(gn ? NM.itemBase + gn : GD.floor, GD.rewardRolls, gn > 0);
-  const maxFloor = () => (inNM() ? NM.floors : RLMonsters.MAX_FLOOR);
-  const itemLevel = () => (nmMobs() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125)
-  const floorTag = () => (inNM() ? "n" : "d");                       // 아이템 시드의 층 표시 (서버가 층·레벨을 검증)
-  const floorName = (n = depth, nm = inNM(), gold = inGold()) => (nm ? `나이트메어 ${n}층` : gold ? (goldNM() ? `골드 던전(악몽 ${player.gn}층)` : "골드 던전") : `${n}층`);
-  // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층으로 보내고 받음
-  const presenceFloor = (n, nm, gold = inGold()) => (n ? (nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
-  const presenceLabel = (n) => (n > GD.presence ? (n - GD.presence <= NM.floors ? `골드 던전(악몽 ${n - GD.presence}층)` : "골드 던전")
+  const maxFloor = () => (inNM() ? NM.floors : inHell() ? HELL.floors : RLMonsters.MAX_FLOOR);
+  const itemLevel = () => (inHell() ? HELL.itemBase + depth : nmMobs() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125, 헬 126~175)
+  const floorTag = () => (inNM() ? "n" : inHell() ? "j" : "d");      // 아이템 시드의 층 표시 (서버가 층·레벨을 검증, 헬은 j)
+  const floorName = (n = depth, nm = inNM(), gold = inGold(), hell = inHell()) => (hell ? `헬 ${n}층` : nm ? `나이트메어 ${n}층` : gold ? (goldNM() ? `골드 던전(악몽 ${player.gn}층)` : "골드 던전") : `${n}층`);
+  // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층, 골드 던전은 2000 + 층, 헬은 3000 + 층으로 보내고 받음
+  const presenceFloor = (n, nm, gold = inGold(), hell = inHell()) => (n ? (hell ? HELL.presence + n : nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
+  const presenceLabel = (n) => (n > HELL.presence ? `헬 ${n - HELL.presence}층` : n > GD.presence ? (n - GD.presence <= NM.floors ? `골드 던전(악몽 ${n - GD.presence}층)` : "골드 던전")
     : n > NM.presence ? `악몽 ${n - NM.presence}층` : `${n}층`);
   // 던전 입구 오른쪽 문: 일반 던전 최고 층 − 10층부터 (보스 2~3마리를 다시 잡으며 파밍). 2층 이상일 때만 열림. 완료자는 65층
   const skipFloor = () => Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth) - 10);
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
-  const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() ? { tag: "n", level: itemLevel() } : {});
+  const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() || inHell() ? { tag: floorTag(), level: itemLevel() } : {});
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
   // 마지막으로 쓰러진 곳 { d: 층, z: "normal" | "nm" | "gold", gn: 골드 던전(악몽) 층 } — 운영자 입구가 여기로 바로 감. 새로 시작해도 남음
   let lastDeath = null;
@@ -1438,7 +1460,8 @@
       chain: g.chain > 0, chainPct: g.chainPct, chainMax: g.chainMax > 0,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
-      res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes)])),
+      // 헬에서는 속성 저항 −HELL.playerResCut%p (최대치를 넘긴 만큼은 소용없음)
+      res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball
       rw: T.runewords.special,
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
@@ -1560,7 +1583,7 @@
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
+      const boss = inHell() ? RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (!quiet) log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
@@ -1569,13 +1592,15 @@
 
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
-    const nmCount = nmMobs() ? RLMonsters.nmMonsterCount(depth) : 0;
-    const count = nmMobs() ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
+    const deep = nmMobs() || inHell();
+    const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
+    const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
-      const kind = Math.random() < RLMonsters.eliteChance(nmMobs() ? NM.base : depth) ? "elite" : "normal";
-      const m = nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
+      const kind = Math.random() < RLMonsters.eliteChance(deep ? NM.base : depth) ? "elite" : "normal";
+      const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
+        : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), kind, depth);
       enemies.push({ x: spot.x, y: spot.y, ...m });
     }
@@ -1585,8 +1610,9 @@
       let spot = null;
       for (let tries = 0; tries < 50 && (!spot || dist(spot, player) < 10); tries++) spot = randomFloor([player, ...enemies]);
       if (spot) {
-        const g = inNM() ? RLMonsters.makeGolden(NM.base, RLMonsters.goldenRank(NM.base, Math.random)) : RLMonsters.makeGolden(depth, RLMonsters.goldenRank(depth, Math.random));
+        const g = inNM() || inHell() ? RLMonsters.makeGolden(NM.base, RLMonsters.goldenRank(NM.base, Math.random)) : RLMonsters.makeGolden(depth, RLMonsters.goldenRank(depth, Math.random));
         if (inNM()) g.hp = g.maxHp = Math.round(g.hp * NM.hp * RLMonsters.nmScale(depth));
+        if (inHell()) g.hp = g.maxHp = Math.round(g.hp * NM.hp * RLMonsters.nmScale(HELL.startNm) * HELL.hp * RLMonsters.hellScale(depth));
         enemies.push({ ...spot, ...g, fleeAt: null });
       }
     }
@@ -1603,7 +1629,7 @@
     const golds = between(...piles.count);
     for (let i = 0; i < golds; i++) {
       const spot = randomFloor([player, ...enemies, ...items]);
-      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (nmMobs() ? NM.gold.pile : 1) });
+      if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (inHell() ? HELL.gold.pile : nmMobs() ? NM.gold.pile : 1) });
     }
 
     computeFOV();
@@ -1756,7 +1782,7 @@
   function playerElements(target, s) {
     const alive = target.hp > 0 && enemies.includes(target);
     if (alive && s.elem.fire > 0) burnOn(target, Math.round(s.atk * EL.burn.mul));
-    if (alive && s.elem.ice > 0 && chill(target, EL.ice.chance)) log(`${target.name}이(가) 얼어붙어 느려졌다! (${EL.ice.turns}턴)`, null, EL.colors.ice);
+    if (alive && s.elem.ice > 0 && chill(target, EL.ice.chance * elemMul(target, "ice"))) log(`${target.name}이(가) 얼어붙어 느려졌다! (${EL.ice.turns}턴)`, null, EL.colors.ice);
     if (s.elem.bolt > 0) boltChain(target, s);
   }
   // 번개: 맞은 몬스터에서 가까운 몬스터(3칸 안)에게 차례로 2번 튕김. 한 마리에 한 번, 방어력 무시
@@ -1769,7 +1795,7 @@
         .sort((a, b) => near8(a, at) - near8(b, at))[0];
       if (!next) break;
       hit.add(next);
-      const d = Math.round(dmg * shockMul(next) * elemMul(next));
+      const d = Math.round(dmg * shockMul(next) * elemMul(next, "bolt"));
       next.hp -= d;
       showDamage(next, d, false, EL.colors.bolt);
       log(`번개가 ${next.name}에게 튕겨 ${d} 피해!`, null, EL.colors.bolt);
@@ -1795,7 +1821,7 @@
   // 플레이어가 적 하나를 때림. raw: 방어력 빼기 전 피해. tag: "왼손 " / "광란 " (로그 앞머리)
   // elem: 속성 피해 (방어력에 줄지 않음)
   function hitEnemy(target, raw, crit, s, tag, elem = 0) {
-    const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMul(target))) * shockMul(target));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
+    const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMix(target, s))) * shockMul(target));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
@@ -1815,7 +1841,7 @@
     const s = stats();
     const xp = Math.round(e.xp * (1 + s.xp / 100));
     // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음. 나이트메어 몬스터는 ×3 (NIGHTMARE.gold)
-    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (nmMobs() ? NM.gold.kill : 1));
+    const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (inHell() ? HELL.gold.kill : nmMobs() ? NM.gold.kill : 1));
     player.gold += gold;
     log(`${e.name} 처치! (+${xp} XP, +${gold} 골드)`, "good");
     if (e.kind === "boss") log("보스를 쓰러뜨렸다! 계단이 열렸다.", null, BOSS_COLOR);
@@ -1862,7 +1888,7 @@
       gearLog(`${e.name}이(가) ${RLItems.itemName(item)}을(를) 떨어뜨렸다!${isRainbow(item) ? " ✨" : ""}`, item);
     }
     // 보석: 장비와 따로 굴림 (반드시 떨어지지는 않음). 나이트메어는 높은 등급이 잘 나옴
-    const gem = RLItems.rollGem(`${player.rid}|${floorTag()}${depth}|g${player.kills}`, e.kind, inNM());
+    const gem = RLItems.rollGem(`${player.rid}|${floorTag()}${depth}|g${player.kills}`, e.kind, inNM() || inHell());
     if (gem) {
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gem", gem: gem[0], grade: gem[1] });
@@ -1950,22 +1976,25 @@
 
   // 나이트메어 층 돌파 보상: 그 층 나이트메어 레전더리 상점 가격 × NM.gold.floor (5골드 단위)
   const nmFloorGold = (n) => Math.round(RLItems.shopPrice({ rarity: "legendary", lvl: NM.itemBase + n }) * RLItems.NM_SHOP.priceMul * NM.gold.floor / 5) * 5;
+  // 헬: 그 층 지옥의 레전더리 상점 가격 × HELL.gold.floor
+  const hellFloorGold = (n) => Math.round(RLItems.shopPrice({ rarity: "legendary", lvl: HELL.itemBase + n }) * RLItems.HELL_SHOP.priceMul * HELL.gold.floor / 5) * 5;
   function nmFloorReward() {
-    const g = nmFloorGold(depth);
+    const g = inHell() ? hellFloorGold(depth) : nmFloorGold(depth);
     player.gold += g;
     log(`${floorName()} 돌파! 층 보상 골드 +${g.toLocaleString()}`, null, "#ffcf5c");
   }
 
   function descend() {
-    if (inNM()) nmFloorReward();
+    if (inNM() || inHell()) nmFloorReward();
     depth++;
     shopBought = [];
     shopRerolls = 0;
     noteOldGear();
     if (inNM()) nmBest = Math.max(nmBest, depth);
+    else if (inHell()) hellBest = Math.max(hellBest, depth);
     else if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
     log(`${floorName()}으로 내려간다...`, "info");
-    if (depth === maxFloor() && !(inNM() ? nmCleared : cleared)) log(`마지막 층이다! ${floorName()} 보스를 쓰러뜨리고 계단을 밟으면 ${inNM() ? "나이트메어" : "일반 던전"} 완료.`, "good");
+    if (depth === maxFloor() && !(inNM() ? nmCleared : inHell() ? hellCleared : cleared)) log(`마지막 층이다! ${floorName()} 보스를 쓰러뜨리고 계단을 밟으면 ${inNM() ? "나이트메어" : inHell() ? "헬" : "일반 던전"} 완료.`, "good");
     const rooms = generateDungeon();
     newLevel(rooms);
     render();
@@ -1977,6 +2006,7 @@
   // 포탈 층은 최대 층의 새 구역(새 지도·새 보스)으로 만들어 두어서, 로비의 파란 포탈로 다시 들어가 파밍
   function completeFloor() {
     if (inNM()) { completeNightmare(); return; }
+    if (inHell()) { completeHell(); return; }
     if (inGold()) { completeGold(); return; }
     noteOldGear();
     const counts = !player.oldGear;  // 예전 장비를 낀 판은 완료해도 v4 베타 랭킹에는 안 셈
@@ -2040,6 +2070,25 @@
     ] : [`${floorName()} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈(*)로 다시 들어갈 수 있어요.`]);
   }
 
+  // 헬 50층 보스를 쓰러뜨리고 계단을 밟음: 헬 완료 (최종 목적지) → 로비로, 포탈 문으로 50층 새 구역
+  function completeHell() {
+    nmFloorReward();
+    const first = !hellCleared;
+    hellCleared = true;
+    hellBest = Math.max(hellBest, depth);
+    shopBought = [];
+    shopRerolls = 0;
+    if (first) log(`🔥 ${floorName()} 보스를 쓰러뜨렸다! 헬 완료! 모든 던전을 정복했다!`, "rainbow");
+    newLevel(generateDungeon(), { quiet: true });
+    saveGame(true);
+    enterLobby({ from: "clear" });
+    updateStats();
+    showNotice(first ? "헬 완료!" : `${floorName()} 클리어!`, first ? [
+      `${floorName()} 보스를 쓰러뜨려 헬 던전을 완료했어요. 이 게임의 마지막 던전이에요! 헬 랭킹에 "완료"로 기록돼요.`,
+      `로비의 파란 포탈(*)이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요.`,
+    ] : [`${floorName()} 보스를 또 쓰러뜨리고 로비로 돌아왔어요.`]);
+  }
+
   // 천하무적 불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번, 이 판의 이 층)
   const floorKey = () => `${player.rid}|${player.zone || "normal"}|${depth}`;
   function death() {
@@ -2068,7 +2117,7 @@
     rv: player.revived ? 1 : 0,
     ...(player.ud ? { ud: player.ud } : {}),
     ...(player.oldGear ? { og: 1 } : {}),
-    ...(player.zone === "nm" || player.zone === "gold" ? { z: player.zone } : {}),
+    ...(player.zone === "nm" || player.zone === "gold" || player.zone === "hell" ? { z: player.zone } : {}),
     ...(goldNM() ? { gn: player.gn } : {}),
   });
   function makeSave() {
@@ -2079,6 +2128,8 @@
       ...(cleared ? { clr: 1 } : {}),
       ...(nmBest ? { nb: nmBest } : {}),
       ...(nmCleared ? { nclr: 1 } : {}),
+      ...(hellBest ? { hb: hellBest } : {}),
+      ...(hellCleared ? { hclr: 1 } : {}),
       ...(lastDeath ? { ld: lastDeath } : {}),
       run: gameOver ? null : runFields(),
       dead: gameOver && !player.revived ? runFields() : null,
@@ -2188,8 +2239,10 @@
     cleared = sameSeason && !!s?.clr;
     nmBest = sameSeason ? Math.min(NM.floors, s?.nb || 0) : 0;
     nmCleared = sameSeason && !!s?.nclr;
+    hellBest = sameSeason ? Math.min(HELL.floors, s?.hb || 0) : 0;
+    hellCleared = sameSeason && !!s?.hclr;
     const ld = s?.ld;
-    lastDeath = ld && Number.isInteger(ld.d) && ld.d >= 1 && ["normal", "nm", "gold"].includes(ld.z) ? { d: ld.d, z: ld.z, ...(Number.isInteger(ld.gn) && ld.gn > 0 ? { gn: ld.gn } : {}) } : null;
+    lastDeath = ld && Number.isInteger(ld.d) && ld.d >= 1 && ["normal", "nm", "gold", "hell"].includes(ld.z) ? { d: ld.d, z: ld.z, ...(Number.isInteger(ld.gn) && ld.gn > 0 ? { gn: ld.gn } : {}) } : null;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -2221,7 +2274,7 @@
       revived: !!r.rv,
       ud: typeof r.ud === "string" ? r.ud : null,   // 천하무적 불사를 쓴 층
       oldGear: !!r.og,
-      zone: r.z === "nm" || r.z === "gold" ? r.z : "normal",
+      zone: r.z === "nm" || r.z === "gold" || r.z === "hell" ? r.z : "normal",
       gn: r.z === "gold" ? Math.max(0, Math.min(NM.floors, r.gn | 0)) : 0,
     };
     depth = Math.min(maxFloor(), depth);
@@ -2478,10 +2531,13 @@
   let skillFx = [];  // 스킬 칸 번쩍임 [{ cells, color, until }]
   const shocked = (e) => e.shock > turn;  // 감전: 받는 피해 +CHAIN.shock.pct%
   const shockMul = (e) => (shocked(e) ? 1 + CHAIN.shock.pct / 100 : 1);
-  // 몬스터의 속성 저항 (일반·나이트메어 몬스터는 0, 헬 몬스터는 나중에 e.res). 폭풍전야 디버프면 −vulnPct% → 속성 피해가 그만큼 더 들어감
+  // 몬스터의 속성 저항 e.res = { fire, ice, bolt } (일반·나이트메어 몬스터는 0, 헬 몬스터는 자기 속성 50%·다른 속성 10~40%)
+  // 폭풍전야 디버프면 −vulnPct% → 속성 피해가 그만큼 더 들어감
   const RW_FX = RLItems.RUNEWORD_FX;
-  const monsterRes = (e) => (e.res || 0) - (e.vulnUntil > turn ? e.vulnPct || 0 : 0);
-  const elemMul = (e) => Math.max(0, 1 - monsterRes(e) / 100);
+  const monsterRes = (e, el) => (e.res?.[el] || 0) - (e.vulnUntil > turn ? e.vulnPct || 0 : 0);
+  const elemMul = (e, el) => Math.max(0, 1 - monsterRes(e, el) / 100);
+  // 공격에 붙는 속성 피해(불·얼음·번개 피해 줄을 합친 것)는 속성마다의 비율로 평균
+  const elemMix = (e, s) => { const tot = EL.list.reduce((a, k) => a + s.elem[k], 0); return tot ? EL.list.reduce((a, k) => a + s.elem[k] * elemMul(e, k), 0) / tot : 1; };
   function flash(cells, color) {
     skillFx.push({ cells, color, until: performance.now() + 280 });
     setTimeout(render, 300);  // 번쩍임 지우기 (애니메이션 루프 없이 한 번만 다시 그림)
@@ -2489,7 +2545,8 @@
   // 스킬 피해 한 번: 방어력 무시, 감전이면 더 아픔. 쓰러지면 처치
   // 스킬 피해는 속성 피해 (몬스터 속성 저항만큼). 룬워드(태산·마음가짐·몰래)면 스킬에도 흡혈
   function skillHit(e, dmg, crit, color, s) {
-    const d = Math.max(1, Math.round(dmg * shockMul(e) * elemMul(e)));
+    const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : "bolt";   // 파이어볼 불·노바 얼음·체인 번개
+    const d = Math.max(1, Math.round(dmg * shockMul(e) * elemMul(e, el)));
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     showDamage(e, d, crit, color);
@@ -2619,7 +2676,7 @@
     for (const e of [...enemies]) {
       const b0 = burnTick(e);
       if (!b0) continue;
-      const b = Math.round(b0 * shockMul(e) * elemMul(e));
+      const b = Math.round(b0 * shockMul(e) * elemMul(e, "fire"));
       e.hp -= b;
       showDamage(e, b, false, EL.colors.fire);
       if (e.hp <= 0) { log(`${e.name}이(가) 불타 쓰러졌다!`, null, EL.colors.fire); killEnemy(e); }
@@ -2755,7 +2812,8 @@
     for (let y = gate.y - 2; y <= gate.y; y++) for (let x = gate.x - 2; x <= gate.x + 2; x++) put(x, y, "gate");
     for (const d of Object.values(doors)) deco.delete(`${d.x},${d.y}`);
     for (const x of [gate.x - 2, gate.x + 2]) put(x, gate.y + 1, "torch");
-    for (const [x, y] of [[6, 5], [25, 5], [6, 18], [25, 18], [11, 3], [20, 3], [11, 20], [20, 20]]) put(x, y, "pillar");
+    for (const [x, y] of [[6, 5], [25, 5], [6, 18], [25, 18], [11, 20], [20, 20]]) put(x, y, "pillar");
+    for (const [x, y] of [[9, 3], [23, 3]]) put(x, y, "brazier");   // 헬 입구 양쪽 화로
     // 왼쪽 거래소(건물)와 바로 옆 작은 우편함(상자 한 칸), 그 옆 시간 상점(매 시간 정각에 진열이 바뀜): 걸어 들어가면 창이 열림
     // 오른쪽은 골드 던전과 나이트메어 입구 (일반 던전을 완료하면 열림)
     const shops = [
@@ -2768,6 +2826,9 @@
       { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
       // 나이트메어 오른쪽 문: 완료한 사람만 50층(룬이 나오는 보스 층)에 바로
       { kind: "nightmare50", door: { x: 28, y: gate.y }, glyph: "▼", tab: null },
+      // 맨 위 헬 던전 (최종 목적지, 나이트메어를 완료하면 열림): 왼쪽 문 1층부터, 오른쪽 문 완료한 10·20·30·40·50층 골라서
+      { kind: "hell", label: "헬 던전", x0: 10, x1: 22, y0: 1, y1: 3, door: { x: 14, y: 3 }, glyph: "▼", tab: null },
+      { kind: "hellPick", door: { x: 18, y: 3 }, glyph: "▼", tab: null },
       // 아래쪽 가운데 대장간 (문이 위쪽): 옵션 재련·홈 초기화 — 인벤토리를 대장간 모드로 엶
       { kind: "forge", label: "대장간", x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
     ];
@@ -2780,7 +2841,7 @@
   let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
 
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
-  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold()) ? depth : 0);
+  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold() || inHell()) ? depth : 0);
 
   function setScene(s) {
     scene = s;
@@ -2858,7 +2919,7 @@
   function enterStaffDoor() {
     if (!isStaff() || entering) return;
     let to;
-    if (lastDeath) to = { ...lastDeath, d: Math.min(lastDeath.d, lastDeath.z === "nm" ? NM.floors : RLMonsters.MAX_FLOOR) };
+    if (lastDeath) to = { ...lastDeath, d: Math.min(lastDeath.d, lastDeath.z === "nm" ? NM.floors : lastDeath.z === "hell" ? HELL.floors : RLMonsters.MAX_FLOOR) };
     else {
       const top = Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), nmTop = Math.min(NM.floors, nmBest);
       const nm = cleared && nmTop >= 1 && confirm(`운영자 입구: 나이트메어 ${nmTop}층으로 갈까요?\n취소하면 일반 던전 ${top}층으로 가요.`);
@@ -2914,6 +2975,50 @@
     updateStats();
   }
 
+  // 헬 던전 입구(로비 맨 위): 나이트메어를 완료하고, 장착한 장비가 모두 v4 이후일 때만. from: 1층 또는 완료한 10·20·30·40·50층
+  async function enterHell(from = 1) {
+    if (gameOver) { openDeath(); return; }
+    if (entering) return;
+    if (!nmCleared) { log(`헬 던전은 나이트메어 ${NM.floors}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
+    if (from > 1 && !hellMilestones().includes(from)) { log(`헬 ${from}층은 그 층을 완료해야 골라서 들어갈 수 있다.`, "bad"); return; }
+    const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
+    if (old) { log(`예전(v3까지) 장비 ${old}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.`, "bad"); return; }
+    if (resumeFloor() && !confirm(`헬 ${from}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+    entering = true;
+    let ok = false;
+    try { ok = await allowEntry(); } finally { entering = false; }
+    if (!ok || scene !== "lobby") return;
+    player.zone = "hell";
+    depth = from;
+    player.rid = newRunId();
+    player.oldGear = false;
+    hellBest = Math.max(hellBest, from);
+    shopBought = [];
+    shopRerolls = 0;
+    setScene("dungeon");
+    log(`🔥 ${floorName()}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 ${HELL.playerResCut}% 낮아진다.`, "bad");
+    log(`아이템 레벨 ${HELL.itemBase + 1}~${HELL.itemBase + HELL.floors} "지옥의" 아이템이 나온다. 10·20·30·40·50층 보스를 쓰러뜨리면 그 층을 골라서 다시 들어올 수 있다.`, "info");
+    newLevel(generateDungeon());
+    saveGame(true);
+    render();
+    updateStats();
+  }
+  // 헬 오른쪽 문: 완료한 층을 골라서
+  const hellPickModal = document.getElementById("hellpick-modal");
+  function openHellPick() {
+    if (!nmCleared) { log(`헬 던전은 나이트메어 ${NM.floors}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
+    const done = hellMilestones();
+    if (!done.length) { log(`헬 오른쪽 문은 ${HELL.milestones[0]}층을 완료하면 열린다 (10·20·30·40·50층 중 완료한 층을 골라 들어감).`, "bad"); return; }
+    document.getElementById("hellpick-list").replaceChildren(...HELL.milestones.map(m => Object.assign(document.createElement("button"), {
+      type: "button", textContent: done.includes(m) ? `${m}층` : `${m}층 (미완료)`, disabled: !done.includes(m),
+      onclick: () => { closeHellPick(); enterHell(m); },
+    })));
+    hellPickModal.hidden = false;
+    hellPickModal.querySelector("button:not(:disabled)")?.focus();
+  }
+  const closeHellPick = () => { hellPickModal.hidden = true; };
+  document.getElementById("hellpick-close").addEventListener("click", closeHellPick);
+
   // 골드 던전 입구(로비 나이트메어 왼쪽 건물): 일반 던전을 완료하면. 들어갈 때마다 새 지도
   // 왼쪽 문: 75층 난이도 / 오른쪽 문: 나이트메어 최고 층 난이도 (나이트메어 기록이 있을 때, 보상 ×2)
   async function enterGoldDungeon(nm = false) {
@@ -2966,6 +3071,8 @@
       else if (shopDoor.kind === "nightmare50") enterNightmare(NM.floors);
       else if (shopDoor.kind === "hourshop") openHourShop();
       else if (shopDoor.kind === "forge") openForge();
+      else if (shopDoor.kind === "hell") enterHell(1);
+      else if (shopDoor.kind === "hellPick") openHellPick();
       else if (shopDoor.kind === "golddungeon") enterGoldDungeon(false);
       else if (shopDoor.kind === "golddungeonNM") enterGoldDungeon(true);
       return;
@@ -3072,6 +3179,37 @@
     else if (scene === "dungeon" && !document.hidden && rainbowInSight()) render();
   }
 
+  // 헬 건물 장식: 둘레의 붉은 빛, 지붕 위 불꽃, 가운데 큰 이름 (나이트메어를 완료하기 전에는 어둡게)
+  function drawHellFacade(s, t) {
+    const x0 = s.x0 * TILE, y0 = s.y0 * TILE, w = (s.x1 - s.x0 + 1) * TILE, h = (s.y1 - s.y0 + 1) * TILE;
+    const pulse = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * 2.5);
+    ctx.save();
+    ctx.shadowColor = nmCleared ? "#ff3b1f" : "#5a1a10";
+    ctx.shadowBlur = 12 + 14 * pulse;
+    ctx.strokeStyle = nmCleared ? `rgba(255, ${80 + Math.round(90 * pulse)}, 40, 0.95)` : "rgba(120, 40, 30, 0.8)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x0 + 1, y0 + 1, w - 2, h - 2);
+    ctx.restore();
+    // 지붕 불꽃: 칸마다 높이가 다르게 일렁임
+    if (nmCleared) for (let i = 0; i < s.x1 - s.x0 + 1; i++) {
+      const fx = x0 + i * TILE + TILE / 2, f = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * 7 + i * 1.7);
+      const fh = 5 + 6 * f;
+      ctx.fillStyle = `rgba(255, ${90 + Math.round(120 * f)}, 30, 0.9)`;
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, y0 + 2);
+      ctx.quadraticCurveTo(fx - 2, y0 - fh / 2, fx, y0 - fh);
+      ctx.quadraticCurveTo(fx + 2, y0 - fh / 2, fx + 4, y0 + 2);
+      ctx.fill();
+    }
+    ctx.save();
+    ctx.shadowColor = "#ff2a00";
+    ctx.shadowBlur = nmCleared ? 10 + 10 * pulse : 0;
+    drawLabel(`🔥 ${s.label} 🔥`, x0 + w / 2, y0 + TILE - 1, nmCleared ? `rgb(255, ${200 + Math.round(55 * pulse)}, ${120 + Math.round(80 * pulse)})` : "#7a4a40", 15);
+    ctx.restore();
+  }
+  // 헬 오른쪽 문으로 골라 들어갈 수 있는 층: 완료한 10·20·30·40·50층 (그 층 보스를 쓰러뜨리고 다음 층에 내려감, 50층은 헬 완료)
+  const hellMilestones = () => HELL.milestones.filter(m => (m === HELL.floors ? hellCleared : hellBest > m));
+
   function renderLobby() {
     const t = performance.now() / 1000;
     const { gate, doors, deco } = LOBBY;
@@ -3094,6 +3232,23 @@
           ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
           ctx.fillStyle = "#555b72";
           ctx.fillRect(px + 3, py + 3, TILE - 6, 3);
+        } else if (kind === "hell") {
+          // 헬 던전 건물: 검붉은 벽돌, 줄눈이 용암처럼 일렁이며 빛남
+          const glow = 0.55 + 0.45 * Math.sin(t * 2.2 + x * 0.7 + y * 1.3);
+          ctx.fillStyle = reduceMotion ? "#4a0f0a" : `rgb(${58 + Math.round(30 * glow)}, ${12 + Math.round(8 * glow)}, 10)`;
+          ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = `rgba(255, ${90 + Math.round(80 * glow)}, 30, ${0.55 + 0.4 * glow})`;
+          ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
+          ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
+        } else if (kind === "brazier") {
+          // 화로: 받침 + 크게 일렁이는 불꽃
+          ctx.fillStyle = "#3a2a22";
+          ctx.fillRect(px + 4, py + TILE - 7, TILE - 8, 6);
+          ctx.save();
+          ctx.shadowColor = "#ff5a2e";
+          ctx.shadowBlur = reduceMotion ? 8 : 10 + 8 * Math.abs(Math.sin(t * 5 + x));
+          drawGlyph("♨", px, py - 2, `rgb(255, ${120 + Math.round(70 * Math.sin(t * 9 + x))}, 40)`);
+          ctx.restore();
         } else if (kind === "torch") {
           drawGlyph("*", px, py, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + x))}, 60, 1)`);
         } else if (BUILDING_COLORS[kind]) {
@@ -3141,6 +3296,16 @@
         const c = nmCleared ? (reduceMotion ? "#ff6bd3" : rainbowColor(s.door.x)) : "#7a5a8a";
         drawGlyph(nmCleared ? s.glyph : "×", sx, sy, c);
         drawLabel(nmCleared ? `${NM.floors}층 룬` : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        continue;
+      }
+      // 헬 던전: 문 두 개 + 건물 둘레의 붉은 빛·위쪽 불꽃·큰 이름 (가장 화려하게)
+      if (s.kind === "hell" || s.kind === "hellPick") {
+        const open = s.kind === "hell" ? nmCleared : nmCleared && hellMilestones().length > 0;
+        const fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + s.door.x)))}, 30)`;
+        const c = open ? fire : "#6a3a30";
+        drawGlyph(open ? s.glyph : "×", sx, sy, c);
+        drawLabel(s.kind === "hell" ? (nmCleared ? "1층" : "닫힘") : open ? "층 고르기" : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        if (s.kind === "hell") drawHellFacade(s, t);
         continue;
       }
       const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR : s.kind === "forge" ? FORGE_COLOR
@@ -3405,8 +3570,8 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("zone").textContent = inNM() ? "나이트메어 " : goldNM() ? "골드 던전 · 나이트메어 " : inGold() ? "골드 던전 " : "";
-    document.getElementById("best").textContent = inNM() ? (nmCleared ? `${nmBest} 완료` : (nmBest || "-"))
+    document.getElementById("zone").textContent = inHell() ? "헬 " : inNM() ? "나이트메어 " : goldNM() ? "골드 던전 · 나이트메어 " : inGold() ? "골드 던전 " : "";
+    document.getElementById("best").textContent = inHell() ? (hellCleared ? `${hellBest} 완료` : (hellBest || "-")) : inNM() ? (nmCleared ? `${nmBest} 완료` : (nmBest || "-"))
       : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? `포션 (${player.potCd}턴)` : "포션 (준비됨)";
     const st = [
@@ -3589,6 +3754,8 @@
     cleared = false;
     nmBest = 0;
     nmCleared = false;
+    hellBest = 0;
+    hellCleared = false;
     newGame();
     log("로그아웃했다. 게스트로 새로 시작한다.", "info");
     renderAccount();
@@ -3693,7 +3860,7 @@
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
     document.getElementById("inv-count").textContent =
-      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
+      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""}${Inv.hellStones() > 0 || Inv.items().some(RLItems.isHellItem) ? ` · 지옥 강화석 ${Inv.hellStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
 
     invEquip.replaceChildren(...RLItems.SLOTS.map(slot => {
       const item = equip[slot];
@@ -3781,12 +3948,12 @@
   // 판매하면 받는 강화석: "강화석 +A · 악몽 강화석 +B" (0인 쪽은 빼고, 둘 다 0이면 "강화석 +0")
   const showNmStones = () => Inv.nmStones() > 0 || Inv.items().some(RLItems.isNightmareItem);
   function stonesText(items, sign = "+") {
-    const sum = { stones: 0, nmStones: 0 };
+    const sum = { stones: 0, nmStones: 0, hellStones: 0 };
     for (const item of items) sum[RLItems.stoneKey(item)] += RLItems.sellStones(item);
     const parts = Object.keys(sum).filter(k => sum[k]).map(k => `${RLItems.STONE_NAMES[k]} ${sign}${sum[k]}`);
     return parts.length ? parts.join(" · ") : `강화석 ${sign}0`;
   }
-  const gainText = (r) => [r.stones ? `강화석 +${r.stones}` : "", r.nmStones ? `악몽 강화석 +${r.nmStones}` : ""].filter(Boolean).join(" · ") || "강화석 +0";
+  const gainText = (r) => [r.stones ? `강화석 +${r.stones}` : "", r.nmStones ? `악몽 강화석 +${r.nmStones}` : "", r.hellStones ? `지옥 강화석 +${r.hellStones}` : ""].filter(Boolean).join(" · ") || "강화석 +0";
 
   // 가방 전부 판매: 레전더리·세트·룬워드 재료가 섞여 있으면 같이 팔지 물어봄 (안 팔면 가방에 남김).
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
@@ -4066,7 +4233,8 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
+      ...(RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
+        : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
       ...statLines(item),
       ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
@@ -4139,7 +4307,7 @@
       item.lock ? "🔓 잠금 풀기" : "🔒 잠그기"));
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
-    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isNightmareItem(item) ? 1 : 0);
+    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isDeepItem(item) ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
   }
 
@@ -4152,8 +4320,8 @@
   }
 
   function equipItem(item) {
-    if (inNM() && isLegacy(item)) {
-      invMsg = { cls: "bad", text: "나이트메어에서는 예전(v3까지) 장비를 낄 수 없어요." };
+    if ((inNM() || inHell()) && isLegacy(item)) {
+      invMsg = { cls: "bad", text: "나이트메어·헬에서는 예전(v3까지) 장비를 낄 수 없어요." };
       renderInventory();
       return;
     }
@@ -5010,7 +5178,7 @@
 
   // ---- 터치 조작 ----
   // 방향 버튼: 누르면 한 칸, 누르고 있으면 0.3초 뒤부터 계속 이동. 창이 열려 있으면 움직이지 않음
-  const anyModalOpen = () => !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen();
+  const anyModalOpen = () => !hellPickModal.hidden || !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen();
   const pad = document.getElementById("touch-pad");
   let holdTimer = null;
   const stopHold = () => { clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null; };
@@ -5103,7 +5271,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021g:${owner}`;  // 룬·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021h:${owner}`;  // 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5111,6 +5279,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +
         `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ` +
         `나이트메어를 완료했다면 나이트메어 건물 오른쪽 문으로 ${NM.floors}층에 바로 들어갈 수 있어요. ` +
         `속성 세트(화염·서리·뇌전)는 3세트에 화상·느려짐·4번 튕김, 5세트에 스킬 피해 +50%·능력치·저항이 켜져요 (예전엔 반대). ` +
@@ -5260,6 +5429,10 @@
     if (Ads.isOpen()) return;  // 광고를 보는 중
     if (!noticeModal.hidden) {
       if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); closeNotice(); }
+      return;
+    }
+    if (!hellPickModal.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); closeHellPick(); }
       return;
     }
     if (!deathModal.hidden && modal.hidden) {
