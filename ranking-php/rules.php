@@ -420,7 +420,7 @@ const R_RUNEWORDS = [
     ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5], 'special' => ['autoPotion' => 1]],
     ['name' => '마음가짐', 'bases' => ['longsword', 'shield'], 'runes' => [4, 7, 0, 8], 'stats' => ['skillPct' => 30], 'special' => ['skillFast' => 1, 'skillLs' => 1]],
     ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['crit' => 8, 'xp' => 25], 'special' => ['shield' => 10]],
-    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5], 'special' => []],
+    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5, 'hpPct' => 15], 'special' => []],
     ['name' => '기억', 'bases' => ['head'], 'runes' => [0, 7], 'stats' => ['xp' => 25, 'crit' => 3], 'special' => ['lsCap' => 2]],
     ['name' => '몰래', 'bases' => ['chest'], 'runes' => [4, 3], 'stats' => ['defPct' => 10, 'dmgReduce' => 3], 'special' => ['skillLs' => 1]],
     ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20, 'lifesteal' => 4], 'special' => ['fireball' => 1]],
@@ -781,6 +781,9 @@ function r_totals(array $equipped): array {
 }
 
 function r_item_name(array $item): string {
+    // 룬워드: "+10 천하무적" (고대·강화만 앞에)
+    $rw = r_runeword_of($item);
+    if ($rw) return (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $rw['name'];
     $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
     $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;

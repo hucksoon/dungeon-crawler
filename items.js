@@ -932,7 +932,7 @@
     { name: "치유", bases: ["head"], stats: { killHealPct: 5 }, special: { autoPotion: 1 } },
     { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
     { name: "선견지명", bases: ["longsword"], stats: { crit: 8, xp: 25 }, special: { shield: 10 } },
-    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5 }, special: {} },
+    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5, hpPct: 15 }, special: {} },
     { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3 }, special: { lsCap: 2 } },
     { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3 }, special: { skillLs: 1 } },
     { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20, lifesteal: 4 }, special: { fireball: 1 } },
@@ -963,6 +963,23 @@
   // 일반·악몽의 아이템도 룬워드는 만들 수 있지만 룬을 얻기 전에 줍는 아이템이라 표시하지 않음 (상세에만)
   const RUNEWORD_HIGHLIGHT_TIERS = ["hell"];
   const runewordHighlight = (item) => !!item && RUNEWORD_HIGHLIGHT_TIERS.includes(itemTier(item)) && runewordsFor(item).length > 0;
+  const RUNEWORD_COLOR = "#ffd27f";   // 룬워드 아이템 이름 색 (디아블로 2처럼 금색)
+  // 특수 효과 설명 (special → 줄 목록)
+  function runewordSpecialText(sp) {
+    const F = RUNEWORD_FX, out = [];
+    if (sp.undying) out.push("불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번)");
+    if (sp.teleport) out.push(`텔레포트: 보이는 적이 없으면 한 번에 ${F.teleport.steps}칸 이동 (지나가는 칸의 아이템도 주움)`);
+    if (sp.chain) out.push("체인 라이트닝 사용 (세트 없이)");
+    if (sp.vuln) out.push(`${F.vuln.every}턴마다 주변 8칸 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
+    if (sp.splash) out.push(`광란 효과: 때린 적 주변 1칸의 적도 피해의 ${Math.round(SPLASH.mul * 100)}%`);
+    if (sp.shield) out.push(`${F.shield.every}턴마다 최대 HP ${sp.shield}%의 보호막 (쌓이지 않음)`);
+    if (sp.skillLs) out.push("세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈");
+    if (sp.lsCap) out.push(`흡혈 최대치 +${sp.lsCap}%p`);
+    if (sp.autoPotion) out.push(`HP ${F.autoPotion.below}% 이하면 ${F.autoPotion.every}턴마다 포션 자동 (쿨타임과 따로)`);
+    if (sp.skillFast) out.push("세트 스킬을 1턴 더 자주");
+    if (sp.fireball) out.push(`약한 파이어볼 (${F.fireball.every}턴마다, 화염 세트 파이어볼의 ${Math.round(F.fireball.mul / FIREBALL.mul * 100)}% 피해)`);
+    return out;
+  }
   // 완성된 룬워드 (커먼, 홈을 모두 그 순서의 룬으로 채움). 없으면 null
   function runewordOf(item) {
     const n = item?.gems?.length || 0;
@@ -989,6 +1006,9 @@
   // ---- 표시 ----
   // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 레어 바지 (속성 피해 줄이 없으면 속성 이름 없이)
   function itemName(item) {
+    // 룬워드: "+10 천하무적" (고대·강화만 앞에)
+    const rw = runewordOf(item);
+    if (rw) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + rw.name;
     const el = ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none;
     const nm = isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
     const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + nm;
@@ -1063,7 +1083,7 @@
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
-    RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain,
+    RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
