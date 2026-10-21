@@ -81,6 +81,9 @@
   // 흡혈: 장비·세트를 합쳐 최대 20% (치명타 75%·패링 40%·저항 75%처럼). 실제로 깎은 HP만큼만 회복 (넘친 피해는 회복 안 함)
   // 40레벨 세트로 흡혈 38%가 되어 75층까지 버티던 것 → 깊은 층은 높은 레벨 장비로 바꾸게
   const LIFESTEAL = { max: 20 };
+  // 장검 + 방패를 같이 끼면 흡혈 +lifesteal%, 흡혈 상한도 cap%로 (장검·방패는 피해가 낮아 흡혈로 회복하는 양이 적어서,
+  //   20%에 막히면 나이트메어 50층에서 몰려오는 몬스터에게 22%·11% 쓰러졌음 → +10%·상한 30%면 0%. 보스는 느리지만(19턴) 안전)
+  const SHIELD_GUARD = { lifesteal: 10, cap: 30 };
   // 광란의 세트: 때린 적 주변 1칸의 다른 적도 이 배율만큼 피해 (100% → 50%: 무리를 다른 무기보다 2배 빨리 잡던 것을 줄임)
   const SPLASH = { mul: 0.5 };
   // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
@@ -691,14 +694,20 @@
   }
 
   // ---- 대장간 ----
-  // 옵션 재련: 골드를 내고 추가 능력치 한 줄(홈 빼고)을 골라 다시 굴림. 아이템마다 할 때마다 growth배씩 비싸짐 (끝없이 골드를 쓸 곳)
+  // 옵션 재련: 골드를 내고 추가 능력치 한 줄(홈 빼고)을 골라 다시 굴림. 아이템마다 할 때마다 growth배씩, 처음의 cap배까지 비싸짐 (끝없이 골드를 쓸 곳)
+  //   아이템마다 한 줄만: 처음 재련한 줄(rf[0])만 계속 다시 굴릴 수 있음 (운영자는 테스트로 모든 줄). 예전엔 ×1.5에 상한이 없어서
+  //   원하는 능력치가 늦게 나오면(10명 중 1명, 27번째) 나이트메어 40층 기준 약 1억 9천만 골드가 들었음 → ×1.15·최대 5배면 약 17만
   //   새 능력치는 그 아이템이 가질 수 있는 후보 중 다른 줄에 없는 것 (지금 줄의 능력치도 다시 나올 수 있음). 속성 피해 줄은 하나만 규칙 그대로
   //   고대 아이템이면 새 줄도 최대치 (고대가 풀리지 않게). 결과는 (아이템 ID, 몇 번째 재련) 시드 → 서버가 rf(고른 줄 번호 목록)로 다시 계산
   // 홈 초기화: 수수료를 내고 홈에 넣은 보석을 모두 지움 (보석은 사라짐, 홈 개수는 그대로)
-  const FORGE = { reforge: { mul: 0.5, growth: 1.5 }, socketReset: { base: 500 } };
+  const FORGE = { reforge: { mul: 0.5, growth: 1.15, cap: 5 }, socketReset: { base: 500 } };
   const canReforge = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set");
   const reforgeableLine = (item, i) => !!item.lines?.[i] && item.lines[i][0] !== "socket";
-  const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * FORGE.reforge.growth ** (item.rf || []).length / 5) * 5;
+  const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * Math.min(FORGE.reforge.cap, FORGE.reforge.growth ** (item.rf || []).length) / 5) * 5;
+  // 이 아이템에서 재련할 수 있는 줄: 처음 재련한 줄 (아직 안 했으면 null = 아무 줄이나 고를 수 있음)
+  const reforgeLineOf = (item) => (item.rf?.length ? item.rf[0] : null);
+  // i번째 줄을 지금 재련할 수 있는지. any: 운영자 (모든 줄)
+  const canReforgeLine = (item, i, any = false) => canReforge(item) && reforgeableLine(item, i) && (any || reforgeLineOf(item) == null || reforgeLineOf(item) === i);
   const socketResetCost = (item) => levelPrice(FORGE.socketReset.base, item.lvl || 1) * nmCostMul(item);
   function reforgeLine(item, i) {
     if (!canReforge(item) || !reforgeableLine(item, i)) return null;
@@ -722,6 +731,25 @@
     for (const i of rf) reforgeLine(item, i);
     return item;
   }
+
+  // ---- 추천 능력치 (끝판 목표) ----
+  // 모든 장비를 고대로 맞췄을 때 속성 저항 최대(75)·흡혈 최대(20)·치명타 최대(75)를 채우고 나이트메어 50층 보스를 잡는 조합.
+  // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님), 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 2%
+  //   (+0이면 보스 11%·몰려오는 몬스터 100%. 장검 + 방패도 SHIELD_GUARD(흡혈 +10%, 최대 30%)로 몰려오는 몬스터 0%, 보스는 19턴으로 느림)
+  // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 전설의 힘(고대 레전더리 하나마다 모든 저항 +4) × 7 = 28 → 75
+  // 흡혈: 무기·보조무기 주 능력치 6 × 2 + 추가 능력치 4 × 2 = 20. 치명타: 갑옷·팔 주 능력치 + 줄 6 × 7 → 75
+  const RECOMMEND = {
+    targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10 },
+    slots: {
+      weapon: { kind: "단검·지팡이·도끼 (장검 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "fireRes"] },
+      offhand: { kind: "보조 단검·지팡이·도끼 (방패 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "iceRes"] },
+      head: { main: ["def", "hp"], lines: ["boltRes", "fireRes", "crit", "critDmg", "atkPct"] },
+      chest: { main: ["def", "crit", "hp"], lines: ["iceRes", "boltRes", "crit", "critDmg", "atkPct"] },
+      arms: { main: ["def", "crit", "atkPct"], lines: ["allRes", "hp", "crit", "critDmg", "atkPct"] },
+      pants: { main: ["def", "hp", "defPct"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
+      boots: { main: ["def", "hp"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
+    },
+  };
 
   // ---- 상점 ----
   // 보스 층(5층마다) 바로 전 층(4, 9, 14…층)의 계단 방에 열림. 보스와 싸우기 전에 장비를 갖추라고
@@ -856,7 +884,7 @@
   function totals(equipped) {
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
@@ -883,7 +911,9 @@
       activeSets.push({ id, name: set.name, count, full: setFull(id), bonuses: set.bonuses.map(b => ({ ...b, on: count >= b.count })) });
     }
     sum.parry = Math.min(PARRY.max, sum.parry);
-    sum.lifesteal = Math.min(LIFESTEAL.max, sum.lifesteal);
+    // guard: 장검 + 방패 (흡혈 보너스·상한)
+    if (shieldOnly && equipped.some(it => it && it.slot === "offhand" && it.type === "shield")) { sum.guard = 1; sum.lifesteal += SHIELD_GUARD.lifesteal; }
+    sum.lifesteal = Math.min(sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max, sum.lifesteal);
     sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
     return { stats: sum, sets: activeSets };
@@ -891,13 +921,13 @@
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
-    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, FORGE, canReforge, reforgeableLine, reforgeCost, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

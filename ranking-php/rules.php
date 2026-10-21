@@ -69,6 +69,7 @@ const R_ELEMENT_KEYS = ['fireDmg', 'iceDmg', 'boltDmg', 'fireRes', 'iceRes', 'bo
 const R_STAT_KEYS_NM = [...R_STAT_KEYS_V4, ...R_ELEMENT_KEYS];
 const R_ELEMENT_DMG_CAP = 11;   // 속성 피해는 강화해도 한 줄 최대 11%
 const R_RES_CAP = 75;
+const R_SHIELD_GUARD = ['lifesteal' => 10, 'cap' => 30];   // 장검 + 방패 (items.js SHIELD_GUARD)
 const R_LIFESTEAL_MAX = 20;     // 흡혈은 장비·세트를 합쳐 최대 20% (items.js LIFESTEAL)           // 속성마다 (그 속성 저항 + 모든 속성 저항) 최대 75%
 const R_NM_SEED = '/\|(shop\|)?n\d+\|/';
 function r_is_element_dmg(string $k): bool { return $k === 'fireDmg' || $k === 'iceDmg' || $k === 'boltDmg'; }
@@ -650,7 +651,7 @@ function r_effective_lines(array $item): array {
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
-        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0,
+        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
@@ -681,7 +682,11 @@ function r_totals(array $equipped): array {
         $sets[] = ['id' => $id, 'name' => $set['name'], 'count' => $count, 'full' => r_set_full($id), 'bonuses' => $bonuses];
     }
     $sum['parry'] = min(R_PARRY['max'], $sum['parry']);
-    $sum['lifesteal'] = min(R_LIFESTEAL_MAX, $sum['lifesteal']);
+    // 장검 + 방패: 흡혈 +R_SHIELD_GUARD['lifesteal'], 상한 R_SHIELD_GUARD['cap'] (items.js SHIELD_GUARD)
+    $shieldWorn = false;
+    foreach ($equipped as $item) if ($item['slot'] === 'offhand' && ($item['type'] ?? null) === 'shield') $shieldWorn = true;
+    if ($shieldOnly && $shieldWorn) { $sum['guard'] = 1; $sum['lifesteal'] += R_SHIELD_GUARD['lifesteal']; }
+    $sum['lifesteal'] = min($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX, $sum['lifesteal']);
     $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
     return ['stats' => $sum, 'sets' => $sets];
