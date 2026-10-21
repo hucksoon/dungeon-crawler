@@ -412,18 +412,18 @@ function r_socketed_effect(array $g, array $item): array {
 // 룬워드 (items.js RUNEWORDS): 이름의 초성 = 룬. 커먼 아이템의 홈을 모두 그 순서의 룬으로 채우면 완성
 // 능력치는 아이템 단계 배율 (일반 ×0.5, 악몽의 ×0.75, 지옥의 ×1). 특수 효과 중 합계에 들어가는 건 splash·chain·lsCap
 const R_RUNEWORDS = [
-    ['name' => '천하무적', 'bases' => ['chest'], 'runes' => [9, 13, 4, 8], 'stats' => ['atkPct' => 25, 'defPct' => 25, 'hpPct' => 25, 'dmgReduce' => 10], 'special' => ['undying' => 1, 'teleport' => 3]],
+    ['name' => '천하무적', 'bases' => ['chest'], 'runes' => [9, 13, 4, 8], 'stats' => ['atkPct' => 35, 'defPct' => 35, 'hpPct' => 35, 'dmgReduce' => 10], 'special' => ['undying' => 1, 'teleport' => 3]],
     ['name' => '폭풍전야', 'bases' => ['longsword'], 'runes' => [12, 12, 8, 7], 'stats' => ['boltDmg' => 20, 'critDmg' => 40], 'special' => ['chain' => 1, 'vuln' => 20]],
     ['name' => '필살일격', 'bases' => ['longsword'], 'runes' => [12, 6, 7, 0], 'stats' => ['atkPct' => 35, 'crit' => 10, 'critDmg' => 50], 'special' => ['splash' => 1]],
     ['name' => '태산', 'bases' => ['chest', 'weapon'], 'runes' => [11, 6], 'stats' => ['defPct' => 30, 'hpPct' => 10, 'allRes' => 15], 'special' => ['shield' => 20, 'skillLs' => 1]],
-    ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 3], 'special' => ['lsCap' => 3]],
+    ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 8], 'special' => ['lsCap' => 3]],
     ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5], 'special' => ['autoPotion' => 1]],
     ['name' => '마음가짐', 'bases' => ['longsword', 'shield'], 'runes' => [4, 7, 0, 8], 'stats' => ['skillPct' => 30], 'special' => ['skillFast' => 1, 'skillLs' => 1]],
     ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['crit' => 8, 'xp' => 25], 'special' => ['shield' => 10]],
-    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15], 'special' => []],
+    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5], 'special' => []],
     ['name' => '기억', 'bases' => ['head'], 'runes' => [0, 7], 'stats' => ['xp' => 25, 'crit' => 3], 'special' => ['lsCap' => 2]],
     ['name' => '몰래', 'bases' => ['chest'], 'runes' => [4, 3], 'stats' => ['defPct' => 10, 'dmgReduce' => 3], 'special' => ['skillLs' => 1]],
-    ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20], 'special' => ['fireball' => 1]],
+    ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20, 'lifesteal' => 4], 'special' => ['fireball' => 1]],
 ];
 const R_RUNEWORD_TIER_MUL = ['normal' => 0.5, 'nightmare' => 0.75, 'hell' => 1];
 function r_item_tier(array $item): string { return r_is_nightmare_item($item) ? 'nightmare' : 'normal'; }

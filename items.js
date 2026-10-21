@@ -924,18 +924,18 @@
   //   skillFast 세트 스킬을 1턴 더 자주 · fireball 약한 파이어볼 (화염 세트 파이어볼이 있으면 그쪽)
   // 같은 종류의 특수 효과는 겹치지 않음 (가장 큰 것 하나). 능력치는 더해짐
   const RUNEWORDS = [
-    { name: "천하무적", bases: ["chest"], stats: { atkPct: 25, defPct: 25, hpPct: 25, dmgReduce: 10 }, special: { undying: 1, teleport: 3 } },
+    { name: "천하무적", bases: ["chest"], stats: { atkPct: 35, defPct: 35, hpPct: 35, dmgReduce: 10 }, special: { undying: 1, teleport: 3 } },
     { name: "폭풍전야", bases: ["longsword"], stats: { boltDmg: 20, critDmg: 40 }, special: { chain: 1, vuln: 20 } },
     { name: "필살일격", bases: ["longsword"], stats: { atkPct: 35, crit: 10, critDmg: 50 }, special: { splash: 1 } },
     { name: "태산", bases: ["chest", "weapon"], stats: { defPct: 30, hpPct: 10, allRes: 15 }, special: { shield: 20, skillLs: 1 } },
-    { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 3 }, special: { lsCap: 3 } },
+    { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 8 }, special: { lsCap: 3 } },
     { name: "치유", bases: ["head"], stats: { killHealPct: 5 }, special: { autoPotion: 1 } },
     { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
     { name: "선견지명", bases: ["longsword"], stats: { crit: 8, xp: 25 }, special: { shield: 10 } },
-    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15 }, special: {} },
+    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5 }, special: {} },
     { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3 }, special: { lsCap: 2 } },
     { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3 }, special: { skillLs: 1 } },
-    { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20 }, special: { fireball: 1 } },
+    { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20, lifesteal: 4 }, special: { fireball: 1 } },
   ].map((w, i) => ({ ...w, rank: i + 1, runes: runesOfName(w.name) }));
   const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
   // 특수 효과의 고정 수치
