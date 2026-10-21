@@ -481,7 +481,7 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     // 홈에 넣은 보석 (g): 종류·등급과 개수(홈 개수까지)만 확인. 보석은 시드로 다시 계산할 수 없어서 얻은 경로는 검증하지 않음
     $gems = $q['g'] ?? [];
     if (!is_array($gems) || count($gems) > r_socket_count($item)) return null;
-    foreach ($gems as $g) if (!r_is_gem($g)) return null;
+    foreach ($gems as $g) if (!r_is_socketed($g)) return null;   // 보석 또는 룬
     if ($gems) $item['gems'] = array_values($gems);
     return $item;
 }
@@ -525,12 +525,12 @@ function item_view(array $it): array {
         'ancient' => !empty($it['ancient']), 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
         'legend' => r_legend_power($it), 'legendRes' => r_legend_res($it),   // 전설의 힘 (레전더리 완성도): 공격력·방어력·최대 HP +%, 모든 속성 저항 +%
         'main' => $main, 'lines' => $lines,
-        // 홈에 넣은 보석: [이름, 효과]
+        'runeword' => ($w = r_runeword_of($it)) ? $w['name'] : null,   // 완성된 룬워드 이름
+        // 홈에 넣은 보석·룬: [이름, 효과, 룬인지]
         'gems' => array_map(function ($g) use ($it) {
-            $place = r_weapon_like($it) ? 'weapon' : 'armor';
             $fx = [];
-            foreach (R_GEMS[$g[0]][$place] as $k => $vals) $fx[] = R_STAT_NAMES[$k][0] . ' +' . $vals[$g[1]] . (R_STAT_NAMES[$k][1] ? '%' : '');
-            return ['name' => r_gem_name($g[0], $g[1]), 'text' => implode(', ', $fx)];
+            foreach (r_socketed_effect($g, $it) as $k => $v) $fx[] = R_STAT_NAMES[$k][0] . ' +' . $v . (R_STAT_NAMES[$k][1] ? '%' : '');
+            return ['name' => r_socketed_name($g), 'text' => implode(', ', $fx), 'rune' => r_is_rune($g)];
         }, $it['gems'] ?? []),
     ];
 }
