@@ -635,8 +635,21 @@ function r_drop_roll(int $version, string $seed): float {
 
 // ---------------------------------------------------------------- 강화 / 합계 / 이름
 
+// 룬워드가 완성된 커먼은 주 능력치가 레전더리 수준 (items.js runewordMain: 커먼 범위 안의 위치 그대로 레전더리 범위로)
+function r_runeword_main(array $item): array {
+    $L = ['rarity' => 'legendary'] + $item;
+    $L['rarity'] = 'legendary';
+    $out = [];
+    foreach ($item['main'] as [$k, $v]) {
+        [$lo, $hi] = r_main_range($k, $item);
+        [$llo, $lhi] = r_main_range($k, $L);
+        $t = $hi > $lo ? ($v - $lo) / ($hi - $lo) : 1;
+        $out[] = [$k, r_round($llo + ($lhi - $llo) * $t)];
+    }
+    return $out;
+}
 function r_main_stats(array $item): array {
-    if (isset($item['main'])) return $item['main'];
+    if (isset($item['main'])) return r_runeword_of($item) ? r_runeword_main($item) : $item['main'];
     $out = [];
     foreach ($item['base'] ?? [] as $k => $v) $out[] = [$k, $v];
     return $out;

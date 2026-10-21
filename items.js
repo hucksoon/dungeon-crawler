@@ -539,11 +539,21 @@
 
   // ---- 주 능력치 / 범위 / 고대 ----
   // v1 아이템은 main 대신 base(부위 고정 기본 능력치)를 씀
-  const mainStatsOf = (item) => item.main || Object.entries(item.base || {});
+  // 룬워드가 완성된 커먼은 주 능력치가 레전더리 수준: 커먼 범위 안의 위치 그대로 레전더리 범위로 (고대 커먼 = 레전더리 최대치)
+  const asLegendary = (item) => ({ ...item, rarity: "legendary" });
+  function runewordMain(item) {
+    const L = asLegendary(item);
+    return item.main.map(([k, v]) => {
+      const [lo, hi] = mainRange(k, item), [llo, lhi] = mainRange(k, L);
+      const t = hi > lo ? (v - lo) / (hi - lo) : 1;
+      return [k, Math.round(llo + (lhi - llo) * t)];
+    });
+  }
+  const mainStatsOf = (item) => (item.main ? (runewordOf(item) ? runewordMain(item) : item.main) : Object.entries(item.base || {}));
   // 범위를 알 수 없으면(v1의 기본 능력치) null
   function statRange(item, kind, stat) {
     if (kind === "line") return stat === "socket" ? socketRange(item) : fixedPct(item, PCT_LINE, stat) || (STATS[stat]?.line ? lineRange(stat, item.lvl) : null);
-    return item.main && (MAIN.range[stat] || fixedPct(item, PCT_MAIN, stat)) ? mainRange(stat, item) : null;
+    return item.main && (MAIN.range[stat] || fixedPct(item, PCT_MAIN, stat)) ? mainRange(stat, runewordOf(item) ? asLegendary(item) : item) : null;
   }
   // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 범위의 최대치 (v2 이후 아이템)
   function isAncient(item) {
@@ -1053,7 +1063,7 @@
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
-    RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats,
+    RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
