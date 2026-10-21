@@ -1016,7 +1016,7 @@
       // 대장간 옵션 재련: 골드는 부르는 쪽(판의 골드)에서 냄. 바뀐 줄 [능력치, 값] 또는 null
       reforge(id, i) {
         const item = all().find(x => x.id === id);
-        if (!item) return null;
+        if (!item || !RLItems.canReforgeLine(item, i, isStaff())) return null;   // 아이템마다 한 줄만 (운영자는 모든 줄)
         const before = item.lines[i]?.slice();
         const line = RLItems.reforgeLine(item, i);
         if (line) { record("reforge", item, { line: i, from: before, to: line, n: item.rf.length }); write(); }
@@ -3648,12 +3648,17 @@
     const gold = player && !gameOver ? player.gold : 0;
     if (RLItems.canReforge(item)) {
       const cost = RLItems.reforgeCost(item);
-      out.push(el("div", { className: "meta" }, `옵션 재련: 추가 능력치 한 줄을 다시 굴려요 (다른 줄에 없는 능력치 중 무작위${item.ancient ? ", 고대라 새 줄도 최대치" : ""}). ${cost.toLocaleString()}골드 · 이 아이템 ${(item.rf || []).length}번째 다음은 ×${RLItems.FORGE.reforge.growth} (보유 ${gold.toLocaleString()}골드)`));
+      const F = RLItems.FORGE.reforge, locked = RLItems.reforgeLineOf(item), n = (item.rf || []).length;
+      out.push(el("div", { className: "meta" }, `옵션 재련: 추가 능력치 한 줄을 다시 굴려요 (다른 줄에 없는 능력치 중 무작위${item.ancient ? ", 고대라 새 줄도 최대치" : ""}). ` +
+        `${isStaff() ? "운영자: 모든 줄을 재련할 수 있어요" : locked == null ? "아이템마다 한 줄만 고를 수 있어요 (처음 재련한 줄만 계속 다시 굴려요)" : "이 아이템은 처음 재련한 줄만 다시 굴릴 수 있어요"}. ` +
+        `${cost.toLocaleString()}골드 · ${n}번 재련함, 할 때마다 ×${F.growth} (최대 처음의 ${F.cap}배) · 보유 ${gold.toLocaleString()}골드`));
       item.lines.forEach(([k, v], i) => {
         if (!RLItems.reforgeableLine(item, i)) return;
+        const ok = RLItems.canReforgeLine(item, i, isStaff());
         out.push(el("div", { className: "sock-pick" },
-          el("span", { className: "stat-line" }, `◆ ${RLItems.formatStat(k, v)}`),
-          el("button", { type: "button", className: "reforge-btn", disabled: !canPay(cost), onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)));
+          el("span", { className: "stat-line" }, `◆ ${RLItems.formatStat(k, v)}${locked === i ? " ⚒" : ""}`),
+          ok ? el("button", { type: "button", className: "reforge-btn", disabled: !canPay(cost), onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)
+            : el("span", { className: "meta" }, "재련 불가 (다른 줄을 재련함)")));
       });
     } else out.push(el("div", { className: "meta" }, "옵션 재련은 레전더리·세트(v4)만 할 수 있어요."));
     if (item.gems?.length) {
@@ -3666,6 +3671,9 @@
   }
   function reforgeItem(item, i) {
     const cost = RLItems.reforgeCost(item);
+    // 처음 재련할 때: 이 줄로 정해지면 다른 줄은 재련할 수 없음 (운영자는 빼고)
+    if (!isStaff() && RLItems.reforgeLineOf(item) == null && item.lines.filter((_, j) => RLItems.reforgeableLine(item, j)).length > 1
+      && !confirm(`${RLItems.formatStat(...item.lines[i])} 줄을 재련할까요?\n이 아이템은 앞으로 이 줄만 재련할 수 있어요.`)) return;
     if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
     const before = RLItems.formatStat(...item.lines[i]);
     const line = Inv.reforge(item.id, i);

@@ -691,14 +691,20 @@
   }
 
   // ---- 대장간 ----
-  // 옵션 재련: 골드를 내고 추가 능력치 한 줄(홈 빼고)을 골라 다시 굴림. 아이템마다 할 때마다 growth배씩 비싸짐 (끝없이 골드를 쓸 곳)
+  // 옵션 재련: 골드를 내고 추가 능력치 한 줄(홈 빼고)을 골라 다시 굴림. 아이템마다 할 때마다 growth배씩, 처음의 cap배까지 비싸짐 (끝없이 골드를 쓸 곳)
+  //   아이템마다 한 줄만: 처음 재련한 줄(rf[0])만 계속 다시 굴릴 수 있음 (운영자는 테스트로 모든 줄). 예전엔 ×1.5에 상한이 없어서
+  //   원하는 능력치가 늦게 나오면(10명 중 1명, 27번째) 나이트메어 40층 기준 약 1억 9천만 골드가 들었음 → ×1.15·최대 5배면 약 17만
   //   새 능력치는 그 아이템이 가질 수 있는 후보 중 다른 줄에 없는 것 (지금 줄의 능력치도 다시 나올 수 있음). 속성 피해 줄은 하나만 규칙 그대로
   //   고대 아이템이면 새 줄도 최대치 (고대가 풀리지 않게). 결과는 (아이템 ID, 몇 번째 재련) 시드 → 서버가 rf(고른 줄 번호 목록)로 다시 계산
   // 홈 초기화: 수수료를 내고 홈에 넣은 보석을 모두 지움 (보석은 사라짐, 홈 개수는 그대로)
-  const FORGE = { reforge: { mul: 0.5, growth: 1.5 }, socketReset: { base: 500 } };
+  const FORGE = { reforge: { mul: 0.5, growth: 1.15, cap: 5 }, socketReset: { base: 500 } };
   const canReforge = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set");
   const reforgeableLine = (item, i) => !!item.lines?.[i] && item.lines[i][0] !== "socket";
-  const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * FORGE.reforge.growth ** (item.rf || []).length / 5) * 5;
+  const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * Math.min(FORGE.reforge.cap, FORGE.reforge.growth ** (item.rf || []).length) / 5) * 5;
+  // 이 아이템에서 재련할 수 있는 줄: 처음 재련한 줄 (아직 안 했으면 null = 아무 줄이나 고를 수 있음)
+  const reforgeLineOf = (item) => (item.rf?.length ? item.rf[0] : null);
+  // i번째 줄을 지금 재련할 수 있는지. any: 운영자 (모든 줄)
+  const canReforgeLine = (item, i, any = false) => canReforge(item) && reforgeableLine(item, i) && (any || reforgeLineOf(item) == null || reforgeLineOf(item) === i);
   const socketResetCost = (item) => levelPrice(FORGE.socketReset.base, item.lvl || 1) * nmCostMul(item);
   function reforgeLine(item, i) {
     if (!canReforge(item) || !reforgeableLine(item, i)) return null;
@@ -897,7 +903,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, FORGE, canReforge, reforgeableLine, reforgeCost, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
