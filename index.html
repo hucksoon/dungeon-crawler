@@ -82,7 +82,6 @@
   /* 아이템 능력치 줄, 고대 아이템 */
   .stat-line .range { opacity: 0.55; font-size: 0.9em; }
   .stat-line.max .range { opacity: 1; color: #ffd700; }
-  .guide-btn { margin-top: 6px; width: 100%; }
   .guide-slot { margin: 4px 0; line-height: 1.5; }
   .slot .fit { opacity: 0.75; }
   .sock-pick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
@@ -291,12 +290,14 @@
 
   /* ---- 인벤토리 ---- */
   .modal.inv { width: 680px; max-height: calc(100vh - 32px); overflow-y: auto; }
-  .inv-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .inv-head { display: flex; flex-wrap: wrap; gap: 0 10px; align-items: baseline; justify-content: space-between; flex: none; }
+  .inv-head h2 { white-space: nowrap; }
   #inv-count { font-size: 12px; opacity: 0.7; }
-  /* 장비 칸은 내용만큼만 (오른쪽 능력치가 길어져도 칸이 같이 늘어나지 않게) */
-  .inv-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; align-items: start; }
-  @media (max-width: 560px) { .inv-top { grid-template-columns: 1fr; } }
-  .equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+  /* 창 높이를 화면에 맞추고 가방·탭 칸만 따로 스크롤 (가방이 늘 보이게) */
+  #inv-modal .modal.inv { display: flex; flex-direction: column; overflow: hidden; height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: 860px; }
+  .inv-body { flex: 1; min-height: 0; margin-top: 10px; }
+  .inv-main { display: flex; flex-direction: column; gap: 8px; min-height: 0; height: 100%; }
+  .equip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; align-content: start; flex: none; }
   .slot {
     text-align: left;
     padding: 6px 8px;
@@ -313,34 +314,58 @@
   .summary { font-size: 12px; line-height: 1.6; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
   .summary h3, .detail h3 { margin: 0 0 4px; font-size: 13px; }
   .summary .off { opacity: 0.4; }
-  .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 210px; overflow-y: auto; padding: 2px; }
+  .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; align-content: start; max-height: 210px; overflow-y: auto; padding: 2px; }
+  #inv-bag { flex: 1; min-height: 120px; max-height: none; }
   .bag-item { text-align: left; font-size: 12px; padding: 6px 8px; }
   .bag-item small { opacity: 0.55; }
   .bag-empty { font-size: 12px; opacity: 0.6; padding: 8px 2px; }
-  #inv-sell-all { width: 100%; margin-top: 6px; font-size: 12px; }
-  #inv-sell-ask { margin-top: 6px; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; }
+  #inv-sell-all { width: 100%; font-size: 12px; flex: none; }
+  #inv-sell-ask { flex: none; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; }
   #inv-sell-ask .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   #inv-sell-ask .row button { flex: 1 1 140px; font-size: 12px; }
   .detail { margin-top: 10px; min-height: 60px; font-size: 12px; line-height: 1.6; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
   .detail .meta { opacity: 0.6; }
   .detail .row { margin-top: 8px; }
-  #inv-close { width: 100%; margin-top: 10px; }
-  .detail-close { display: none; }
-  /* 넓은 화면: 상세를 오른쪽 칸에 (장비창을 보면서 바로 비교) */
+  #inv-close { width: 100%; margin-top: 10px; flex: none; }
+  /* 오른쪽 탭: [상세] [능력치] [추천], 고른 탭의 칸만 보이고 그 칸이 따로 스크롤 */
+  .inv-side { display: flex; flex-direction: column; gap: 6px; min-height: 0; height: 100%; }
+  .inv-tabs { display: flex; gap: 4px; flex: none; }
+  .inv-tab { flex: 1; font-size: 12px; padding: 6px 4px; }
+  .inv-tab.on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .inv-pane { flex: 1; min-height: 0; overflow-y: auto; margin-top: 0; }
+  .inv-pane[hidden] { display: none; }
+  .detail-close, .statline { display: none; }
+  /* 접는 칸 (세트 단계·홈·추천·전설의 힘): ▶ 제목을 누르면 펼침 */
+  details.fold { margin-top: 6px; }
+  details.fold > summary { cursor: pointer; font-weight: bold; font-size: 12px; list-style: none; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▶ "; font-size: 10px; opacity: 0.7; }
+  details.fold[open] > summary::before { content: "▼ "; }
+  details.fold > summary .meta { font-weight: normal; }
+  /* 넓은 화면: 왼쪽 고르기(장비·가방), 오른쪽 읽기(탭) */
   @media (min-width: 900px) {
     #inv-modal .modal.inv { width: 1040px; }
-    .inv-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
-    #inv-detail { margin-top: 10px; position: sticky; top: 0; max-height: calc(100vh - 150px); overflow-y: auto; }
+    .inv-body { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; }
   }
-  /* 좁은 화면(휴대폰): 아이템을 고르면 상세가 화면 아래에서 올라오는 창으로. 닫으면 다시 가방이 보임 */
+  /* 좁은 화면(휴대폰): 능력치는 한 줄 요약, 장비 칸은 작게, 탭 창은 아래에서 올라옴 (화면의 60%, 따로 스크롤) */
   @media (max-width: 899px) {
-    #inv-detail { display: none; }
-    #inv-detail.open {
-      display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0;
-      max-height: 70vh; overflow-y: auto; border-radius: 12px 12px 0 0; border-bottom: none;
-      padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+    #inv-modal { padding: 8px; }
+    #inv-modal .modal.inv { width: 100%; height: calc(100vh - 16px); height: calc(100dvh - 16px); padding: 12px; }
+    .statline { display: block; flex: none; width: 100%; text-align: left; font-size: 12px; padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .equip-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 4px; }
+    #inv-modal .slot { min-height: 38px; padding: 4px 6px; font-size: 11px; }
+    #inv-modal .slot small { font-size: 10px; }
+    #inv-bag { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .inv-side { display: none; }
+    .inv-side.open {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; height: 60vh; height: 60dvh;
+      background: var(--panel); border: 1px solid var(--border); border-bottom: none; border-radius: 12px 12px 0 0;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
     }
-    .detail-close { display: block; width: 100%; margin-bottom: 8px; font-size: 13px; }
+    .detail-close { display: block; flex: none; font-size: 12px; padding: 6px 10px; }
+    /* 상세의 버튼: 좁으면 두 줄로 (글자가 세로로 쌓이지 않게) */
+    #inv-detail .row { flex-wrap: wrap; gap: 6px; }
+    #inv-detail .row button { flex: 1 1 30%; font-size: 12px; padding: 7px 4px; }
   }
 
   /* ---- 도감 ---- */
@@ -494,18 +519,27 @@
       <h2 id="inv-title">인벤토리</h2>
       <span id="inv-count"></span>
     </div>
-    <!-- 넓은 화면: 왼쪽 장비·능력치·가방, 오른쪽 아이템 상세 / 좁은 화면(휴대폰): 아이템을 고르면 상세가 아래에서 올라옴 -->
+    <!-- 넓은 화면: 왼쪽(고르기) 장비·가방, 오른쪽(읽기) [상세][능력치][추천] 탭. 두 칸이 따로 스크롤
+         좁은 화면(휴대폰): 능력치 한 줄 → 장비 → 가방, 아이템을 고르면 탭 창이 아래에서 올라옴 (화면의 60%) -->
     <div class="inv-body">
       <div class="inv-main">
-        <div class="inv-top">
-          <div id="inv-equip" class="equip-grid"></div>
-          <div id="inv-summary" class="summary"></div>
-        </div>
+        <button id="inv-statline" class="statline" type="button"></button>
+        <div id="inv-equip" class="equip-grid"></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
         <div id="inv-sell-ask" hidden></div>
       </div>
-      <div id="inv-detail" class="detail"></div>
+      <div id="inv-side" class="inv-side">
+        <div class="inv-tabs" role="tablist">
+          <button type="button" class="inv-tab" role="tab" data-tab="detail">상세</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="stats">능력치</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="guide">추천</button>
+          <button type="button" class="detail-close">▼ 닫기</button>
+        </div>
+        <div id="inv-detail" class="detail inv-pane" data-pane="detail"></div>
+        <div id="inv-summary" class="summary inv-pane" data-pane="stats"></div>
+        <div id="inv-guide" class="detail inv-pane" data-pane="guide"></div>
+      </div>
     </div>
     <button id="inv-close" type="button">닫기 (I)</button>
   </div>
@@ -3458,8 +3492,24 @@
   const invBag = document.getElementById("inv-bag");
   const invDetail = document.getElementById("inv-detail");
   const RARITY_ORDER = ["set", "legendary", "epic", "rare", "uncommon", "common"];
+  const invSide = document.getElementById("inv-side");
+  const invGuide = document.getElementById("inv-guide");
   let selected = null;  // { from: "bag", id } | { from: "equip", slot }
   let invMsg = null;    // 판매·강화 결과 메시지 { cls, text }
+  let invTab = "stats"; // 오른쪽 탭: detail | stats | guide
+  let sideOpen = false; // 휴대폰: 탭 창이 아래에서 올라와 있는지
+  const narrowScreen = () => matchMedia("(max-width: 899px)").matches;
+  // 아이템을 고르면 [상세] 탭을 열어 보여줌
+  function pickItem(sel) { selected = sel; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
+  function showTab(tab) { invTab = tab; sideOpen = true; renderInventory(); }
+  function closeSide() { selected = null; invMsg = null; sideOpen = false; if (invTab === "detail") invTab = "stats"; renderInventory(); }
+
+  // 접는 칸: 넓은 화면은 펼친 채로, 휴대폰은 접힌 채로 시작 (shut이면 늘 접힌 채로). 펼치거나 접은 상태는 다시 그려도 유지
+  const folds = {};
+  function fold(key, title, children, shut = false) {
+    const open = folds[key] ?? (!shut && !narrowScreen());
+    return el("details", { className: "fold", open, ontoggle: (e) => { folds[key] = e.currentTarget.open; } }, el("summary", {}, ...[title].flat()), ...children);
+  }
 
   function el(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -3530,7 +3580,7 @@
       return el("button", {
         type: "button",
         className: `slot${item ? "" : " empty"}${sel ? " sel" : ""}${item?.ancient ? " ancient" : ""}`,
-        onclick: () => { selected = item ? { from: "equip", slot } : null; invMsg = null; renderInventory(); },
+        onclick: () => { if (item) pickItem({ from: "equip", slot }); },
         title: item ? RLItems.itemName(item) : "",
       }, el("small", {}, RLItems.SLOT_NAMES[slot], item && recommendFit(item) ? el("span", { className: "fit" }, ` · 추천 ${recommendFit(item).got}/${recommendFit(item).of}`) : null),
         item?.lock ? "🔒 " : "", item ? itemLabel(item) : "비어 있음");
@@ -3559,23 +3609,32 @@
     const pouch = RLItems.GEM_KINDS.filter(k => Inv.gemCount(k).some(Boolean));
     invSummary.replaceChildren(
       el("h3", {}, "능력치"), ...statRows.map(t => el("div", {}, t)),
-      ...(pouch.length ? [el("h3", { style: { marginTop: "6px" } }, "보석 주머니"),
-        el("div", { className: "gem-pouch" }, ...pouch.map(k => el("div", { style: { color: RLItems.GEMS[k].color } }, `♦ ${RLItems.GEMS[k].name}: ${countText(Inv.gemCount(k))}`)))] : []),
       ...(oldEquipped ? [el("div", { className: "meta" }, `예전 규칙 장비 ${oldEquipped}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.`)] : []),
       ...(player?.oldGear ? [el("div", { className: "msg-bad" }, "이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.")] : []),
-      el("button", { type: "button", className: "guide-btn", onclick: () => { selected = { from: "guide" }; invMsg = null; renderInventory(); } }, "📋 추천 능력치 (끝판 목표)"),
-      ...sets.map(set => el("div", { style: { marginTop: "6px" } },
-        el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
-        // 켜진 효과와 바로 다음 단계만 (나머지 단계는 아이템 상세의 세트 설명에서)
-        ...set.bonuses.filter((b, i) => b.on || i === set.bonuses.findIndex(x => !x.on)).map(b => el("div", { className: b.on ? "" : "off" }, `${b.on ? "" : "다음 "}${b.count}세트: ${b.text}`)))),
+      // 세트는 한 줄씩 (누르면 모든 단계), 보석 주머니는 접어서
+      ...sets.map(set => fold(`set:${set.id}`,
+        [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
+          el("span", { className: "meta" }, ` · 효과 ${set.bonuses.filter(b => b.on).length}/${set.bonuses.length}`)],
+        set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, `${b.count}세트: ${b.text}`)), true)),
+      ...(pouch.length ? [fold("pouch", `보석 주머니 (${pouch.length}종)`,
+        [el("div", { className: "gem-pouch" }, ...pouch.map(k => el("div", { style: { color: RLItems.GEMS[k].color } }, `♦ ${RLItems.GEMS[k].name}: ${countText(Inv.gemCount(k))}`)))], true)] : []),
     );
+    // 휴대폰: 능력치 한 줄 요약 (누르면 [능력치] 탭)
+    const short = (n) => (n >= 10000 ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}만` : String(n));
+    const statline = document.getElementById("inv-statline");
+    statline.textContent = `공 ${short(s.atk)} · 방 ${short(s.def)} · HP ${short(s.maxHp)} · 흡혈 ${s.lifesteal}%${sets.length ? ` · ${sets.map(x => `${x.name.replace(/의 세트$/, "")} ${Math.min(x.count, x.full)}/${x.full}`).join(" · ")}` : ""} ▼`;
+    statline.onclick = () => showTab("stats");
+    // 탭: 고른 탭의 칸만 보임. 휴대폰은 탭 창이 열렸을 때만
+    for (const b of invSide.querySelectorAll(".inv-tab")) b.classList.toggle("on", b.dataset.tab === invTab);
+    for (const p of invSide.querySelectorAll(".inv-pane")) p.hidden = p.dataset.pane !== invTab;
+    invSide.classList.toggle("open", sideOpen);
 
     const bag = Inv.bag().slice().sort((a, b) => (b.ancient ? 1 : 0) - (a.ancient ? 1 : 0) ||
       RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || b.lvl - a.lvl);
     invBag.replaceChildren(...(bag.length ? bag.map(item => el("button", {
       type: "button",
       className: `bag-item${selected?.from === "bag" && selected.id === item.id ? " sel" : ""}${item.ancient ? " ancient" : ""}`,
-      onclick: () => { selected = { from: "bag", id: item.id }; invMsg = null; renderInventory(); },
+      onclick: () => pickItem({ from: "bag", id: item.id }),
     }, item.lock ? "🔒 " : "", itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)))
       : [el("div", { className: "bag-empty" }, "가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요.")]));
 
@@ -3772,11 +3831,10 @@
     // 장검 + 방패도 쓸 만함 (흡혈 보너스): 추천 종류가 아니면 대안으로 안내
     const alt = (item.slot === "weapon" && RLItems.isShieldOnly(item)) || (item.slot === "offhand" && item.type === "shield");
     const kindOk = !alt;
-    return [el("div", { className: "guide-slot" },
-      el("b", {}, `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (끝판 목표) · 추가 능력치 ${fit.got}/${fit.of}`), el("br"),
+    return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (끝판 목표) · 추가 능력치 ${fit.got}/${fit.of}`, [el("div", { className: "guide-slot" },
       ...(r.kind ? [el("span", { className: "meta" }, kindOk ? r.kind : `장검 + 방패 조합 (추천은 ${r.kind}): 흡혈 줄을 무기·방패·투구·가슴에 노리세요 (장검 + 방패 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%, 최대 ${RLItems.SHIELD_GUARD.cap}%)`), el("br")] : []),
       "★ ", ...join(r.main), el("br"),
-      "◆ ", ...join(r.lines))];
+      "◆ ", ...join(r.lines))])];
   }
   function renderGuide() {
     const R = RLItems.RECOMMEND, T = R.targets, s = stats(), eq = Inv.equipped();
@@ -3810,14 +3868,12 @@
       el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 전설의 힘 4% × 7 = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
       el("div", { className: "meta" }, "세트를 섞으면 그 부위의 전설의 힘(저항 +4%)이 빠져요. 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
       el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%라 보스는 느리지만(19턴) 몰려오는 몬스터 0%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요. 강화를 안 하면(+0) 보스 11%·몰려오는 몬스터 100%라서 +10까지 올리세요`));
-    const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; renderInventory(); } }, "▼ 닫기");
-    invDetail.replaceChildren(closeBtn, ...rows);
+    invGuide.replaceChildren(...rows);
   }
 
   function renderDetail() {
-    if (selected?.from === "guide") { invDetail.classList.add("open"); renderGuide(); return; }
+    if (invTab === "guide") renderGuide();
     const item = selectedItem();
-    invDetail.classList.toggle("open", !!item);
     if (!item) {
       invDetail.replaceChildren(
         ...(invMsg ? [el("div", { className: `msg-${invMsg.cls}` }, invMsg.text)] : []),
@@ -3840,23 +3896,24 @@
         : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
     );
     // 홈과 보석
-    if (RLItems.socketCount(item)) rows.push(...socketRows(item));
+    if (RLItems.socketCount(item)) { const [h, ...rest] = socketRows(item); rows.push(fold("sock", h.textContent, rest)); }
     // 이 부위의 추천 능력치 (끝판 목표)
     rows.push(...recommendRows(item));
     // 대장간 (로비 대장간에서 열었을 때만)
     if (forgeMode) rows.push(...forgeRows(item));
     if (item.set) {
-      rows.push(el("div", { className: "meta" }, setNote(item.set)));
       // 세트의 모든 단계 (지금 입은 개수로 켜진 단계는 밝게)
-      const worn = Inv.totals().sets.find(x => x.id === item.set)?.count || 0;
-      for (const b of RLItems.SETS[item.set].bonuses) rows.push(el("div", { className: worn >= b.count ? "set-on" : "meta" }, `${b.count}세트: ${b.text}`));
+      const set = RLItems.SETS[item.set], worn = Inv.totals().sets.find(x => x.id === item.set)?.count || 0;
+      rows.push(fold("settier", [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} 단계`), el("span", { className: "meta" }, ` · ${worn}개 착용`)],
+        [el("div", { className: "meta" }, setNote(item.set)),
+          ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, `${b.count}세트: ${b.text}`))]));
     }
     // 전설의 힘: v4 레전더리의 완성도 (주·추가 능력치가 범위 안에서 얼마나 높은지)
     if (item.v === 4 && item.rarity === "legendary" && item.main) {
       const q = Math.round(RLItems.completeness(item) * 100), lp = RLItems.legendPower(item);
-      rows.push(el("div", { className: lp ? "legend-note" : "meta" }, lp
+      rows.push(fold("legend", `전설의 힘${lp ? ` +${lp}%` : ""} · 완성도 ${q}%`, [el("div", { className: lp ? "legend-note" : "meta" }, lp
         ? `완성도 ${q}% · 전설의 힘: 공격력·방어력·최대 HP +${lp}%${RLItems.legendRes(item) ? `, 모든 속성 저항 +${RLItems.legendRes(item)}%` : ""} (완성도 100%면 +${RLItems.LEGEND.max}%, 저항 +${RLItems.LEGEND.allRes}%)`
-        : `완성도 ${q}% · 전설의 힘은 완성도 ${Math.round(RLItems.LEGEND.start * 100)}%부터 붙어요 (100%면 공격력·방어력·최대 HP +${RLItems.LEGEND.max}%, 모든 속성 저항 +${RLItems.LEGEND.allRes}%)`));
+        : `완성도 ${q}% · 전설의 힘은 완성도 ${Math.round(RLItems.LEGEND.start * 100)}%부터 붙어요 (100%면 공격력·방어력·최대 HP +${RLItems.LEGEND.max}%, 모든 속성 저항 +${RLItems.LEGEND.allRes}%)`)]));
     }
 
     const to = (item.enh || 0) + 1;
@@ -3903,9 +3960,7 @@
     if (ancientBtn) actions.append(ancientBtn);
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isNightmareItem(item) ? 1 : 0);
-    // 휴대폰에서만 보이는 닫기 (상세 창을 내리고 가방으로)
-    const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; invMsg = null; renderInventory(); } }, "▼ 닫기");
-    invDetail.replaceChildren(closeBtn, ...rows.slice(0, head), actions, ...rows.slice(head));
+    invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
   }
 
   // 장비가 바뀌면 최대 HP를 넘는 HP를 잘라내고 화면과 저장을 갱신
@@ -3987,6 +4042,8 @@
   function openInventory(forge = false) {
     selected = null;
     invMsg = null;
+    invTab = forge ? "detail" : "stats";
+    sideOpen = false;
     forgeMode = forge;
     document.getElementById("inv-title").textContent = forge ? "대장간" : "인벤토리";
     invModal.hidden = false;
@@ -4005,6 +4062,8 @@
   document.getElementById("inv-btn").addEventListener("click", (e) => { e.currentTarget.blur(); openInventory(); });
   document.getElementById("inv-close").addEventListener("click", closeInventory);
   document.getElementById("inv-sell-all").addEventListener("click", sellAll);
+  for (const b of invSide.querySelectorAll(".inv-tab")) b.addEventListener("click", () => showTab(b.dataset.tab));
+  invSide.querySelector(".detail-close").addEventListener("click", closeSide);
   invModal.addEventListener("click", (e) => { if (e.target === invModal) closeInventory(); });
 
   // ---- 상점 UI ----
@@ -5042,7 +5101,9 @@
     }
     // 인벤토리 안의 버튼이 다시 그려지면 포커스가 사라지므로 닫기 키는 여기서 처리
     if (!invModal.hidden) {
-      if (e.key === "Escape" || e.key.toLowerCase() === "i") { e.preventDefault(); closeInventory(); }
+      // 휴대폰에서 탭 창이 올라와 있으면 Esc는 그 창만 내림
+      if (e.key === "Escape" && sideOpen && narrowScreen()) { e.preventDefault(); closeSide(); }
+      else if (e.key === "Escape" || e.key.toLowerCase() === "i") { e.preventDefault(); closeInventory(); }
       return;
     }
     if (!modal.hidden || e.target instanceof HTMLInputElement) return;
