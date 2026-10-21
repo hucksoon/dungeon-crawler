@@ -8,7 +8,7 @@ return [
     'hash_key' => '',
 
     // 랭킹에서 뺄 개발자 이메일 (쉼표로 구분). 이 계정은 "운영자"로 보이고,
-    // admin.php devices add로 등록한 기기(최대 2대)에서는 테스트용으로 골드·강화석·보석·횟수 제한 없음
+    // admin.php devices add로 등록한 기기(최대 3대)에서는 테스트용으로 골드·강화석·보석·횟수 제한 없음
     'dev_emails' => '',
 
     // Xsolla Login 프로젝트 ID (토큰의 xsolla_login_project_id와 같아야 함)

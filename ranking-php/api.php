@@ -255,7 +255,7 @@ function header_value(string $name): string {
 }
 
 const OPERATOR_NAME = '운영자';
-const STAFF_DEVICES_MAX = 2;
+const STAFF_DEVICES_MAX = 3;
 const DEVICE_ID_RE = '/^[0-9a-zA-Z-]{8,64}$/';
 function device_hash(string $device): string { return hmac_hex('dev:' . $device); }
 // 이 요청의 기기(X-Device-Id)가 운영자 기기로 등록돼 있는지
@@ -283,7 +283,7 @@ function identify(): array {
             'display' => $developer ? OPERATOR_NAME : ($email !== '' ? mask_email($email) : ($phone !== '' ? mask_phone($phone) : ('사용자 #' . substr((string)$claims['sub'], 0, 6)))),
             'email_hmac' => $email !== '' ? hmac_hex('e:' . $email) : null,
             'developer' => $developer,
-            // 운영자 혜택(테스트용 무제한)은 운영자 계정 + 등록한 기기(최대 2대)에서만
+            // 운영자 혜택(테스트용 무제한)은 운영자 계정 + 등록한 기기(최대 3대)에서만
             'unlimited' => $developer && staff_device_ok(),
         ];
     }
