@@ -19,7 +19,8 @@
   // r3: 나이트메어에서 얻은 아이템(시드에 나이트메어 층)의 추가 능력치에 속성 피해·속성 저항이 붙을 수 있음 (ELEMENT_LINES).
   //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름). 같은 때부터 포션 자리(시드 |p)는 보물 자리: 황금 고블린 등급표로 1개 (서버도 r3부터 인정)
   // r4: 나이트메어 아이템의 세트 방어구는 시험의 세트 또는 속성 세트(화염의 세트…) 중 하나 (일반 던전 아이템은 r3과 똑같이 나옴, ID만 다름)
-  const RULES_REV = 4;
+  // r5: 무기 칸에 장검(방패 전용)이 나올 수 있음 (WEAPONS.longsword). 견고의 세트 무기는 개정과 상관없이 장검 (예전 견고의 도끼도)
+  const RULES_REV = 5;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -83,6 +84,8 @@
   const SPLASH = { mul: 0.5 };
   // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
   const isWeaponLike = (item) => item.slot === "weapon" || (item.slot === "offhand" && !!item.type && item.type !== "shield");
+  // 방패 전용 무기(장검)를 낀 무기 칸: 보조 손에는 방패만 (보조무기를 같이 끼면 그 보조무기는 효과 없음)
+  const isShieldOnly = (item) => !!item && item.slot === "weapon" && !!WEAPONS[item.type]?.shieldOnly;
   // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
   function kindName(item) {
     if (item.slot === "offhand") return item.type === "shield" ? OFFHAND.shieldName : `${OFFHAND.weaponPrefix} ${WEAPONS[item.type].name}`;
@@ -91,11 +94,17 @@
 
   // 기본 능력치는 아이템 레벨에 따라 커짐
   // base는 v1 아이템용. v2에서는 atkMul(주 능력치 공격력 배율)만 씀
+  // 장검 (r5): 무기 칸에만, 보조 손에는 방패만 낄 수 있음. 방패를 끼면 두 번째 공격이 없어서 공격력이 절반 가까이 떨어지던 것을 메움
+  //   공격력 ×1.5, v4 주 능력치 후보는 공격력·방어력·치명타 확률·모든 속성 저항 (공격력 말고도 다른 부위 범위의 mainMul배)
   const WEAPONS = {
     dagger: { name: "단검", base: { atk: 2, crit: 6 }, atkMul: 1 },
     staff: { name: "지팡이", base: { atk: 2, hp: 6 }, atkMul: 1 },
     axe: { name: "도끼", base: { atk: 4 }, atkMul: 1.3 },
+    longsword: { name: "장검", base: { atk: 4 }, atkMul: 1.5, mainMul: 1.5, shieldOnly: true },
   };
+  // 무작위로 나오는 무기 종류: 장검은 r5부터 무기 칸에만 (예전 아이템은 예전 종류에서 골라야 같은 아이템이 나옴)
+  const WEAPON_TYPES_OLD = ["dagger", "staff", "axe"];
+  const weaponTypes = (rev) => (rev >= 5 ? Object.keys(WEAPONS) : WEAPON_TYPES_OLD);
   const ARMOR = {
     head: { name: "투구", base: { def: 1, hp: 2 } },
     chest: { name: "갑옷", base: { def: 2, hp: 4 } },
@@ -184,6 +193,7 @@
     defPct: byRarity([2, 3], [3, 5], [5, 8], [8, 12], [13, 15], [12, 14]),       // 바지
     xp: byRarity([5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]),       // 투구
     gold: byRarity([5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]),     // 장화
+    allRes: byRarity([4, 7], [4, 7], [4, 7], [4, 7], [4, 7], [4, 7]),            // 장검 (× mainMul, 강화로 오르지 않음)
   };
   // 추가 능력치 (모든 부위). 공격력·방어력·HP는 지금처럼 레벨에 비례 (STATS[..].line)
   const PCT_LINE = {
@@ -266,19 +276,22 @@
       pants: ["def", "hp", "defPct"],
       boots: ["def", "hp", "gold"],
       shield: ["def", "hp"],
+      longsword: ["atk", "def", "crit", "allRes"],
     },
     // 주 능력치 줄 수 (후보 수가 상한)
     count: { common: [1, 1], uncommon: [1, 2], rare: [2, 2], epic: [2, 3], legendary: [2, 3], set: [2, 3] },
   };
-  const mainPoolV4 = (item) => MAIN_V4.pool[item.slot === "offhand" ? (item.type === "shield" ? "shield" : "offhandWeapon") : item.slot];
+  const mainPoolV4 = (item) => MAIN_V4.pool[item.slot === "offhand" ? (item.type === "shield" ? "shield" : "offhandWeapon") : isShieldOnly(item) ? item.type : item.slot];
   const scaleRange = ([lo, hi], mul) => {
     const a = Math.max(1, Math.round(lo * mul));
     return [a, Math.max(a, Math.round(hi * mul))];
   };
   function mainRange(stat, item) {
+    // 장검(v4): 공격력 말고 다른 주 능력치도 다른 부위 범위의 mainMul배 (공격력은 atkMul)
+    const lsMul = item.v >= 4 && stat !== "atk" && isShieldOnly(item) ? WEAPONS[item.type].mainMul : 1;
     const fixed = fixedPct(item, PCT_MAIN, stat);
-    if (fixed) return fixed;
-    let mul = MAIN.rarityMul[item.rarity] || 1;
+    if (fixed) return lsMul !== 1 ? scaleRange(fixed, lsMul) : fixed;
+    let mul = (MAIN.rarityMul[item.rarity] || 1) * lsMul;
     const weaponLike = isWeaponLike(item);
     if (weaponLike && stat === "atk" && item.type) mul *= WEAPONS[item.type].atkMul;
     const off = weaponLike ? stat === "hp" : (stat === "atk" || stat === "crit");
@@ -297,7 +310,8 @@
   // ---- 세트 ----
   // 시험의 세트: 2·4·5개를 입을 때마다 효과가 하나씩 켜짐 (6부위 중 아무거나 5개면 전부 켜짐 → 무기는 자유롭게 고를 수 있음)
   // 광란의 세트: 오른손·왼손 무기 2개 → 때린 적 주변 1칸의 적도 같은 피해
-  // 견고의 세트: 무기·방패 2개 → 패링 확률 +15% (방패 최대 25%와 합쳐 최대 40%)
+  // 견고의 세트: 장검·방패 2개 → 패링 확률 +15% (방패 최대 25%와 합쳐 최대 40%)
+  //   무기는 도끼였다가 장검으로 바뀜. 세트 무기 종류는 굴리지 않아서 예전에 얻은 견고의 도끼도 다시 만들면 견고의 장검 (ID는 같음)
   // weapon / offhand: 그 세트의 무기·보조 손 아이템 종류. 직업이 생기면 직업별 세트를 여기에 추가
   const SETS = {
     trial: {
@@ -361,8 +375,8 @@
     },
     sturdy: {
       name: "견고의 세트",
-      weapon: "axe", offhand: "shield",
-      pieces: { weapon: "견고의 도끼", offhand: "견고의 방패" },
+      weapon: "longsword", offhand: "shield",
+      pieces: { weapon: "견고의 장검", offhand: "견고의 방패" },
       bonuses: [
         { count: 2, text: "패링 확률 +15% (방패와 합쳐 최대 40%)", stats: { parry: 15 } },
       ],
@@ -406,12 +420,12 @@
     if (version === 2) {
       slot = pick(rng, SLOTS_V2);
       set = rarity === "set" ? "trial" : null;
-      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
+      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, WEAPON_TYPES_OLD);
     } else {
       slot = pick(rng, SLOTS);
       set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && NM_SEED.test(seed))) : null;
-      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, Object.keys(WEAPONS));
-      else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, Object.keys(WEAPONS)));
+      if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, weaponTypes(version === 4 ? rev : 0));
+      else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, WEAPON_TYPES_OLD));
     }
 
     const item = { v: version, seed, src: source, lvl: lv, slot, type, rarity, set };
@@ -570,6 +584,8 @@
     const out = {};
     for (let [k, v] of mainStatsOf(item)) {
       v = Math.round(v * nmPower(item, k));
+      // 저항(장검의 모든 속성 저항)은 강화로 오르지 않음 (추가 능력치의 저항 줄처럼)
+      if (isResLine(k)) { out[k] = v; continue; }
       // v4 % 능력치: 2단계마다 +1%p만
       if (item.v >= 4 && STATS[k].pct) { out[k] = v + Math.floor(n / 2); continue; }
       // 최소 보장: 수치 능력치는 단계마다 +1, % 능력치(치명타·흡혈)는 2단계마다 +1
@@ -704,8 +720,10 @@
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
+    const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
       if (!item) continue;
+      if (shieldOnly && item.slot === "offhand" && isWeaponLike(item)) continue;   // 장검과 보조무기는 같이 못 씀
       for (const [k, v] of Object.entries(effectiveBase(item))) sum[k] += v;
       for (const [k, v] of effectiveLines(item)) sum[k] += v;
       if (item.parry) sum.parry += item.parry;
@@ -731,7 +749,7 @@
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
-    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, kindName, setsFor, setFull,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,

@@ -876,8 +876,25 @@
     function normalize(d) {
       if (Array.isArray(d.log)) trimLog(d);
       d.equip = fullEquip(d.equip);
+      d.bag = d.bag.map(remake);
+      for (const s of RLItems.SLOTS) d.equip[s] = d.equip[s] && remake(d.equip[s]);
+      // 장검(방패 전용)과 보조무기를 같이 끼고 있으면 보조무기를 가방으로 (예전 견고의 도끼 + 보조무기였던 경우)
+      if (RLItems.isShieldOnly(d.equip.weapon) && d.equip.offhand && RLItems.isWeaponLike(d.equip.offhand)) { d.bag.push(d.equip.offhand); d.equip.offhand = null; remade++; }
       for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
       return d;
+    }
+    // 규칙이 바뀌어 저장된 모습과 달라진 아이템을 시드로 다시 만듦 (견고의 도끼 → 견고의 장검). 강화·시도·고대 굴림 등은 그대로
+    let remade = 0;   // 읽으면서 다시 만든 아이템 수 (있으면 바로 저장)
+    function remake(it) {
+      if (!(it?.set === "sturdy" && it.slot === "weapon" && it.type !== RLItems.SETS.sturdy.weapon && it.v >= 3)) return it;
+      try {
+        const fresh = RLItems.generate(it.seed, it.src, it.lvl, it.v, it.r || 0);
+        if (fresh.id !== it.id) return it;
+        for (const k of Object.keys(it)) if (!(k in fresh)) fresh[k] = it[k];
+        if (it.ar) RLItems.applyAncientRerolls(fresh, it.ar);
+        remade++;
+        return fresh;
+      } catch { return it; }
     }
     const write = () => { trimLog(data); store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
@@ -920,7 +937,7 @@
     }
 
     return {
-      use(o) { owner = o; data = read(o); },
+      use(o) { owner = o; data = read(o); if (remade) { remade = 0; store.set(key(owner), JSON.stringify(data)); } },
       owner: () => owner,
       // 서버에 올리는 부분 (얻은·버린 기록 log는 커서 이 기기에만)
       snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0 }),
@@ -957,14 +974,21 @@
         write();
         return "ok";
       },
+      // 장검(방패 전용)과 보조무기는 같이 못 낌: 새로 낀 쪽이 남고 다른 쪽은 가방으로. 가방으로 간 아이템 (없으면 null)
       equip(id) {
         const i = data.bag.findIndex(x => x.id === id);
-        if (i < 0) return;
+        if (i < 0) return null;
         const item = data.bag.splice(i, 1)[0];
         const prev = data.equip[item.slot];
         data.equip[item.slot] = item;
         if (prev) data.bag.push(prev);
+        let off = null;
+        if (RLItems.isShieldOnly(item) && data.equip.offhand && RLItems.isWeaponLike(data.equip.offhand)) off = "offhand";
+        else if (item.slot === "offhand" && RLItems.isWeaponLike(item) && RLItems.isShieldOnly(data.equip.weapon)) off = "weapon";
+        const moved = off && data.equip[off];
+        if (moved) { data.bag.push(moved); data.equip[off] = null; }
         write();
+        return moved || null;
       },
       unequip(slot) {
         const item = data.equip[slot];
@@ -3498,6 +3522,7 @@
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
       ...(RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
+      ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
       ...statLines(item),
       ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
       el("div", { className: "meta" }, item.main
@@ -3576,10 +3601,10 @@
       renderInventory();
       return;
     }
-    Inv.equip(item.id);
+    const moved = Inv.equip(item.id);
     noteOldGear();
     selected = { from: "equip", slot: item.slot };
-    invMsg = null;
+    invMsg = moved ? { cls: "bad", text: `장검은 보조 손에 방패만 낄 수 있어서 ${RLItems.itemName(moved)}을(를) 가방으로 옮겼어요.` } : null;
     afterGearChange();
   }
 
@@ -4496,7 +4521,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1020c:${owner}`;  // 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석·앞쪽 층 쉬워짐, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021:${owner}`;  // 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -4505,6 +4530,8 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `새 무기 장검이 나와요: 보조 손에는 방패만 낄 수 있는 대신 공격력 ×${RLItems.WEAPONS.longsword.atkMul}, 방어력·치명타 확률·모든 속성 저항도 붙어요. ` +
+        `견고의 세트 무기는 견고의 장검으로 바뀌었어요 (가지고 있던 견고의 도끼도 장검으로). ` +
         `나이트메어에서 속성 세트(화염·서리·뇌전, 2세트부터 파이어볼·프로스트 노바·체인 라이트닝)가 나와요. ` +
         `나이트메어 아이템은 공격력·방어력·최대 HP가 ${RLItems.NM_POWER.mul}배라 시험의 세트 대신 바꿔 껴도 돼요. ` +
         `나이트메어 아이템은 판매하면 나오는 악몽 강화석으로 강화해요. 나이트메어 앞쪽 층은 쉬워지고 깊은 층일수록 세져요. ` +

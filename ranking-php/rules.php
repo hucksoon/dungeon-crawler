@@ -23,7 +23,15 @@ const R_WEAPONS = [
     'dagger' => ['name' => '단검', 'base' => ['atk' => 2, 'crit' => 6], 'atkMul' => 1],
     'staff' => ['name' => '지팡이', 'base' => ['atk' => 2, 'hp' => 6], 'atkMul' => 1],
     'axe' => ['name' => '도끼', 'base' => ['atk' => 4], 'atkMul' => 1.3],
+    // 장검 (r5, items.js WEAPONS.longsword): 무기 칸에만, 보조 손에는 방패만. 공격력 ×1.5, 다른 주 능력치도 ×mainMul
+    'longsword' => ['name' => '장검', 'base' => ['atk' => 4], 'atkMul' => 1.5, 'mainMul' => 1.5, 'shieldOnly' => true],
 ];
+// 무작위로 나오는 무기 종류: 장검은 r5부터 무기 칸에만
+const R_WEAPON_TYPES_OLD = ['dagger', 'staff', 'axe'];
+function r_weapon_types(int $rev): array { return $rev >= 5 ? array_keys(R_WEAPONS) : R_WEAPON_TYPES_OLD; }
+function r_is_shield_only(?array $item): bool {
+    return $item !== null && $item['slot'] === 'weapon' && !empty($item['type']) && !empty(R_WEAPONS[$item['type']]['shieldOnly']);
+}
 const R_ARMOR = [
     'head' => ['name' => '투구', 'base' => ['def' => 1, 'hp' => 2]],
     'chest' => ['name' => '갑옷', 'base' => ['def' => 2, 'hp' => 4]],
@@ -94,6 +102,7 @@ const R_PCT_MAIN = [
     'defPct' => [[2, 3], [3, 5], [5, 8], [8, 12], [13, 15], [12, 14]],
     'xp' => [[5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]],
     'gold' => [[5, 8], [8, 12], [12, 18], [18, 25], [28, 35], [25, 30]],
+    'allRes' => [[4, 7], [4, 7], [4, 7], [4, 7], [4, 7], [4, 7]],   // 장검 (× mainMul, 강화로 오르지 않음)
 ];
 const R_PCT_LINE = [
     'crit' => [[1, 1], [1, 2], [2, 3], [3, 4], [4, 6], [4, 5]],
@@ -121,6 +130,7 @@ const R_MAIN_POOL_V4 = [
     'pants' => ['def', 'hp', 'defPct'],
     'boots' => ['def', 'hp', 'gold'],
     'shield' => ['def', 'hp'],
+    'longsword' => ['atk', 'def', 'crit', 'allRes'],
 ];
 const R_MAIN_COUNT_V4 = ['common' => [1, 1], 'uncommon' => [1, 2], 'rare' => [2, 2], 'epic' => [2, 3], 'legendary' => [2, 3], 'set' => [2, 3]];
 const R_MAIN_POOL = ['weapon' => ['atk', 'crit', 'lifesteal', 'hp'], 'armor' => ['def', 'hp', 'atk', 'crit']];
@@ -185,8 +195,9 @@ const R_SETS = [
     ],
     'sturdy' => [
         'name' => '견고의 세트',
-        'weapon' => 'axe', 'offhand' => 'shield',
-        'pieces' => ['weapon' => '견고의 도끼', 'offhand' => '견고의 방패'],
+        // 무기는 도끼였다가 장검으로 (세트 무기 종류는 굴리지 않아서 예전 견고의 도끼도 다시 만들면 장검, ID는 같음)
+        'weapon' => 'longsword', 'offhand' => 'shield',
+        'pieces' => ['weapon' => '견고의 장검', 'offhand' => '견고의 방패'],
         'bonuses' => [
             ['count' => 2, 'text' => '패링 확률 +15% (방패와 합쳐 최대 40%)', 'stats' => ['parry' => 15]],
         ],
@@ -223,7 +234,7 @@ function r_old_res_cap(array $item, string $stat): ?int {
 }
 function r_main_pool_v4(array $item): array {
     if ($item['slot'] === 'offhand') return R_MAIN_POOL_V4[$item['type'] === 'shield' ? 'shield' : 'offhandWeapon'];
-    return R_MAIN_POOL_V4[$item['slot']];
+    return R_MAIN_POOL_V4[r_is_shield_only($item) ? $item['type'] : $item['slot']];
 }
 
 // ---------------------------------------------------------------- 시드 난수 (JS Math.imul / >>> 와 같게)
@@ -302,9 +313,15 @@ function r_main_base_range(string $stat, int $lv): array {
 }
 
 function r_main_range(string $stat, array $item): array {
+    // 장검(v4): 공격력 말고 다른 주 능력치도 다른 부위 범위의 mainMul배
+    $lsMul = ($item['v'] ?? 0) >= 4 && $stat !== 'atk' && r_is_shield_only($item) ? R_WEAPONS[$item['type']]['mainMul'] : 1;
     $fixed = r_fixed_pct($item, R_PCT_MAIN, $stat);
-    if ($fixed) return $fixed;
-    $mul = R_RARITY_MUL[$item['rarity']] ?? 1;
+    if ($fixed) {
+        if ($lsMul === 1) return $fixed;
+        $a = max(1, r_round($fixed[0] * $lsMul));
+        return [$a, max($a, r_round($fixed[1] * $lsMul))];
+    }
+    $mul = (R_RARITY_MUL[$item['rarity']] ?? 1) * $lsMul;
     $weaponLike = r_weapon_like($item);
     if ($weaponLike && $stat === 'atk' && $item['type']) $mul *= R_WEAPONS[$item['type']]['atkMul'];
     $off = $weaponLike ? $stat === 'hp' : ($stat === 'atk' || $stat === 'crit');
@@ -340,7 +357,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 4 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 5 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -350,12 +367,12 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     if ($version < 3) {
         $slot = r_pick($rng, R_SLOTS_V2);
         $set = $rarity === 'set' ? 'trial' : null;
-        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
+        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, R_WEAPON_TYPES_OLD);
     } else {
         $slot = r_pick($rng, R_SLOTS);
         $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot, $version === 4 && $rev >= 4 && preg_match(R_NM_SEED, $seed) === 1)) : null;
-        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, array_keys(R_WEAPONS));
-        elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, array_keys(R_WEAPONS)));
+        if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, r_weapon_types($version === 4 ? $rev : 0));
+        elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, R_WEAPON_TYPES_OLD));
     }
     $item = ['v' => $version, 'seed' => $seed, 'src' => $source, 'lvl' => $lv, 'slot' => $slot, 'type' => $type, 'rarity' => $rarity, 'set' => $set];
     if ($rev) $item['r'] = $rev;   // 줄 범위가 개정마다 다를 수 있어서 먼저 (저항 줄 r4)
@@ -475,6 +492,8 @@ function r_enhanced_base(array $item): array {
     $out = [];
     foreach (r_main_stats($item) as [$k, $v]) {
         $v = $v * r_nm_power($item, $k);
+        // 저항(장검의 모든 속성 저항)은 강화로 오르지 않음
+        if (isset(R_RES_R4[$k])) { $out[$k] = $v; continue; }
         if (($item['v'] ?? 0) >= 4 && R_STAT_NAMES[$k][1]) { $out[$k] = $v + intdiv($n, 2); continue; }
         $floor = R_STAT_NAMES[$k][1] ? intdiv($n, 2) : $n;
         $out[$k] = $v + ($n ? max($floor, r_round($v * R_ENHANCE['statPerLevel'] * $n)) : 0);
@@ -540,7 +559,10 @@ function r_totals(array $equipped): array {
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
     $setCounts = [];
+    $shieldOnly = false;
+    foreach ($equipped as $item) if (r_is_shield_only($item)) $shieldOnly = true;
     foreach ($equipped as $item) {
+        if ($shieldOnly && $item['slot'] === 'offhand' && r_weapon_like($item)) continue;   // 장검과 보조무기는 같이 못 씀
         foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
         foreach (r_effective_lines($item) as [$k, $v]) $sum[$k] += $v;
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
