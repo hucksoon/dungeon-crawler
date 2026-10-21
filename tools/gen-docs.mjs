@@ -343,7 +343,7 @@ ${HEADER}
 
 강화하면 함께 오르는 중요한 능력치예요. **부위마다 붙을 수 있는 능력치가 달라요.** 첫 번째는 항상 붙고, 나머지는 그 부위 후보에서 무작위예요. 원하는 능력치가 있으면 그 부위를 모아야 해요.
 
-${table(["부위", "항상", "후보"], [["무기", "weapon"], ["보조무기", "offhandWeapon"], ["가슴(갑옷)", "chest"], ["팔", "arms"], ["머리(투구)", "head"], ["바지", "pants"], ["장화", "boots"], ["방패", "shield"]]
+${table(["부위", "항상", "후보"], [["무기", "weapon"], ["장검 (무기)", "longsword"], ["보조무기", "offhandWeapon"], ["가슴(갑옷)", "chest"], ["팔", "arms"], ["머리(투구)", "head"], ["바지", "pants"], ["장화", "boots"], ["방패", "shield"]]
   .map(([name, k]) => [name, I.STATS[I.MAIN_V4.pool[k][0]].name, I.MAIN_V4.pool[k].slice(1).map(s => I.STATS[s].name + (I.STATS[s].pct ? "%" : "")).join(", ")]))}
 
 - **치명타 확률**은 가슴·팔에만 붙어요. **치명타 피해**는 무기·보조무기에만 붙어요
@@ -357,20 +357,20 @@ ${table(["등급", "주 능력치 개수", "추가 능력치 줄 수", "수치 �
 ### 주 능력치: % 능력치 (등급별 고정)
 
 ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
-  Object.keys(I.PCT_MAIN).map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_MAIN[k][r]))]))}
+  Object.keys(I.PCT_MAIN).filter(k => k !== "allRes").map(k => [I.STATS[k].name + "%", ...Object.keys(I.RARITIES).map(r => fmtR(k, I.PCT_MAIN[k][r]))]))}
 
 ### 주 능력치: 수치 능력치 (커먼 기준, 등급 배율을 곱함)
 
 ${table(["아이템 레벨", "공격력 (무기)", "방어력", "최대 HP (방어구)"],
   LEVELS.map(l => [l, fmtR("atk", I.mainRange("atk", sample("weapon", "common", l))), fmtR("def", I.mainRange("def", sample("chest", "common", l))), fmtR("hp", I.mainRange("hp", sample("chest", "common", l)))]))}
 
-- 도끼의 공격력은 ×${I.WEAPONS.axe.atkMul}
+- 도끼의 공격력은 ×${I.WEAPONS.axe.atkMul}, 장검은 ×${I.WEAPONS.longsword.atkMul} (장검은 다른 주 능력치도 ×${I.WEAPONS.longsword.mainMul}, 아래 [장검](#장검-방패-전용-무기))
 
 ### 예: 레벨 10 장비의 수치 주 능력치 범위
 
-${table(["등급", "무기 공격력", "도끼 공격력", "방어구 방어력", "방어구 최대 HP"],
+${table(["등급", "무기 공격력", "도끼 공격력", "장검 공격력", "방어구 방어력", "방어구 최대 HP"],
   Object.keys(I.RARITIES).map(r => [I.RARITIES[r].name,
-    fmtR("atk", I.mainRange("atk", sample("weapon", r, 10))), fmtR("atk", I.mainRange("atk", sample("weapon", r, 10, "axe"))),
+    fmtR("atk", I.mainRange("atk", sample("weapon", r, 10))), fmtR("atk", I.mainRange("atk", sample("weapon", r, 10, "axe"))), fmtR("atk", I.mainRange("atk", sample("weapon", r, 10, "longsword"))),
     fmtR("def", I.mainRange("def", sample("chest", r, 10))), fmtR("hp", I.mainRange("hp", sample("chest", r, 10)))]))}
 
 ## 추가 능력치 ◆
@@ -417,6 +417,19 @@ ${table(["등급", "패링 확률"], Object.entries(I.PARRY.ranges).map(([r, [lo
 
 - 패링 확률은 방패와 세트 효과를 합쳐 **최대 ${I.PARRY.max}%**예요 (방패 최대 25% + 견고의 세트 15%)
 - 방패의 주 능력치는 방어구처럼 방어력이 첫 번째, 보조무기는 무기처럼 공격력이 첫 번째예요
+
+## 장검 (방패 전용 무기)
+
+- 규칙 r5부터 무기 칸에 **장검**이 나와요 (무기 칸 아이템의 1/${Object.keys(I.WEAPONS).length}). 보조 손에는 **방패만** 낄 수 있어요
+  - 장검을 끼면 끼고 있던 보조무기는 가방으로, 장검을 낀 채 보조무기를 끼면 장검이 가방으로 가요
+- 왜: 방패를 끼면 두 번째(왼손) 공격이 없어지고 방패에는 공격 능력치가 없어서 공격력이 절반 가까이 떨어졌어요. 장검은 그만큼을 메워요
+- 공격력 ×${I.WEAPONS.longsword.atkMul}. 주 능력치 후보는 공격력(항상)·방어력·치명타 확률·모든 속성 저항이고, 공격력이 아닌 것도 **다른 부위 범위의 ${I.WEAPONS.longsword.mainMul}배**예요
+
+${table(["등급", "공격력 (Lv10)", "방어력 (Lv10)", "치명타 확률", "모든 속성 저항"],
+  Object.keys(I.RARITIES).map(r => { const it = { ...sample("weapon", r, 10, "longsword"), v: 4 }; return [I.RARITIES[r].name, ...["atk", "def", "crit", "allRes"].map(k => fmtR(k, I.mainRange(k, it)))]; }))}
+
+- 모든 속성 저항은 강화로 오르지 않아요 (추가 능력치의 저항 줄처럼)
+- **견고의 세트** 무기도 장검이에요. 예전에 얻은 **견고의 도끼는 견고의 장검으로 바뀌었어요** (같은 아이템 ID, 강화 단계 그대로, 능력치는 장검 규칙으로 다시 정해짐)
 
 ## 전설의 힘 (레전더리 완성도)
 
@@ -494,7 +507,7 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
 
 - **시험의 세트**: ${Object.values(I.SETS.trial.bonuses).map(b => b.count).join("·")}개 입을 때마다 효과가 하나씩 켜져요. 6부위지만 아무거나 5개면 효과가 전부 켜져서, 무기는 자유롭게 골라도 돼요
 - **광란의 세트**: 오른손·왼손 무기 2개. 보조 손도 무기라 한 턴에 2번 공격하고, 두 공격 모두 주변 1칸의 적에게 피해의 ${pct(I.SPLASH.mul)} (예전엔 100%였는데 무리를 다른 무기보다 2배 빨리 잡아서 줄였어요)
-- **견고의 세트**: 무기·방패 2개. 패링 확률 +15% (방패 패링과 합쳐 최대 ${I.PARRY.max}%)
+- **견고의 세트**: 장검·방패 2개. 패링 확률 +15% (방패 패링과 합쳐 최대 ${I.PARRY.max}%)
 - **속성 세트** (나이트메어 전용): **화염·서리·뇌전의 세트**, 각각 방어구 5부위, 2·4·5개. 2세트부터 그 속성의 **스킬이 자동으로** 나가요. 다른 세트와 나눠 입을 수 있어요 (예: 시험의 세트 2 + 뇌전의 세트 3이면 둘 다 2세트 효과)
   - 스킬은 플레이어가 행동한 뒤, 몬스터가 움직이기 전에 나가요. 쏠 적이 없으면 준비된 채로 기다려요. 피해는 **방어력에 줄지 않고** 치명타가 터질 수 있어요. 그 속성의 피해% 줄도 더해져요
   - 🔥 **파이어볼** (화염): ${I.FIREBALL.every}턴마다, 보이는 적 중 ${I.FIREBALL.range}칸 안(대각선도 한 칸) 가장 가까운 적을 중심으로 3×3(9칸) 폭발. 공격력 × ${pct(I.FIREBALL.mul)} × (1 + 파이어볼 피해% + 불 피해%). 5세트면 맞은 적 화상
