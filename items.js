@@ -225,7 +225,7 @@
     dmgCap: 11,
     resCap: 75,
     names: { fire: "불", ice: "얼음", bolt: "번개" },
-    none: "무속",   // 속성 피해 줄이 없는 나이트메어 아이템
+    none: "",       // 속성 피해 줄이 없는 나이트메어 아이템은 속성 이름 없이 "악몽의 …" (예전 "악몽의 무속 …"은 이름만 길어서 뺌)
   };
   const STAT_KEYS_NM = [...STAT_KEYS_V4, ...ELEMENT_LINES.keys];
   const isElementDmg = (stat) => stat === "fireDmg" || stat === "iceDmg" || stat === "boltDmg";
@@ -826,9 +826,10 @@
   }
 
   // ---- 표시 ----
-  // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 무속 레어 바지
+  // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 레어 바지 (속성 피해 줄이 없으면 속성 이름 없이)
   function itemName(item) {
-    const nm = isNightmareItem(item) ? `악몽의 ${ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none} ` : "";
+    const el = ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none;
+    const nm = isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
     const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + nm;
     if (item.set) return plus + SETS[item.set].pieces[item.slot];
     return `${plus}${RARITIES[item.rarity].name} ${kindName(item)}`;

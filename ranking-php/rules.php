@@ -689,7 +689,7 @@ function r_totals(array $equipped): array {
 
 function r_item_name(array $item): string {
     $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
-    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] : '무속') . ' ' : '';
+    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
     return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);
