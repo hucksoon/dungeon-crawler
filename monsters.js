@@ -269,7 +269,7 @@
   // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 마지막 50층 던전 (최종 목적지) ----
   // 몬스터 = 나이트메어 startNm층 몬스터 × 배율 × 층 배율 (나이트메어와 같은 모양의 곡선). 아이템 레벨 = 125 + 헬 층 (126~175, "지옥의" 아이템)
   // 모든 몬스터가 속성과 속성 저항을 가짐: 자기 속성 own%, 다른 속성은 층에 따라 otherFrom% → otherTo%, 보스는 +boss%
-  // 헬에서는 플레이어의 속성 저항도 playerResCut%p 낮아짐. 10·20·30·40·50층 보스는 네임드 (다음 단계)
+  // 헬에서는 플레이어의 속성 저항도 playerResCut%p 낮아짐. 10·20·30·40·50층 보스는 네임드 (아래 NAMED)
   const HELL = {
     floors: 50, itemBase: NIGHTMARE.itemBase + NIGHTMARE.floors, startNm: NIGHTMARE.floors,
     // 층 배율: 나이트메어 곡선(50층 ×9.2) 그대로면 지옥의 장비가 따라가지 못해 헬 25층에서 고대 +10도 몰려오는 몬스터에게 100% 쓰러짐
@@ -305,6 +305,38 @@
     return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n)) }, n, el, true);
   }
 
+  // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
+  // 쓰러뜨리면 룬 runes개 (RLItems.rollRunes). 패턴은 index.html 전투에서:
+  //   shred  불가사리: 공격이 들어갈 때마다 내 방어력 −per% (최대 max%, 이 층을 떠나거나 쓰러뜨리면 풀림)
+  //   clones 구미호: HP가 at 이하로 처음 내려가면 분신 count마리 (HP = 구미호 최대 HP × hp, 공격 × atk, 장비·골드 없음)
+  //   sweep  이무기: every턴마다 보통 공격 대신 꼬리 휩쓸기 — radius칸 안이면 공격 × mul, 방패로 막을 수 없음
+  //   reaper 저승사자: 한 번 보면 쓰러뜨릴 때까지 포탈 불가, 내 흡혈(스킬 흡혈 포함) × lifesteal
+  //   judge  염라대왕: every턴마다 속성이 불 → 얼음 → 번개로 바뀜 (속성 저항도 따라 바뀜), HP enrageAt 이하면 공격 × enrageMul
+  const NAMED_COLOR = "#ff4fd8";
+  const NAMED = {
+    runes: 2,
+    bosses: {
+      10: { id: "bulgasari", ch: "B", name: "불가사리", title: "쇠를 먹는 괴수", el: "fire", hpMul: 3, atkMul: 3.4, pattern: "shred", shred: { per: 5, max: 25 } },
+      20: { id: "gumiho", ch: "F", name: "구미호", title: "아홉 꼬리 여우", el: "ice", hpMul: 3, atkMul: 2.1, pattern: "clones", clones: { at: 0.5, count: 2, hp: 0.15, atk: 0.6 } },
+      30: { id: "imugi", ch: "S", name: "이무기", title: "용이 되지 못한 뱀", el: "bolt", hpMul: 3, atkMul: 2.35, pattern: "sweep", sweep: { every: 3, radius: 2, mul: 1.5 } },
+      40: { id: "jeoseung", ch: "R", name: "저승사자", title: "명부의 사자", el: "ice", hpMul: 3, atkMul: 1.77, pattern: "reaper", reaper: { lifesteal: 0.5 } },
+      50: { id: "yeomra", ch: "Y", name: "염라대왕", title: "저승의 왕", el: "fire", hpMul: 3, atkMul: 1.3, pattern: "judge", judge: { every: 3, enrageAt: 0.3, enrageMul: 2 } },
+    },
+  };
+  const namedAt = (n) => NAMED.bosses[n] || null;
+  function makeNamedBoss(n) {
+    const N = namedAt(n);
+    if (!N) return null;
+    const b = makeHellBoss(n, N.el);
+    const hp = Math.round(b.hp * N.hpMul);
+    return {
+      ...b, id: N.id, ch: N.ch, name: N.name, title: N.title, color: NAMED_COLOR, named: n, pattern: N.pattern, [N.pattern]: N[N.pattern],
+      hp, maxHp: hp, atk: Math.round(b.atk * N.atkMul), xp: Math.round(b.xp * N.hpMul),
+    };
+  }
+  // 염라대왕: 지금 턴의 속성 (every턴마다 다음 속성)
+  const judgeElement = (turn, every) => ELEMENTS.list[Math.floor(Math.max(0, turn) / every) % ELEMENTS.list.length];
+
   // rank: "normal" | "elite" | "king". kind는 모두 "golden" (드롭 등급표·서버 검증은 같음)
   function makeGolden(d, rank = "normal") {
     const R = GOLDEN.ranks[rank];
@@ -321,7 +353,7 @@
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
     NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
-    HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

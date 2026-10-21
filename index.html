@@ -1442,7 +1442,7 @@
     return {
       maxHp,
       atk: pct(player.atk + g.atk, g.atkPct),
-      def: pct(g.def, g.defPct),
+      def: Math.round(pct(g.def, g.defPct) * (1 - (player.shred || 0) / 100)),   // 불가사리에게 갉아먹힌 만큼
       crit: Math.min(75, g.crit),
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
       lifesteal: g.lifesteal,  // 합계 최대 20% (RLItems.LIFESTEAL)
@@ -1583,10 +1583,12 @@
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = inHell() ? RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
+      const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
       if (spot) {
         enemies.push({ ...spot, ...boss });
-        if (!quiet) log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
+        if (quiet) {}
+        else if (boss.named) log(`✦ 네임드 보스 ${boss.name} (${boss.title})이(가) 계단을 지키고 있다! ${namedTip(boss)} 쓰러뜨리면 룬 ${RLMonsters.NAMED.runes}개!`, null, RLMonsters.NAMED_COLOR);
+        else log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
       }
     }
 
@@ -1741,10 +1743,15 @@
       }
       // 받는 피해 감소(시험의 세트 5세트·보석)와 둘러싸임 방어는 방어력으로 줄어든 뒤에 (최소 1)
       const crowd = RLMonsters.crowdCut(adjacentFoes());
-      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(attacker.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
+      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
       const took = hurtPlayer(dmg);
       log(`${attacker.name}에게 ${dmg} 피해를 입음.${took < dmg ? ` (보호막이 ${dmg - took} 막음)` : ""}`, "bad");
       if (target.hp <= 0) { death(); return; }
+      // 불가사리: 공격이 들어갈 때마다 방어력을 갉아먹음 (이 층을 떠나거나 쓰러뜨리면 풀림)
+      if (attacker.pattern === "shred" && (player.shred || 0) < attacker.shred.max) {
+        player.shred = Math.min(attacker.shred.max, (player.shred || 0) + attacker.shred.per);
+        log(`${attacker.name}이(가) 갑옷을 갉아먹었다! 방어력 −${player.shred}%`, null, RLMonsters.NAMED_COLOR);
+      }
       if (attacker.el) monsterElement(attacker, s, dmg);
     }
   }
@@ -1776,7 +1783,72 @@
     if (u.slow > 0) { if (--u.slow === 0) u.immune = EL.ice.immune; }
     else if (u.immune > 0) u.immune--;
   }
-  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; } }
+  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; u.shred = 0; } }
+
+  // ---- 헬 네임드 보스 패턴 (수치는 monsters.js NAMED) ----
+  // 저승사자: 한 번 보이면(engaged) 쓰러뜨릴 때까지 포탈 불가, 흡혈 × reaper.lifesteal
+  const reaperOn = () => (scene === "dungeon" ? enemies.find(e => e.pattern === "reaper" && e.engaged && e.hp > 0) : null);
+  const lsMul = () => reaperOn()?.reaper.lifesteal ?? 1;
+  // 몬스터 공격력 (염라대왕은 HP가 적으면 분노)
+  const enrageOn = (e) => e.pattern === "judge" && e.hp <= e.maxHp * e.judge.enrageAt;
+  const foeAtk = (e) => e.atk * (enrageOn(e) ? e.judge.enrageMul : 1);
+  // 이무기 꼬리 휩쓸기: 이번 턴에 휩쓰는지 / 다음 턴에 휩쓰는지(예고)
+  const sweepNow = (e) => e.pattern === "sweep" && turn % e.sweep.every === 0;
+  const sweepSoon = (e) => e.pattern === "sweep" && (turn + 1) % e.sweep.every === 0;
+  // 몬스터가 행동하기 전에: 염라대왕 속성 바꾸기·분노, 구미호 분신
+  function namedTurn(e) {
+    if (e.pattern === "judge") {
+      const el = RLMonsters.judgeElement(turn, e.judge.every);
+      if (el !== e.el) {
+        e.el = el;
+        e.res = RLMonsters.hellRes(e.named, el, true);
+        if (visible[e.y]?.[e.x]) log(`${e.name}의 심판: 이제 ${EL.names[el]} 속성이다! (${EL.names[el]} 저항 ${e.res[el]}%)`, null, EL.colors[el]);
+      }
+      if (enrageOn(e) && !e.enraged) { e.enraged = true; log(`${e.name}이(가) 분노했다! 공격력 ×${e.judge.enrageMul}`, null, RLMonsters.NAMED_COLOR); }
+    }
+    if (e.pattern === "clones" && !e.split && e.hp > 0 && e.hp <= e.maxHp * e.clones.at) {
+      e.split = true;
+      const C = e.clones;
+      let made = 0;
+      for (let i = 0; i < C.count; i++) {
+        const spot = [...DIRS, [1, 1], [1, -1], [-1, 1], [-1, -1]].map(([dx, dy]) => ({ x: e.x + dx, y: e.y + dy }))
+          .find(p => map[p.y]?.[p.x] === FLOOR && !isShop(p.x, p.y) && !(p.x === player.x && p.y === player.y) && !enemies.some(o => o.x === p.x && o.y === p.y));
+        if (!spot) break;
+        const hp = Math.round(e.maxHp * C.hp);
+        enemies.push({ ...spot, id: e.id, ch: e.ch.toLowerCase(), name: `${e.name}의 분신`, color: e.color, kind: "elite", clone: true, el: e.el, res: e.res, hell: 1,
+          hp, maxHp: hp, atk: Math.round(e.atk * C.atk), def: e.def, xp: 0 });
+        made++;
+      }
+      if (made) log(`${e.name}이(가) 꼬리를 흔들자 분신 ${made}마리가 나타났다!`, null, RLMonsters.NAMED_COLOR);
+    }
+  }
+  // 패턴 설명 (입장 로그·도감)
+  function namedTip(b) {
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    switch (b.pattern) {
+      case "shred": return `공격이 들어갈 때마다 방어력 −${b.shred.per}% (최대 −${b.shred.max}%, 쓰러뜨리거나 층을 떠나면 풀림).`;
+      case "clones": return `HP가 ${pct(b.clones.at)} 이하로 내려가면 분신 ${b.clones.count}마리를 부름 (분신은 경험치·골드·장비 없음).`;
+      case "sweep": return `${b.sweep.every}턴마다 꼬리 휩쓸기: ${b.sweep.radius}칸 안이면 공격력 ×${b.sweep.mul}, 방패로 막을 수 없음.`;
+      case "reaper": return `눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 흡혈이 ${pct(b.reaper.lifesteal)}로 줄어듦.`;
+      case "judge": return `${b.judge.every}턴마다 속성이 불 → 얼음 → 번개로 바뀌고, HP ${pct(b.judge.enrageAt)} 이하면 분노해 공격력 ×${b.judge.enrageMul}.`;
+    }
+    return "";
+  }
+  // 이무기: 꼬리 휩쓸기 (radius칸 안, 방패로 못 막음). 맞으면 true
+  function namedSweep(e) {
+    const W = e.sweep, s = stats();
+    const cells = [];
+    for (let dy = -W.radius; dy <= W.radius; dy++) for (let dx = -W.radius; dx <= W.radius; dx++) if (dx || dy) cells.push({ x: e.x + dx, y: e.y + dy });
+    flash(cells, "rgba(255, 79, 216, 0.35)");
+    if (near8(e, player) > W.radius) { log(`${e.name}의 꼬리 휩쓸기를 피했다!`, "good"); return false; }
+    const crowd = RLMonsters.crowdCut(adjacentFoes());
+    const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * W.mul + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
+    const took = hurtPlayer(dmg);
+    log(`${e.name}의 꼬리 휩쓸기! ${dmg} 피해를 입음.${took < dmg ? ` (보호막이 ${dmg - took} 막음)` : ""}`, "bad");
+    if (player.hp <= 0) { death(); return true; }
+    if (e.el) monsterElement(e, s, dmg);
+    return true;
+  }
 
   // 플레이어가 때린 뒤: 장비의 속성 피해가 있는 속성마다 효과
   function playerElements(target, s) {
@@ -1829,7 +1901,7 @@
     if (target.kind === "golden" && target.fleeAt != null) left += `, 도망까지 ${Math.max(0, target.fleeAt - turn)}턴`;
     if (left) left += ")";
     log(`${tag}${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
-    const drain = Math.floor(taken * s.lifesteal / 100);
+    const drain = Math.floor(taken * s.lifesteal / 100 * lsMul());
     if (drain > 0) heal(drain);
     if (target.hp <= 0) killEnemy(target);
     else if (target.kind === "golden" && target.blink && Math.random() < target.blink) goldenBlink(target);
@@ -1837,7 +1909,14 @@
 
   function killEnemy(e) {
     enemies = enemies.filter(x => x !== e);
+    // 구미호의 분신: 경험치·골드·장비 없음
+    if (e.clone) { log(`${e.name}이(가) 연기처럼 사라졌다.`, null, RLMonsters.NAMED_COLOR); return; }
     Dex.kill(e.id);
+    if (e.named) {
+      player.shred = 0;
+      log(`네임드 보스 ${e.name}을(를) 쓰러뜨렸다!`, "rainbow");
+      for (const c of enemies.filter(x => x.clone)) { enemies = enemies.filter(x => x !== c); log(`${c.name}이(가) 연기처럼 사라졌다.`, null, RLMonsters.NAMED_COLOR); }
+    }
     const s = stats();
     const xp = Math.round(e.xp * (1 + s.xp / 100));
     // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음. 나이트메어 몬스터는 ×3 (NIGHTMARE.gold)
@@ -1894,8 +1973,8 @@
       items.push({ x: spot.x, y: spot.y, type: "gem", gem: gem[0], grade: gem[1] });
       log(`${e.name}이(가) ${RLItems.gemName(gem[0], gem[1])}을(를) 떨어뜨렸다.`, null, RLItems.GEMS[gem[0]].color);
     }
-    // 룬: 나이트메어 50층 보스만, 2개 확정
-    if (inNM() && depth === RLItems.RUNE_DROP.floor && e.kind === "boss") {
+    // 룬: 나이트메어 50층 보스와 헬 네임드 보스, 2개 확정
+    if ((inNM() && depth === RLItems.RUNE_DROP.floor && e.kind === "boss") || (inHell() && e.named)) {
       for (const k of RLItems.rollRunes(`${player.rid}|${floorTag()}${depth}|r${player.kills}`)) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "rune", rune: k });
@@ -2550,7 +2629,7 @@
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     showDamage(e, d, crit, color);
-    if (s?.rw.skillLs) { const drain = Math.floor(taken * s.lifesteal / 100 * RW_FX.skillLs.share); if (drain > 0) heal(drain); }
+    if (s?.rw.skillLs) { const drain = Math.floor(taken * s.lifesteal / 100 * RW_FX.skillLs.share * lsMul()); if (drain > 0) heal(drain); }
     if (e.hp <= 0) { killEnemy(e); return false; }
     return true;
   }
@@ -2636,6 +2715,8 @@
     const s = stats(), out = [];
     const cut = RLMonsters.crowdCut(adjacentFoes());
     if (cut) out.push(`🛡 둘러싸임 −${Math.round(cut * 100)}%`);
+    if (player.shred > 0) out.push(`🦷 방어력 −${player.shred}%`);
+    if (reaperOn()) out.push(`☠ 포탈 봉인 · 흡혈 ${Math.round(lsMul() * 100)}%`);
     const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
     one(s.fireball || s.rw.fireball, "🔥", "파이어볼", player.fbCd);
     if (s.rw.shield) out.push(`🛡 보호막 ${player.shield || 0}`);
@@ -2691,8 +2772,15 @@
     // 적 이동/공격
     for (const e of [...enemies]) {
       if (e.hp <= 0 || !enemies.includes(e)) continue;
+      if (e.named) namedTurn(e);
       if (slowedNow(e)) continue;
       if (e.kind === "golden") { goldenTurn(e); continue; }
+      // 이무기: every턴마다 보통 공격 대신 꼬리 휩쓸기 (가까이 있을 때)
+      if (sweepNow(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2) {
+        namedSweep(e);
+        if (gameOver) return;
+        continue;
+      }
       if (dist(e, player) === 1) {
         attack(e, player);
         if (gameOver) return;
@@ -2705,6 +2793,8 @@
       }
     }
     for (const u of [player, ...enemies]) statusTurn(u);
+    for (const e of enemies) if (sweepSoon(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2)
+      log(`${e.name}이(가) 꼬리를 치켜든다! 다음 턴에 ${e.sweep.radius}칸 안을 휩쓴다.`, null, RLMonsters.NAMED_COLOR);
   }
 
   // 플레이어 시야에 들어온 몬스터를 도감에 기록. 황금 고블린은 처음 보인 순간부터 도망 시간을 잼
@@ -2713,6 +2803,10 @@
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
       Dex.see(e.id);
+      if (e.pattern === "reaper" && !e.engaged) {
+        e.engaged = true;
+        log(`${e.name}와(과) 눈이 마주쳤다! 쓰러뜨리기 전에는 포탈을 열 수 없고, 흡혈이 ${Math.round(e.reaper.lifesteal * 100)}%로 줄어든다.`, null, RLMonsters.NAMED_COLOR);
+      }
       if (e.kind === "golden" && e.fleeAt == null) {
         const flee = e.fleeTurns || G.ranks.normal.fleeTurns;
         e.fleeAt = turn + flee;
@@ -2997,7 +3091,7 @@
     shopRerolls = 0;
     setScene("dungeon");
     log(`🔥 ${floorName()}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 ${HELL.playerResCut}% 낮아진다.`, "bad");
-    log(`아이템 레벨 ${HELL.itemBase + 1}~${HELL.itemBase + HELL.floors} "지옥의" 아이템이 나온다. 10·20·30·40·50층 보스를 쓰러뜨리면 그 층을 골라서 다시 들어올 수 있다.`, "info");
+    log(`아이템 레벨 ${HELL.itemBase + 1}~${HELL.itemBase + HELL.floors} "지옥의" 아이템이 나온다. ${HELL.milestones.join("·")}층은 네임드 보스(${HELL.milestones.map(m => RLMonsters.namedAt(m).name).join("·")})가 지키고, 쓰러뜨리면 룬 ${RLMonsters.NAMED.runes}개와 함께 그 층을 골라서 다시 들어올 수 있다.`, "info");
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3010,7 +3104,7 @@
     const done = hellMilestones();
     if (!done.length) { log(`헬 오른쪽 문은 ${HELL.milestones[0]}층을 완료하면 열린다 (10·20·30·40·50층 중 완료한 층을 골라 들어감).`, "bad"); return; }
     document.getElementById("hellpick-list").replaceChildren(...HELL.milestones.map(m => Object.assign(document.createElement("button"), {
-      type: "button", textContent: done.includes(m) ? `${m}층` : `${m}층 (미완료)`, disabled: !done.includes(m),
+      type: "button", textContent: `${m}층 · ${RLMonsters.namedAt(m).name}${done.includes(m) ? "" : " (미완료)"}`, disabled: !done.includes(m),
       onclick: () => { closeHellPick(); enterHell(m); },
     })));
     hellPickModal.hidden = false;
@@ -3054,6 +3148,8 @@
   function portal() {
     if (scene !== "dungeon") return;
     if (gameOver) { openDeath(); return; }
+    const reaper = reaperOn();
+    if (reaper) { log(`${reaper.name}이(가) 길을 막고 있다… 쓰러뜨리기 전에는 포탈을 열 수 없다!`, "bad"); render(); return; }
     saveGame(true);
     enterLobby({ from: "portal" });
   }
@@ -3499,9 +3595,11 @@
         }
       } else if (e.kind !== "normal") {
         // 정예는 금색, 보스는 빨간 테두리로 구분
-        ctx.strokeStyle = e.kind === "boss" ? BOSS_COLOR : ELITE_COLOR;
+        // 헬 네임드 보스는 분홍 테두리 두 겹 (분신은 분홍 한 겹)
+        ctx.strokeStyle = e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : ELITE_COLOR;
         ctx.lineWidth = 2;
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+        if (e.named) ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
       }
       drawStatus(e, px, py);
       drawGlyph(e.ch, px, py, e.color);
@@ -4611,7 +4709,7 @@
     const M = RLMonsters, G = M.GOLDEN;
     const rates = new Map(M.spawnRates(depth).map(r => [r.monster.id, r.p]));
     const pct = (p) => `${Math.max(1, Math.round(p * 100))}%`;
-    const total = M.MONSTERS.length + M.BOSSES.length + 1;  // 황금 고블린은 등급이 달라도 1종
+    const total = M.MONSTERS.length + M.BOSSES.length + 1 + Object.keys(M.NAMED.bosses).length;  // 황금 고블린은 등급이 달라도 1종
     document.getElementById("dex-count").textContent = `발견 ${Dex.count()}/${total} · 지금 ${depth}층`;
 
     // 능력치는 지금 층의 층 보정을 적용한 값
@@ -4633,6 +4731,9 @@
     const bosses = M.BOSSES.map((b, i) => dexCard({ ...b, ...M.makeBoss((i + 1) * M.BOSS_EVERY), color: M.BOSS_COLOR }, {
       floors: i === M.BOSSES.length - 1 ? `${(i + 1) * M.BOSS_EVERY}층, 이후 ${M.BOSS_EVERY}층마다` : `${(i + 1) * M.BOSS_EVERY}층`,
     }));
+
+    const named = Object.keys(M.NAMED.bosses).map(Number).map(n => { const b = M.makeNamedBoss(n);
+      return dexCard(b, { floors: `헬 ${n}층 · ${b.title} · ${EL.names[b.el]}${b.pattern === "judge" ? "→얼음→번개" : ""}`, extra: namedTip(b), color: M.NAMED_COLOR }); });
 
     const E = M.ELITE;
     // 이번 층 기준 처치 골드 범위
@@ -4660,6 +4761,10 @@
         `마지막 보스는 이후 ${M.BOSS_EVERY}층마다 ${Math.round(M.BOSS_SCALE * 100)}%씩 강해져요. ` +
         `처치 골드 ${M.GOLD.kill.boss.join("~")} × 층 배율 (지금 층이면 ${gold("boss")}).`),
       el("div", { className: "dex-grid" }, bosses),
+      el("h3", { style: { color: M.NAMED_COLOR } }, "헬 네임드 보스"),
+      el("div", { className: "rule" },
+        `헬 ${Object.keys(M.NAMED.bosses).join("·")}층 보스 자리를 지켜요. 저마다 고유한 패턴이 있고, 쓰러뜨리면 룬 ${M.NAMED.runes}개를 떨어뜨려요. 능력치는 그 층 기준이에요.`),
+      el("div", { className: "dex-grid" }, named),
     );
   }
 
@@ -5271,7 +5376,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021h:${owner}`;  // 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1021i:${owner}`;  // 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5279,6 +5384,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
         `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +
         `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ` +
         `나이트메어를 완료했다면 나이트메어 건물 오른쪽 문으로 ${NM.floors}층에 바로 들어갈 수 있어요. ` +
