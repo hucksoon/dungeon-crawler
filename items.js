@@ -899,6 +899,41 @@
     for (let i = k - 1; i >= 0 && need > 0; i--) { const t = Math.min(n[i], Math.floor(need / 3 ** i)); n[i] -= t; used[i] += t; need -= t * 3 ** i; }
     return { left: n, used };
   }
+  // ---- 룬워드 (효과는 추가 예정) ----
+  // 이름의 각 글자 초성 = 그 자음의 룬 (쌍자음은 기본 자음: ㄲ→가 ㄸ→다 ㅃ→바 ㅆ→사 ㅉ→자). 예: 천하무적 → 차·하·마·자
+  // 커먼 아이템 중 홈 개수가 글자 수와 같고 베이스가 맞는 것에, 앞 홈부터 이 순서로 룬을 넣으면 완성. 순위가 높을수록 얻기 힘듦
+  // 베이스: chest 갑옷, head 투구, shield 방패, longsword 장검, weapon 무기 칸의 단검·도끼·지팡이, staff 무기 칸의 지팡이
+  const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+  const CHO_RUNE = "가가나다다라마바바사사아자자차카타파하";
+  const runesOfName = (name) => [...name].map(c => RUNES.findIndex(r => r.name === CHO_RUNE[CHO.indexOf(CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)])]));
+  const RUNEWORDS = [
+    { name: "천하무적", bases: ["chest"] },
+    { name: "폭풍전야", bases: ["longsword"] },
+    { name: "필살일격", bases: ["longsword"] },
+    { name: "태산", bases: ["chest", "weapon"] },
+    { name: "카리스마", bases: ["longsword"] },
+    { name: "치유", bases: ["head"] },
+    { name: "마음가짐", bases: ["longsword", "shield"] },
+    { name: "선견지명", bases: ["longsword"] },
+    { name: "도원결의", bases: ["shield"] },
+    { name: "기억", bases: ["head"] },
+    { name: "몰래", bases: ["chest"] },
+    { name: "나무", bases: ["staff"] },
+  ].map((w, i) => ({ ...w, rank: i + 1, runes: runesOfName(w.name) }));
+  const BASE_NAMES = { chest: "갑옷", head: "투구", shield: "방패", longsword: "장검", weapon: "무기(단검·도끼·지팡이)", staff: "지팡이" };
+  function runewordBaseKeys(item) {
+    if (item.slot === "chest" || item.slot === "head") return [item.slot];
+    if (item.slot === "offhand") return item.type === "shield" ? ["shield"] : [];
+    if (item.slot !== "weapon") return [];
+    return isShieldOnly(item) ? ["longsword"] : item.type === "staff" ? ["weapon", "staff"] : ["weapon"];
+  }
+  // 이 아이템으로 아직 만들 수 있는 룬워드들: 커먼 + 홈 개수 = 글자 수 + 베이스가 맞고, 이미 넣은 것이 그 순서의 룬일 때
+  function runewordsFor(item) {
+    if (!item || item.rarity !== "common") return [];
+    const n = socketCount(item), keys = runewordBaseKeys(item), put = item.gems || [];
+    if (!n) return [];
+    return RUNEWORDS.filter(w => w.runes.length === n && w.bases.some(b => keys.includes(b)) && put.every((g, i) => isRune(g) && g[1] === w.runes[i]));
+  }
   // 나이트메어 50층 보스가 떨어뜨리는 룬 번호들 (RUNE_DROP.count개)
   function rollRunes(seed) {
     const rng = rngFrom(`rune|${seed}`);
@@ -976,7 +1011,7 @@
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
-    RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes,
+    RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
