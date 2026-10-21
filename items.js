@@ -81,6 +81,9 @@
   // 흡혈: 장비·세트를 합쳐 최대 20% (치명타 75%·패링 40%·저항 75%처럼). 실제로 깎은 HP만큼만 회복 (넘친 피해는 회복 안 함)
   // 40레벨 세트로 흡혈 38%가 되어 75층까지 버티던 것 → 깊은 층은 높은 레벨 장비로 바꾸게
   const LIFESTEAL = { max: 20 };
+  // 장검 + 방패를 같이 끼면 흡혈 +lifesteal%, 흡혈 상한도 cap%로 (장검·방패는 피해가 낮아 흡혈로 회복하는 양이 적어서,
+  //   20%에 막히면 나이트메어 50층에서 몰려오는 몬스터에게 22%·11% 쓰러졌음 → +10%·상한 30%면 0%. 보스는 느리지만(19턴) 안전)
+  const SHIELD_GUARD = { lifesteal: 10, cap: 30 };
   // 광란의 세트: 때린 적 주변 1칸의 다른 적도 이 배율만큼 피해 (100% → 50%: 무리를 다른 무기보다 2배 빨리 잡던 것을 줄임)
   const SPLASH = { mul: 0.5 };
   // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
@@ -732,7 +735,7 @@
   // ---- 추천 능력치 (끝판 목표) ----
   // 모든 장비를 고대로 맞췄을 때 속성 저항 최대(75)·흡혈 최대(20)·치명타 최대(75)를 채우고 나이트메어 50층 보스를 잡는 조합.
   // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님), 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 2%
-  //   (+0이면 보스 11%·몰려오는 몬스터 100%, 장검 + 방패는 흡혈이 모자라 몰려오는 몬스터에게 61%)
+  //   (+0이면 보스 11%·몰려오는 몬스터 100%. 장검 + 방패도 SHIELD_GUARD(흡혈 +10%, 최대 30%)로 몰려오는 몬스터 0%, 보스는 19턴으로 느림)
   // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 전설의 힘(고대 레전더리 하나마다 모든 저항 +4) × 7 = 28 → 75
   // 흡혈: 무기·보조무기 주 능력치 6 × 2 + 추가 능력치 4 × 2 = 20. 치명타: 갑옷·팔 주 능력치 + 줄 6 × 7 → 75
   const RECOMMEND = {
@@ -881,7 +884,7 @@
   function totals(equipped) {
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0,
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
     const setCounts = {};
@@ -908,7 +911,9 @@
       activeSets.push({ id, name: set.name, count, full: setFull(id), bonuses: set.bonuses.map(b => ({ ...b, on: count >= b.count })) });
     }
     sum.parry = Math.min(PARRY.max, sum.parry);
-    sum.lifesteal = Math.min(LIFESTEAL.max, sum.lifesteal);
+    // guard: 장검 + 방패 (흡혈 보너스·상한)
+    if (shieldOnly && equipped.some(it => it && it.slot === "offhand" && it.type === "shield")) { sum.guard = 1; sum.lifesteal += SHIELD_GUARD.lifesteal; }
+    sum.lifesteal = Math.min(sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max, sum.lifesteal);
     sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
     return { stats: sum, sets: activeSets };
@@ -916,7 +921,7 @@
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
-    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
