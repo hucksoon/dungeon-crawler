@@ -895,7 +895,7 @@
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
   const canLock = (item) => item.rarity === "legendary" || item.rarity === "set";   // 자물쇠는 레전더리·세트만
-  // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 2대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
+  // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 3대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
   // 고대 굴리기·진열 바꾸기 횟수 제한도 없음. 운영자는 랭킹에 기록되지 않아서 랭킹에는 영향 없음
   const isStaff = () => !!Lobby.me()?.unlimited;
   const canPay = (cost) => isStaff() || (!!player && !gameOver && player.gold >= cost);
