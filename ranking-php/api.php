@@ -45,7 +45,7 @@ const NM_FLOORS = 50;
 const NM_ITEM_BASE = MAX_FLOOR;
 const NM_CLEAR = NM_FLOORS + 1;
 const CURRENT_SEASON = 'v4';
-const MAX_ENH = 10;
+const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
 final class HttpError extends Exception {
     public $status;
@@ -431,8 +431,8 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
 function verify_item($q, int $maxLvl): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
-    $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검)
-    if (!in_array($rev, [0, 1, 2, 3, 4, 5], true) || ($rev > 0 && $v !== 4)) return null;
+    $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
+    if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6], true) || ($rev > 0 && $v !== 4)) return null;
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || !isset(R_TABLES[$src])) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
@@ -443,13 +443,22 @@ function verify_item($q, int $maxLvl): ?array {
     $ar = $q['ar'] ?? 0;  // 고대 다시 굴리기 횟수 (최대 20)
     if (!is_int($ar) || $ar < 0 || $ar > R_ANCIENT_REROLL['max']) return null;
     $item = r_apply_ancient_rerolls($item, $ar);
+    // 대장간 옵션 재련 (rf: 고른 줄 번호 목록, 고대 굴림 다음에)
+    $rf = $q['rf'] ?? [];
+    if (!is_array($rf) || count($rf) > 300) return null;
+    if ($rf) { $item = r_apply_reforges($item, array_values($rf)); if (!$item) return null; }
     $item['enh'] = $enh;
+    // 홈에 넣은 보석 (g): 종류·등급과 개수(홈 개수까지)만 확인. 보석은 시드로 다시 계산할 수 없어서 얻은 경로는 검증하지 않음
+    $gems = $q['g'] ?? [];
+    if (!is_array($gems) || count($gems) > r_socket_count($item)) return null;
+    foreach ($gems as $g) if (!r_is_gem($g)) return null;
+    if ($gems) $item['gems'] = array_values($gems);
     return $item;
 }
 
 // 화면에 보여줄 아이템 정보 (서버가 계산한 값만)
 function item_view(array $it): array {
-    $fmt = function (string $k, int $v): string { return R_STAT_NAMES[$k][0] . ' +' . $v . (R_STAT_NAMES[$k][1] ? '%' : ''); };
+    $fmt = function (string $k, int $v): string { return $k === 'socket' ? "홈 {$v}개" : R_STAT_NAMES[$k][0] . ' +' . $v . (R_STAT_NAMES[$k][1] ? '%' : ''); };
     $rng = function (string $k, ?array $r): ?string {
         if (!$r) return null;
         $u = R_STAT_NAMES[$k][1] ? '%' : '';
@@ -486,6 +495,13 @@ function item_view(array $it): array {
         'ancient' => !empty($it['ancient']), 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
         'legend' => r_legend_power($it), 'legendRes' => r_legend_res($it),   // 전설의 힘 (레전더리 완성도): 공격력·방어력·최대 HP +%, 모든 속성 저항 +%
         'main' => $main, 'lines' => $lines,
+        // 홈에 넣은 보석: [이름, 효과]
+        'gems' => array_map(function ($g) use ($it) {
+            $place = r_weapon_like($it) ? 'weapon' : 'armor';
+            $fx = [];
+            foreach (R_GEMS[$g[0]][$place] as $k => $vals) $fx[] = R_STAT_NAMES[$k][0] . ' +' . $vals[$g[1]] . (R_STAT_NAMES[$k][1] ? '%' : '');
+            return ['name' => r_gem_name($g[0], $g[1]), 'text' => implode(', ', $fx)];
+        }, $it['gems'] ?? []),
     ];
 }
 

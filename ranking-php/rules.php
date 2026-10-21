@@ -76,6 +76,25 @@ const R_ELEMENT_NAMES = ['fire' => '불', 'ice' => '얼음', 'bolt' => '번개']
 // 나이트메어에서 얻은 아이템 (속성 줄은 r3부터). 이름 앞에 "악몽의 (속성)"
 function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_NM_SEED, (string)($item['seed'] ?? '')) === 1; }
 // 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
+// 속성 피해 줄은 하나만 (items.js oneElementDmg): 가장 큰 것만 남기고 나머지는 다른 능력치로 (시드 el1|…)
+function r_one_element_dmg(array $item, array $left, string $seed): array {
+    $dmg = [];
+    foreach ($item['lines'] as $i => [$k]) if (r_is_element_dmg($k)) $dmg[] = $i;
+    if (count($dmg) < 2) return $item;
+    $keep = $dmg[0];
+    foreach ($dmg as $i) if ($item['lines'][$i][1] > $item['lines'][$keep][1]) $keep = $i;
+    $maxed = r_is_ancient($item);
+    $pool = array_values(array_filter($left, function ($k) { return !r_is_element_dmg($k) && $k !== 'socket'; }));
+    $rng = r_rng("el1|{$seed}");
+    foreach ($dmg as $i) {
+        if ($i === $keep) continue;
+        $stat = array_splice($pool, (int)floor($rng() * count($pool)), 1)[0];
+        $range = r_line_range_of($stat, $item);
+        $v = r_roll_range($rng, $range);
+        $item['lines'][$i] = [$stat, $maxed ? $range[1] : $v];
+    }
+    return $item;
+}
 function r_item_element(array $item): ?string {
     $best = null; $bestV = 0;
     foreach ($item['lines'] ?? [] as [$k, $v]) {
@@ -87,10 +106,11 @@ function r_item_element(array $item): ?string {
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
-    'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true],
+    'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true], 'hpPct' => ['최대 HP', true],
     'fireDmg' => ['불 피해', true], 'iceDmg' => ['얼음 피해', true], 'boltDmg' => ['번개 피해', true],
     'dmgReduce' => ['받는 피해 감소', true],
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
+    'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
 const R_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'set'];
@@ -141,7 +161,7 @@ const R_MAX_ROLL_CHANCE = 0.2;
 const R_ANCIENT_CHANCE = 0.03;   // v4 r1부터
 // 고대 다시 굴리기 (items.js ANCIENT_REROLL): 고대가 아닌 v4 레전더리·세트를 골드로 굴림. 한 번에 5%, 최대 20번. 참조의 ar = 굴린 횟수
 const R_ANCIENT_REROLL = ['chance' => 0.05, 'max' => 20];
-const R_ENHANCE = ['max' => 10, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10], 'lineBoost' => 0.5];
+const R_ENHANCE = ['max' => 12, 'statPerLevel' => 0.1, 'lineSteps' => [4, 6, 8, 10, 12], 'lineBoost' => 0.5];   // +11·+12: 대장간 업데이트
 const R_SETS = [
     'trial' => [
         'name' => '시험의 세트',
@@ -149,7 +169,7 @@ const R_SETS = [
         'pieces' => ['head' => '시험의 투구', 'chest' => '시험의 갑옷', 'arms' => '시험의 팔보호구', 'pants' => '시험의 바지', 'boots' => '시험의 장화', 'weapon' => '시험의 도끼'],
         'bonuses' => [
             ['count' => 2, 'text' => '최대 HP +20%, 방어력 +20%', 'stats' => ['hpPct' => 20, 'defPct' => 20]],
-            ['count' => 4, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
+            ['count' => 3, 'text' => '공격력 +25%, 치명타 확률 +10%', 'stats' => ['atkPct' => 25, 'crit' => 10]],
             ['count' => 5, 'text' => '치명타 피해 +100%, 받는 피해 −10%, 적을 쓰러뜨리면 최대 HP의 15% 회복', 'stats' => ['critDmg' => 100, 'dmgReduce' => 10, 'killHealPct' => 15]],
         ],
     ],
@@ -168,7 +188,7 @@ const R_SETS = [
         'pieces' => ['head' => '화염의 투구', 'chest' => '화염의 갑옷', 'arms' => '화염의 팔보호구', 'pants' => '화염의 바지', 'boots' => '화염의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '파이어볼: 2턴마다 3칸 안의 가장 가까운 적을 중심으로 3×3 폭발 (공격력의 80% 불 피해, 방어력 무시)', 'stats' => ['fireball' => 1]],
-            ['count' => 4, 'text' => '파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%', 'stats' => ['fireballPct' => 50, 'hpPct' => 15, 'fireRes' => 20]],
+            ['count' => 3, 'text' => '파이어볼 피해 +50%, 최대 HP +15%, 불 저항 +20%', 'stats' => ['fireballPct' => 50, 'hpPct' => 15, 'fireRes' => 20]],
             ['count' => 5, 'text' => '파이어볼에 맞은 적이 모두 화상을 입어요', 'stats' => ['fireballBurn' => 1]],
         ],
     ],
@@ -179,7 +199,7 @@ const R_SETS = [
         'pieces' => ['head' => '서리의 투구', 'chest' => '서리의 갑옷', 'arms' => '서리의 팔보호구', 'pants' => '서리의 바지', 'boots' => '서리의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '프로스트 노바: 2턴마다 내 주변 8칸의 적 모두에게 공격력의 70% 얼음 피해 (방어력 무시)', 'stats' => ['nova' => 1]],
-            ['count' => 4, 'text' => '프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%', 'stats' => ['novaPct' => 50, 'defPct' => 10, 'iceRes' => 20]],
+            ['count' => 3, 'text' => '프로스트 노바 피해 +50%, 방어력 +10%, 얼음 저항 +20%', 'stats' => ['novaPct' => 50, 'defPct' => 10, 'iceRes' => 20]],
             ['count' => 5, 'text' => '프로스트 노바에 맞은 적이 모두 느려져요 (얼음 면역 중인 적 빼고)', 'stats' => ['novaSlow' => 1]],
         ],
     ],
@@ -189,7 +209,7 @@ const R_SETS = [
         'pieces' => ['head' => '뇌전의 투구', 'chest' => '뇌전의 갑옷', 'arms' => '뇌전의 팔보호구', 'pants' => '뇌전의 바지', 'boots' => '뇌전의 장화'],
         'bonuses' => [
             ['count' => 2, 'text' => '체인 라이트닝: 2턴마다 3칸 안의 가장 가까운 적부터 번개가 2번 튕겨요 (서로 다른 적, 한 번에 공격력의 40% 번개 피해, 방어력 무시)', 'stats' => ['chain' => 1]],
-            ['count' => 4, 'text' => '체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%', 'stats' => ['chainPct' => 50, 'crit' => 10, 'boltRes' => 20]],
+            ['count' => 3, 'text' => '체인 라이트닝 피해 +50%, 치명타 확률 +10%, 번개 저항 +20%', 'stats' => ['chainPct' => 50, 'crit' => 10, 'boltRes' => 20]],
             ['count' => 5, 'text' => '번개가 4번 튕기고, 튕길 다른 적이 없으면 같은 적이 다시 맞아요 (한 마리면 4번). 맞은 적은 감전: 3턴 동안 받는 피해 +20%', 'stats' => ['chainMax' => 1]],
         ],
     ],
@@ -333,7 +353,48 @@ function r_main_range(string $stat, array $item): array {
 
 // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
 function r_line_range_of(string $stat, array $item): array {
+    if ($stat === 'socket') return r_socket_range($item);
     return r_fixed_pct($item, R_PCT_LINE, $stat) ?? r_line_range($stat, $item['lvl']);
+}
+
+// ---------------------------------------------------------------- 홈·보석 (r6, items.js SOCKETS·GEMS)
+
+const R_SOCKETS = [
+    'head' => [1, 2], 'chest' => [1, 4], 'arms' => [1, 2], 'boots' => [1, 2],
+    'weapon' => [1, 2], 'offhandWeapon' => [1, 2], 'longsword' => [4, 6], 'shield' => [1, 4],
+];
+function r_socket_range(array $item): ?array {
+    $k = $item['slot'] === 'offhand' ? ($item['type'] === 'shield' ? 'shield' : 'offhandWeapon') : (r_is_shield_only($item) ? 'longsword' : $item['slot']);
+    return R_SOCKETS[$k] ?? null;
+}
+function r_socket_count(array $item): int {
+    foreach ($item['lines'] ?? [] as [$k, $v]) if ($k === 'socket') return $v;
+    return 0;
+}
+const R_GEM_GRADES = ['조각', '보석', '완벽한 보석'];
+const R_GEMS = [
+    'ruby' => ['name' => '루비', 'weapon' => ['atkPct' => [2, 4, 6]], 'armor' => ['hpPct' => [2, 4, 6]]],
+    'sapphire' => ['name' => '사파이어', 'weapon' => ['critDmg' => [5, 10, 15]], 'armor' => ['defPct' => [2, 4, 6]]],
+    'emerald' => ['name' => '에메랄드', 'weapon' => ['crit' => [1, 2, 3]], 'armor' => ['dmgReduce' => [1, 2, 3]]],
+    'topaz' => ['name' => '토파즈', 'weapon' => ['gold' => [5, 10, 15]], 'armor' => ['xp' => [5, 10, 15]]],
+    'diamond' => ['name' => '다이아몬드', 'weapon' => ['allRes' => [2, 3, 4]], 'armor' => ['allRes' => [2, 3, 4]]],
+];
+const R_GEM_CAPS = ['dmgReduce' => 30];
+function r_is_gem($g): bool {
+    return is_array($g) && count($g) === 2 && is_string($g[0] ?? null) && isset(R_GEMS[$g[0]]) && is_int($g[1] ?? null) && $g[1] >= 0 && $g[1] < count(R_GEM_GRADES);
+}
+function r_gem_name(string $kind, int $grade): string {
+    $n = R_GEMS[$kind]['name'];
+    return $grade === 0 ? "{$n} 조각" : ($grade === 2 ? "완벽한 {$n}" : $n);
+}
+function r_gem_stats(array $item): array {
+    $out = [];
+    $place = r_weapon_like($item) ? 'weapon' : 'armor';
+    foreach (array_slice($item['gems'] ?? [], 0, r_socket_count($item)) as $g) {
+        if (!r_is_gem($g)) continue;
+        foreach (R_GEMS[$g[0]][$place] as $k => $vals) $out[$k] = ($out[$k] ?? 0) + $vals[$g[1]];
+    }
+    return $out;
 }
 
 function r_roll_range(Closure $rng, array $range): int {
@@ -357,7 +418,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 5 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 6 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -402,6 +463,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
 
     $nightmare = $version === 4 && $rev >= 3 && preg_match(R_NM_SEED, $seed) === 1;
     $stats = $nightmare ? R_STAT_KEYS_NM : ($version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS);
+    if ($version === 4 && $rev >= 6 && r_socket_range($item)) $stats[] = 'socket';
     $item['lines'] = [];
     for ($i = 0; $i < R_RARITIES[$rarity]['lines']; $i++) {
         $stat = array_splice($stats, (int)floor($rng() * count($stats)), 1)[0];
@@ -414,6 +476,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         // 고대 굴림 (items.js와 같은 시드): 걸리면 모든 능력치·패링을 최대치로
         if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
     }
+    if ($nightmare) $item = r_one_element_dmg($item, $stats, "v{$version}|{$seed}");
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }
@@ -423,6 +486,38 @@ function r_max_out(array $item): array {
     foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
     foreach ($item['lines'] as $i => [$k, $v]) $item['lines'][$i][1] = r_line_range_of($k, $item)[1];
     if (isset($item['parry'])) $item['parry'] = R_PARRY['ranges'][$item['rarity']][1];
+    return $item;
+}
+
+// 대장간 옵션 재련 (items.js reforgeLine): rf = 고른 추가 능력치 줄 번호 목록. n번째 재련은 시드 rf|ID|n
+// 후보는 그 아이템의 추가 능력치 후보 중 다른 줄에 없는 것 (속성 피해는 하나만), 고대면 최대치. 레전더리·세트(v4)만, 홈 줄은 안 됨
+function r_reforge_line(array $item, int $i): ?array {
+    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return null;
+    if (!isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
+    $n = count($item['rf'] ?? []) + 1;
+    $rng = r_rng("rf|{$item['id']}|{$n}");
+    $nightmare = r_is_nightmare_item($item) && ($item['r'] ?? 0) >= 3;
+    $others = [];
+    foreach ($item['lines'] as $j => [$k]) if ($j !== $i) $others[] = $k;
+    $elemTaken = false;
+    foreach ($others as $k) if (r_is_element_dmg($k)) $elemTaken = true;
+    $pool = [];
+    foreach ($nightmare ? R_STAT_KEYS_NM : R_STAT_KEYS_V4 as $k) if (!in_array($k, $others, true) && !($elemTaken && r_is_element_dmg($k))) $pool[] = $k;
+    $stat = $pool[(int)floor($rng() * count($pool))];
+    $range = r_line_range_of($stat, $item);
+    $v = r_roll_range($rng, $range);
+    $item['lines'][$i] = [$stat, !empty($item['ancient']) ? $range[1] : $v];
+    $item['rf'] = array_merge($item['rf'] ?? [], [$i]);
+    $item['ancient'] = r_is_ancient($item);
+    return $item;
+}
+function r_apply_reforges(array $item, array $rf): ?array {
+    foreach ($rf as $i) if (!is_int($i) || !isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
+    foreach ($rf as $i) {
+        if (!is_int($i)) return null;
+        $item = r_reforge_line($item, $i);
+        if ($item === null) return null;
+    }
     return $item;
 }
 
@@ -507,7 +602,7 @@ function r_enhanced_lines(array $item): array {
     if (!$lines) return $lines;
     // 오를 줄: 저항 줄은 빼고 고름
     $can = [];
-    foreach ($lines as $i => [$k]) if (!isset(R_RES_R4[$k])) $can[] = $i;
+    foreach ($lines as $i => [$k]) if (!isset(R_RES_R4[$k]) && $k !== 'socket') $can[] = $i;   // 홈도 안 오름
     foreach (R_ENHANCE['lineSteps'] as $step) {
         if ((int)($item['enh'] ?? 0) < $step || !$can) break;
         $rng = r_rng("enhline|{$item['id']}|{$step}");
@@ -564,7 +659,8 @@ function r_totals(array $equipped): array {
     foreach ($equipped as $item) {
         if ($shieldOnly && $item['slot'] === 'offhand' && r_weapon_like($item)) continue;   // 장검과 보조무기는 같이 못 씀
         foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
-        foreach (r_effective_lines($item) as [$k, $v]) $sum[$k] += $v;
+        foreach (r_effective_lines($item) as [$k, $v]) if ($k !== 'socket') $sum[$k] += $v;
+        foreach (r_gem_stats($item) as $k => $v) $sum[$k] += $v;
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
@@ -586,13 +682,14 @@ function r_totals(array $equipped): array {
     }
     $sum['parry'] = min(R_PARRY['max'], $sum['parry']);
     $sum['lifesteal'] = min(R_LIFESTEAL_MAX, $sum['lifesteal']);
+    $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
     return ['stats' => $sum, 'sets' => $sets];
 }
 
 function r_item_name(array $item): string {
     $el = r_is_nightmare_item($item) ? r_item_element($item) : null;
-    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] : '무속') . ' ' : '';
+    $nm = r_is_nightmare_item($item) ? '악몽의 ' . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
     if (!empty($item['set'])) return $plus . R_SETS[$item['set']]['pieces'][$item['slot']];
     return $plus . R_RARITIES[$item['rarity']]['name'] . ' ' . r_kind_name($item);
