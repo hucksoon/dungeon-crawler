@@ -559,6 +559,20 @@ ${table(["능력치", ...Object.keys(I.RARITIES).map(r => I.RARITIES[r].name)],
 - **홈 초기화**: 홈에 넣은 보석을 모두 지워요 (보석은 사라지고 홈 개수는 그대로). 수수료 ${I.FORGE.socketReset.base} × 레벨 보정 (나이트메어 아이템 ×${I.NM_SHOP.priceMul}): ${[60, 100, 125].map(l => `Lv${l} ${I.socketResetCost({ lvl: l }).toLocaleString()}`).join(" · ")}골드
 - 왜: 골드가 처음엔 부족하고 나중엔 남았어요. 쓰는 곳(상점·고대 굴리기)이 대부분 한 번 쓰면 끝이라서, 수입은 그대로 두고 계속 쓸 곳을 만들었어요 (+11·+12 강화의 골드도)
 
+## 추천 능력치 (끝판 목표)
+
+모든 장비를 고대로 맞췄을 때 **속성 저항 최대(${I.RECOMMEND.targets.res}%)·흡혈 최대(${I.RECOMMEND.targets.lifesteal}%)·치명타 최대(${I.RECOMMEND.targets.crit}%)**를 채우고 **나이트메어 50층 보스**를 잡는 조합이에요. 인벤토리 능력치 칸의 **📋 추천 능력치** 버튼으로 지금 값과 같이 볼 수 있어요 (장착한 아이템에 이미 있는 줄은 ✓).
+
+- 조건: 고대 레전더리(세트 아님) ${I.RECOMMEND.targets.legendary}부위, +${I.RECOMMEND.targets.enh} 강화, 두 손 무기 (단검·지팡이·도끼 + 보조무기)
+- 시뮬레이션 (나이트메어 50층 레벨): 50층 보스 쓰러짐 0% (7턴), 몬스터 20마리가 8마리씩 몰려와도 2%. 강화를 안 하면(+0) 보스 11%·몰려옴 100%, 장검 + 방패는 흡혈이 모자라 몰려옴 61%
+
+${table(["부위", "주 능력치 ★", "추가 능력치 ◆"], Object.entries(I.RECOMMEND.slots).map(([slot, r]) => [I.SLOT_NAMES[slot] + (r.kind ? ` (${r.kind})` : ""), r.main.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", "), r.lines.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", ")]))}
+
+- **저항**: 불·얼음·번개 저항 줄 각 2개(${I.RES_R4.fireRes[1]}%) + 모든 속성 저항 줄 1개(${I.RES_R4.allRes[1]}%) + 전설의 힘(고대 레전더리 하나마다 모든 저항 +${I.LEGEND.allRes}%) × 7 = 75%
+- **흡혈**: 무기·보조무기 주 능력치 ${I.PCT_MAIN.lifesteal.legendary[1]}% × 2 + 추가 능력치 ${I.PCT_LINE.lifesteal.legendary[1]}% × 2 = 20%
+- 세트를 섞으면 그 부위의 전설의 힘(저항 +${I.LEGEND.allRes}%)이 빠져요. 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요
+- 줄이 하나 모자라면 대장간의 옵션 재련(아이템마다 한 줄)으로 맞출 수 있어요
+
 ## 세트
 
 구하기 아주 어려운 만큼(장비 상자 ${pct(I.TABLES.box.set / 100)}, 몬스터 드롭 ${pct(I.TABLES.drop.set / 100)}) 효과가 강해요. 세트 아이템이 나오면 그 부위에 있는 세트 중 하나로 정해져요 (방어구 부위는 시험의 세트, 무기는 셋 중 하나, 보조 손은 광란·견고 중 하나). **나이트메어에서 얻은 세트 방어구(규칙 r4 이후)는 시험·화염·서리·뇌전의 세트** 중 하나예요 (각 1/4).

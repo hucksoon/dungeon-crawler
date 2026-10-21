@@ -729,6 +729,25 @@
     return item;
   }
 
+  // ---- 추천 능력치 (끝판 목표) ----
+  // 모든 장비를 고대로 맞췄을 때 속성 저항 최대(75)·흡혈 최대(20)·치명타 최대(75)를 채우고 나이트메어 50층 보스를 잡는 조합.
+  // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님), 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 2%
+  //   (+0이면 보스 11%·몰려오는 몬스터 100%, 장검 + 방패는 흡혈이 모자라 몰려오는 몬스터에게 61%)
+  // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 전설의 힘(고대 레전더리 하나마다 모든 저항 +4) × 7 = 28 → 75
+  // 흡혈: 무기·보조무기 주 능력치 6 × 2 + 추가 능력치 4 × 2 = 20. 치명타: 갑옷·팔 주 능력치 + 줄 6 × 7 → 75
+  const RECOMMEND = {
+    targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10 },
+    slots: {
+      weapon: { kind: "단검·지팡이·도끼 (장검 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "fireRes"] },
+      offhand: { kind: "보조 단검·지팡이·도끼 (방패 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "iceRes"] },
+      head: { main: ["def", "hp"], lines: ["boltRes", "fireRes", "crit", "critDmg", "atkPct"] },
+      chest: { main: ["def", "crit", "hp"], lines: ["iceRes", "boltRes", "crit", "critDmg", "atkPct"] },
+      arms: { main: ["def", "crit", "atkPct"], lines: ["allRes", "hp", "crit", "critDmg", "atkPct"] },
+      pants: { main: ["def", "hp", "defPct"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
+      boots: { main: ["def", "hp"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
+    },
+  };
+
   // ---- 상점 ----
   // 보스 층(5층마다) 바로 전 층(4, 9, 14…층)의 계단 방에 열림. 보스와 싸우기 전에 장비를 갖추라고
   // 황금 고블린과 같은 등급표(레어 이상)로 6개를 진열, 골드로 구매
@@ -903,7 +922,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

@@ -82,6 +82,8 @@
   /* 아이템 능력치 줄, 고대 아이템 */
   .stat-line .range { opacity: 0.55; font-size: 0.9em; }
   .stat-line.max .range { opacity: 1; color: #ffd700; }
+  .guide-btn { margin-top: 6px; width: 100%; }
+  .guide-slot { margin: 4px 0; line-height: 1.5; }
   .sock-pick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
   .sock-pick select { font: inherit; background: var(--panel, #1a1d24); color: var(--text, #e8e8e8); border: 1px solid #444; border-radius: 4px; padding: 2px 4px; }
   .ancient { border-color: #ffd700 !important; box-shadow: 0 0 0 1px #ffd700 inset, 0 0 10px rgba(255, 215, 0, 0.45); animation: ancient-glow 1.8s ease-in-out infinite; }
@@ -3558,6 +3560,7 @@
         el("div", { className: "gem-pouch" }, ...pouch.map(k => el("div", { style: { color: RLItems.GEMS[k].color } }, `♦ ${RLItems.GEMS[k].name}: ${countText(Inv.gemCount(k))}`)))] : []),
       ...(oldEquipped ? [el("div", { className: "meta" }, `예전 규칙 장비 ${oldEquipped}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.`)] : []),
       ...(player?.oldGear ? [el("div", { className: "msg-bad" }, "이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.")] : []),
+      el("button", { type: "button", className: "guide-btn", onclick: () => { selected = { from: "guide" }; invMsg = null; renderInventory(); } }, "📋 추천 능력치 (끝판 목표)"),
       ...sets.map(set => el("div", { style: { marginTop: "6px" } },
         el("h3", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
         // 켜진 효과와 바로 다음 단계만 (나머지 단계는 아이템 상세의 세트 설명에서)
@@ -3745,7 +3748,46 @@
     afterGearChange();
   }
 
+  // ---- 추천 능력치 (끝판 목표, RLItems.RECOMMEND) ----
+  // 목표(저항 75·흡혈 20·치명타 75·고대 레전더리 7·+10)와 지금 값, 부위별 추천 주·추가 능력치 (장착한 아이템에 이미 있으면 ✓)
+  const statLabel = (k) => RLItems.STATS[k].name + (RLItems.STATS[k].pct ? "%" : "");
+  function renderGuide() {
+    const R = RLItems.RECOMMEND, T = R.targets, s = stats(), eq = Inv.equipped();
+    const worn = Object.values(eq).filter(Boolean);
+    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient).length, enhOk = worn.filter(it => (it.enh || 0) >= T.enh).length;
+    const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
+    const res = EL.list.map(k => s.res[k]);
+    const rows = [
+      el("h3", {}, "📋 추천 능력치 (끝판 목표)"),
+      el("div", { className: "meta" }, "모든 장비를 고대로 맞췄을 때 속성 저항·흡혈·치명타를 최대로 채우고 나이트메어 50층 보스를 잡는 조합이에요. (시뮬레이션: 50층 고대 레전더리 +10, 보스 0%·몰려오는 몬스터 2%)"),
+      goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%`),
+      goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%`),
+      goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
+      goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위 (하나마다 전설의 힘: 공격력·방어력·최대 HP +12%, 모든 저항 +4%)`),
+      goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
+      el("h3", { style: { marginTop: "6px" } }, "부위별 추천"),
+    ];
+    for (const slot of RLItems.SLOTS) {
+      const r = R.slots[slot], it = eq[slot];
+      if (!r) continue;
+      const has = new Set([...(it?.main || []), ...(it?.lines || [])].map(([k]) => k));
+      const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
+      const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
+      rows.push(el("div", { className: "guide-slot" },
+        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}`), el("br"),
+        "★ ", ...join(r.main), el("br"),
+        "◆ ", ...join(r.lines)));
+    }
+    rows.push(
+      el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 전설의 힘 4% × 7 = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
+      el("div", { className: "meta" }, "세트를 섞으면 그 부위의 전설의 힘(저항 +4%)이 빠져요. 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
+      el("div", { className: "meta" }, "장검 + 방패는 흡혈이 모자라 몰려오는 몬스터에게 약해요 (같은 조건 61%). 강화를 안 하면(+0) 보스 11%·몰려오는 몬스터 100%라서 +10까지 올리세요"));
+    const closeBtn = el("button", { type: "button", className: "detail-close", onclick: () => { selected = null; renderInventory(); } }, "▼ 닫기");
+    invDetail.replaceChildren(closeBtn, ...rows);
+  }
+
   function renderDetail() {
+    if (selected?.from === "guide") { invDetail.classList.add("open"); renderGuide(); return; }
     const item = selectedItem();
     invDetail.classList.toggle("open", !!item);
     if (!item) {
