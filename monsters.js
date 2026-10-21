@@ -266,6 +266,45 @@
     return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), nm: 1 }, el);
   }
 
+  // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 마지막 50층 던전 (최종 목적지) ----
+  // 몬스터 = 나이트메어 startNm층 몬스터 × 배율 × 층 배율 (나이트메어와 같은 모양의 곡선). 아이템 레벨 = 125 + 헬 층 (126~175, "지옥의" 아이템)
+  // 모든 몬스터가 속성과 속성 저항을 가짐: 자기 속성 own%, 다른 속성은 층에 따라 otherFrom% → otherTo%, 보스는 +boss%
+  // 헬에서는 플레이어의 속성 저항도 playerResCut%p 낮아짐. 10·20·30·40·50층 보스는 네임드 (다음 단계)
+  const HELL = {
+    floors: 50, itemBase: NIGHTMARE.itemBase + NIGHTMARE.floors, startNm: NIGHTMARE.floors,
+    // 층 배율: 나이트메어 곡선(50층 ×9.2) 그대로면 지옥의 장비가 따라가지 못해 헬 25층에서 고대 +10도 몰려오는 몬스터에게 100% 쓰러짐
+    //   → 완만하게 (50층 HP ×2.55, 공격 ×2.39). 시뮬레이션 (추천 조합 고대 레전더리 +10, 몰려오는 20마리 · 보스 1:1):
+    //   악몽 50층 장비로 헬 1층 21% · 0%, 헬 40층 장비로 40층 2% · 0%, 헬 50층 장비로 50층 26% · 0% (유니크·룬워드로 넘는 벽)
+    perFloor: 0.017, perFloor2: 0.0003, atkPerFloor2: 0.00023,
+    hp: 1.0, atk: 1.0, bossHp: 1.0, bossAtk: 1.0,
+    monsters: NIGHTMARE.monsters,
+    res: { own: 50, otherFrom: 10, otherTo: 40, boss: 10 },
+    playerResCut: 10,
+    gold: { kill: 5, pile: 12, floor: 0.75 },
+    milestones: [10, 20, 30, 40, 50],   // 완료하면 로비 오른쪽 문으로 골라서 들어갈 수 있는 층
+    clearStage: 51,
+    presence: 3000,     // 로비 접속자 목록: 3000 + 헬 층 (골드 던전 2000번대와 구분)
+  };
+  const hellScale = (n) => { const k = Math.max(1, n) - 1; return 1 + HELL.perFloor * k + HELL.perFloor2 * k * k; };
+  const hellAtkScale = (n) => { const k = Math.max(1, n) - 1; return 1 + HELL.perFloor * k + HELL.atkPerFloor2 * k * k; };
+  // 헬 몬스터의 속성 저항 { fire, ice, bolt }
+  function hellRes(n, el, boss = false) {
+    const other = Math.round(HELL.res.otherFrom + (HELL.res.otherTo - HELL.res.otherFrom) * (Math.max(1, Math.min(HELL.floors, n)) - 1) / (HELL.floors - 1));
+    const add = boss ? HELL.res.boss : 0;
+    return Object.fromEntries(ELEMENTS.list.map(k => [k, (k === el ? HELL.res.own : other) + add]));
+  }
+  const toHell = (m, n, el, boss) => ({ ...m, name: m.name.replace(/^악몽의 /, "지옥의 "), nm: 0, hell: 1, res: hellRes(n, el, boss) });
+  function makeHell(t, kind, n, el = pickElement(Math.random)) {
+    const m = makeNightmare(t, kind, HELL.startNm, el);
+    const hp = Math.round(m.hp * HELL.hp * hellScale(n));
+    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n)) }, n, el, false);
+  }
+  function makeHellBoss(n, el = pickElement(Math.random)) {
+    const b = makeNightmareBoss(HELL.startNm, el);
+    const hp = Math.round(b.hp * HELL.bossHp * hellScale(n));
+    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n)) }, n, el, true);
+  }
+
   // rank: "normal" | "elite" | "king". kind는 모두 "golden" (드롭 등급표·서버 검증은 같음)
   function makeGolden(d, rank = "normal") {
     const R = GOLDEN.ranks[rank];
@@ -281,7 +320,8 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

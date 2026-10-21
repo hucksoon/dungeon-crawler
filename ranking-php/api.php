@@ -37,13 +37,18 @@ const CLEAR_STAGE = MAX_FLOOR + 1;
 // players 표는 v3 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
 const SEASONS = [
     'v4' => ['table' => 'players_v4', 'name' => 'v4 베타', 'minItemV' => 4],
-    'nm' => ['table' => 'players_nm', 'name' => '나이트메어', 'minItemV' => 4, 'nightmare' => true],  // v4 베타의 나이트메어 던전 (층 = 나이트메어 층)
+    'nm' => ['table' => 'players_nm', 'name' => '나이트메어', 'minItemV' => 4, 'nightmare' => true],
+    'hell' => ['table' => 'players_hell', 'name' => '헬', 'minItemV' => 4, 'nightmare' => true, 'hell' => true],  // 헬 던전 (층 = 헬 층, 50층 완료 = 51)  // v4 베타의 나이트메어 던전 (층 = 나이트메어 층)
     'v3' => ['table' => 'players', 'name' => 'v3 베타', 'minItemV' => 1],
 ];
 // 나이트메어 던전 (monsters.js NIGHTMARE): 50층, 아이템 레벨 = 75 + 나이트메어 층, 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
 const NM_FLOORS = 50;
 const NM_ITEM_BASE = MAX_FLOOR;
 const NM_CLEAR = NM_FLOORS + 1;
+// 헬 던전 (monsters.js HELL): 50층, 아이템 레벨 = 125 + 헬 층 ("지옥의" 아이템, 시드 |j층|), 나이트메어를 완료한 사람만
+const HELL_FLOORS = 50;
+const HELL_ITEM_BASE = NM_ITEM_BASE + NM_FLOORS;
+const HELL_CLEAR = HELL_FLOORS + 1;
 const CURRENT_SEASON = 'v4';
 const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
@@ -122,7 +127,7 @@ function db(): PDO {
         created_at   BIGINT NOT NULL
     )');
     // v4 베타 시즌 표, 나이트메어 표 (players와 같은 모양)
-    foreach (['players_v4', 'players_nm'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
+    foreach (['players_v4', 'players_nm', 'players_hell'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
         pkey         VARCHAR(64) PRIMARY KEY,
         pub_id       VARCHAR(32),
         kind         VARCHAR(8)  NOT NULL,
@@ -429,6 +434,19 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         if ($src === 'boss') return $n % 5 === 0;
         return $src === 'golden';
     }
+    // 헬 (v4 r6): 층 j는 1~50, 아이템 레벨 = 125 + j
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
+        $n = (int)$m[1];
+        if ($v !== 4 || $rev < 6 || $n < 1 || $n > HELL_FLOORS || $lvl !== HELL_ITEM_BASE + $n) return false;
+        if ($m[2] === 'p') return $src === 'golden';   // 보물 자리
+        if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
+        if ($src === 'boss') return $n % 5 === 0;
+        return $src === 'golden';
+    }
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|j(\d{1,2})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 헬 상점 (보스 전 층)
+        $n = (int)$m[1];
+        return $v === 4 && $rev >= 6 && $n >= 1 && $n <= HELL_FLOORS && $n % 5 === 4 && $lvl === HELL_ITEM_BASE + $n && $src === 'golden';
+    }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|n(\d{1,2})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 나이트메어 상점 (보스 전 층)
         $n = (int)$m[1];
         return $v === 4 && $rev >= 2 && $n >= 1 && $n <= NM_FLOORS && $n % 5 === 4 && $lvl === NM_ITEM_BASE + $n && $src === 'golden';
@@ -542,7 +560,10 @@ function read_score(array $body, int $oldBest, string $key): array {
     if (!is_int($nm) || $nm < 0) $nm = 0;
     $nm = min($nm, NM_CLEAR);
     if (min($stage, CLEAR_STAGE) < CLEAR_STAGE) $nm = 0;  // 나이트메어는 일반 던전을 완료한 사람만
-    $maxLvl = max($stage, $oldBest, nm_level($nm));
+    $hell = $body['hell'] ?? 0;  // 헬 최고 층 (51 = 완료), 나이트메어를 완료한 사람만
+    if (!is_int($hell) || $hell < 0 || $nm < NM_CLEAR) $hell = 0;
+    $hell = min($hell, HELL_CLEAR);
+    $maxLvl = max($stage, $oldBest, nm_level($nm), hell_level($hell));
     $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
     if (!is_int($plvl) || $plvl < 1 || $plvl > 500) $plvl = 1;
@@ -575,7 +596,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (v4 베타는 v4 장비로만)
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
-    if ($oldGear) { $stage = 0; $nm = 0; }
+    if ($oldGear) { $stage = 0; $nm = 0; $hell = 0; }
     $totals = r_totals($ordered);
     $snapshot = [
         'stage' => $stage,
@@ -585,7 +606,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'rejected' => $rejected,
         'bal' => SNAPSHOT_BAL,
     ];
-    return [$stage, $item, $snapshot, $nm];
+    return [$stage, $item, $snapshot, $nm, $hell];
 }
 
 function now_ms(): int { return (int)floor(microtime(true) * 1000); }
@@ -599,11 +620,12 @@ function season_table(string $season = CURRENT_SEASON): string { return SEASONS[
 // 모든 시즌을 통틀어 얻을 수 있었던 가장 높은 아이템 레벨: 아이템 레벨 검증·거래소용 (예전 시즌에 얻은 깊은 층 아이템도 인정)
 // 일반 던전은 층 = 레벨, 나이트메어는 75 + 나이트메어 층
 function nm_level(int $nm): int { return $nm > 0 ? NM_ITEM_BASE + min($nm, NM_FLOORS) : 0; }
+function hell_level(int $h): int { return $h > 0 ? HELL_ITEM_BASE + min($h, HELL_FLOORS) : 0; }
 function best_level_any(string $key): int {
     $best = 0;
     foreach (SEASONS as $s) {
         $v = (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0);
-        $best = max($best, !empty($s['nightmare']) ? nm_level($v) : $v);
+        $best = max($best, !empty($s['hell']) ? hell_level($v) : (!empty($s['nightmare']) ? nm_level($v) : $v));
     }
     return $best;
 }
@@ -623,12 +645,14 @@ function submit_score(): array {
     if (strlen((string)$raw) > 8192) throw new HttpError(413, 'too_large');
     $body = json_decode((string)$raw, true);
     if (!is_array($body)) throw new HttpError(400, 'bad_json');
-    [$stage, $item, $snapshot, $nm] = read_score($body, best_level_any($who['key']), $who['key']);
+    [$stage, $item, $snapshot, $nm, $hell] = read_score($body, best_level_any($who['key']), $who['key']);
     $now = now_ms();
     $snapshot['at'] = $now;
     record_board(season_table(), $who, $stage, $item, json_encode($snapshot, JSON_UNESCAPED_UNICODE), $now);
     // 나이트메어 랭킹 (따로): 같은 장비 기록, 층은 나이트메어 층
     if ($nm > 0) record_board(season_table('nm'), $who, $nm, $item, json_encode(['stage' => $nm] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
+    // 헬 랭킹 (따로)
+    if ($hell > 0) record_board(season_table('hell'), $who, $hell, $item, json_encode(['stage' => $hell] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
     return ['ok' => true, 'ranked' => true];
 }
 
