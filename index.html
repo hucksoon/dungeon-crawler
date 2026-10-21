@@ -898,7 +898,7 @@
   // 계정(로그인) 또는 게스트(기기 ID)마다 따로 저장. 로그인하면 게임 서버에도 저장 (Profile), 게스트는 이 브라우저에만.
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
-  const canLock = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordsFor(item).length > 0;   // 자물쇠는 레전더리·세트·룬워드 재료만
+  const canLock = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordHighlight(item);   // 자물쇠는 레전더리·세트·(헬) 룬워드 재료만
   // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 3대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
   // 고대 굴리기·진열 바꾸기 횟수 제한도 없음. 운영자는 랭킹에 기록되지 않아서 랭킹에는 영향 없음
   const isStaff = () => !!Lobby.me()?.unlimited;
@@ -1874,7 +1874,7 @@
     if (result === "full") { log("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요.", "bad"); return false; }
     if (result === "ok") gearLog(`${RLItems.itemName(gear.item)}을(를) 주웠다.`, gear.item);
     const rw = RLItems.runewordsFor(gear.item);
-    if (result === "ok" && rw.length) log(`✦ 룬워드 재료! 홈 ${RLItems.socketCount(gear.item)}개 커먼 — ${rw.map(w => w.name).join(", ")}을(를) 만들 수 있다. (인벤토리에서 확인)`, "rainbow");
+    if (result === "ok" && RLItems.runewordHighlight(gear.item)) log(`✦ 룬워드 재료! 홈 ${RLItems.socketCount(gear.item)}개 커먼 — ${rw.map(w => w.name).join(", ")}을(를) 만들 수 있다. (인벤토리에서 확인)`, "rainbow");
     return true;
   }
 
@@ -3694,8 +3694,8 @@
     for (const p of invSide.querySelectorAll(".inv-pane")) p.hidden = p.dataset.pane !== invTab;
     invSide.classList.toggle("open", sideOpen);
 
-    // 고대 → 룬워드 재료(커먼이라도 위로) → 등급 → 레벨
-    const isRw = (it) => (RLItems.runewordsFor(it).length ? 1 : 0);
+    // 고대 → (헬) 룬워드 재료(커먼이라도 위로) → 등급 → 레벨
+    const isRw = (it) => (RLItems.runewordHighlight(it) ? 1 : 0);
     const bag = Inv.bag().slice().sort((a, b) => (b.ancient ? 1 : 0) - (a.ancient ? 1 : 0) || isRw(b) - isRw(a) ||
       RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || b.lvl - a.lvl);
     invBag.replaceChildren(...(bag.length ? bag.map(item => el("button", {
@@ -3728,7 +3728,7 @@
 
   // 가방 전부 판매: 레전더리·세트·룬워드 재료가 섞여 있으면 같이 팔지 물어봄 (안 팔면 가방에 남김).
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
-  const isPrecious = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordsFor(item).length > 0;   // 룬워드 재료(커먼)도
+  const isPrecious = (item) => item.rarity === "legendary" || item.rarity === "set" || RLItems.runewordHighlight(item);   // (헬) 룬워드 재료(커먼)도
   let sellAsk = false;  // 레전더리·세트를 같이 팔지 묻는 중
   // 가방 전부 판매에 들어가는 아이템 (잠긴 아이템과 보석을 넣은 아이템은 빼고)
   const sellable = () => Inv.bag().filter(item => !item.gems?.length && !item.lock);
@@ -3763,7 +3763,7 @@
     const sum = (list) => stonesText(list);
     const names = precious.map(RLItems.itemName);
     box.replaceChildren(
-      el("div", {}, `${[precious.some(it => !RLItems.runewordsFor(it).length) ? "레전더리·세트" : "", precious.some(it => RLItems.runewordsFor(it).length) ? "룬워드 재료" : ""].filter(Boolean).join("·")} ${precious.length}개도 같이 팔까요?`),
+      el("div", {}, `${[precious.some(it => !RLItems.runewordHighlight(it)) ? "레전더리·세트" : "", precious.some(RLItems.runewordHighlight) ? "룬워드 재료" : ""].filter(Boolean).join("·")} ${precious.length}개도 같이 팔까요?`),
       el("div", { className: "meta" }, `${names.slice(0, 4).join(", ")}${names.length > 4 ? ` 외 ${names.length - 4}개` : ""}`),
       el("div", { className: "row" },
         el("button", { type: "button", className: "primary", disabled: !rest.length, onclick: () => doSellAll(isPrecious) },
@@ -3846,20 +3846,21 @@
     return `${list(plan.used)}를 합쳐서 넣어요`;
   }
   // ---- 룬워드 재료 ----
-  // 홈이 맞는 커먼 아이템: 가방·장비 칸에 "✦ 룬워드" 표시, 상세에 만들 수 있는 룬워드와 넣을 순서
+  // 홈이 맞는 커먼 아이템: 상세에 만들 수 있는 룬워드와 넣을 순서.
+  // 헬(지옥의) 아이템만 가방·장비 칸에 "✦ 룬워드" 표시 (일반·악몽의 아이템은 룬을 얻기 전에 줍는 것이라 상세에만, 접힌 채로)
   const runeSeq = (w) => w.runes.map(k => RLItems.RUNES[k].name).join("·");
   function rwTag(item) {
-    const ws = item ? RLItems.runewordsFor(item) : [];
+    const ws = RLItems.runewordHighlight(item) ? RLItems.runewordsFor(item) : [];
     return ws.length ? el("span", { className: "rw-tag rainbow", title: `룬워드 재료: ${ws.map(w => w.name).join(", ")}` }, "✦ 룬워드") : null;
   }
   function runewordRows(item) {
     const ws = RLItems.runewordsFor(item);
     if (!ws.length) return [];
-    const put = (item.gems || []).length;
-    return [fold("rw", [el("span", { className: "rainbow" }, "✦ 룬워드 재료"), ` · ${ws.length}개 가능`],
+    const put = (item.gems || []).length, hi = RLItems.runewordHighlight(item);
+    return [fold(hi ? "rw" : "rw-quiet", [el("span", { className: hi ? "rainbow" : "" }, "✦ 룬워드 재료"), ` · ${ws.length}개 가능`],
       [el("div", { className: "rw-list" }, ...ws.map(w => el("div", {},
         el("b", {}, `${w.rank}위 ${w.name}`), ` — ${runeSeq(w)} (${put}/${w.runes.length} 넣음${put < w.runes.length ? `, 다음 ${RLItems.RUNES[w.runes[put]].name} 룬` : ""})`))),
-      el("div", { className: "meta" }, "커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요 (효과는 추가 예정). 다른 룬이나 보석을 넣으면 룬워드를 만들 수 없어요.")])];
+      el("div", { className: "meta" }, "커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요 (효과는 추가 예정). 다른 룬이나 보석을 넣으면 룬워드를 만들 수 없어요.")], !hi)];
   }
 
   // 룬: 없으면 아래 룬 3개씩 자동으로 합쳐 넣음 (쪼개기는 없음). 운영자는 룬을 쓰지 않고 넣음
@@ -5037,7 +5038,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 홈이 맞는 커먼 아이템은 ✦ 룬워드 재료로 표시돼요 (룬워드 효과는 곧). ` +
+        `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. ` +
         `나이트메어를 완료했다면 나이트메어 건물 오른쪽 문으로 ${NM.floors}층에 바로 들어갈 수 있어요. ` +
         `속성 세트(화염·서리·뇌전)는 3세트에 화상·느려짐·4번 튕김, 5세트에 스킬 피해 +50%·능력치·저항이 켜져요 (예전엔 반대). ` +
         `방어구 세트 효과가 2·3·5세트로 바뀌었어요 (효과는 그대로, 예전 4세트 효과가 3세트에서 켜짐 → 두 세트를 2 + 3으로 나눠 입으면 한쪽은 2세트, 다른 쪽은 3세트 효과까지). ` +

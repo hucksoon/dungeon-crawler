@@ -934,6 +934,12 @@
     if (!n) return [];
     return RUNEWORDS.filter(w => w.runes.length === n && w.bases.some(b => keys.includes(b)) && put.every((g, i) => isRune(g) && g[1] === w.runes[i]));
   }
+  // 아이템 단계: 일반 → 악몽의 → (헬 난이도가 생기면) 지옥의
+  const itemTier = (item) => (isNightmareItem(item) ? "nightmare" : "normal");
+  // 룬워드 재료를 눈에 띄게 표시할지: 룬은 나이트메어 50층부터 나오니 그 뒤에 얻는 헬(지옥의) 아이템만.
+  // 일반·악몽의 아이템도 룬워드는 만들 수 있지만 룬을 얻기 전에 줍는 아이템이라 표시하지 않음 (상세에만)
+  const RUNEWORD_HIGHLIGHT_TIERS = ["hell"];
+  const runewordHighlight = (item) => !!item && RUNEWORD_HIGHLIGHT_TIERS.includes(itemTier(item)) && runewordsFor(item).length > 0;
   // 나이트메어 50층 보스가 떨어뜨리는 룬 번호들 (RUNE_DROP.count개)
   function rollRunes(seed) {
     const rng = rngFrom(`rune|${seed}`);
@@ -1011,7 +1017,7 @@
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
-    RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES,
+    RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
