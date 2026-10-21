@@ -87,10 +87,11 @@ function r_item_element(array $item): ?string {
 const R_STAT_NAMES = [
     'atk' => ['공격력', false], 'def' => ['방어력', false], 'hp' => ['최대 HP', false], 'crit' => ['치명타 확률', true],
     'lifesteal' => ['흡혈', true], 'gold' => ['골드 획득', true], 'xp' => ['경험치 획득', true], 'parry' => ['패링 확률', true],
-    'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true],
+    'critDmg' => ['치명타 피해', true], 'atkPct' => ['공격력', true], 'defPct' => ['방어력', true], 'hpPct' => ['최대 HP', true],
     'fireDmg' => ['불 피해', true], 'iceDmg' => ['얼음 피해', true], 'boltDmg' => ['번개 피해', true],
     'dmgReduce' => ['받는 피해 감소', true],
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
+    'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
 const R_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'set'];
@@ -333,7 +334,48 @@ function r_main_range(string $stat, array $item): array {
 
 // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
 function r_line_range_of(string $stat, array $item): array {
+    if ($stat === 'socket') return r_socket_range($item);
     return r_fixed_pct($item, R_PCT_LINE, $stat) ?? r_line_range($stat, $item['lvl']);
+}
+
+// ---------------------------------------------------------------- 홈·보석 (r6, items.js SOCKETS·GEMS)
+
+const R_SOCKETS = [
+    'head' => [1, 2], 'chest' => [1, 4], 'arms' => [1, 2], 'boots' => [1, 2],
+    'weapon' => [1, 2], 'offhandWeapon' => [1, 2], 'longsword' => [4, 6], 'shield' => [1, 4],
+];
+function r_socket_range(array $item): ?array {
+    $k = $item['slot'] === 'offhand' ? ($item['type'] === 'shield' ? 'shield' : 'offhandWeapon') : (r_is_shield_only($item) ? 'longsword' : $item['slot']);
+    return R_SOCKETS[$k] ?? null;
+}
+function r_socket_count(array $item): int {
+    foreach ($item['lines'] ?? [] as [$k, $v]) if ($k === 'socket') return $v;
+    return 0;
+}
+const R_GEM_GRADES = ['조각', '보석', '완벽한 보석'];
+const R_GEMS = [
+    'ruby' => ['name' => '루비', 'weapon' => ['atkPct' => [2, 4, 6]], 'armor' => ['hpPct' => [2, 4, 6]]],
+    'sapphire' => ['name' => '사파이어', 'weapon' => ['critDmg' => [5, 10, 15]], 'armor' => ['defPct' => [2, 4, 6]]],
+    'emerald' => ['name' => '에메랄드', 'weapon' => ['crit' => [1, 2, 3]], 'armor' => ['dmgReduce' => [1, 2, 3]]],
+    'topaz' => ['name' => '토파즈', 'weapon' => ['gold' => [5, 10, 15]], 'armor' => ['xp' => [5, 10, 15]]],
+    'diamond' => ['name' => '다이아몬드', 'weapon' => ['allRes' => [2, 3, 4]], 'armor' => ['allRes' => [2, 3, 4]]],
+];
+const R_GEM_CAPS = ['dmgReduce' => 30];
+function r_is_gem($g): bool {
+    return is_array($g) && count($g) === 2 && is_string($g[0] ?? null) && isset(R_GEMS[$g[0]]) && is_int($g[1] ?? null) && $g[1] >= 0 && $g[1] < count(R_GEM_GRADES);
+}
+function r_gem_name(string $kind, int $grade): string {
+    $n = R_GEMS[$kind]['name'];
+    return $grade === 0 ? "{$n} 조각" : ($grade === 2 ? "완벽한 {$n}" : $n);
+}
+function r_gem_stats(array $item): array {
+    $out = [];
+    $place = r_weapon_like($item) ? 'weapon' : 'armor';
+    foreach (array_slice($item['gems'] ?? [], 0, r_socket_count($item)) as $g) {
+        if (!r_is_gem($g)) continue;
+        foreach (R_GEMS[$g[0]][$place] as $k => $vals) $out[$k] = ($out[$k] ?? 0) + $vals[$g[1]];
+    }
+    return $out;
 }
 
 function r_roll_range(Closure $rng, array $range): int {
@@ -357,7 +399,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 5 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 6 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -402,6 +444,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
 
     $nightmare = $version === 4 && $rev >= 3 && preg_match(R_NM_SEED, $seed) === 1;
     $stats = $nightmare ? R_STAT_KEYS_NM : ($version >= 4 ? R_STAT_KEYS_V4 : R_STAT_KEYS);
+    if ($version === 4 && $rev >= 6 && r_socket_range($item)) $stats[] = 'socket';
     $item['lines'] = [];
     for ($i = 0; $i < R_RARITIES[$rarity]['lines']; $i++) {
         $stat = array_splice($stats, (int)floor($rng() * count($stats)), 1)[0];
@@ -507,7 +550,7 @@ function r_enhanced_lines(array $item): array {
     if (!$lines) return $lines;
     // 오를 줄: 저항 줄은 빼고 고름
     $can = [];
-    foreach ($lines as $i => [$k]) if (!isset(R_RES_R4[$k])) $can[] = $i;
+    foreach ($lines as $i => [$k]) if (!isset(R_RES_R4[$k]) && $k !== 'socket') $can[] = $i;   // 홈도 안 오름
     foreach (R_ENHANCE['lineSteps'] as $step) {
         if ((int)($item['enh'] ?? 0) < $step || !$can) break;
         $rng = r_rng("enhline|{$item['id']}|{$step}");
@@ -564,7 +607,8 @@ function r_totals(array $equipped): array {
     foreach ($equipped as $item) {
         if ($shieldOnly && $item['slot'] === 'offhand' && r_weapon_like($item)) continue;   // 장검과 보조무기는 같이 못 씀
         foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
-        foreach (r_effective_lines($item) as [$k, $v]) $sum[$k] += $v;
+        foreach (r_effective_lines($item) as [$k, $v]) if ($k !== 'socket') $sum[$k] += $v;
+        foreach (r_gem_stats($item) as $k => $v) $sum[$k] += $v;
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
@@ -586,6 +630,7 @@ function r_totals(array $equipped): array {
     }
     $sum['parry'] = min(R_PARRY['max'], $sum['parry']);
     $sum['lifesteal'] = min(R_LIFESTEAL_MAX, $sum['lifesteal']);
+    $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
     return ['stats' => $sum, 'sets' => $sets];
 }

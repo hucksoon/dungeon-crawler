@@ -20,7 +20,8 @@
   //     일반 던전 아이템은 r2와 똑같이 나옴 (ID만 다름). 같은 때부터 포션 자리(시드 |p)는 보물 자리: 황금 고블린 등급표로 1개 (서버도 r3부터 인정)
   // r4: 나이트메어 아이템의 세트 방어구는 시험의 세트 또는 속성 세트(화염의 세트…) 중 하나 (일반 던전 아이템은 r3과 똑같이 나옴, ID만 다름)
   // r5: 무기 칸에 장검(방패 전용)이 나올 수 있음 (WEAPONS.longsword). 견고의 세트 무기는 개정과 상관없이 장검 (예전 견고의 도끼도)
-  const RULES_REV = 5;
+  // r6: 추가 능력치 후보에 홈(SOCKETS)이 들어감 — 바지 빼고. 홈에는 보석(GEMS)을 넣음
+  const RULES_REV = 6;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -177,6 +178,7 @@
     iceRes: { name: "얼음 저항", pct: true },
     boltRes: { name: "번개 저항", pct: true },
     allRes: { name: "모든 속성 저항", pct: true },
+    socket: { name: "홈", pct: false },   // 추가 능력치 한 줄 (r6). 값 = 홈 개수
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것 (v2·v3)
   const STAT_KEYS_V4 = ["atk", "def", "hp", "crit", "critDmg", "atkPct", "lifesteal", "gold", "xp"];  // v4: 치명타 피해·공격력% 추가
@@ -245,6 +247,18 @@
   // 예전(11~34%, 6~11%)에는 저항만 노리면 아이템 70개쯤으로 세 저항 모두 75%를 쉽게 맞췄음. r3까지 얻은 아이템은 효과를 계산할 때 새 최대치까지만
   const RES_R4 = { fireRes: [7, 20], iceRes: [7, 20], boltRes: [7, 20], allRes: [4, 7] };
   const isResLine = (stat) => !!RES_R4[stat];
+
+  // ---- 홈 (r6) ----
+  // 추가 능력치 후보 중 하나: 뽑히면 "홈 N개" 한 줄 (그만큼 다른 능력치 한 줄이 빠짐). N은 부위별 범위에서 다른 줄처럼 굴림
+  // (최대치 20%, 나머지는 최소 ~ 최대−1). 바지에는 없음. 세트 장비는 같은 종류를 따름. 강화로 오르지 않음
+  // 홈에는 보석을 넣음 (넣는 건 공짜, 뺄 수 없음). 레벨과 상관없이 등급별 고정 %
+  const SOCKETS = {
+    head: [1, 2], chest: [1, 4], arms: [1, 2], boots: [1, 2],
+    weapon: [1, 2], offhandWeapon: [1, 2], longsword: [4, 6], shield: [1, 4],
+  };
+  const socketKey = (item) => item.slot === "offhand" ? (item.type === "shield" ? "shield" : "offhandWeapon") : isShieldOnly(item) ? "longsword" : item.slot;
+  const socketRange = (item) => SOCKETS[socketKey(item)] || null;
+  const socketCount = (item) => (item.lines || []).find(([k]) => k === "socket")?.[1] || 0;
   const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat]
     ? (table === PCT_LINE && RES_R4[stat] && (item.r || 0) >= 4 ? RES_R4[stat] : table[stat][item.rarity]) : null);
 
@@ -300,7 +314,7 @@
   }
   const lineRange = (stat, lv) => STATS[stat].line(lv);
   // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
-  const lineRangeOf = (stat, item) => fixedPct(item, PCT_LINE, stat) || lineRange(stat, item.lvl);
+  const lineRangeOf = (stat, item) => (stat === "socket" ? socketRange(item) : fixedPct(item, PCT_LINE, stat) || lineRange(stat, item.lvl));
   // 최대치 20%, 그 외에는 최소 ~ (최대 − 1)
   function rollRange(rng, [lo, hi]) {
     if (hi <= lo || rng() < MAX_ROLL_CHANCE) return hi;
@@ -443,6 +457,7 @@
     // 추가 능력치: 등급별 줄 수만큼, 서로 다른 종류 (나이트메어 아이템은 속성 피해·저항도 후보)
     const nightmare = version === 4 && rev >= 3 && NM_SEED.test(seed);
     const stats = (nightmare ? STAT_KEYS_NM : version >= 4 ? STAT_KEYS_V4 : STAT_KEYS).slice();
+    if (version === 4 && rev >= 6 && socketRange(item)) stats.push("socket");
     item.lines = [];
     for (let i = 0; i < RARITIES[rarity].lines; i++) {
       const stat = stats.splice(Math.floor(rng() * stats.length), 1)[0];
@@ -497,7 +512,7 @@
   const mainStatsOf = (item) => item.main || Object.entries(item.base || {});
   // 범위를 알 수 없으면(v1의 기본 능력치) null
   function statRange(item, kind, stat) {
-    if (kind === "line") return fixedPct(item, PCT_LINE, stat) || (STATS[stat]?.line ? lineRange(stat, item.lvl) : null);
+    if (kind === "line") return stat === "socket" ? socketRange(item) : fixedPct(item, PCT_LINE, stat) || (STATS[stat]?.line ? lineRange(stat, item.lvl) : null);
     return item.main && (MAIN.range[stat] || fixedPct(item, PCT_MAIN, stat)) ? mainRange(stat, item) : null;
   }
   // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 범위의 최대치 (v2 이후 아이템)
@@ -633,7 +648,7 @@
     const lines = item.lines.map(([k, v]) => [k, v, 0]);
     if (!lines.length) return lines;
     // 오를 줄: 저항 줄은 빼고 고름 (저항 줄이 없는 아이템은 예전과 똑같음)
-    const can = lines.map((_, i) => i).filter(i => !isResLine(lines[i][0]));
+    const can = lines.map((_, i) => i).filter(i => !isResLine(lines[i][0]) && lines[i][0] !== "socket");   // 홈도 안 오름
     for (const step of ENHANCE.lineSteps) {
       if ((item.enh || 0) < step || !can.length) break;
       const i = can[Math.floor(rngFrom(`enhline|${item.id}|${step}`)() * can.length)];
@@ -692,6 +707,67 @@
     ? Math.round(SHOP.rerolls.costs[n] * (1 + SHOP.rerolls.perFloor * (depth - 1)) / 5) * 5 * (nm ? NM_SHOP.priceMul : 1)
     : null);
 
+  // ---- 보석 (홈에 넣음) ----
+  // 5종류 × 3등급 (조각·보석·완벽한 보석). 같은 보석 3개 = 한 등급 위 (넣을 때 가진 것을 자동으로 합치거나 쪼갬: gemPlan)
+  // 무기(보조무기 포함)에 넣을 때와 방어구·방패에 넣을 때 효과가 다름. 값은 [조각, 보석, 완벽한 보석]
+  const GEM_GRADES = ["조각", "보석", "완벽한 보석"];
+  const GEMS = {
+    ruby: { name: "루비", color: "#ff5a6e", weapon: { atkPct: [2, 4, 6] }, armor: { hpPct: [2, 4, 6] } },
+    sapphire: { name: "사파이어", color: "#5aa9ff", weapon: { critDmg: [5, 10, 15] }, armor: { defPct: [2, 4, 6] } },
+    emerald: { name: "에메랄드", color: "#4fd17a", weapon: { crit: [1, 2, 3] }, armor: { dmgReduce: [1, 2, 3] } },
+    topaz: { name: "토파즈", color: "#ffcf5c", weapon: { gold: [5, 10, 15] }, armor: { xp: [5, 10, 15] } },
+    diamond: { name: "다이아몬드", color: "#e8f4ff", weapon: { allRes: [2, 3, 4] }, armor: { allRes: [2, 3, 4] } },
+  };
+  const GEM_KINDS = Object.keys(GEMS);
+  // 받는 피해 감소는 모두 합쳐 최대 30% (에메랄드를 방어구 홈 14개에 다 넣으면 42%라서)
+  const GEM_CAPS = { dmgReduce: 30 };
+  const isGem = (g) => Array.isArray(g) && !!GEMS[g[0]] && Number.isInteger(g[1]) && g[1] >= 0 && g[1] < GEM_GRADES.length;
+  const gemName = (kind, grade) => grade === 0 ? `${GEMS[kind].name} 조각` : grade === 2 ? `완벽한 ${GEMS[kind].name}` : GEMS[kind].name;
+  const gemPlace = (item) => (isWeaponLike(item) ? "weapon" : "armor");
+  // 그 아이템에 넣으면 붙는 능력치 { stat: 값 }
+  const gemEffect = (kind, grade, item) => Object.fromEntries(Object.entries(GEMS[kind][gemPlace(item)]).map(([k, v]) => [k, v[grade]]));
+  // 아이템에 넣은 보석들의 능력치 합 (홈 개수까지만)
+  function gemStats(item) {
+    const out = {};
+    for (const g of (item.gems || []).slice(0, socketCount(item))) {
+      if (!isGem(g)) continue;
+      for (const [k, v] of Object.entries(gemEffect(g[0], g[1], item))) out[k] = (out[k] || 0) + v;
+    }
+    return out;
+  }
+  // 보석 주머니에서 (kind, grade) 하나를 만드는 방법. have: [조각, 보석, 완벽한 보석] 개수
+  // 1) 그 등급이 있으면 그대로 2) 아래 등급을 합쳐서 (높은 것부터 3:1) 3) 위 등급 하나를 쪼개서 (남은 건 돌려받음). 못 만들면 null
+  // { left: 넣은 뒤 주머니, used: 쓴 개수, got: 쪼개서 생긴 개수 }
+  function gemPlan(have, grade) {
+    const n = [0, 1, 2].map(i => have?.[i] || 0), used = [0, 0, 0], got = [0, 0, 0];
+    if (n[grade] > 0) { used[grade] = 1; n[grade]--; return { left: n, used, got }; }
+    let need = 3 ** grade, low = 0;
+    for (let i = 0; i < grade; i++) low += n[i] * 3 ** i;
+    if (low >= need) {
+      for (let i = grade - 1; i >= 0 && need > 0; i--) { const t = Math.min(n[i], Math.floor(need / 3 ** i)); n[i] -= t; used[i] += t; need -= t * 3 ** i; }
+      return { left: n, used, got };
+    }
+    const j = [1, 2].map(d => grade + d).find(k => k < GEM_GRADES.length && n[k] > 0);
+    if (j == null) return null;
+    n[j]--; used[j] = 1;
+    // 하나를 쪼개면 아래 등급 3개: 하나는 더 쪼개거나(넣을 등급이면 넣고) 나머지 2개는 주머니에
+    for (let k = j - 1; k >= grade; k--) { got[k] += 2; n[k] += 2; }
+    return { left: n, used, got };
+  }
+  // 보석 드롭: 장비 드롭과 따로 굴림 (반드시 떨어지지는 않음). 일반 던전은 거의 조각, 나이트메어는 높은 등급도
+  const GEM_DROP = {
+    chance: { normal: 0.02, elite: 0.08, boss: 0.3, golden: 0.3 },
+    grades: { normal: [85, 14, 1], nightmare: [40, 45, 15] },
+  };
+  function rollGem(seed, kind = "normal", nightmare = false) {
+    const rng = rngFrom(`gem|${seed}`);
+    if (rng() >= (GEM_DROP.chance[kind] || 0)) return null;
+    const gem = pick(rng, GEM_KINDS);
+    const w = GEM_DROP.grades[nightmare ? "nightmare" : "normal"];
+    const grade = Number(pickWeighted(rng, { 0: w[0], 1: w[1], 2: w[2] }));
+    return [gem, grade];
+  }
+
   // ---- 표시 ----
   // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 무속 레어 바지
   function itemName(item) {
@@ -702,6 +778,7 @@
   }
 
   function formatStat(stat, value) {
+    if (stat === "socket") return `홈 ${value}개`;
     const s = STATS[stat];
     return `${s.name} +${value}${s.pct ? "%" : ""}`;
   }
@@ -725,7 +802,8 @@
       if (!item) continue;
       if (shieldOnly && item.slot === "offhand" && isWeaponLike(item)) continue;   // 장검과 보조무기는 같이 못 씀
       for (const [k, v] of Object.entries(effectiveBase(item))) sum[k] += v;
-      for (const [k, v] of effectiveLines(item)) sum[k] += v;
+      for (const [k, v] of effectiveLines(item)) if (k !== "socket") sum[k] += v;
+      for (const [k, v] of Object.entries(gemStats(item))) sum[k] += v;
       if (item.parry) sum.parry += item.parry;
       if (item.slot === "offhand" && isWeaponLike(item)) sum.dual = 1;
       if (item.set) setCounts[item.set] = (setCounts[item.set] || 0) + 1;
@@ -743,13 +821,15 @@
     }
     sum.parry = Math.min(PARRY.max, sum.parry);
     sum.lifesteal = Math.min(LIFESTEAL.max, sum.lifesteal);
+    sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
     return { stats: sum, sets: activeSets };
   }
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
-    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName, setsFor, setFull,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
+    SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,
