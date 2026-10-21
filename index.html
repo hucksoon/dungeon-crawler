@@ -1118,6 +1118,7 @@
         const cost = isStaff() ? 0 : RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);   // 운영자는 강화석 안 씀
         if ((data[k] || 0) < cost) return { error: `${RLItems.STONE_NAMES[k]}이 부족해요. (필요 ${cost}개)` };
         const result = RLItems.rollEnhance(item);
+        if (isStaff()) result.ok = true;   // 운영자 테스트: 강화는 항상 성공 (서버는 강화 단계만 확인)
         data[k] = (data[k] || 0) - cost;
         item.tries = (item.tries || 0) + 1;
         if (result.ok) item.enh = to;
@@ -1130,7 +1131,7 @@
       rerollAncient(id) {
         const item = all().find(x => x.id === id);
         if (!item || !RLItems.canRerollAncient(item, isStaff())) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
-        const r = RLItems.rerollAncient(item);
+        const r = RLItems.rerollAncient(item, isStaff());   // 운영자는 항상 성공
         record("ancient", item, { ok: r.ok, n: r.n });
         write();
         return r;
@@ -3476,7 +3477,7 @@
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
     document.getElementById("inv-count").textContent =
-      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음 · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
+      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
 
     invEquip.replaceChildren(...RLItems.SLOTS.map(slot => {
       const item = equip[slot];
@@ -3740,7 +3741,7 @@
     const canEnhance = to <= RLItems.ENHANCE.max;
     const enhGold = canEnhance ? RLItems.enhanceGold(to, item) : 0, myGold = player && !gameOver ? player.gold : 0;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${Math.round(RLItems.enhanceChance(to) * 100)}% · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
+      ? `다음 강화 +${to}: 성공 ${isStaff() ? "100% (운영자)" : `${Math.round(RLItems.enhanceChance(to) * 100)}%`} · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
       : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
     const enhanceBtn = el("button", {
       type: "button", disabled: !canEnhance || (!isStaff() && (Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold))), onclick: () => enhanceItem(item),
@@ -3754,7 +3755,7 @@
     const arUsed = item.ar || 0;
     const arOver = (item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient && arUsed >= AR.max && !isStaff();
     if (canAncient) rows.push(el("div", { className: "meta" },
-      `고대 굴리기: ${Math.round(AR.chance * 100)}% 확률로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 (보유 ${gold.toLocaleString()}골드) · ${isStaff() ? `운영자: 횟수 제한 없음 (${arUsed}번 굴림)` : `남은 횟수 ${AR.max - arUsed}/${AR.max}`}`));
+      `고대 굴리기: ${isStaff() ? "100%(운영자)" : `${Math.round(AR.chance * 100)}% 확률`}로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 (보유 ${gold.toLocaleString()}골드) · ${isStaff() ? `운영자: 횟수 제한 없음 (${arUsed}번 굴림)` : `남은 횟수 ${AR.max - arUsed}/${AR.max}`}`));
     else if (arOver) rows.push(el("div", { className: "meta" }, `고대 굴리기를 ${AR.max}번 모두 실패했어요. 이 아이템은 더 굴릴 수 없어요.`));
     const ancientBtn = canAncient ? el("button", {
       type: "button", disabled: !canPay(arCost), onclick: () => ancientItem(item),
