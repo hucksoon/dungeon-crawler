@@ -1339,6 +1339,8 @@
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
   const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() ? { tag: "n", level: itemLevel() } : {});
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
+  // 마지막으로 쓰러진 곳 { d: 층, z: "normal" | "nm" | "gold", gn: 골드 던전(악몽) 층 } — 운영자 입구가 여기로 바로 감. 새로 시작해도 남음
+  let lastDeath = null;
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
   const rarityColor = (item) => RLItems.RARITIES[item.rarity].color;
@@ -1945,6 +1947,7 @@
 
   function death() {
     gameOver = true;
+    lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) };
     log(`당신은 ${floorName()}에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
     saveGame(true);
     openDeath();
@@ -1971,6 +1974,7 @@
       ...(cleared ? { clr: 1 } : {}),
       ...(nmBest ? { nb: nmBest } : {}),
       ...(nmCleared ? { nclr: 1 } : {}),
+      ...(lastDeath ? { ld: lastDeath } : {}),
       run: gameOver ? null : runFields(),
       dead: gameOver && !player.revived ? runFields() : null,
     };
@@ -2079,6 +2083,8 @@
     cleared = sameSeason && !!s?.clr;
     nmBest = sameSeason ? Math.min(NM.floors, s?.nb || 0) : 0;
     nmCleared = sameSeason && !!s?.nclr;
+    const ld = s?.ld;
+    lastDeath = ld && Number.isInteger(ld.d) && ld.d >= 1 && ["normal", "nm", "gold"].includes(ld.z) ? { d: ld.d, z: ld.z, ...(Number.isInteger(ld.gn) && ld.gn > 0 ? { gn: ld.gn } : {}) } : null;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -2605,6 +2611,8 @@
     // 문 두 개: 왼쪽은 1층부터, 오른쪽은 최고 층 − 10층부터. 던전에서 연 포탈로 나오면 아래쪽 파란 포탈(*)로 떠난 자리로
     const doors = { start: { x: gate.x - 1, y: gate.y }, skip: { x: gate.x + 1, y: gate.y } };
     const portal = { x: gate.x, y: gate.y + 3 };
+    // 운영자 입구: 던전 입구 건물 바로 오른쪽. 운영자 기기에서만 보이고 열림 (다른 사람에게는 그냥 바닥)
+    const staffDoor = { x: gate.x + 3, y: gate.y };
     const deco = new Map();           // "x,y" → 막힌 칸 종류
     const put = (x, y, kind) => deco.set(`${x},${y}`, kind);
     for (let x = 0; x < MAP_W; x++) { put(x, 0, "edge"); put(x, MAP_H - 1, "edge"); }
@@ -2631,7 +2639,7 @@
     for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
     const shopAt = (x, y) => shops.find(s => s.door.x === x && s.door.y === y) || null;
     const doorAt = (x, y) => Object.keys(doors).find(k => doors[k].x === x && doors[k].y === y) || null;
-    return { gate, doors, portal, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
+    return { gate, doors, portal, staffDoor, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
   })();
   let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
 
@@ -2708,6 +2716,37 @@
     updateStats();
   }
 
+  // 운영자 입구 (운영자 기기만, 테스트용): 쓰러진 판이어도 그 자리에서 되살려(골드·레벨·장비 그대로)
+  // 마지막으로 쓰러진 던전(일반·나이트메어·골드)의 그 층으로 바로 (한 판에서는 층이 내려가기만 해서 그 판의 가장 깊은 층).
+  // 쓰러진 적이 없으면 일반 던전 최고 층, 나이트메어 기록이 있으면 나이트메어 최고 층으로 갈지 물어봄. 운영자는 랭킹에 기록되지 않음
+  function enterStaffDoor() {
+    if (!isStaff() || entering) return;
+    let to;
+    if (lastDeath) to = { ...lastDeath, d: Math.min(lastDeath.d, lastDeath.z === "nm" ? NM.floors : RLMonsters.MAX_FLOOR) };
+    else {
+      const top = Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), nmTop = Math.min(NM.floors, nmBest);
+      const nm = cleared && nmTop >= 1 && confirm(`운영자 입구: 나이트메어 ${nmTop}층으로 갈까요?\n취소하면 일반 던전 ${top}층으로 가요.`);
+      to = { d: nm ? nmTop : top, z: nm ? "nm" : "normal" };
+    }
+    if (gameOver) { gameOver = false; closeDeath(); }
+    depth = to.d;
+    player.zone = to.z;
+    if (to.z === "gold" && to.gn) player.gn = to.gn; else delete player.gn;
+    player.rid = newRunId();
+    player.oldGear = false;
+    player.hp = stats().maxHp;
+    player.potCd = 0;
+    clearStatus(player);
+    shopBought = [];
+    shopRerolls = 0;
+    setScene("dungeon");
+    log(`운영자 입구: ${floorName()}에 바로 들어왔다. (테스트용, 랭킹에는 기록되지 않음)`, null, STAFF_COLOR);
+    newLevel(generateDungeon());
+    saveGame(true);
+    render();
+    updateStats();
+  }
+
   // 나이트메어 입구(로비 오른쪽 건물): 일반 던전을 완료하고, 장착한 장비가 모두 v4 이후일 때만
   async function enterNightmare() {
     if (gameOver) { openDeath(); return; }
@@ -2780,6 +2819,7 @@
     if (resumeFloor() && nx === LOBBY.portal.x && ny === LOBBY.portal.y) { enterDungeon("resume"); return; }
     const door = LOBBY.doorAt(nx, ny);
     if (door) { enterDungeon(door); return; }
+    if (isStaff() && nx === LOBBY.staffDoor.x && ny === LOBBY.staffDoor.y) { enterStaffDoor(); return; }
     const shopDoor = LOBBY.shopAt(nx, ny);
     if (shopDoor) {
       if (shopDoor.tab) openMarket(shopDoor.tab);
@@ -2966,7 +3006,8 @@
     }
     // 던전 입구: 왼쪽 문(1층부터, 금색 ▼), 오른쪽 문(최고 층 − 10층부터, 보라색 ▼ · 12층 전에는 닫힘). 그 아래 파란 포탈(*)
     const pulse = Math.sin(t * 3);
-    const drawDoor = (d, glyph, rgb, label, open) => {
+    // below: 이름을 문 아래(빛나는 칸 아래)에 — 운영자 입구는 옆 골드 던전 문 이름과 겹치지 않게
+    const drawDoor = (d, glyph, rgb, label, open, below = false) => {
       const dx = d.x * TILE, dy = d.y * TILE;
       ctx.fillStyle = "#050608";
       ctx.fillRect(dx, dy, TILE, TILE);
@@ -2975,11 +3016,12 @@
         ctx.fillRect(dx, dy + TILE, TILE, TILE);
       }
       drawGlyph(glyph, dx, dy, open ? `rgba(${rgb}, ${0.65 + 0.35 * pulse})` : "#3a3f52");
-      drawLabel(label, dx + TILE / 2, dy - 2, open ? `rgb(${rgb})` : "#6b7080", 10);
+      drawLabel(label, dx + TILE / 2, below ? dy + TILE * 2 + 9 : dy - 2, open ? `rgb(${rgb})` : "#6b7080", 10);
     };
     const floor = resumeFloor(), skip = skipFloor();
     drawDoor(doors.start, "▼", "255, 207, 92", "1층", true);
     drawDoor(doors.skip, skip >= 2 ? "▼" : "×", "190, 140, 255", skip >= 2 ? `${skip}층` : "닫힘", skip >= 2);
+    if (isStaff()) drawDoor(LOBBY.staffDoor, "▼", "95, 212, 255", "운영자", true, true);
     if (floor) {
       drawPortal(LOBBY.portal.x * TILE, LOBBY.portal.y * TILE);
       drawLabel(`포탈 ${presenceLabel(presenceFloor(floor, inNM()))}`, LOBBY.portal.x * TILE + TILE / 2, (LOBBY.portal.y + 1) * TILE + 11, PORTAL_COLOR, 10);  // 이름표와 겹치지 않게 아래에
@@ -4028,7 +4070,7 @@
     shopCtx.reroll();
     shopMsg.className = "msg-good";
     shopMsg.textContent = `진열을 바꿨어요. (${costText(cost)})`;
-    log(`${shopCtx.title} 진열을 바꿨다. (-${cost} 골드)`, "info");
+    log(`${shopCtx.title} 진열을 바꿨다. (${costText(cost)})`, "info");
     updateStats();
     shopCtx.save();
     renderShop();
@@ -4776,6 +4818,11 @@
     document.getElementById("death-sub").textContent = `${floorName()}에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.`;
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+    // 운영자 기기: 되살아나 쓰러진 층으로 바로 (테스트용)
+    if (isStaff()) {
+      deathRevive.replaceChildren(el("button", { type: "button", className: "primary staff-revive", textContent: "운영자: 쓰러진 층으로 바로 (골드·레벨 그대로)", onclick: () => enterStaffDoor() }));
+      return;
+    }
     if (player.revived) {
       deathRevive.replaceChildren(el("p", { className: "note", textContent: "이번 판에서는 이미 부활했어요. (한 판에 한 번)" }));
       document.getElementById("death-restart").focus();
