@@ -16,7 +16,7 @@ const R_SLOTS_V2 = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon'];   // v
 const R_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offhand'];
 const R_OFFHAND = ['shieldChance' => 0.5, 'shieldName' => '방패', 'weaponPrefix' => '보조'];
 const R_PARRY = [
-    'ranges' => ['common' => [9, 11], 'uncommon' => [9, 11], 'rare' => [9, 11], 'epic' => [16, 18], 'legendary' => [23, 25], 'set' => [23, 25]],
+    'ranges' => ['common' => [9, 11], 'uncommon' => [9, 11], 'rare' => [9, 11], 'epic' => [16, 18], 'legendary' => [23, 25], 'set' => [23, 25], 'unique' => [28, 30]],
     'max' => 40,
 ];
 const R_WEAPONS = [
@@ -46,6 +46,7 @@ const R_RARITIES = [
     'epic' => ['name' => '에픽', 'lines' => 4],
     'legendary' => ['name' => '레전더리', 'lines' => 5],
     'set' => ['name' => '세트', 'lines' => 4],
+    'unique' => ['name' => '유니크', 'lines' => 4],   // 헬 네임드 보스 전용 (R_UNIQUE)
 ];
 const R_TABLES = [
     'box' => ['common' => 40, 'uncommon' => 30, 'rare' => 18, 'epic' => 8, 'legendary' => 3, 'set' => 1],
@@ -162,7 +163,7 @@ const R_MAIN_POOL_V4 = [
 const R_MAIN_COUNT_V4 = ['common' => [1, 1], 'uncommon' => [1, 2], 'rare' => [2, 2], 'epic' => [2, 3], 'legendary' => [2, 3], 'set' => [2, 3]];
 const R_MAIN_POOL = ['weapon' => ['atk', 'crit', 'lifesteal', 'hp'], 'armor' => ['def', 'hp', 'atk', 'crit']];
 const R_MAIN_COUNT = ['common' => [1, 2], 'uncommon' => [1, 2], 'rare' => [3, 4], 'epic' => [3, 4], 'legendary' => [3, 4], 'set' => [3, 4]];
-const R_RARITY_MUL = ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' => 1.5, 'legendary' => 1.75, 'set' => 1.6];
+const R_RARITY_MUL = ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' => 1.5, 'legendary' => 1.75, 'set' => 1.6, 'unique' => 2.1];   // 유니크 = 레전더리 × R_UNIQUE['mul']
 const R_OFF_SLOT_MUL = 0.5;
 const R_MAX_ROLL_CHANCE = 0.2;
 const R_ANCIENT_CHANCE = 0.03;   // v4 r1부터
@@ -245,6 +246,7 @@ function r_set_full(string $id): int { return max(array_column(R_SETS[$id]['bonu
 // 등급별 고정 범위 표에서 찾기 (없으면 null)
 function r_pct_of(array $table, string $stat, string $rarity): ?array {
     if (!isset($table[$stat])) return null;
+    if ($rarity === 'unique') return r_scale_range($table[$stat][4], R_UNIQUE['mul']);   // 레전더리 × mul
     $i = array_search($rarity, R_RARITY_ORDER, true);
     return $i === false ? null : $table[$stat][$i];
 }
@@ -361,7 +363,14 @@ function r_main_range(string $stat, array $item): array {
 // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
 function r_line_range_of(string $stat, array $item): array {
     if ($stat === 'socket') return r_socket_range($item);
-    return r_fixed_pct($item, R_PCT_LINE, $stat) ?? r_line_range($stat, $item['lvl']);
+    $fixed = r_fixed_pct($item, R_PCT_LINE, $stat);
+    if ($fixed) return $fixed;
+    $r = r_line_range($stat, $item['lvl']);
+    return $item['rarity'] === 'unique' ? r_scale_range($r, R_UNIQUE['mul']) : $r;   // 유니크는 레벨 줄도 × mul
+}
+function r_scale_range(array $r, float $mul): array {
+    $a = max(1, r_round($r[0] * $mul));
+    return [$a, max($a, r_round($r[1] * $mul))];
 }
 
 // ---------------------------------------------------------------- 홈·보석 (r6, items.js SOCKETS·GEMS)
@@ -488,7 +497,54 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
     return str_pad(dechex($h1), 8, '0', STR_PAD_LEFT) . str_pad(dechex($h2), 8, '0', STR_PAD_LEFT);
 }
 
+// ---------------------------------------------------------------- 유니크 (items.js UNIQUE): 헬 네임드 보스 전용
+// 시드 …|j층|u처치 순번, 출처 'unique'. 주 능력치 = 부위 후보 전부, 추가 능력치 4줄 고정 (범위는 레전더리 × mul)
+const R_UNIQUE = [
+    'chance' => 0.15, 'mul' => 1.2,
+    'power' => ['pct' => 15, 'allRes' => 5],   // 유니크의 힘 (items.js UNIQUE.power)
+    'items' => [
+        'fang' => ['boss' => 10, 'name' => '송곳니', 'slot' => 'weapon', 'type' => 'dagger', 'lines' => ['crit', 'critDmg', 'atkPct', 'fireDmg'], 'stats' => []],
+        'ironscale' => ['boss' => 10, 'name' => '쇠비늘 갑옷', 'slot' => 'chest', 'type' => null, 'lines' => ['crit', 'critDmg', 'atkPct', 'fireRes'], 'stats' => []],
+        'foxorb' => ['boss' => 20, 'name' => '여우구슬 지팡이', 'slot' => 'weapon', 'type' => 'staff', 'lines' => ['crit', 'critDmg', 'atkPct', 'iceDmg'], 'stats' => ['nova' => 1, 'killHealPct' => 3]],
+        'binyeo' => ['boss' => 20, 'name' => '구미호의 비녀', 'slot' => 'head', 'type' => null, 'lines' => ['hp', 'crit', 'critDmg', 'iceRes'], 'stats' => []],
+        'yeouiju' => ['boss' => 30, 'name' => '여의주 검', 'slot' => 'weapon', 'type' => 'longsword', 'lines' => ['crit', 'critDmg', 'atkPct', 'boltDmg'], 'stats' => ['chain' => 1]],
+        'dragonboots' => ['boss' => 30, 'name' => '용비늘 장화', 'slot' => 'boots', 'type' => null, 'lines' => ['hp', 'def', 'boltRes', 'allRes'], 'stats' => []],
+        'scythe' => ['boss' => 40, 'name' => '사자의 낫', 'slot' => 'offhand', 'type' => 'axe', 'lines' => ['crit', 'critDmg', 'atkPct', 'lifesteal'], 'stats' => []],
+        'chains' => ['boss' => 40, 'name' => '명부의 사슬', 'slot' => 'arms', 'type' => null, 'lines' => ['hp', 'crit', 'critDmg', 'atkPct'], 'stats' => []],
+        'mirror' => ['boss' => 50, 'name' => '업경대', 'slot' => 'offhand', 'type' => 'shield', 'lines' => ['hp', 'def', 'allRes', 'lifesteal'], 'stats' => ['parry' => 15]],
+        'robe' => ['boss' => 50, 'name' => '염라의 관복', 'slot' => 'pants', 'type' => null, 'lines' => ['hp', 'def', 'crit', 'allRes'], 'stats' => ['allRes' => 20, 'hpPct' => 30]],
+    ],
+];
+function r_unique_of(array $item): ?array {
+    return ($item['rarity'] ?? '') === 'unique' ? (R_UNIQUE['items'][$item['uq'] ?? ''] ?? null) : null;
+}
+// 네임드 보스 처치 시드에서 유니크가 나오는지 (items.js rollUnique의 첫 굴림)
+function r_unique_roll(string $seed): float { return r_rng("v4|unique?|{$seed}")(); }
+function r_generate_unique(string $seed, int $level, int $rev): array {
+    if (!preg_match('/\|j(\d+)\|u\d+$/', $seed, $m)) throw new InvalidArgumentException('bad unique seed');
+    $list = [];
+    foreach (R_UNIQUE['items'] as $k => $u) if ($u['boss'] === (int)$m[1]) $list[] = $k;
+    if (!$list) throw new InvalidArgumentException('no unique');
+    $lv = max(1, $level);
+    $rng = r_rng("v4|unique|{$seed}");
+    $uq = $list[(int)floor($rng() * count($list))];
+    $U = R_UNIQUE['items'][$uq];
+    $item = ['v' => 4, 'seed' => $seed, 'src' => 'unique', 'lvl' => $lv, 'slot' => $U['slot'], 'type' => $U['type'], 'rarity' => 'unique', 'set' => null, 'r' => $rev, 'uq' => $uq];
+    $item['main'] = [];
+    foreach (r_main_pool_v4($item) as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
+    $item['lines'] = [];
+    foreach ($U['lines'] as $stat) $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
+    if ($U['type'] === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges']['unique']);
+    $item['id'] = r_id(4, 'unique', $lv, $seed, $rev);
+    $item['ancient'] = false;
+    return $item;
+}
+
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
+    if ($source === 'unique') {
+        if ($version !== 4 || $rev !== 6) throw new InvalidArgumentException('bad unique rev');
+        return r_generate_unique($seed, $level, $rev);
+    }
     if ($rev !== 0 && !($rev >= 1 && $rev <= 6 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
@@ -751,6 +807,12 @@ function r_totals(array $equipped): array {
         foreach (r_runeword_stats($item) as $k => $v) $sum[$k] += $v;
         $w = r_runeword_of($item);
         if ($w) foreach ($w['special'] as $k => $v) $rw[$k] = max($rw[$k] ?? 0, $v);
+        $U = r_unique_of($item);   // 유니크 능력치 (특수 효과는 전투에서만)
+        if ($U) {
+            foreach ($U['stats'] as $k => $v) $sum[$k] += $v;
+            $P = R_UNIQUE['power'];
+            $sum['atkPct'] += $P['pct']; $sum['defPct'] += $P['pct']; $sum['hpPct'] += $P['pct']; $sum['allRes'] += $P['allRes'];
+        }
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
@@ -791,6 +853,8 @@ function r_item_name(array $item): string {
     // 룬워드: "+10 천하무적" (고대·강화만 앞에)
     $rw = r_runeword_of($item);
     if ($rw) return (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $rw['name'];
+    $U = r_unique_of($item);   // 유니크: "+10 송곳니"
+    if ($U) return (!empty($item['enh']) ? "+{$item['enh']} " : '') . $U['name'];
     $el = r_is_deep_item($item) ? r_item_element($item) : null;
     $nm = r_is_deep_item($item) ? (r_is_hell_item($item) ? '지옥의 ' : '악몽의 ') . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
