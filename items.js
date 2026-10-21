@@ -182,6 +182,7 @@
     boltRes: { name: "번개 저항", pct: true },
     allRes: { name: "모든 속성 저항", pct: true },
     socket: { name: "홈", pct: false },   // 추가 능력치 한 줄 (r6). 값 = 홈 개수
+    skillPct: { name: "스킬 피해", pct: true },   // 룬 "타": 파이어볼·프로스트 노바·체인 라이트닝 피해에 더함
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것 (v2·v3)
   const STAT_KEYS_V4 = ["atk", "def", "hp", "crit", "critDmg", "atkPct", "lifesteal", "gold", "xp"];  // v4: 치명타 피해·공격력% 추가
@@ -816,12 +817,12 @@
   const gemPlace = (item) => (isWeaponLike(item) ? "weapon" : "armor");
   // 그 아이템에 넣으면 붙는 능력치 { stat: 값 }
   const gemEffect = (kind, grade, item) => Object.fromEntries(Object.entries(GEMS[kind][gemPlace(item)]).map(([k, v]) => [k, v[grade]]));
-  // 아이템에 넣은 보석들의 능력치 합 (홈 개수까지만)
+  // 아이템에 넣은 보석·룬의 능력치 합 (홈 개수까지만)
   function gemStats(item) {
     const out = {};
     for (const g of (item.gems || []).slice(0, socketCount(item))) {
-      if (!isGem(g)) continue;
-      for (const [k, v] of Object.entries(gemEffect(g[0], g[1], item))) out[k] = (out[k] || 0) + v;
+      if (!isGem(g) && !isRune(g)) continue;
+      for (const [k, v] of Object.entries(socketedEffect(g, item))) out[k] = (out[k] || 0) + v;
     }
     return out;
   }
@@ -858,6 +859,56 @@
     return [gem, grade];
   }
 
+  // ---- 룬 (홈에 넣음) ----
+  // 기본 자음 14개 가~하. "가"가 가장 흔하고 "하"가 가장 귀함. 아래 룬 3개 = 바로 위 룬 1개 (넣을 때 자동으로 합침, 쪼개기는 없음)
+  // 무기·방어구 어디에 넣어도 효과가 같고 고정 수치. 홈에는 ["rune", 번호]로 들어감 (보석은 [종류, 등급])
+  // 나이트메어 50층 보스에서만 2개씩 확정. 한 단계 위로 갈 때마다 확률 ×ratio ("하" 약 0.3%, "가" 약 30%)
+  //   시뮬레이션: 3:1 합치기까지 써서 "하" 하나에 평균 약 110판 (절반 100판, 90% 220판)
+  const RUNES = [
+    { name: "가", fx: { gold: 20 } },
+    { name: "나", fx: { xp: 20 } },
+    { name: "다", fx: { hpPct: 8 } },
+    { name: "라", fx: { defPct: 8 } },
+    { name: "마", fx: { atkPct: 8 } },
+    { name: "바", fx: { critDmg: 20 } },
+    { name: "사", fx: { crit: 4 } },
+    { name: "아", fx: { allRes: 5 } },
+    { name: "자", fx: { lifesteal: 2 } },
+    { name: "차", fx: { killHealPct: 3 } },
+    { name: "카", fx: { dmgReduce: 4 } },
+    { name: "타", fx: { skillPct: 15 } },
+    { name: "파", fx: { fireDmg: 10, iceDmg: 10, boltDmg: 10 } },
+    { name: "하", fx: { atkPct: 12, defPct: 12, hpPct: 12 } },
+  ];
+  const RUNE_DROP = { floor: 50, count: 2, ratio: 0.7016 };
+  // 룬마다 떨어질 확률 (합 1)
+  const RUNE_ODDS = (() => { const w = RUNES.map((_, k) => RUNE_DROP.ratio ** k), sum = w.reduce((a, b) => a + b, 0); return w.map(x => x / sum); })();
+  const isRune = (g) => Array.isArray(g) && g.length === 2 && g[0] === "rune" && Number.isInteger(g[1]) && g[1] >= 0 && g[1] < RUNES.length;
+  const runeName = (k) => `${RUNES[k].name} 룬`;
+  // 홈에 넣은 것 (보석 또는 룬)의 이름과 효과
+  const socketedName = (g) => (isRune(g) ? runeName(g[1]) : gemName(g[0], g[1]));
+  const socketedEffect = (g, item) => (isRune(g) ? { ...RUNES[g[1]].fx } : gemEffect(g[0], g[1], item));
+  // 룬 주머니에서 k번 룬 하나를 만드는 방법. have: 룬마다 개수 (14칸)
+  // 1) 그 룬이 있으면 그대로 2) 아래 룬을 합쳐서 (높은 것부터 3:1). 못 만들면 null. { left: 넣은 뒤 주머니, used: 쓴 개수 }
+  function runePlan(have, k) {
+    const n = RUNES.map((_, i) => have?.[i] || 0), used = RUNES.map(() => 0);
+    if (n[k] > 0) { used[k] = 1; n[k]--; return { left: n, used }; }
+    let need = 3 ** k, low = 0;
+    for (let i = 0; i < k; i++) low += n[i] * 3 ** i;
+    if (low < need) return null;
+    for (let i = k - 1; i >= 0 && need > 0; i--) { const t = Math.min(n[i], Math.floor(need / 3 ** i)); n[i] -= t; used[i] += t; need -= t * 3 ** i; }
+    return { left: n, used };
+  }
+  // 나이트메어 50층 보스가 떨어뜨리는 룬 번호들 (RUNE_DROP.count개)
+  function rollRunes(seed) {
+    const rng = rngFrom(`rune|${seed}`);
+    return Array.from({ length: RUNE_DROP.count }, () => {
+      let u = rng(), k = 0;
+      while (k < RUNES.length - 1 && u >= RUNE_ODDS[k]) { u -= RUNE_ODDS[k]; k++; }
+      return k;
+    });
+  }
+
   // ---- 표시 ----
   // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 레어 바지 (속성 피해 줄이 없으면 속성 이름 없이)
   function itemName(item) {
@@ -886,7 +937,7 @@
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0 };
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0 };
     const setCounts = {};
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
@@ -916,6 +967,8 @@
     sum.lifesteal = Math.min(sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max, sum.lifesteal);
     sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
+    // 스킬 피해 (룬 "타"): 세 스킬 모두에
+    for (const k of ["fireballPct", "novaPct", "chainPct"]) sum[k] += sum.skillPct;
     return { stats: sum, sets: activeSets };
   }
 
@@ -923,6 +976,7 @@
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
+    RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, itemName, formatStat, formatRange, totals,

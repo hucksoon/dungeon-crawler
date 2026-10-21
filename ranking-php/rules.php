@@ -112,6 +112,7 @@ const R_STAT_NAMES = [
     'dmgReduce' => ['받는 피해 감소', true],
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
     'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
+    'killHealPct' => ['처치 시 최대 HP 회복', true], 'skillPct' => ['스킬 피해', true],   // 룬 "차"·"타"
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
 const R_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'set'];
@@ -388,12 +389,31 @@ function r_gem_name(string $kind, int $grade): string {
     $n = R_GEMS[$kind]['name'];
     return $grade === 0 ? "{$n} 조각" : ($grade === 2 ? "완벽한 {$n}" : $n);
 }
+// 룬 (items.js RUNES): 가~하 14개, 홈에 ["rune", 번호]로 들어감. 무기·방어구 어디에 넣어도 같은 고정 수치
+const R_RUNES = [
+    ['가', ['gold' => 20]], ['나', ['xp' => 20]], ['다', ['hpPct' => 8]], ['라', ['defPct' => 8]], ['마', ['atkPct' => 8]],
+    ['바', ['critDmg' => 20]], ['사', ['crit' => 4]], ['아', ['allRes' => 5]], ['자', ['lifesteal' => 2]], ['차', ['killHealPct' => 3]],
+    ['카', ['dmgReduce' => 4]], ['타', ['skillPct' => 15]], ['파', ['fireDmg' => 10, 'iceDmg' => 10, 'boltDmg' => 10]],
+    ['하', ['atkPct' => 12, 'defPct' => 12, 'hpPct' => 12]],
+];
+function r_is_rune($g): bool {
+    return is_array($g) && count($g) === 2 && ($g[0] ?? null) === 'rune' && is_int($g[1] ?? null) && $g[1] >= 0 && $g[1] < count(R_RUNES);
+}
+// 홈에 넣은 것 (보석 또는 룬)
+function r_is_socketed($g): bool { return r_is_gem($g) || r_is_rune($g); }
+function r_socketed_name(array $g): string { return r_is_rune($g) ? R_RUNES[$g[1]][0] . ' 룬' : r_gem_name($g[0], $g[1]); }
+function r_socketed_effect(array $g, array $item): array {
+    if (r_is_rune($g)) return R_RUNES[$g[1]][1];
+    $place = r_weapon_like($item) ? 'weapon' : 'armor';
+    $out = [];
+    foreach (R_GEMS[$g[0]][$place] as $k => $vals) $out[$k] = $vals[$g[1]];
+    return $out;
+}
 function r_gem_stats(array $item): array {
     $out = [];
-    $place = r_weapon_like($item) ? 'weapon' : 'armor';
     foreach (array_slice($item['gems'] ?? [], 0, r_socket_count($item)) as $g) {
-        if (!r_is_gem($g)) continue;
-        foreach (R_GEMS[$g[0]][$place] as $k => $vals) $out[$k] = ($out[$k] ?? 0) + $vals[$g[1]];
+        if (!r_is_socketed($g)) continue;
+        foreach (r_socketed_effect($g, $item) as $k => $v) $out[$k] = ($out[$k] ?? 0) + $v;
     }
     return $out;
 }
@@ -653,7 +673,7 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0];
     $setCounts = [];
     $shieldOnly = false;
     foreach ($equipped as $item) if (r_is_shield_only($item)) $shieldOnly = true;
@@ -689,6 +709,8 @@ function r_totals(array $equipped): array {
     $sum['lifesteal'] = min($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX, $sum['lifesteal']);
     $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
+    // 스킬 피해 (룬 "타"): 세 스킬 모두에
+    foreach (['fireballPct', 'novaPct', 'chainPct'] as $k) $sum[$k] += $sum['skillPct'];
     return ['stats' => $sum, 'sets' => $sets];
 }
 
