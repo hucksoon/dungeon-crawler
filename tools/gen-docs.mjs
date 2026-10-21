@@ -176,10 +176,27 @@ ${table(["나이트메어 층", "보스", "보스 HP", "보스 공격", "아이�
 - 아이템 레벨은 **${M.HELL.itemBase} + 헬 층** (${M.HELL.itemBase + 1}~${M.HELL.itemBase + M.HELL.floors}), 이름에 **"지옥의"**가 붙어요 ([지옥의 아이템](items.md#지옥의-아이템))
 - 골드: 처치 ×${M.HELL.gold.kill}, 골드 더미 ×${M.HELL.gold.pile}, 층 돌파 보상 = 그 층 지옥의 레전더리 상점 가격 × ${M.HELL.gold.floor}
 - 랭킹은 **헬 탭**에 따로 기록돼요. 완료하면 "${M.HELL.floors}층 완료 ✓" (서버 기록값 ${M.HELL.clearStage})
-- ${M.HELL.milestones.join("·")}층 보스는 네임드 보스와 고유 유니크 아이템 (다음 단계)
+- ${M.HELL.milestones.join("·")}층 보스는 [네임드 보스](#헬-네임드-보스) (고유 유니크 아이템은 다음 단계)
 
 ${table(["헬 층", "보스", "보스 HP", "보스 공격", "속성 저항 (자기 / 다른)", "아이템 레벨"],
-  [1, 10, 20, 30, 40, 50].map(n => { const b = M.makeHellBoss(n, "fire"); return [n, b.name, b.hp, b.atk, `${b.res.fire}% / ${b.res.ice}%`, M.HELL.itemBase + n]; }))}
+  [5, 15, 25, 35, 45].map(n => { const b = M.makeHellBoss(n, "fire"); return [n, b.name, b.hp, b.atk, `${b.res.fire}% / ${b.res.ice}%`, M.HELL.itemBase + n]; }))}
+
+### 헬 네임드 보스
+
+헬 ${M.HELL.milestones.join("·")}층은 보통 보스 대신 이름 있는 **네임드 보스**가 계단을 지켜요 (분홍 테두리 두 겹). 저마다 고유한 패턴이 있고, 쓰러뜨리면 장비와 함께 **룬 ${M.NAMED.runes}개**를 떨어뜨려요 (룬 확률은 나이트메어 50층 보스와 같아요). 오른쪽 문으로 완료한 층을 골라 들어가면 바로 그 네임드를 다시 잡으러 갈 수 있어요.
+
+- 능력치 = 그 층 헬 보스 × HP 배율 × 공격 배율 (보스 속성 저항: 자기 속성 ${M.HELL.res.own + M.HELL.res.boss}%, 다른 속성 +${M.HELL.res.boss}%)
+- 시뮬레이션 (그 층 추천 조합 고대 레전더리 +10, 1:1): 쓰러질 확률 10층 1% · 20층 15% · 30층 14% · 40층 22% · 50층 26%. 패턴을 끈 같은 능력치면 모두 0% — 패턴이 난이도를 만들어요
+- 헬은 아직 줄이 최고치에 가까운 장비를 기준으로 맞춰져 있어요 (중간 줄 장비는 헬 몬스터 무리에게도 쓰러져요). 유니크 아이템이 나오면 다시 맞출 예정
+
+${table(["헬 층", "네임드", "속성", "HP", "공격", "HP·공격 배율", "패턴"],
+  Object.entries(M.NAMED.bosses).map(([n, N]) => { const b = M.makeNamedBoss(+n); return [n, `**${N.name}** (${N.title})`, N.pattern === "judge" ? "불 → 얼음 → 번개" : M.ELEMENTS.names[N.el], b.hp, b.atk, `×${N.hpMul} · ×${N.atkMul}`, {
+    shred: () => `공격이 들어갈 때마다 내 방어력 −${N.shred.per}% (최대 −${N.shred.max}%, 쓰러뜨리거나 층을 떠나면 풀림)`,
+    clones: () => `HP ${pct(N.clones.at)} 이하가 되면 분신 ${N.clones.count}마리 (HP = 최대 HP의 ${pct(N.clones.hp)}, 공격 ×${N.clones.atk}, 경험치·골드·장비 없음, 본체가 쓰러지면 사라짐)`,
+    sweep: () => `${N.sweep.every}턴마다 보통 공격 대신 꼬리 휩쓸기: ${N.sweep.radius}칸 안이면 공격 ×${N.sweep.mul}, 방패로 막을 수 없음 (한 턴 전에 예고)`,
+    reaper: () => `눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 내 흡혈(스킬 흡혈 포함)이 ${pct(N.reaper.lifesteal)}로`,
+    judge: () => `${N.judge.every}턴마다 속성이 불 → 얼음 → 번개로 바뀜 (속성 저항도 따라 바뀜), HP ${pct(N.judge.enrageAt)} 이하면 분노해 공격 ×${N.judge.enrageMul}`,
+  }[N.pattern]()]; }))}
 
 ## 속성: 불·얼음·번개
 
@@ -533,7 +550,7 @@ ${(() => { const per = I.RUNE_DROP.count * I.RUNE_ODDS.reduce((a, p, k) => a + p
 
 ${table(["순위", "룬워드", "능력치 (지옥의 아이템)", "특수 효과"], I.RUNEWORDS.map(w => [w.rank, w.name, Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)).join(", "), I.runewordSpecialText(w.special).join(" · ") || "-"]))}
 
-- 몬스터의 속성 저항: 일반·나이트메어 몬스터는 0%, 폭풍전야에 걸리면 −20%라 속성 피해(불·얼음·번개 피해 줄, 화상, 튕기는 번개, 세트 스킬)가 20% 더 들어가요. 헬 몬스터는 속성 저항이 생길 예정
+- 몬스터의 속성 저항: 일반·나이트메어 몬스터는 0%, 폭풍전야에 걸리면 −20%라 속성 피해(불·얼음·번개 피해 줄, 화상, 튕기는 번개, 세트 스킬)가 20% 더 들어가요. 헬 몬스터는 속성 저항이 있어요 (자기 속성 50%, 다른 속성 10~40%)
 - 시뮬레이션 (나이트메어 50층, 모든 장비 고대 +10, 몰려오는 20마리에서 쓰러질 확률, 악몽의 / 지옥의 룬워드): 추천 조합 7~9% · 장검 + 방패 5~7% 기준으로 천하무적 10% / 2%, 필살일격 0%, 폭풍전야 1%, 선견지명 0%, 카리스마 17% / 6%, 도원결의 57% / 25% (방패의 최대 HP·추가 능력치 4줄이 빠지는 만큼 아직 약함). 화염 세트 5는 100% → 태산 1% / 0%, 마음가짐 0% (세트 스킬 흡혈을 1/3만 주면 60~74%라 전부 줌). 보스 1:1은 모두 0%
 
 ## 전설의 힘 (레전더리 완성도)
