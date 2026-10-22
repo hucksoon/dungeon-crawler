@@ -4399,7 +4399,7 @@
   const GUIDE_NOTE = {
     normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·줄 품질 80%면 몰려오는 몬스터 5%·보스 0%. 그 자리를 비우면 76%, 장신구가 없으면 100%)",
     nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 45%)",
-    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 7%·8%, 레전더리 + 레전더리 장신구 13%·24%)`,
+    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 7%·12%, 레전더리 + 레전더리 장신구 24%·33%)`,
   };
   function renderGuide() {
     const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
