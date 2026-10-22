@@ -1482,7 +1482,7 @@
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 헬에서는 속성 저항 −HELL.playerResCut%p (최대치를 넘긴 만큼은 소용없음)
-      res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
+      res: Object.fromEntries(EL.list.map(k => [k, Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball
       rw: T.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
@@ -1490,6 +1490,8 @@
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
     };
   }
+  // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
+  const resCapOf = (g, k) => EL.resCap + (g.allResMax || 0) + (g[`${k}ResMax`] || 0);
   const heal = (n) => { player.hp = Math.min(stats().maxHp, player.hp + n); };
   // 플레이어가 받는 피해: 룬워드 보호막(태산·선견지명)이 먼저 막음. 실제로 깎인 HP
   function hurtPlayer(n) {
@@ -2030,6 +2032,13 @@
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: u, from: "boss" });
         log(`✦✦ ${e.name}이(가) 유니크 ${RLItems.itemName(u)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
+      }
+      // 유니크 장신구: 따로 굴림 (시드 |a처치 순번)
+      const ua = RLItems.rollUniqueAcc(`${player.rid}|${floorTag()}${depth}|a${player.kills}`, itemLevel());
+      if (ua) {
+        const spot = dropSpot(e.x, e.y);
+        items.push({ x: spot.x, y: spot.y, type: "gear", item: ua, from: "boss" });
+        log(`✦✦ ${e.name}이(가) 유니크 장신구 ${RLItems.itemName(ua)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
       }
     }
   }
@@ -4063,7 +4072,7 @@
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
       ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${(s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0)}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
-      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
+      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? ` (최대 ${resCapOf(g, k)}%)` : ""}`).join(" · ")}${EL.list.every(k => resCapOf(g, k) === EL.resCap) ? ` (최대 ${EL.resCap}%)` : ""}`] : []),
       // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
       ...(Inv.totals().runewords.names.length ? [`✦ 룬워드: ${Inv.totals().runewords.names.join(" · ")}`, ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
       ...(Inv.totals().uniques.names.length ? [`✦ 유니크: ${Inv.totals().uniques.names.join(" · ")}`, ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
@@ -4262,7 +4271,8 @@
     const boss = RLMonsters.namedAt(U.boss);
     return [el("div", { className: "rw-done" },
       el("h3", { className: "unique-glow", style: { color: RLItems.RARITIES.unique.color } }, `✦ 유니크 ${U.name}`),
-      el("div", { className: "meta" }, `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
+      el("div", { className: "meta" }, U.acc ? `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 장신구 · 공격력·방어력·최대 HP는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%, 속성 저항 2~3줄`
+        : `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
       el("div", { className: "stat-line set-on", style: { color: RLItems.RARITIES.unique.color } }, `✦ ${U.text}`),
       ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`)),
       el("div", { className: "stat-line set-on" }, `✦ 유니크의 힘: 공격력·방어력·최대 HP +${RLItems.UNIQUE.power.pct}%, 모든 속성 저항 +${RLItems.UNIQUE.power.allRes}%`))];
@@ -4418,7 +4428,7 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isAccessory(item) ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 약 절반" : ""}`)]
+      ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 약 절반" : ""}`)]
         : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
         : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
@@ -5477,7 +5487,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1022b:${owner}`;  // 장신구, 세트의 힘·폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1022c:${owner}`;  // 유니크 장신구, 장신구, 세트의 힘·폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5485,6 +5495,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
         `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP +%(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
         `🛡 세트의 힘: 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +12%, 모든 속성 저항 +4% (헬 장비만, 나이트메어 세트는 그대로). 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
         `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120% + 유니크의 힘(공격·방어·HP +15%)과 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +

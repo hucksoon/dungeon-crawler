@@ -123,6 +123,7 @@ const R_STAT_NAMES = [
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
     'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
     'power' => ['공격력·방어력·최대 HP', true],   // 장신구 주 능력치
+    'fireResMax' => ['불 저항 최대치', true], 'iceResMax' => ['얼음 저항 최대치', true], 'boltResMax' => ['번개 저항 최대치', true], 'allResMax' => ['모든 속성 저항 최대치', true], 'lsCap' => ['흡혈 최대치', true],
     'killHealPct' => ['처치 시 최대 HP 회복', true], 'skillPct' => ['스킬 피해', true],   // 룬 "차"·"타"
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
@@ -277,7 +278,9 @@ function r_acc_tier(string $seed): string {
     return preg_match(R_DEEP_SEED, $seed) ? 'nightmare' : 'normal';
 }
 function r_rar_index(string $rarity): int { return (int)array_search($rarity, R_RARITY_ORDER, true); }
+// 유니크 장신구: 공방HP 18~30 (레전더리 × 1.2), 저항 줄은 레전더리 범위
 function r_acc_power_range(array $item): array {
+    if ($item['rarity'] === 'unique') return [18, 30];
     return R_ACCESSORY[r_acc_tier((string)($item['seed'] ?? '')) === 'normal' ? 'powerNormal' : 'power'][r_rar_index($item['rarity'])];
 }
 function r_fixed_pct(array $item, array $table, string $stat): ?array {
@@ -391,7 +394,7 @@ function r_main_range(string $stat, array $item): array {
 // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
 function r_line_range_of(string $stat, array $item): array {
     if ($stat === 'socket') return r_socket_range($item);
-    if (r_is_accessory($item)) return R_ACCESSORY['res'][$stat][r_rar_index($item['rarity'])];   // 장신구 추가 능력치 = 저항 줄
+    if (r_is_accessory($item)) return R_ACCESSORY['res'][$stat][r_rar_index($item['rarity'] === 'unique' ? 'legendary' : $item['rarity'])];   // 장신구 추가 능력치 = 저항 줄
     $fixed = r_fixed_pct($item, R_PCT_LINE, $stat);
     if ($fixed) return $fixed;
     $r = r_line_range($stat, $item['lvl']);
@@ -542,27 +545,44 @@ const R_UNIQUE = [
         'chains' => ['boss' => 40, 'name' => '명부의 사슬', 'slot' => 'arms', 'type' => null, 'lines' => ['hp', 'crit', 'critDmg', 'atkPct'], 'stats' => []],
         'mirror' => ['boss' => 50, 'name' => '업경대', 'slot' => 'offhand', 'type' => 'shield', 'lines' => ['hp', 'def', 'allRes', 'lifesteal'], 'stats' => ['parry' => 15]],
         'robe' => ['boss' => 50, 'name' => '염라의 관복', 'slot' => 'pants', 'type' => null, 'lines' => ['hp', 'def', 'crit', 'allRes'], 'stats' => ['allRes' => 20, 'hpPct' => 30]],
+        // 유니크 장신구 (r7, items.js UNIQUE acc): 시드 |j층|a순번, 주 능력치 power, 저항 줄 2~3
+        'ironfang' => ['boss' => 10, 'name' => '쇠이빨 목걸이', 'slot' => 'neck', 'type' => null, 'acc' => true, 'stats' => ['fireResMax' => 5]],
+        'foxfire' => ['boss' => 20, 'name' => '여우불 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['crit' => 3, 'critDmg' => 10]],
+        'yeoui' => ['boss' => 30, 'name' => '여의 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['boltResMax' => 3]],
+        'myeongbu' => ['boss' => 40, 'name' => '명부의 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['lsCap' => 2]],
+        'eopgyeong' => ['boss' => 50, 'name' => '업경 목걸이', 'slot' => 'neck', 'type' => null, 'acc' => true, 'stats' => ['allResMax' => 5]],
     ],
+    'accChance' => 0.1,
+    'accResLines' => ['2' => 0.7, '3' => 0.3],
 ];
 function r_unique_of(array $item): ?array {
     return ($item['rarity'] ?? '') === 'unique' ? (R_UNIQUE['items'][$item['uq'] ?? ''] ?? null) : null;
 }
 // 네임드 보스 처치 시드에서 유니크가 나오는지 (items.js rollUnique의 첫 굴림)
 function r_unique_roll(string $seed): float { return r_rng("v4|unique?|{$seed}")(); }
+function r_unique_acc_roll(string $seed): float { return r_rng("v4|uniqueacc?|{$seed}")(); }
 function r_generate_unique(string $seed, int $level, int $rev): array {
-    if (!preg_match('/\|j(\d+)\|u\d+$/', $seed, $m)) throw new InvalidArgumentException('bad unique seed');
+    if (!preg_match('/\|j(\d+)\|([ua])\d+$/', $seed, $m)) throw new InvalidArgumentException('bad unique seed');
+    $acc = $m[2] === 'a';   // u: 유니크 장비, a: 유니크 장신구
     $list = [];
-    foreach (R_UNIQUE['items'] as $k => $u) if ($u['boss'] === (int)$m[1]) $list[] = $k;
+    foreach (R_UNIQUE['items'] as $k => $u) if ($u['boss'] === (int)$m[1] && !empty($u['acc']) === $acc) $list[] = $k;
     if (!$list) throw new InvalidArgumentException('no unique');
     $lv = max(1, $level);
     $rng = r_rng("v4|unique|{$seed}");
     $uq = $list[(int)floor($rng() * count($list))];
     $U = R_UNIQUE['items'][$uq];
     $item = ['v' => 4, 'seed' => $seed, 'src' => 'unique', 'lvl' => $lv, 'slot' => $U['slot'], 'type' => $U['type'], 'rarity' => 'unique', 'set' => null, 'r' => $rev, 'uq' => $uq];
-    $item['main'] = [];
-    foreach (r_main_pool_v4($item) as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
-    $item['lines'] = [];
-    foreach ($U['lines'] as $stat) $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
+    if (!empty($U['acc'])) {   // 유니크 장신구: 고르게 굴림, 저항 줄 2~3
+        $item['main'] = [['power', r_rand_int($rng, ...r_main_range('power', $item))]];
+        $n = (int)r_pick_weighted($rng, R_UNIQUE['accResLines']);
+        $item['lines'] = [];
+        for ($i = 0; $i < $n; $i++) { $k = r_pick($rng, R_ACCESSORY['resKeys']); $item['lines'][] = [$k, r_rand_int($rng, ...r_line_range_of($k, $item))]; }
+    } else {
+        $item['main'] = [];
+        foreach (r_main_pool_v4($item) as $stat) $item['main'][] = [$stat, r_roll_range($rng, r_main_range($stat, $item))];
+        $item['lines'] = [];
+        foreach ($U['lines'] as $stat) $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
+    }
     if ($U['type'] === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges']['unique']);
     $item['id'] = r_id(4, 'unique', $lv, $seed, $rev);
     if ($rev >= 7 && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);   // r7부터 드롭할 때 고대 굴림
@@ -841,7 +861,7 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0, 'power' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
     $setCounts = [];
     $rw = [];
     $shieldOnly = false;
@@ -894,7 +914,7 @@ function r_totals(array $equipped): array {
     // 룬워드: 광란 세트 효과·체인 라이트닝, 흡혈 최대치 +N%p
     if (!empty($rw['splash'])) $sum['splash'] = 1;
     if (!empty($rw['chain'])) $sum['chain'] = max($sum['chain'], 1);
-    $sum['lsCap'] = ($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX) + ($rw['lsCap'] ?? 0);
+    $sum['lsCap'] += ($sum['guard'] ? R_SHIELD_GUARD['cap'] : R_LIFESTEAL_MAX) + ($rw['lsCap'] ?? 0);   // 유니크 장신구(명부의 반지)로 더한 것 + 기본·룬워드
     $sum['lifesteal'] = min($sum['lsCap'], $sum['lifesteal']);
     $sum['dmgReduce'] = min(R_GEM_CAPS['dmgReduce'], $sum['dmgReduce']);
     $sum['splash'] = $sum['splash'] ? 1 : 0;
@@ -944,6 +964,7 @@ function r_player_stats(int $plvl, array $totals): array {
         'dual' => (bool)$g['dual'],
         'splash' => (bool)$g['splash'],
         'elem' => ['fire' => $g['fireDmg'], 'ice' => $g['iceDmg'], 'bolt' => $g['boltDmg']],
-        'res' => ['fire' => min(R_RES_CAP, $g['fireRes'] + $g['allRes']), 'ice' => min(R_RES_CAP, $g['iceRes'] + $g['allRes']), 'bolt' => min(R_RES_CAP, $g['boltRes'] + $g['allRes'])],
+        // 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
+        'res' => ['fire' => min(R_RES_CAP + $g['allResMax'] + $g['fireResMax'], $g['fireRes'] + $g['allRes']), 'ice' => min(R_RES_CAP + $g['allResMax'] + $g['iceResMax'], $g['iceRes'] + $g['allRes']), 'bolt' => min(R_RES_CAP + $g['allResMax'] + $g['boltResMax'], $g['boltRes'] + $g['allRes'])],
     ];
 }

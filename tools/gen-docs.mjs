@@ -189,7 +189,7 @@ ${table(["헬 층", "보스", "보스 HP", "보스 공격", "속성 저항 (자�
 
 ### 헬 네임드 보스
 
-헬 ${M.HELL.milestones.join("·")}층은 보통 보스 대신 이름 있는 **네임드 보스**가 계단을 지켜요 (분홍 테두리 두 겹). 저마다 고유한 패턴이 있고, 쓰러뜨리면 장비와 함께 **룬 ${M.NAMED.runes}개**를 떨어뜨리고 (룬 확률은 나이트메어 50층 보스와 같아요), **${Math.round(I.UNIQUE.chance * 100)}% 확률로 그 보스의 [유니크](items.md#유니크-최종-목표-아이템)** 2개 중 하나를 떨어뜨려요. 오른쪽 문으로 완료한 층을 골라 들어가면 바로 그 네임드를 다시 잡으러 갈 수 있어요.
+헬 ${M.HELL.milestones.join("·")}층은 보통 보스 대신 이름 있는 **네임드 보스**가 계단을 지켜요 (분홍 테두리 두 겹). 저마다 고유한 패턴이 있고, 쓰러뜨리면 장비와 함께 **룬 ${M.NAMED.runes}개**를 떨어뜨리고 (룬 확률은 나이트메어 50층 보스와 같아요), **${Math.round(I.UNIQUE.chance * 100)}% 확률로 그 보스의 [유니크](items.md#유니크-최종-목표-아이템)** 2개 중 하나, 따로 **${Math.round(I.UNIQUE.accChance * 100)}% 확률로 유니크 장신구**를 떨어뜨려요. 오른쪽 문으로 완료한 층을 골라 들어가면 바로 그 네임드를 다시 잡으러 갈 수 있어요.
 
 - 능력치 = 그 층 헬 보스 × HP 배율 × 공격 배율 (보스 속성 저항: 자기 속성 ${M.HELL.res.own + M.HELL.res.boss}%, 다른 속성 +${M.HELL.res.boss}%)
 - 시뮬레이션 (그 층 추천 조합 레전더리 +10, 1:1, 줄 품질 90% · 95% · 고대): 10층 22·3·1% · 20층 33·11·2% · 30층 48·16·1% · 40층 55·15·1% · 50층 57·30·7%. 패턴을 끈 같은 능력치면 거의 0% — 패턴이 난이도를 만들어요
@@ -661,7 +661,19 @@ ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층�
 - 시뮬레이션 (헬 50층 추천 조합 레전더리 +10, 줄 품질 95%, 네임드 염라대왕 1:1 · 몰려오는 20마리): 그대로 26% · 23% → 한 부위만 유니크로 바꿔도 대부분 5~16% · 0~11% (지팡이 5%·관복 7%·송곳니 8%·사슬 16%, 쇠비늘은 25% · 8%), **방어구 유니크 5부위 0% · 0%**. 방패 유니크(업경대)는 두 손 단검보다 느려서 혼자 끼면 오히려 위험해요 (여의주 검 + 업경대 + 방어구 5부위면 0%)
 
 ${table(["네임드", "유니크", "부위", "추가 능력치 (고정)", "고유 효과"],
-  Object.values(I.UNIQUE.items).map(U => [`${U.boss}층 ${M.namedAt(U.boss).name}`, `**${U.name}**`, U.type ? I.kindName({ slot: U.slot, type: U.type }) : I.ARMOR[U.slot].name, U.lines.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", "), U.text]))}
+  Object.values(I.UNIQUE.items).filter(U => !U.acc).map(U => [`${U.boss}층 ${M.namedAt(U.boss).name}`, `**${U.name}**`, U.type ? I.kindName({ slot: U.slot, type: U.type }) : I.ARMOR[U.slot].name, U.lines.map(k => I.STATS[k].name + (I.STATS[k].pct ? "%" : "")).join(", "), U.text]))}
+
+### 유니크 장신구 (규칙 r7)
+
+네임드를 쓰러뜨릴 때마다 유니크 장비와 **따로 ${pct(I.UNIQUE.accChance)}** 확률로 그 보스의 유니크 장신구 (시드 …|j층|a처치 순번).
+
+- ★ 주 능력치: 공격력·방어력·최대 HP **${I.ACCESSORY.power.unique.join("~")}%** (레전더리 장신구 × ${I.UNIQUE.mul}), ◆ 추가 능력치: 속성 저항 줄만 **${Object.entries(I.UNIQUE.accResLines).map(([n, p]) => `${n}줄 ${pct(p)}`).join(" · ")}** (레전더리 장신구 범위)
+- 범위 안에서 고르게 굴리고, 드롭할 때 고대 굴림 ${pct(I.ANCIENT.chance)} (다른 유니크·장신구처럼 다시 굴리기 없음)
+- 고유 효과는 더해져요: **같은 유니크 반지 두 개**를 끼면 효과도 두 배 (목걸이는 한 칸)
+- 저항 최대치는 기본 ${M.ELEMENTS.resCap}%. 유니크 장신구로 그 위로 올라가요 (헬에서는 최대치까지 채운 저항에서 −${M.HELL.playerResCut}%)
+
+${table(["네임드", "유니크 장신구", "부위", "고유 효과"],
+  Object.values(I.UNIQUE.items).filter(U => U.acc).map(U => [`${U.boss}층 ${M.namedAt(U.boss).name}`, `**${U.name}**`, I.ACCESSORY.names[U.slot], U.text]))}
 
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r3)
 

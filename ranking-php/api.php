@@ -438,10 +438,11 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         return $src === 'golden';
     }
     // 헬 (v4 r6): 층 j는 1~50, 아이템 레벨 = 125 + j. u = 네임드 보스의 유니크 (R_UNIQUE['chance'] 안에 들어야 떨어짐)
-    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kpu])\d{1,8}$/', $seed, $m)) {
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kpua])\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[1];
         if ($v !== 4 || $rev < 6 || $n < 1 || $n > HELL_FLOORS || $lvl !== HELL_ITEM_BASE + $n) return false;
         if ($m[2] === 'u') return $src === 'unique' && $rev >= 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'];
+        if ($m[2] === 'a') return $src === 'unique' && $rev >= 7 && in_array($n, HELL_NAMED, true) && r_unique_acc_roll($seed) < R_UNIQUE['accChance'];   // 유니크 장신구
         if ($src === 'unique') return false;
         if ($m[2] === 'p') return $src === 'golden';   // 보물 자리
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
