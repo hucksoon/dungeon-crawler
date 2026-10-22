@@ -197,7 +197,7 @@ function market_browse(): array {
     try { $me = identify()['key']; } catch (HttpError $e) { /* 손님 */ }
     $where = ["state = 'active'"];
     $args = [];
-    if (in_array($_GET['slot'] ?? '', R_SLOTS, true)) { $where[] = 'slot = ?'; $args[] = $_GET['slot']; }
+    if (in_array($_GET['slot'] ?? '', R_SLOTS_R7, true)) { $where[] = 'slot = ?'; $args[] = $_GET['slot']; }
     if (isset(RARITY_RANK[$_GET['rarity'] ?? ''])) { $where[] = 'rarity = ?'; $args[] = $_GET['rarity']; }
     $order = ['cash' => 'price_cash ASC, price_gold ASC', 'gold' => 'price_gold ASC, price_cash ASC'][$_GET['sort'] ?? ''] ?? 'created_at DESC';
     $st = db()->prepare('SELECT * FROM listings WHERE ' . implode(' AND ', $where) . " ORDER BY {$order} LIMIT 100");

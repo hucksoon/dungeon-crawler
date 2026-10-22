@@ -362,7 +362,7 @@
     #inv-modal { padding: 8px; }
     #inv-modal .modal.inv { width: 100%; height: calc(100vh - 16px); height: calc(100dvh - 16px); padding: 12px; }
     .statline { display: block; flex: none; width: 100%; text-align: left; font-size: 12px; padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .equip-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 4px; }
+    .equip-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 4px; }   /* 장착 칸 10개(장신구)도 3줄에 */
     #inv-modal .slot { min-height: 38px; padding: 4px 6px; font-size: 11px; }
     #inv-modal .slot small { font-size: 10px; }
     #inv-bag { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
@@ -920,11 +920,14 @@
   const canPay = (cost) => isStaff() || (!!player && !gameOver && player.gold >= cost);
   const pay = (cost) => { if (!isStaff()) player.gold -= cost; };
   const costText = (cost) => (isStaff() ? "운영자 무료" : `-${cost.toLocaleString()}골드`);
+  // 운영자만: "고대로 만들기" (장신구·유니크는 드롭할 때만 고대라 고대 굴리기가 없음)
+  const canMakeAncient = (item) => isStaff() && item?.v === 4 && !!item.main && !item.ancient && RLItems.ANCIENT_RARITIES.includes(item.rarity) &&
+    !(item.rarity === "unique" && (item.r || 0) < 7) && !RLItems.canRerollAncient(item, true);
   const Inv = (() => {
     let owner = null;
     let data = null;  // { bag: [item], equip: { slot: item|null }, log: [entry] }
     const key = (o) => `rl_inv:${o}`;
-    const empty = () => ({ bag: [], equip: Object.fromEntries(RLItems.SLOTS.map(s => [s, null])), log: [] });
+    const empty = () => ({ bag: [], equip: Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, null])), log: [] });   // 장착 칸: 7부위 + 목걸이 + 반지 2
 
     function read(o) {
       try {
@@ -942,7 +945,7 @@
       if (Array.isArray(d.log)) trimLog(d);
       d.equip = fullEquip(d.equip);
       d.bag = d.bag.map(remake);
-      for (const s of RLItems.SLOTS) d.equip[s] = d.equip[s] && remake(d.equip[s]);
+      for (const s of RLItems.EQUIP_SLOTS) d.equip[s] = d.equip[s] && remake(d.equip[s]);
       // 장검(방패 전용)과 보조무기를 같이 끼고 있으면 보조무기를 가방으로 (예전 견고의 도끼 + 보조무기였던 경우)
       if (RLItems.isShieldOnly(d.equip.weapon) && d.equip.offhand && RLItems.isWeaponLike(d.equip.offhand)) { d.bag.push(d.equip.offhand); d.equip.offhand = null; remade++; }
       for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
@@ -967,7 +970,9 @@
     }
     const write = () => { trimLog(data); store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
-    const fullEquip = (eq) => Object.fromEntries(RLItems.SLOTS.map(s => [s, eq?.[s] || null]));
+    const fullEquip = (eq) => Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, eq?.[s] || null]));
+    // 이 아이템을 낄 칸: at(고른 칸)이 맞으면 거기, 아니면 빈 칸, 다 차 있으면 첫 칸 (반지는 반지 1·2)
+    const equipKey = (item, at) => { const keys = RLItems.equipKeysFor(item); return keys.includes(at) ? at : keys.find(k => !data.equip[k]) || keys[0]; };
 
     // 다른 곳(게스트, 이 기기에만 있던 예전 저장, 예전 주소)의 장비를 지금 가방으로. 빈 칸이면 장착 상태도 유지.
     // 가방이 차면 상자 보관함(rl_mail)에서 기다림 (가방을 비우면 들어옴)
@@ -976,7 +981,8 @@
       const wait = [];
       const take = (item, wasEquipped) => {
         if (!item?.id || all().some(x => x.id === item.id)) return;
-        if (wasEquipped && !data.equip[item.slot]) data.equip[item.slot] = item;
+        const at = equipKey(item);
+        if (wasEquipped && !data.equip[at]) data.equip[at] = item;
         else if (data.bag.length < BAG_SIZE) data.bag.push(item);
         else wait.push({ item, from });
         record("migrate", item, { from });
@@ -1030,6 +1036,7 @@
       items: () => all(),
       bag: () => data.bag,
       equipped: () => data.equip,
+      equipKey: (item, at) => equipKey(item, at),
       log: () => data.log,
       full: () => data.bag.length >= BAG_SIZE,
       totals: () => RLItems.totals(Object.values(data.equip)),
@@ -1044,12 +1051,14 @@
         return "ok";
       },
       // 장검(방패 전용)과 보조무기는 같이 못 낌: 새로 낀 쪽이 남고 다른 쪽은 가방으로. 가방으로 간 아이템 (없으면 null)
-      equip(id) {
+      // at: 반지를 낄 칸 (ring1·ring2, 없으면 빈 칸)
+      equip(id, at) {
         const i = data.bag.findIndex(x => x.id === id);
         if (i < 0) return null;
         const item = data.bag.splice(i, 1)[0];
-        const prev = data.equip[item.slot];
-        data.equip[item.slot] = item;
+        const k = equipKey(item, at);
+        const prev = data.equip[k];
+        data.equip[k] = item;
         if (prev) data.bag.push(prev);
         let off = null;
         if (RLItems.isShieldOnly(item) && data.equip.offhand && RLItems.isWeaponLike(data.equip.offhand)) off = "offhand";
@@ -1206,6 +1215,15 @@
       },
 
       // 고대 다시 굴리기: 골드는 부르는 쪽(판의 골드)에서 냄. 결과 { ok, n } 또는 { error }
+      // 운영자 테스트: 장신구·유니크(드롭으로만 고대)도 고대로 (고대가 나오는 굴림 번호를 기록 → 서버도 같은 계산)
+      makeAncient(id) {
+        const item = all().find(x => x.id === id);
+        if (!item || !canMakeAncient(item)) return { error: "고대로 만들 수 없는 아이템이에요." };
+        const r = RLItems.rerollAncient(item, true);
+        record("ancient", item, { ok: r.ok, n: r.n, staff: 1 });
+        write();
+        return r;
+      },
       rerollAncient(id) {
         const item = all().find(x => x.id === id);
         if (!item || !RLItems.canRerollAncient(item, isStaff())) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
@@ -1464,7 +1482,7 @@
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 헬에서는 속성 저항 −HELL.playerResCut%p (최대치를 넘긴 만큼은 소용없음)
-      res: Object.fromEntries(EL.list.map(k => [k, Math.min(EL.resCap, g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
+      res: Object.fromEntries(EL.list.map(k => [k, Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball
       rw: T.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
@@ -1472,6 +1490,8 @@
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
     };
   }
+  // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
+  const resCapOf = (g, k) => EL.resCap + (g.allResMax || 0) + (g[`${k}ResMax`] || 0);
   const heal = (n) => { player.hp = Math.min(stats().maxHp, player.hp + n); };
   // 플레이어가 받는 피해: 룬워드 보호막(태산·선견지명)이 먼저 막음. 실제로 깎인 HP
   function hurtPlayer(n) {
@@ -2012,6 +2032,13 @@
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: u, from: "boss" });
         log(`✦✦ ${e.name}이(가) 유니크 ${RLItems.itemName(u)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
+      }
+      // 유니크 장신구: 따로 굴림 (시드 |a처치 순번)
+      const ua = RLItems.rollUniqueAcc(`${player.rid}|${floorTag()}${depth}|a${player.kills}`, itemLevel());
+      if (ua) {
+        const spot = dropSpot(e.x, e.y);
+        items.push({ x: spot.x, y: spot.y, type: "gear", item: ua, from: "boss" });
+        log(`✦✦ ${e.name}이(가) 유니크 장신구 ${RLItems.itemName(ua)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
       }
     }
   }
@@ -2688,9 +2715,9 @@
   function castSkills(s) {
     const alive = () => enemies.filter(e => e.hp > 0);
     const fast = s.rw.skillFast ? 1 : 0;   // 마음가짐: 세트 스킬 1턴 더 자주
-    // 폭풍전야: every턴마다 주변 8칸 몬스터의 속성 저항 −vuln% (turns턴 동안)
+    // 폭풍전야: every턴마다 radius칸 안 몬스터의 속성 저항 −vuln% (turns턴 동안)
     if (s.rw.vuln && turn % RW_FX.vuln.every === 0) {
-      const near = alive().filter(e => near8(e, player) === 1);
+      const near = alive().filter(e => near8(e, player) <= RW_FX.vuln.radius);
       for (const e of near) { e.vulnUntil = turn + RW_FX.vuln.turns; e.vulnPct = s.rw.vuln; }
       if (near.length) flash(near.map(e => ({ x: e.x, y: e.y })), "rgba(255, 225, 77, 0.25)");
     }
@@ -3602,7 +3629,7 @@
       const px = it.x * TILE, py = it.y * TILE;
       if (it.type === "treasure" || it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
       else if (it.type === "gear") {
-        const glyph = RLItems.isWeaponLike(it.item) ? ")" : it.item.type === "shield" ? "]" : "[";
+        const glyph = RLItems.isWeaponLike(it.item) ? ")" : it.item.type === "shield" ? "]" : it.item.slot === "neck" ? "\"" : it.item.slot === "ring" ? "=" : "[";   // 목걸이 " · 반지 =
         if (isUnique(it.item)) {
           // 유니크: 금빛으로 강하게 빛남 (깜빡이듯 밝기가 바뀜)
           ctx.save();
@@ -3993,6 +4020,7 @@
       // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
       ...RLItems.mainStatsOf(item).map(([k, v]) => {
         const m = RLItems.nmPower(item, k), range = RLItems.statRange(item, "main", k);
+        if (RLItems.isAccessory(item)) return row("★", k, v, v, range, 0, null, v);   // 장신구 공방HP: 강화로 안 오름
         return row("★", k, enhanced[k], v * m, range && range.map(x => x * m), enhanced[k] - v * m, null, effBase[k]);
       }),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
@@ -4014,7 +4042,7 @@
     document.getElementById("inv-count").textContent =
       `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""}${Inv.hellStones() > 0 || Inv.items().some(RLItems.isHellItem) ? ` · 지옥 강화석 ${Inv.hellStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
 
-    invEquip.replaceChildren(...RLItems.SLOTS.map(slot => {
+    invEquip.replaceChildren(...RLItems.EQUIP_SLOTS.map(slot => {
       const item = equip[slot];
       const sel = selected?.from === "equip" && selected.slot === slot;
       return el("button", {
@@ -4038,12 +4066,13 @@
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
       ...(g.legend ? [`전설의 힘: 공격력·방어력·최대 HP +${g.legend}% (레전더리 완성도)`] : []),
+      ...(g.setPower ? [`세트의 힘: 공격력·방어력·최대 HP +${g.setPower}%, 모든 속성 저항 +${g.setPower / RLItems.SET_POWER.pct * RLItems.SET_POWER.allRes}% (지옥의 세트)`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
       ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${(s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0)}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
-      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%`).join(" · ")} (최대 ${EL.resCap}%)`] : []),
+      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? ` (최대 ${resCapOf(g, k)}%)` : ""}`).join(" · ")}${EL.list.every(k => resCapOf(g, k) === EL.resCap) ? ` (최대 ${EL.resCap}%)` : ""}`] : []),
       // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
       ...(Inv.totals().runewords.names.length ? [`✦ 룬워드: ${Inv.totals().runewords.names.join(" · ")}`, ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
       ...(Inv.totals().uniques.names.length ? [`✦ 유니크: ${Inv.totals().uniques.names.join(" · ")}`, ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
@@ -4242,7 +4271,8 @@
     const boss = RLMonsters.namedAt(U.boss);
     return [el("div", { className: "rw-done" },
       el("h3", { className: "unique-glow", style: { color: RLItems.RARITIES.unique.color } }, `✦ 유니크 ${U.name}`),
-      el("div", { className: "meta" }, `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
+      el("div", { className: "meta" }, U.acc ? `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 장신구 · 공격력·방어력·최대 HP는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%, 속성 저항 2~3줄`
+        : `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
       el("div", { className: "stat-line set-on", style: { color: RLItems.RARITIES.unique.color } }, `✦ ${U.text}`),
       ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`)),
       el("div", { className: "stat-line set-on" }, `✦ 유니크의 힘: 공격력·방어력·최대 HP +${RLItems.UNIQUE.power.pct}%, 모든 속성 저항 +${RLItems.UNIQUE.power.allRes}%`))];
@@ -4377,7 +4407,7 @@
     }
     rows.push(
       el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 전설의 힘 4% × 7 = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
-      el("div", { className: "meta" }, "세트를 섞으면 그 부위의 전설의 힘(저항 +4%)이 빠져요. 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
+      el("div", { className: "meta" }, "세트를 섞으면 그 부위의 전설의 힘(저항 +4%)이 빠져요 (지옥의 세트는 세트의 힘으로 같아요). 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
       el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%라 보스는 느리지만(19턴) 몰려오는 몬스터 0%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요. 강화를 안 하면(+0) 보스 11%·몰려오는 몬스터 100%라서 +10까지 올리세요`));
     invGuide.replaceChildren(...rows);
   }
@@ -4398,7 +4428,8 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
+      ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 약 절반" : ""}`)]
+        : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
         : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
       ...statLines(item),
@@ -4422,12 +4453,15 @@
           ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, `${b.count}세트: ${b.text}`))]));
     }
     // 전설의 힘: v4 레전더리의 완성도 (주·추가 능력치가 범위 안에서 얼마나 높은지)
-    if (item.v === 4 && item.rarity === "legendary" && item.main) {
+    if (item.v === 4 && item.rarity === "legendary" && item.main && !RLItems.isAccessory(item)) {
       const q = Math.round(RLItems.completeness(item) * 100), lp = RLItems.legendPower(item);
       rows.push(fold("legend", `전설의 힘${lp ? ` +${lp}%` : ""} · 완성도 ${q}%`, [el("div", { className: lp ? "legend-note" : "meta" }, lp
         ? `완성도 ${q}% · 전설의 힘: 공격력·방어력·최대 HP +${lp}%${RLItems.legendRes(item) ? `, 모든 속성 저항 +${RLItems.legendRes(item)}%` : ""} (완성도 100%면 +${RLItems.LEGEND.max}%, 저항 +${RLItems.LEGEND.allRes}%)`
         : `완성도 ${q}% · 전설의 힘은 완성도 ${Math.round(RLItems.LEGEND.start * 100)}%부터 붙어요 (100%면 공격력·방어력·최대 HP +${RLItems.LEGEND.max}%, 모든 속성 저항 +${RLItems.LEGEND.allRes}%)`)]));
     }
+    // 세트의 힘: 지옥의 세트 조각만 (나이트메어·일반 세트에는 없음)
+    if (RLItems.setPower(item)) rows.push(el("div", { className: "legend-note" },
+      `세트의 힘 (지옥의 세트): 공격력·방어력·최대 HP +${RLItems.SET_POWER.pct}%, 모든 속성 저항 +${RLItems.SET_POWER.allRes}%`));
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
@@ -4456,21 +4490,30 @@
 
     const actions = el("div", { className: "row" });
     if (selected.from === "bag") {
-      const current = Inv.equipped()[item.slot];
-      if (current) rows.push(el("div", { className: "meta" }, "장착 중: ", itemLabel(current)));
+      // 반지: 두 칸이 다 차 있으면 어느 반지와 바꿀지 고름
+      const keys = RLItems.equipKeysFor(item), eqd = Inv.equipped();
+      for (const k of keys) if (eqd[k]) rows.push(el("div", { className: "meta" }, `장착 중${keys.length > 1 ? ` (${RLItems.SLOT_NAMES[k]})` : ""}: `, itemLabel(eqd[k])));
+      const both = keys.length > 1 && keys.every(k => eqd[k]);
       actions.append(
-        el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착"),
+        ...(both ? keys.map(k => el("button", { type: "button", className: "primary", onclick: () => equipItem(item, k) }, `${RLItems.SLOT_NAMES[k]} 자리에 끼기`))
+          : [el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착")]),
         enhanceBtn,
         item.lock ? el("button", { type: "button", disabled: true }, "판매 (잠김)")
           : el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (${stonesText([item])} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
       );
     } else {
-      actions.append(el("button", { type: "button", onclick: () => unequipSlot(item.slot) }, "해제"), enhanceBtn);
+      actions.append(el("button", { type: "button", onclick: () => unequipSlot(selected.slot) }, "해제"), enhanceBtn);
     }
     if (canLock(item)) actions.append(el("button", { type: "button", className: "lock-btn", title: "잠긴 아이템은 판매(가방 전부 판매 포함)되지 않아요",
       onclick: () => { const on = Inv.toggleLock(item.id); invMsg = { cls: "good", text: on ? "🔒 잠갔어요. 판매되지 않아요 (가방 전부 판매에서도 남아요)." : "🔓 잠금을 풀었어요." }; renderInventory(); } },
       item.lock ? "🔓 잠금 풀기" : "🔒 잠그기"));
     if (ancientBtn) actions.append(ancientBtn);
+    if (canMakeAncient(item)) actions.append(el("button", { type: "button", className: "staff-btn", onclick: () => {
+      const r = Inv.makeAncient(item.id);
+      invMsg = r.error ? { cls: "bad", text: r.error } : { cls: "good", text: `운영자: 고대로 만들었어요 (${r.n}번째 굴림)` };
+      saveGame(true);
+      afterGearChange();
+    } }, "고대로 만들기 (운영자)"));
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isDeepItem(item) ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
@@ -4484,15 +4527,16 @@
     renderInventory();
   }
 
-  function equipItem(item) {
+  function equipItem(item, at) {
     if ((inNM() || inHell()) && isLegacy(item)) {
       invMsg = { cls: "bad", text: "나이트메어·헬에서는 예전(v3까지) 장비를 낄 수 없어요." };
       renderInventory();
       return;
     }
-    const moved = Inv.equip(item.id);
+    const key = Inv.equipKey(item, at);
+    const moved = Inv.equip(item.id, key);
     noteOldGear();
-    selected = { from: "equip", slot: item.slot };
+    selected = { from: "equip", slot: key };
     invMsg = moved ? { cls: "bad", text: `장검은 보조 손에 방패만 낄 수 있어서 ${RLItems.itemName(moved)}을(를) 가방으로 옮겼어요.` } : null;
     afterGearChange();
   }
@@ -4986,7 +5030,7 @@
     const pick = (key, options) => el("select", { ariaLabel: key, onchange: (e) => { f[key] = e.target.value; refreshMarket(); } },
       ...options.map(([v, label]) => el("option", { value: v, selected: f[key] === v }, label)));
     const filters = el("div", { className: "market-filters" },
-      pick("slot", [["", "모든 부위"], ...RLItems.SLOTS.map(s => [s, RLItems.SLOT_NAMES[s]])]),
+      pick("slot", [["", "모든 부위"], ...RLItems.SLOTS_R7.map(s => [s, RLItems.SLOT_NAMES[s]])]),
       pick("rarity", [["", "모든 등급"], ...RARITY_ORDER.map(r => [r, RLItems.RARITIES[r].name])]),
       pick("sort", [["new", "최신순"], ["cash", "캐시 낮은 순"], ["gold", "골드 낮은 순"]]),
       el("button", { type: "button", onclick: () => refreshMarket() }, "새로고침"));
@@ -5443,7 +5487,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1021j:${owner}`;  // 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1022c:${owner}`;  // 유니크 장신구, 장신구, 세트의 힘·폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5451,6 +5495,9 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
+        `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP +%(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
+        `🛡 세트의 힘: 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +12%, 모든 속성 저항 +4% (헬 장비만, 나이트메어 세트는 그대로). 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
         `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120% + 유니크의 힘(공격·방어·HP +15%)과 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
         `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
         `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +

@@ -22,7 +22,8 @@
   // r5: 무기 칸에 장검(방패 전용)이 나올 수 있음 (WEAPONS.longsword). 견고의 세트 무기는 개정과 상관없이 장검 (예전 견고의 도끼도)
   // r6: 추가 능력치 후보에 홈(SOCKETS)이 들어감 — 바지 빼고. 홈에는 보석(GEMS)을 넣음
   //     같은 r6에 유니크(UNIQUE, 출처 "unique")가 더해짐: 헬 네임드 보스만 떨어뜨리는 고정 아이템 (보통 아이템 규칙은 그대로)
-  const RULES_REV = 6;
+  // r7: 장신구(목걸이·반지, ACCESSORY)가 부위 후보에 들어감 (SLOTS_R7). 유니크도 드롭할 때 고대 굴림 (고대 다시 굴리기는 안 됨)
+  const RULES_REV = 7;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -68,7 +69,14 @@
 
   // ---- 부위와 무기 ----
   const SLOTS = ["head", "chest", "arms", "pants", "boots", "weapon", "offhand"];
-  const SLOT_NAMES = { head: "머리", chest: "가슴", arms: "팔", pants: "바지", boots: "장화", weapon: "무기", offhand: "보조" };
+  // r7부터 아이템 부위 후보: 목걸이·반지 (장착 칸은 목걸이 1, 반지 2 → EQUIP_SLOTS)
+  const SLOTS_R7 = [...SLOTS, "neck", "ring"];
+  const ACC_SLOTS = ["neck", "ring"];
+  const isAccessory = (item) => !!item && ACC_SLOTS.includes(item.slot);
+  const SLOT_NAMES = { head: "머리", chest: "가슴", arms: "팔", pants: "바지", boots: "장화", weapon: "무기", offhand: "보조", neck: "목걸이", ring: "반지", ring1: "반지 1", ring2: "반지 2" };
+  // 장착 칸 (인벤토리·저장): 반지는 두 칸
+  const EQUIP_SLOTS = [...SLOTS, "neck", "ring1", "ring2"];
+  const equipKeysFor = (item) => (item?.slot === "ring" ? ["ring1", "ring2"] : [item?.slot]);
 
   // 보조 손: 절반은 방패, 절반은 보조무기(왼손에 드는 무기 — 끼면 한 턴에 두 번 공격)
   // 방패는 막기(패링) 확률이 붙음: 등급마다 정해진 3가지 값 중 하나, 강화로 오르지 않음. 세트 효과까지 합쳐 최대 40%
@@ -94,6 +102,7 @@
   // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
   function kindName(item) {
     if (item.slot === "offhand") return item.type === "shield" ? OFFHAND.shieldName : `${OFFHAND.weaponPrefix} ${WEAPONS[item.type].name}`;
+    if (isAccessory(item)) return ACCESSORY.names[item.slot];
     return item.type ? WEAPONS[item.type].name : ARMOR[item.slot].name;
   }
 
@@ -185,6 +194,10 @@
     allRes: { name: "모든 속성 저항", pct: true },
     socket: { name: "홈", pct: false },   // 추가 능력치 한 줄 (r6). 값 = 홈 개수
     skillPct: { name: "스킬 피해", pct: true },   // 룬 "타": 파이어볼·프로스트 노바·체인 라이트닝 피해에 더함
+    power: { name: "공격력·방어력·최대 HP", pct: true },   // 장신구 주 능력치
+    // 유니크 장신구: 저항 최대치 (기본 75%), 흡혈 최대치
+    fireResMax: { name: "불 저항 최대치", pct: true }, iceResMax: { name: "얼음 저항 최대치", pct: true }, boltResMax: { name: "번개 저항 최대치", pct: true },
+    allResMax: { name: "모든 속성 저항 최대치", pct: true }, lsCap: { name: "흡혈 최대치", pct: true },
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것 (v2·v3)
   const STAT_KEYS_V4 = ["atk", "def", "hp", "crit", "critDmg", "atkPct", "lifesteal", "gold", "xp"];  // v4: 치명타 피해·공격력% 추가
@@ -259,6 +272,33 @@
   const RES_R4 = { fireRes: [7, 20], iceRes: [7, 20], boltRes: [7, 20], allRes: [4, 7] };
   const isResLine = (stat) => !!RES_R4[stat];
 
+  // ---- 장신구 (r7): 목걸이 1칸, 반지 2칸 ----
+  // 커먼 ~ 레전더리 (세트로 굴려지면 레전더리). 레전더리는 드롭할 때만 고대 (고대 다시 굴리기·옵션 재련 없음, 운영자만 "고대로 만들기")
+  // 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄 (power, 일반 던전에서 얻으면 약 절반)
+  // 추가 능력치 = 속성 저항 줄만 (불·얼음·번개·모든 속성 중 하나씩, 같은 종류가 또 붙을 수 있음). 줄 수는 얻은 곳에 따라 확률 (resLines)
+  //   범위는 등급별 (레전더리 각 속성 20~30%, 모든 속성 8~11%)
+  // 주 능력치·저항 줄 모두 강화로 오르지 않음
+  const ACCESSORY = {
+    names: { neck: "목걸이", ring: "반지" },
+    resKeys: ["fireRes", "iceRes", "boltRes", "allRes"],
+    res: {
+      fireRes: byRarity([3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]),
+      iceRes: byRarity([3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]),
+      boltRes: byRarity([3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]),
+      allRes: byRarity([1, 3], [2, 4], [3, 6], [5, 8], [8, 11], [8, 11]),
+    },
+    resLines: { normal: { 0: 0.5, 1: 0.5 }, nightmare: { 1: 0.6, 2: 0.4 }, hell: { 1: 0.5, 2: 0.35, 3: 0.15 } },
+    // 공격력·방어력·최대 HP %: 나이트메어·헬 / 일반 던전(약 절반). 범위 안에서 고르게 굴림 (다른 장비처럼 최대치 20%가 아님) →
+    //   줄이 적은 장신구가 우연히 모두 최대치(고대)일 확률을 범위 칸 수로 낮춤 (레전더리 15~25 = 1/11, 일반 5~15 = 1/11)
+    power: byRarity([2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]),
+    powerNormal: byRarity([1, 3], [2, 4], [3, 6], [5, 9], [5, 15], [5, 15]),
+  };
+  // 유니크 장신구: 공방HP는 레전더리 × 1.2 (UNIQUE.mul), 저항 줄은 레전더리 범위 (최대 30%·11%)
+  ACCESSORY.power.unique = [18, 30];
+  for (const k of ACCESSORY.resKeys) ACCESSORY.res[k].unique = ACCESSORY.res[k].legendary;
+  // 얻은 곳: 헬·나이트메어 시드면 그 단계, 아니면 일반
+  const accTier = (seed) => (/\|(shop\|)?j\d+\|/.test(seed) ? "hell" : DEEP_SEED.test(seed) ? "nightmare" : "normal");
+
   // ---- 홈 (r6) ----
   // 추가 능력치 후보 중 하나: 뽑히면 "홈 N개" 한 줄 (그만큼 다른 능력치 한 줄이 빠짐). N은 부위별 범위에서 다른 줄처럼 굴림
   // (최대치 20%, 나머지는 최소 ~ 최대−1). 바지에는 없음. 세트 장비는 같은 종류를 따름. 강화로 오르지 않음
@@ -312,6 +352,7 @@
     return [a, Math.max(a, Math.round(hi * mul))];
   };
   function mainRange(stat, item) {
+    if (isAccessory(item)) return accPowerRange(item);   // 장신구 주 능력치는 power 하나
     // 장검(v4): 공격력 말고 다른 주 능력치도 다른 부위 범위의 mainMul배 (공격력은 atkMul)
     const lsMul = item.v >= 4 && stat !== "atk" && isShieldOnly(item) ? WEAPONS[item.type].mainMul : 1;
     const fixed = fixedPct(item, PCT_MAIN, stat);
@@ -326,8 +367,12 @@
   const lineRange = (stat, lv) => STATS[stat].line(lv);
   // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
   // 유니크는 레벨에 비례하는 줄(공격력·방어력·HP)도 × UNIQUE.mul
-  const lineRangeOf = (stat, item) => (stat === "socket" ? socketRange(item) : fixedPct(item, PCT_LINE, stat) ||
+  const lineRangeOf = (stat, item) => (stat === "socket" ? socketRange(item) : isAccessory(item) ? ACCESSORY.res[stat][item.rarity] : fixedPct(item, PCT_LINE, stat) ||
     (item.rarity === "unique" ? scaleRange(lineRange(stat, item.lvl), UNIQUE.mul) : lineRange(stat, item.lvl)));
+  // 장신구 power 범위 (일반 던전에서 얻은 것은 powerNormal)
+  const accPowerRange = (item) => (accTier(item.seed || "") === "normal" && item.rarity !== "unique" ? ACCESSORY.powerNormal : ACCESSORY.power)[item.rarity];
+  // 장신구 굴림: 범위 안에서 고르게
+  const rollEven = (rng, [lo, hi]) => randInt(rng, lo, hi);
   // 최대치 20%, 그 외에는 최소 ~ (최대 − 1)
   function rollRange(rng, [lo, hi]) {
     if (hi <= lo || rng() < MAX_ROLL_CHANCE) return hi;
@@ -441,32 +486,59 @@
         text: "업보: 받은 피해의 30%를 때린 몬스터에게 되돌림, 패링 확률 +15%" },
       robe:      { boss: 50, name: "염라의 관복", slot: "pants", type: null, lines: ["hp", "def", "crit", "allRes"], stats: { allRes: 20, hpPct: 30 }, special: { lastStand: 30 },
         text: "저승의 왕: 모든 속성 저항 +20%, 최대 HP +30%, 쓰러질 피해를 받으면 30% 확률로 HP 1로 버팀" },
+      // 유니크 장신구 (r7, acc): 네임드 처치마다 accChance로 따로 (시드 |j층|a처치 순번). 주 능력치 공격력·방어력·최대 HP (레전더리 × mul),
+      //   추가 능력치는 속성 저항 줄만 2~3줄 (accResLines). stats는 더해짐 → 같은 반지 두 개면 효과도 두 배
+      ironfang:  { boss: 10, name: "쇠이빨 목걸이", slot: "neck", acc: true, stats: { fireResMax: 5 }, special: {},
+        text: "쇠이빨: 불 저항 최대치 +5% (75 → 80%)" },
+      foxfire:   { boss: 20, name: "여우불 반지", slot: "ring", acc: true, stats: { crit: 3, critDmg: 10 }, special: {},
+        text: "여우불: 치명타 확률 +3%, 치명타 피해 +10% (두 개 끼면 두 배)" },
+      yeoui:     { boss: 30, name: "여의 반지", slot: "ring", acc: true, stats: { boltResMax: 3 }, special: {},
+        text: "여의: 번개 저항 최대치 +3% (두 개 끼면 +6%)" },
+      myeongbu:  { boss: 40, name: "명부의 반지", slot: "ring", acc: true, stats: { lsCap: 2 }, special: {},
+        text: "명부: 흡혈 최대치 +2%p (두 개 끼면 +4%p)" },
+      eopgyeong: { boss: 50, name: "업경 목걸이", slot: "neck", acc: true, stats: { allResMax: 5 }, special: {},
+        text: "업경: 모든 속성 저항 최대치 +5% (75 → 80%)" },
     },
+    accChance: 0.1,
+    accResLines: { 2: 0.7, 3: 0.3 },
   };
   // 특수 효과의 고정 값 (턴·최대치)
   const UNIQUE_FX = { bite: { turns: 3 }, ironHide: { max: 15 }, reap: { max: 30 }, shield: { every: 2 } };
-  const UNIQUE_SEED = /\|j(\d+)\|u\d+$/;
-  const uniquesOf = (floor) => Object.keys(UNIQUE.items).filter(k => UNIQUE.items[k].boss === floor);
+  const UNIQUE_SEED = /\|j(\d+)\|([ua])\d+$/;   // u: 유니크 장비, a: 유니크 장신구
+  const uniquesOf = (floor, acc = false) => Object.keys(UNIQUE.items).filter(k => UNIQUE.items[k].boss === floor && !!UNIQUE.items[k].acc === acc);
   const uniqueOf = (item) => (item?.rarity === "unique" && UNIQUE.items[item.uq]) || null;
   // 유니크 한 개 (seed의 헬 층 네임드 보스의 유니크 중 하나)
   function generateUnique(seed, level, rev = RULES_REV) {
-    const floor = +(seed.match(UNIQUE_SEED)?.[1] || 0), list = uniquesOf(floor);
+    const m = seed.match(UNIQUE_SEED), floor = +(m?.[1] || 0), list = uniquesOf(floor, m?.[2] === "a");
     if (!list.length) throw new Error(`no unique for ${seed}`);
     const lv = Math.max(1, Math.floor(level));
     const rng = rngFrom(`v4|unique|${seed}`);
     const uq = list[Math.floor(rng() * list.length)], U = UNIQUE.items[uq];
     const item = { v: 4, seed, src: "unique", lvl: lv, slot: U.slot, type: U.type, rarity: "unique", set: null, r: rev, uq };
-    item.main = mainPoolV4(item).map(stat => [stat, rollRange(rng, mainRange(stat, item))]);
-    item.lines = U.lines.map(stat => [stat, rollRange(rng, lineRangeOf(stat, item))]);
+    if (U.acc) {   // 유니크 장신구: 장신구처럼 고르게 굴림, 저항 줄 2~3
+      item.type = null;
+      item.main = [["power", rollEven(rng, mainRange("power", item))]];
+      const n = +pickWeighted(rng, UNIQUE.accResLines);
+      item.lines = [];
+      for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollEven(rng, lineRangeOf(k, item))]); }
+    } else {
+      item.main = mainPoolV4(item).map(stat => [stat, rollRange(rng, mainRange(stat, item))]);
+      item.lines = U.lines.map(stat => [stat, rollRange(rng, lineRangeOf(stat, item))]);
+    }
     if (U.type === "shield") item.parry = randInt(rng, ...PARRY.ranges.unique);
     const [h1, h2] = hashSeed(`4r${rev}|unique|${lv}|${seed}`);
     item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
-    item.ancient = false;
+    if (rev >= 7 && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);   // r7부터 드롭할 때 고대 굴림
+    item.ancient = isAncient(item);
     return item;
   }
   // 네임드 보스 처치 1번: 유니크가 나오면 아이템, 아니면 null
   function rollUnique(seed, level) {
     return rngFrom(`v4|unique?|${seed}`)() < UNIQUE.chance ? generateUnique(seed, level) : null;
+  }
+  // 네임드 보스 처치 1번: 유니크 장신구 (시드 …|a순번), 따로 accChance
+  function rollUniqueAcc(seed, level) {
+    return rngFrom(`v4|uniqueacc?|${seed}`)() < UNIQUE.accChance ? generateUnique(seed, level) : null;
   }
 
   // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, inferno, sturdy). nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
@@ -510,7 +582,8 @@
       set = rarity === "set" ? "trial" : null;
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, WEAPON_TYPES_OLD);
     } else {
-      slot = pick(rng, SLOTS);
+      slot = pick(rng, version === 4 && rev >= 7 ? SLOTS_R7 : SLOTS);
+      if (ACC_SLOTS.includes(slot)) return generateAccessory(rng, seed, source, lv, slot, rarity, rev);
       set = rarity === "set" ? pick(rng, setsFor(slot, version === 4 && rev >= 4 && DEEP_SEED.test(seed))) : null;
       if (slot === "weapon") type = set ? SETS[set].weapon : pick(rng, weaponTypes(version === 4 ? rev : 0));
       else if (slot === "offhand") type = set ? SETS[set].offhand : (rng() < OFFHAND.shieldChance ? "shield" : pick(rng, WEAPON_TYPES_OLD));
@@ -552,6 +625,21 @@
     return item;
   }
 
+  // 장신구 한 개 (generate에서 부위를 고른 뒤 같은 난수로 이어서)
+  function generateAccessory(rng, seed, source, lv, slot, rolled, rev) {
+    const rarity = rolled === "set" ? "legendary" : rolled;
+    const item = { v: 4, seed, src: source, lvl: lv, slot, type: null, rarity, set: null, r: rev };
+    item.main = [["power", rollEven(rng, mainRange("power", item))]];
+    const n = +pickWeighted(rng, ACCESSORY.resLines[accTier(seed)]);
+    item.lines = [];
+    for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollEven(rng, lineRangeOf(k, item))]); }
+    const [h1, h2] = hashSeed(`4r${rev}|${source}|${lv}|${seed}`);
+    item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+    if (rarity === "legendary" && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);
+    item.ancient = isAncient(item);
+    return item;
+  }
+
   // 속성 피해 줄은 하나만: 가장 큰 것(같으면 먼저 붙은 것)만 남기고, 나머지 속성 피해 줄은 아직 안 붙은 다른 능력치로 다시 굴림
   // (따로 시드 el1|… 를 써서 원래 굴림 순서는 그대로 → 패링 등 다른 값은 안 바뀜). 아이템 이름의 속성(itemElement)도 그대로.
   // 고대 굴림 뒤에 고름(고대면 모두 최대치라 먼저 붙은 것 = 예전 이름의 속성), 고대면 새 줄도 최대치.
@@ -580,7 +668,8 @@
 
   // ---- 고대 다시 굴리기 ----
   // unlimited: 운영자(테스트)는 횟수 제한 없이
-  const canRerollAncient = (item, unlimited = false) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") &&
+  // 장신구·유니크는 드롭할 때만 고대 (운영자 "고대로 만들기"만 rerollAncient(item, true)로)
+  const canRerollAncient = (item, unlimited = false) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") && !isAccessory(item) &&
     !item.ancient && (unlimited || (item.ar || 0) < ANCIENT_REROLL.max);
   // 나이트메어 아이템은 × NM_SHOP.priceMul (상점 가격처럼)
   const ancientRerollCost = (item) => Math.max(5, Math.round(levelPrice(SHOP.prices[item.rarity], item.lvl) * ANCIENT_REROLL.costMul / 5) * 5) * nmCostMul(item);
@@ -599,7 +688,7 @@
   }
   // 참조(ar)로 다시 만들 때: 마지막 굴림이 고대였으면 최대치로 (고대가 되면 더 굴리지 않으므로 마지막 굴림만 보면 됨)
   function applyAncientRerolls(item, ar) {
-    if (!(ar > 0) || item.v !== 4 || !item.main || (item.rarity !== "legendary" && item.rarity !== "set")) return item;
+    if (!(ar > 0) || item.v !== 4 || !item.main || !ANCIENT_RARITIES.includes(item.rarity)) return item;
     item.ar = ar;
     if (!item.ancient && ancientRerollHit(item, ar)) { maxOut(item); item.ancient = isAncient(item); }
     return item;
@@ -620,12 +709,15 @@
   const mainStatsOf = (item) => (item.main ? (runewordOf(item) ? runewordMain(item) : item.main) : Object.entries(item.base || {}));
   // 범위를 알 수 없으면(v1의 기본 능력치) null
   function statRange(item, kind, stat) {
-    if (kind === "line") return stat === "socket" || fixedPct(item, PCT_LINE, stat) || STATS[stat]?.line ? lineRangeOf(stat, item) : null;
+    if (kind === "line") return stat === "socket" || isAccessory(item) || fixedPct(item, PCT_LINE, stat) || STATS[stat]?.line ? lineRangeOf(stat, item) : null;
+    if (isAccessory(item)) return mainRange(stat, item);
     return item.main && (MAIN.range[stat] || fixedPct(item, PCT_MAIN, stat)) ? mainRange(stat, runewordOf(item) ? asLegendary(item) : item) : null;
   }
   // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 범위의 최대치 (v2 이후 아이템)
+  // 고대가 될 수 있는 등급 (유니크는 r7부터)
+  const ANCIENT_RARITIES = ["legendary", "set", "unique"];
   function isAncient(item) {
-    if (!item.main || (item.rarity !== "legendary" && item.rarity !== "set")) return false;
+    if (!item.main || !ANCIENT_RARITIES.includes(item.rarity) || (item.rarity === "unique" && (item.r || 0) < 7)) return false;
     if (item.parry != null && item.parry !== PARRY.ranges[item.rarity][1]) return false;
     return item.main.every(([k, v]) => v === mainRange(k, item)[1]) &&
       item.lines.every(([k, v]) => v === lineRangeOf(k, item)[1]);
@@ -638,6 +730,11 @@
   //   시뮬레이션: 나이트메어 25층 고대 레전더리 5부위가 보스 6턴·5마리 0%로 가장 고르게 강함 (+20%면 모든 세트를 압도해서 12%)
   // allRes: 모든 속성 저항도 +allRes% × c² (고대 레전더리 5부위 = +20%. 하나에 +20%면 고대 4개만으로 세 저항이 모두 75%라 저항 줄이 쓸모없어짐)
   const LEGEND = { start: 0.6, max: 12, allRes: 4 };
+  // 세트의 힘 (헬 장비만): 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +pct%, 모든 속성 저항 +allRes% (고대 레전더리의 전설의 힘과 같은 크기)
+  //   세트에는 전설의 힘이 없어서 헬 50층에서 세트 5부위가 레전더리보다 크게 약했음 (속성 세트 몰려오는 20마리 95~100%).
+  //   나이트메어·일반 세트는 그대로 (나이트메어 난이도는 안 바뀜)
+  const SET_POWER = { pct: 12, allRes: 4 };
+  const setPower = (item) => (item?.set && isHellItem(item) ? SET_POWER.pct : 0);
   function completeness(item) {
     if (!item.main) return 0;
     let sum = 0, n = 0;
@@ -649,7 +746,7 @@
   }
   // c² (0~1): 완성도 start 아래는 0, 100%(고대)면 1
   function legendCurve(item) {
-    if (item.v !== 4 || item.rarity !== "legendary" || !item.main) return 0;
+    if (item.v !== 4 || item.rarity !== "legendary" || !item.main || isAccessory(item)) return 0;   // 장신구는 전설의 힘 대신 power 줄
     const c = Math.max(0, Math.min(1, (completeness(item) - LEGEND.start) / (1 - LEGEND.start)));
     return c * c;
   }
@@ -713,8 +810,8 @@
     const out = {};
     for (let [k, v] of mainStatsOf(item)) {
       v = Math.round(v * nmPower(item, k));
-      // 저항(장검의 모든 속성 저항)은 강화로 오르지 않음 (추가 능력치의 저항 줄처럼)
-      if (isResLine(k)) { out[k] = v; continue; }
+      // 저항(장검의 모든 속성 저항)과 장신구 power는 강화로 오르지 않음
+      if (isResLine(k) || k === "power") { out[k] = v; continue; }
       // v4 % 능력치: 2단계마다 +1%p만
       if (item.v >= 4 && STATS[k].pct) { out[k] = v + Math.floor(n / 2); continue; }
       // 최소 보장: 수치 능력치는 단계마다 +1, % 능력치(치명타·흡혈)는 2단계마다 +1
@@ -783,7 +880,7 @@
   //   고대 아이템이면 새 줄도 최대치 (고대가 풀리지 않게). 결과는 (아이템 ID, 몇 번째 재련) 시드 → 서버가 rf(고른 줄 번호 목록)로 다시 계산
   // 홈 초기화: 수수료를 내고 홈에 넣은 보석을 모두 지움 (보석은 사라짐, 홈 개수는 그대로)
   const FORGE = { reforge: { mul: 0.5, growth: 1.15, cap: 5 }, socketReset: { base: 500 } };
-  const canReforge = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set");
+  const canReforge = (item) => item.v === 4 && !!item.main && (item.rarity === "legendary" || item.rarity === "set") && !isAccessory(item);
   const reforgeableLine = (item, i) => !!item.lines?.[i] && item.lines[i][0] !== "socket";
   const reforgeCost = (item) => Math.round(ancientRerollCost(item) * FORGE.reforge.mul * Math.min(FORGE.reforge.cap, FORGE.reforge.growth ** (item.rf || []).length) / 5) * 5;
   // 이 아이템에서 재련할 수 있는 줄: 처음 재련한 줄 (아직 안 했으면 null = 아무 줄이나 고를 수 있음)
@@ -990,7 +1087,7 @@
   const runesOfName = (name) => [...name].map(c => RUNES.findIndex(r => r.name === CHO_RUNE[CHO.indexOf(CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)])]));
   // stats: 지옥의(헬) 아이템일 때 수치 (악몽의 ×0.75, 일반 ×0.5 — RUNEWORD_TIER_MUL). 특수 효과(special)는 단계와 상관없이 같음
   // special: undying 쓰러질 피해를 받으면 HP 1로 버팀(층마다 1번) · teleport 주변에 적이 안 보이면 N칸씩 이동(경로의 아이템도 주움)
-  //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 주변 8칸 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔)
+  //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 radius칸 안 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔. 주변 8칸 → 2칸: 파이어볼·체인 범위와 맞춤)
   //   splash 광란 세트 효과(주변 1칸 50%) · shield 매 every턴 최대 HP pct%의 보호막(다시 채움, 쌓이지 않음)
   //   skillLs 세트 스킬(룬워드 스킬 포함)에도 흡혈 · lsCap 흡혈 최대치 +N%p · autoPotion HP below% 이하면 every턴마다 포션 자동(쿨타임과 따로)
   //   skillFast 세트 스킬을 1턴 더 자주 · fireball 약한 파이어볼 (화염 세트 파이어볼이 있으면 그쪽)
@@ -1012,7 +1109,7 @@
   const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
   // 특수 효과의 고정 수치
   const RUNEWORD_FX = {
-    teleport: { steps: 3 }, vuln: { every: 2, turns: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
+    teleport: { steps: 3 }, vuln: { every: 2, turns: 2, radius: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
     skillLs: { share: 1 }, fireball: { every: 3, mul: 0.4 },
   };
   const BASE_NAMES = { chest: "갑옷", head: "투구", shield: "방패", longsword: "장검", weapon: "무기(단검·도끼·지팡이)", staff: "지팡이" };
@@ -1042,7 +1139,7 @@
     if (sp.undying) out.push("불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번)");
     if (sp.teleport) out.push(`텔레포트: 보이는 적이 없으면 한 번에 ${F.teleport.steps}칸 이동 (지나가는 칸의 아이템도 주움)`);
     if (sp.chain) out.push("체인 라이트닝 사용 (세트 없이)");
-    if (sp.vuln) out.push(`${F.vuln.every}턴마다 주변 8칸 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
+    if (sp.vuln) out.push(`${F.vuln.every}턴마다 ${F.vuln.radius}칸 안 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
     if (sp.splash) out.push(`광란 효과: 때린 적 주변 1칸의 적도 피해의 ${Math.round(SPLASH.mul * 100)}%`);
     if (sp.shield) out.push(`${F.shield.every}턴마다 최대 HP ${sp.shield}%의 보호막 (쌓이지 않음)`);
     if (sp.skillLs) out.push("세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈");
@@ -1083,7 +1180,7 @@
     if (rw) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + rw.name;
     // 유니크: "+10 송곳니"
     const U = uniqueOf(item);
-    if (U) return (item.enh ? `+${item.enh} ` : "") + U.name;
+    if (U) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + U.name;
     const el = ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none;
     const nm = isHellItem(item) ? `지옥의 ${el ? el + " " : ""}` : isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
     const plus = (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + nm;
@@ -1109,13 +1206,16 @@
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0 };
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, setPower: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
     const setCounts = {}, rw = {}, rwNames = [], uq = {}, uqNames = [];
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
       if (!item) continue;
       if (shieldOnly && item.slot === "offhand" && isWeaponLike(item)) continue;   // 장검과 보조무기는 같이 못 씀
-      for (const [k, v] of Object.entries(effectiveBase(item))) sum[k] += v;
+      for (const [k, v] of Object.entries(effectiveBase(item))) {
+        if (k === "power") { sum.atkPct += v; sum.defPct += v; sum.hpPct += v; sum.power += v; continue; }   // 장신구
+        sum[k] += v;
+      }
       for (const [k, v] of effectiveLines(item)) if (k !== "socket") sum[k] += v;
       for (const [k, v] of Object.entries(gemStats(item))) sum[k] += v;
       for (const [k, v] of Object.entries(runewordStats(item))) sum[k] += v;
@@ -1138,6 +1238,9 @@
       const lp = legendPower(item);
       if (lp) { sum.atkPct += lp; sum.defPct += lp; sum.hpPct += lp; sum.legend += lp; }
       sum.allRes += legendRes(item);
+      // 세트의 힘 (지옥의 세트만)
+      const sp = setPower(item);
+      if (sp) { sum.atkPct += sp; sum.defPct += sp; sum.hpPct += sp; sum.setPower += sp; sum.allRes += SET_POWER.allRes; }
     }
     const activeSets = [];
     for (const [id, count] of Object.entries(setCounts)) {
@@ -1152,7 +1255,7 @@
     // 룬워드: 광란 세트 효과·체인 라이트닝(세트 없이도), 흡혈 최대치 +N%p
     if (rw.splash) sum.splash = 1;
     if (rw.chain) sum.chain = Math.max(sum.chain, 1);
-    sum.lsCap = (sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max) + (rw.lsCap || 0);
+    sum.lsCap += (sum.guard ? SHIELD_GUARD.cap : LIFESTEAL.max) + (rw.lsCap || 0);   // 유니크 장신구(명부의 반지)로 더한 것 + 기본·룬워드
     sum.lifesteal = Math.min(sum.lsCap, sum.lifesteal);
     sum.dmgReduce = Math.min(GEM_CAPS.dmgReduce, sum.dmgReduce);
     sum.splash = sum.splash ? 1 : 0;
@@ -1163,16 +1266,16 @@
   }
 
   const api = {
-    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
+    RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_RARITIES, SLOTS_R7, ACC_SLOTS, EQUIP_SLOTS, equipKeysFor, isAccessory, ACCESSORY, accTier, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, SET_POWER, setPower, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
