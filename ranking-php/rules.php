@@ -269,8 +269,8 @@ const R_ACCESSORY = [
         'allRes' => [[1, 3], [2, 4], [3, 6], [5, 8], [8, 11], [8, 11]],
     ],
     'resLines' => ['normal' => ['0' => 0.5, '1' => 0.5], 'nightmare' => ['1' => 0.6, '2' => 0.4], 'hell' => ['1' => 0.5, '2' => 0.35, '3' => 0.15]],
-    'power' => [[3, 5], [5, 8], [8, 12], [12, 17], [18, 25], [18, 25]],
-    'normalMul' => 0.5,
+    'power' => [[2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]],   // 범위 안에서 고르게 굴림 (items.js rollEven)
+    'powerNormal' => [[1, 3], [2, 4], [3, 6], [5, 9], [5, 15], [5, 15]],
 ];
 function r_acc_tier(string $seed): string {
     if (preg_match('/\|(shop\|)?j\d+\|/', $seed)) return 'hell';
@@ -278,8 +278,7 @@ function r_acc_tier(string $seed): string {
 }
 function r_rar_index(string $rarity): int { return (int)array_search($rarity, R_RARITY_ORDER, true); }
 function r_acc_power_range(array $item): array {
-    $r = R_ACCESSORY['power'][r_rar_index($item['rarity'])];
-    return r_acc_tier((string)($item['seed'] ?? '')) === 'normal' ? r_scale_range($r, R_ACCESSORY['normalMul']) : $r;
+    return R_ACCESSORY[r_acc_tier((string)($item['seed'] ?? '')) === 'normal' ? 'powerNormal' : 'power'][r_rar_index($item['rarity'])];
 }
 function r_fixed_pct(array $item, array $table, string $stat): ?array {
     if (($item['v'] ?? 0) < 4) return null;
@@ -644,10 +643,10 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
 function r_generate_accessory(Closure $rng, string $seed, string $source, int $lv, string $slot, string $rolled, int $rev): array {
     $rarity = $rolled === 'set' ? 'legendary' : $rolled;
     $item = ['v' => 4, 'seed' => $seed, 'src' => $source, 'lvl' => $lv, 'slot' => $slot, 'type' => null, 'rarity' => $rarity, 'set' => null, 'r' => $rev];
-    $item['main'] = [['power', r_roll_range($rng, r_main_range('power', $item))]];
+    $item['main'] = [['power', r_rand_int($rng, ...r_main_range('power', $item))]];   // 장신구는 범위 안에서 고르게
     $n = (int)r_pick_weighted($rng, R_ACCESSORY['resLines'][r_acc_tier($seed)]);
     $item['lines'] = [];
-    for ($i = 0; $i < $n; $i++) { $k = r_pick($rng, R_ACCESSORY['resKeys']); $item['lines'][] = [$k, r_roll_range($rng, r_line_range_of($k, $item))]; }
+    for ($i = 0; $i < $n; $i++) { $k = r_pick($rng, R_ACCESSORY['resKeys']); $item['lines'][] = [$k, r_rand_int($rng, ...r_line_range_of($k, $item))]; }
     $item['id'] = r_id(4, $source, $lv, $seed, $rev);
     if ($rarity === 'legendary' && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
     $item['ancient'] = r_is_ancient($item);
@@ -730,9 +729,6 @@ function r_legend_res(array $item): int { return r_round(R_LEGEND['allRes'] * r_
 const R_ANCIENT_RARITIES = ['legendary', 'set', 'unique'];   // 유니크는 r7부터
 function r_is_ancient(array $item): bool {
     if (!isset($item['main']) || !in_array($item['rarity'], R_ANCIENT_RARITIES, true) || ($item['rarity'] === 'unique' && ($item['r'] ?? 0) < 7)) return false;
-    // 장신구·유니크: 고대 굴림(드롭 때 또는 운영자)에 걸린 것만 (줄이 적어 우연히 모두 최대치일 수 있음)
-    if ((r_is_accessory($item) || $item['rarity'] === 'unique') && !(r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE
-        || (($item['ar'] ?? 0) > 0 && r_rng("anc|{$item['id']}|re{$item['ar']}")() < R_ANCIENT_REROLL['chance']))) return false;
     if (isset($item['parry']) && $item['parry'] !== R_PARRY['ranges'][$item['rarity']][1]) return false;
     foreach ($item['main'] as [$k, $v]) if ($v !== r_main_range($k, $item)[1]) return false;
     foreach ($item['lines'] as [$k, $v]) if ($v !== r_line_range_of($k, $item)[1]) return false;

@@ -271,7 +271,7 @@
 
   // ---- 장신구 (r7): 목걸이 1칸, 반지 2칸 ----
   // 커먼 ~ 레전더리 (세트로 굴려지면 레전더리). 레전더리는 드롭할 때만 고대 (고대 다시 굴리기·옵션 재련 없음, 운영자만 "고대로 만들기")
-  // 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄 (power, 일반 던전에서 얻으면 절반)
+  // 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄 (power, 일반 던전에서 얻으면 약 절반)
   // 추가 능력치 = 속성 저항 줄만 (불·얼음·번개·모든 속성 중 하나씩, 같은 종류가 또 붙을 수 있음). 줄 수는 얻은 곳에 따라 확률 (resLines)
   //   범위는 등급별 (레전더리 각 속성 20~30%, 모든 속성 8~11%)
   // 주 능력치·저항 줄 모두 강화로 오르지 않음
@@ -285,8 +285,10 @@
       allRes: byRarity([1, 3], [2, 4], [3, 6], [5, 8], [8, 11], [8, 11]),
     },
     resLines: { normal: { 0: 0.5, 1: 0.5 }, nightmare: { 1: 0.6, 2: 0.4 }, hell: { 1: 0.5, 2: 0.35, 3: 0.15 } },
-    power: byRarity([3, 5], [5, 8], [8, 12], [12, 17], [18, 25], [18, 25]),
-    normalMul: 0.5,
+    // 공격력·방어력·최대 HP %: 나이트메어·헬 / 일반 던전(약 절반). 범위 안에서 고르게 굴림 (다른 장비처럼 최대치 20%가 아님) →
+    //   줄이 적은 장신구가 우연히 모두 최대치(고대)일 확률을 범위 칸 수로 낮춤 (레전더리 15~25 = 1/11, 일반 5~15 = 1/11)
+    power: byRarity([2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]),
+    powerNormal: byRarity([1, 3], [2, 4], [3, 6], [5, 9], [5, 15], [5, 15]),
   };
   // 얻은 곳: 헬·나이트메어 시드면 그 단계, 아니면 일반
   const accTier = (seed) => (/\|(shop\|)?j\d+\|/.test(seed) ? "hell" : DEEP_SEED.test(seed) ? "nightmare" : "normal");
@@ -361,8 +363,10 @@
   // 유니크는 레벨에 비례하는 줄(공격력·방어력·HP)도 × UNIQUE.mul
   const lineRangeOf = (stat, item) => (stat === "socket" ? socketRange(item) : isAccessory(item) ? ACCESSORY.res[stat][item.rarity] : fixedPct(item, PCT_LINE, stat) ||
     (item.rarity === "unique" ? scaleRange(lineRange(stat, item.lvl), UNIQUE.mul) : lineRange(stat, item.lvl)));
-  // 장신구 power 줄 범위 (일반 던전에서 얻은 것은 × normalMul)
-  const accPowerRange = (item) => { const r = ACCESSORY.power[item.rarity]; return accTier(item.seed || "") === "normal" ? scaleRange(r, ACCESSORY.normalMul) : r; };
+  // 장신구 power 범위 (일반 던전에서 얻은 것은 powerNormal)
+  const accPowerRange = (item) => (accTier(item.seed || "") === "normal" ? ACCESSORY.powerNormal : ACCESSORY.power)[item.rarity];
+  // 장신구 굴림: 범위 안에서 고르게
+  const rollEven = (rng, [lo, hi]) => randInt(rng, lo, hi);
   // 최대치 20%, 그 외에는 최소 ~ (최대 − 1)
   function rollRange(rng, [lo, hi]) {
     if (hi <= lo || rng() < MAX_ROLL_CHANCE) return hi;
@@ -593,10 +597,10 @@
   function generateAccessory(rng, seed, source, lv, slot, rolled, rev) {
     const rarity = rolled === "set" ? "legendary" : rolled;
     const item = { v: 4, seed, src: source, lvl: lv, slot, type: null, rarity, set: null, r: rev };
-    item.main = [["power", rollRange(rng, mainRange("power", item))]];
+    item.main = [["power", rollEven(rng, mainRange("power", item))]];
     const n = +pickWeighted(rng, ACCESSORY.resLines[accTier(seed)]);
     item.lines = [];
-    for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollRange(rng, lineRangeOf(k, item))]); }
+    for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollEven(rng, lineRangeOf(k, item))]); }
     const [h1, h2] = hashSeed(`4r${rev}|${source}|${lv}|${seed}`);
     item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
     if (rarity === "legendary" && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);
@@ -680,11 +684,8 @@
   // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 범위의 최대치 (v2 이후 아이템)
   // 고대가 될 수 있는 등급 (유니크는 r7부터)
   const ANCIENT_RARITIES = ["legendary", "set", "unique"];
-  // 장신구·유니크는 줄이 적어 우연히 모두 최대치일 수 있어서, 고대 굴림(드롭 때 또는 운영자의 고대로 만들기)에 걸린 것만 고대
-  const ancientRolled = (item) => rngFrom(`anc|${item.id}`)() < ANCIENT.chance || (item.ar > 0 && ancientRerollHit(item, item.ar));
   function isAncient(item) {
     if (!item.main || !ANCIENT_RARITIES.includes(item.rarity) || (item.rarity === "unique" && (item.r || 0) < 7)) return false;
-    if ((isAccessory(item) || item.rarity === "unique") && !ancientRolled(item)) return false;
     if (item.parry != null && item.parry !== PARRY.ranges[item.rarity][1]) return false;
     return item.main.every(([k, v]) => v === mainRange(k, item)[1]) &&
       item.lines.every(([k, v]) => v === lineRangeOf(k, item)[1]);

@@ -4418,7 +4418,7 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isAccessory(item) ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 절반" : ""}`)]
+      ...(RLItems.isAccessory(item) ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 약 절반" : ""}`)]
         : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
         : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),

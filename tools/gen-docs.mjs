@@ -576,14 +576,15 @@ ${table(["완성도", "공격력·방어력·최대 HP", "모든 속성 저항"]
 
 - 장착 칸 **목걸이 1, 반지 2** (반지 두 칸이 다 차 있으면 어느 반지와 바꿀지 골라요). 몬스터·보스·보물·상점에서 다른 장비처럼 나와요 (부위 후보 7 → 9)
 - 등급은 **커먼 ~ 레전더리** (세트로 굴려지면 레전더리). 레전더리의 ${pct(I.ANCIENT.chance)}는 **드롭할 때 고대** — 장신구는 고대 다시 굴리기·옵션 재련이 없어요 (운영자만 "고대로 만들기")
-- **★ 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄** (일반 던전에서 얻으면 × ${I.ACCESSORY.normalMul})
+- **★ 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄** (일반 던전에서 얻으면 약 절반)
+- 장신구는 **범위 안에서 고르게 굴려요** (다른 장비는 최대치가 20% 확률). 줄이 1~3개뿐이라 우연히 모두 최대치(고대)가 되기 쉬워서, 범위를 넓히고 고르게 굴려 그 확률을 낮췄어요 → 레전더리 장신구 중 고대: 일반 던전 약 8% · 나이트메어 약 3.4% · 헬 약 3.9% (드롭 고대 굴림 3% 포함)
 - **◆ 추가 능력치 = 속성 저항 줄만**: 불·얼음·번개·모든 속성 중 하나씩, 같은 종류가 또 붙을 수 있어요 (예: 모든 속성 저항 두 줄 = 최대 22%, 불 저항 + 모든 속성 저항 = 불 41%·나머지 11%)
 - **저항 줄 수는 얻은 곳에 따라 확률**: ${Object.entries(I.ACCESSORY.resLines).map(([t, d]) => `${{ normal: "일반 던전", nightmare: "나이트메어", hell: "헬" }[t]} ${Object.entries(d).map(([n, p]) => `${n}줄 ${pct(p)}`).join("·")}`).join(" / ")}
 - 주 능력치·저항 줄 모두 강화로 오르지 않아요 (강화하면 이름의 +N만)
 - 장신구에는 전설의 힘이 붙지 않아요 (공방HP가 그 자리)
 
 ${table(["등급", "★ 공격력·방어력·최대 HP (일반 던전)", "◆ 불·얼음·번개 저항", "◆ 모든 속성 저항"],
-  ["common", "uncommon", "rare", "epic", "legendary"].map(r => [I.RARITIES[r].name, `${fmtR("atkPct", I.ACCESSORY.power[r])} (${I.ACCESSORY.power[r].map(v => Math.max(1, Math.round(v * I.ACCESSORY.normalMul))).join("~")}%)`, fmtR("fireRes", I.ACCESSORY.res.fireRes[r]), fmtR("allRes", I.ACCESSORY.res.allRes[r])]))}
+  ["common", "uncommon", "rare", "epic", "legendary"].map(r => [I.RARITIES[r].name, `${fmtR("atkPct", I.ACCESSORY.power[r])} (${fmtR("atkPct", I.ACCESSORY.powerNormal[r])})`, fmtR("fireRes", I.ACCESSORY.res.fireRes[r]), fmtR("allRes", I.ACCESSORY.res.allRes[r])]))}
 
 - 다음 단계: 유니크 장신구, 그리고 전설의 힘·세트의 힘·유니크의 힘을 빼고 장신구로 대신하기 (시뮬레이션: 줄 품질 95%면 장신구 3개 공방HP 18~25%가 두 힘과 거의 같음)
 
