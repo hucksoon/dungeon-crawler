@@ -25,7 +25,7 @@ function profile_valid($d): bool {
     if (!is_array($d)) return false;
     $inv = $d['inv'] ?? null;
     if (!is_array($inv) || !is_array($inv['bag'] ?? null) || count($inv['bag']) > 60) return false;
-    if (!is_array($inv['equip'] ?? null) || count($inv['equip']) > 7) return false;
+    if (!is_array($inv['equip'] ?? null) || count($inv['equip']) > 10) return false;   // 7부위 + 목걸이·반지 2 (r7)
     if (isset($inv['stones']) && (!is_int($inv['stones']) || $inv['stones'] < 0)) return false;
     if (isset($inv['nmStones']) && (!is_int($inv['nmStones']) || $inv['nmStones'] < 0)) return false;  // 악몽 강화석
     if (isset($inv['hellStones']) && (!is_int($inv['hellStones']) || $inv['hellStones'] < 0)) return false;  // 지옥 강화석

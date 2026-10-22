@@ -14,6 +14,10 @@ declare(strict_types=1);
 const R_MASK = 0xFFFFFFFF;
 const R_SLOTS_V2 = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon'];   // v1·v2 아이템을 다시 만들 때
 const R_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offhand'];
+// r7부터 장신구 (items.js SLOTS_R7·ACCESSORY): 목걸이·반지. 장착 칸은 목걸이 1, 반지 2
+const R_SLOTS_R7 = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offhand', 'neck', 'ring'];
+const R_ACC_SLOTS = ['neck', 'ring'];
+function r_is_accessory(array $item): bool { return in_array($item['slot'] ?? '', R_ACC_SLOTS, true); }
 const R_OFFHAND = ['shieldChance' => 0.5, 'shieldName' => '방패', 'weaponPrefix' => '보조'];
 const R_PARRY = [
     'ranges' => ['common' => [9, 11], 'uncommon' => [9, 11], 'rare' => [9, 11], 'epic' => [16, 18], 'legendary' => [23, 25], 'set' => [23, 25], 'unique' => [28, 30]],
@@ -118,6 +122,7 @@ const R_STAT_NAMES = [
     'dmgReduce' => ['받는 피해 감소', true],
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
     'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
+    'power' => ['공격력·방어력·최대 HP', true],   // 장신구 주 능력치
     'killHealPct' => ['처치 시 최대 HP 회복', true], 'skillPct' => ['스킬 피해', true],   // 룬 "차"·"타"
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
@@ -253,6 +258,29 @@ function r_pct_of(array $table, string $stat, string $rarity): ?array {
 // v4 아이템의 % 능력치 고정 범위
 // 속성 저항 줄 (r4부터, items.js RES_R4): 범위가 줄고 강화로는 오르지 않음. r3까지 얻은 아이템은 효과에서 새 최대치까지만
 const R_RES_R4 = ['fireRes' => [7, 20], 'iceRes' => [7, 20], 'boltRes' => [7, 20], 'allRes' => [4, 7]];
+// 장신구 (items.js ACCESSORY): 등급별 범위는 R_RARITY_ORDER 순서 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
+const R_ACCESSORY = [
+    'names' => ['neck' => '목걸이', 'ring' => '반지'],
+    'resKeys' => ['fireRes', 'iceRes', 'boltRes', 'allRes'],
+    'res' => [
+        'fireRes' => [[3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]],
+        'iceRes' => [[3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]],
+        'boltRes' => [[3, 8], [5, 12], [8, 16], [12, 22], [20, 30], [20, 30]],
+        'allRes' => [[1, 3], [2, 4], [3, 6], [5, 8], [8, 11], [8, 11]],
+    ],
+    'resLines' => ['normal' => ['0' => 0.5, '1' => 0.5], 'nightmare' => ['1' => 0.6, '2' => 0.4], 'hell' => ['1' => 0.5, '2' => 0.35, '3' => 0.15]],
+    'power' => [[3, 5], [5, 8], [8, 12], [12, 17], [18, 25], [18, 25]],
+    'normalMul' => 0.5,
+];
+function r_acc_tier(string $seed): string {
+    if (preg_match('/\|(shop\|)?j\d+\|/', $seed)) return 'hell';
+    return preg_match(R_DEEP_SEED, $seed) ? 'nightmare' : 'normal';
+}
+function r_rar_index(string $rarity): int { return (int)array_search($rarity, R_RARITY_ORDER, true); }
+function r_acc_power_range(array $item): array {
+    $r = R_ACCESSORY['power'][r_rar_index($item['rarity'])];
+    return r_acc_tier((string)($item['seed'] ?? '')) === 'normal' ? r_scale_range($r, R_ACCESSORY['normalMul']) : $r;
+}
 function r_fixed_pct(array $item, array $table, string $stat): ?array {
     if (($item['v'] ?? 0) < 4) return null;
     if ($table === R_PCT_LINE && isset(R_RES_R4[$stat]) && ($item['r'] ?? 0) >= 4) return R_RES_R4[$stat];
@@ -310,7 +338,7 @@ function r_pick_weighted(Closure $rng, array $weights): string {
     $total = array_sum($entries);
     $r = $rng() * $total;
     $last = '';
-    foreach ($entries as $k => $w) { $last = $k; if (($r -= $w) < 0) return $k; }
+    foreach ($entries as $k => $w) { $last = (string)$k; if (($r -= $w) < 0) return (string)$k; }   // 숫자 키(장신구 줄 수)도 문자열로
     return $last;
 }
 // JS Math.round (양수)
@@ -342,6 +370,7 @@ function r_main_base_range(string $stat, int $lv): array {
 }
 
 function r_main_range(string $stat, array $item): array {
+    if (r_is_accessory($item)) return r_acc_power_range($item);   // 장신구 주 능력치는 power 하나
     // 장검(v4): 공격력 말고 다른 주 능력치도 다른 부위 범위의 mainMul배
     $lsMul = ($item['v'] ?? 0) >= 4 && $stat !== 'atk' && r_is_shield_only($item) ? R_WEAPONS[$item['type']]['mainMul'] : 1;
     $fixed = r_fixed_pct($item, R_PCT_MAIN, $stat);
@@ -363,6 +392,7 @@ function r_main_range(string $stat, array $item): array {
 // 그 아이템의 추가 능력치 범위 (v4 % 능력치는 등급별 고정)
 function r_line_range_of(string $stat, array $item): array {
     if ($stat === 'socket') return r_socket_range($item);
+    if (r_is_accessory($item)) return R_ACCESSORY['res'][$stat][r_rar_index($item['rarity'])];   // 장신구 추가 능력치 = 저항 줄
     $fixed = r_fixed_pct($item, R_PCT_LINE, $stat);
     if ($fixed) return $fixed;
     $r = r_line_range($stat, $item['lvl']);
@@ -536,16 +566,17 @@ function r_generate_unique(string $seed, int $level, int $rev): array {
     foreach ($U['lines'] as $stat) $item['lines'][] = [$stat, r_roll_range($rng, r_line_range_of($stat, $item))];
     if ($U['type'] === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges']['unique']);
     $item['id'] = r_id(4, 'unique', $lv, $seed, $rev);
-    $item['ancient'] = false;
+    if ($rev >= 7 && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);   // r7부터 드롭할 때 고대 굴림
+    $item['ancient'] = r_is_ancient($item);
     return $item;
 }
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
     if ($source === 'unique') {
-        if ($version !== 4 || $rev !== 6) throw new InvalidArgumentException('bad unique rev');
+        if ($version !== 4 || ($rev !== 6 && $rev !== 7)) throw new InvalidArgumentException('bad unique rev');
         return r_generate_unique($seed, $level, $rev);
     }
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 6 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 7 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -557,7 +588,8 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
         $set = $rarity === 'set' ? 'trial' : null;
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, R_WEAPON_TYPES_OLD);
     } else {
-        $slot = r_pick($rng, R_SLOTS);
+        $slot = r_pick($rng, $version === 4 && $rev >= 7 ? R_SLOTS_R7 : R_SLOTS);
+        if (in_array($slot, R_ACC_SLOTS, true)) return r_generate_accessory($rng, $seed, $source, $lv, $slot, $rarity, $rev);
         $set = $rarity === 'set' ? r_pick($rng, r_sets_for($slot, $version === 4 && $rev >= 4 && preg_match(R_DEEP_SEED, $seed) === 1)) : null;
         if ($slot === 'weapon') $type = $set ? R_SETS[$set]['weapon'] : r_pick($rng, r_weapon_types($version === 4 ? $rev : 0));
         elseif ($slot === 'offhand') $type = $set ? R_SETS[$set]['offhand'] : ($rng() < R_OFFHAND['shieldChance'] ? 'shield' : r_pick($rng, R_WEAPON_TYPES_OLD));
@@ -608,6 +640,20 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     return $item;
 }
 
+// 장신구 한 개 (items.js generateAccessory: 부위를 고른 뒤 같은 난수로 이어서)
+function r_generate_accessory(Closure $rng, string $seed, string $source, int $lv, string $slot, string $rolled, int $rev): array {
+    $rarity = $rolled === 'set' ? 'legendary' : $rolled;
+    $item = ['v' => 4, 'seed' => $seed, 'src' => $source, 'lvl' => $lv, 'slot' => $slot, 'type' => null, 'rarity' => $rarity, 'set' => null, 'r' => $rev];
+    $item['main'] = [['power', r_roll_range($rng, r_main_range('power', $item))]];
+    $n = (int)r_pick_weighted($rng, R_ACCESSORY['resLines'][r_acc_tier($seed)]);
+    $item['lines'] = [];
+    for ($i = 0; $i < $n; $i++) { $k = r_pick($rng, R_ACCESSORY['resKeys']); $item['lines'][] = [$k, r_roll_range($rng, r_line_range_of($k, $item))]; }
+    $item['id'] = r_id(4, $source, $lv, $seed, $rev);
+    if ($rarity === 'legendary' && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
+    $item['ancient'] = r_is_ancient($item);
+    return $item;
+}
+
 // 모든 능력치(주·추가·패링)를 범위의 최대치로
 function r_max_out(array $item): array {
     foreach ($item['main'] as $i => [$k, $v]) $item['main'][$i][1] = r_main_range($k, $item)[1];
@@ -619,7 +665,7 @@ function r_max_out(array $item): array {
 // 대장간 옵션 재련 (items.js reforgeLine): rf = 고른 추가 능력치 줄 번호 목록. n번째 재련은 시드 rf|ID|n
 // 후보는 그 아이템의 추가 능력치 후보 중 다른 줄에 없는 것 (속성 피해는 하나만), 고대면 최대치. 레전더리·세트(v4)만, 홈 줄은 안 됨
 function r_reforge_line(array $item, int $i): ?array {
-    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return null;
+    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set') || r_is_accessory($item)) return null;
     if (!isset($item['lines'][$i]) || $item['lines'][$i][0] === 'socket') return null;
     $n = count($item['rf'] ?? []) + 1;
     $rng = r_rng("rf|{$item['id']}|{$n}");
@@ -651,7 +697,7 @@ function r_apply_reforges(array $item, array $rf): ?array {
 // 고대 다시 굴리기: ar번째 굴림이 고대였으면 최대치로 (고대가 되면 더 굴리지 않으므로 마지막 굴림만 봄)
 function r_apply_ancient_rerolls(array $item, int $ar): array {
     if ($ar < 1) return $item;
-    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return $item;
+    if (($item['v'] ?? 0) !== 4 || !isset($item['main']) || !in_array($item['rarity'], R_ANCIENT_RARITIES, true)) return $item;
     $item['ar'] = $ar;
     if (!$item['ancient'] && r_rng("anc|{$item['id']}|re{$ar}")() < R_ANCIENT_REROLL['chance']) {
         $item = r_max_out($item);
@@ -674,15 +720,19 @@ function r_completeness(array $item): float {
     return $n ? $sum / $n : 0;
 }
 function r_legend_curve(array $item): float {
-    if (($item['v'] ?? 0) !== 4 || $item['rarity'] !== 'legendary' || !isset($item['main'])) return 0;
+    if (($item['v'] ?? 0) !== 4 || $item['rarity'] !== 'legendary' || !isset($item['main']) || r_is_accessory($item)) return 0;   // 장신구는 전설의 힘 대신 power 줄
     $c = max(0, min(1, (r_completeness($item) - R_LEGEND['start']) / (1 - R_LEGEND['start'])));
     return $c * $c;
 }
 function r_legend_power(array $item): int { return r_round(R_LEGEND['max'] * r_legend_curve($item)); }
 function r_legend_res(array $item): int { return r_round(R_LEGEND['allRes'] * r_legend_curve($item)); }
 
+const R_ANCIENT_RARITIES = ['legendary', 'set', 'unique'];   // 유니크는 r7부터
 function r_is_ancient(array $item): bool {
-    if (!isset($item['main']) || ($item['rarity'] !== 'legendary' && $item['rarity'] !== 'set')) return false;
+    if (!isset($item['main']) || !in_array($item['rarity'], R_ANCIENT_RARITIES, true) || ($item['rarity'] === 'unique' && ($item['r'] ?? 0) < 7)) return false;
+    // 장신구·유니크: 고대 굴림(드롭 때 또는 운영자)에 걸린 것만 (줄이 적어 우연히 모두 최대치일 수 있음)
+    if ((r_is_accessory($item) || $item['rarity'] === 'unique') && !(r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE
+        || (($item['ar'] ?? 0) > 0 && r_rng("anc|{$item['id']}|re{$item['ar']}")() < R_ANCIENT_REROLL['chance']))) return false;
     if (isset($item['parry']) && $item['parry'] !== R_PARRY['ranges'][$item['rarity']][1]) return false;
     foreach ($item['main'] as [$k, $v]) if ($v !== r_main_range($k, $item)[1]) return false;
     foreach ($item['lines'] as [$k, $v]) if ($v !== r_line_range_of($k, $item)[1]) return false;
@@ -731,7 +781,7 @@ function r_enhanced_base(array $item): array {
     foreach (r_main_stats($item) as [$k, $v]) {
         $v = $v * r_nm_power($item, $k);
         // 저항(장검의 모든 속성 저항)은 강화로 오르지 않음
-        if (isset(R_RES_R4[$k])) { $out[$k] = $v; continue; }
+        if (isset(R_RES_R4[$k]) || $k === 'power') { $out[$k] = $v; continue; }   // 장신구 power도 강화로 안 오름
         if (($item['v'] ?? 0) >= 4 && R_STAT_NAMES[$k][1]) { $out[$k] = $v + intdiv($n, 2); continue; }
         $floor = R_STAT_NAMES[$k][1] ? intdiv($n, 2) : $n;
         $out[$k] = $v + ($n ? max($floor, r_round($v * R_ENHANCE['statPerLevel'] * $n)) : 0);
@@ -795,14 +845,17 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0, 'power' => 0];
     $setCounts = [];
     $rw = [];
     $shieldOnly = false;
     foreach ($equipped as $item) if (r_is_shield_only($item)) $shieldOnly = true;
     foreach ($equipped as $item) {
         if ($shieldOnly && $item['slot'] === 'offhand' && r_weapon_like($item)) continue;   // 장검과 보조무기는 같이 못 씀
-        foreach (r_effective_base($item) as $k => $v) $sum[$k] += $v;
+        foreach (r_effective_base($item) as $k => $v) {
+            if ($k === 'power') { $sum['atkPct'] += $v; $sum['defPct'] += $v; $sum['hpPct'] += $v; $sum['power'] += $v; continue; }   // 장신구
+            $sum[$k] += $v;
+        }
         foreach (r_effective_lines($item) as [$k, $v]) if ($k !== 'socket') $sum[$k] += $v;
         foreach (r_gem_stats($item) as $k => $v) $sum[$k] += $v;
         foreach (r_runeword_stats($item) as $k => $v) $sum[$k] += $v;
@@ -859,7 +912,7 @@ function r_item_name(array $item): string {
     $rw = r_runeword_of($item);
     if ($rw) return (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $rw['name'];
     $U = r_unique_of($item);   // 유니크: "+10 송곳니"
-    if ($U) return (!empty($item['enh']) ? "+{$item['enh']} " : '') . $U['name'];
+    if ($U) return (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $U['name'];
     $el = r_is_deep_item($item) ? r_item_element($item) : null;
     $nm = r_is_deep_item($item) ? (r_is_hell_item($item) ? '지옥의 ' : '악몽의 ') . ($el ? R_ELEMENT_NAMES[$el] . ' ' : '') : '';   // 속성 피해 줄이 없으면 속성 이름 없이
     $plus = (!empty($item['ancient']) ? '고대 ' : '') . (!empty($item['enh']) ? "+{$item['enh']} " : '') . $nm;
@@ -869,6 +922,7 @@ function r_item_name(array $item): string {
 
 // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
 function r_kind_name(array $item): string {
+    if (r_is_accessory($item)) return R_ACCESSORY['names'][$item['slot']];
     if ($item['slot'] === 'offhand') return $item['type'] === 'shield' ? R_OFFHAND['shieldName'] : R_OFFHAND['weaponPrefix'] . ' ' . R_WEAPONS[$item['type']]['name'];
     return $item['type'] ? R_WEAPONS[$item['type']]['name'] : R_ARMOR[$item['slot']]['name'];
 }

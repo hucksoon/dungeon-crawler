@@ -413,7 +413,9 @@ function jwk_to_pem(array $jwk): string {
 
 // ---------------------------------------------------------------- 기록 올리기
 
-const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기', 'offhand' => '보조'];
+const SLOT_NAMES = ['head' => '머리', 'chest' => '가슴', 'arms' => '팔', 'pants' => '바지', 'boots' => '장화', 'weapon' => '무기', 'offhand' => '보조', 'neck' => '목걸이', 'ring' => '반지'];
+// 장착 칸: 반지는 두 칸 (r7 장신구)
+const EQUIP_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offhand', 'neck', 'ring', 'ring2'];
 
 // 게임이 실제로 만드는 시드인지, 층·출처가 맞는지 (items.js / index.html / shop.html 의 시드 형식)
 // $dev: 운영자는 상점 진열 바꾸기 횟수 제한이 없어서 |r4| 이상도 인정 (검사할 때만 |r1|로 보고, 아이템은 원래 시드로 만듦)
@@ -439,7 +441,7 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kpu])\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[1];
         if ($v !== 4 || $rev < 6 || $n < 1 || $n > HELL_FLOORS || $lvl !== HELL_ITEM_BASE + $n) return false;
-        if ($m[2] === 'u') return $src === 'unique' && $rev === 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'];
+        if ($m[2] === 'u') return $src === 'unique' && $rev >= 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'];
         if ($src === 'unique') return false;
         if ($m[2] === 'p') return $src === 'golden';   // 보물 자리
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];
@@ -483,7 +485,7 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
-    if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6], true) || ($rev > 0 && $v !== 4)) return null;
+    if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6, 7], true) || ($rev > 0 && $v !== 4)) return null;   // r7: 장신구
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || (!isset(R_TABLES[$src]) && $src !== 'unique')) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
     if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
@@ -493,6 +495,8 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     if (isset($q['id']) && $q['id'] !== $item['id']) return null;
     $ar = $q['ar'] ?? 0;  // 고대 다시 굴리기 횟수 (최대 20)
     if (!is_int($ar) || $ar < 0 || $ar > ($dev ? 100000 : R_ANCIENT_REROLL['max'])) return null;
+    // 장신구·유니크는 드롭할 때만 고대 (고대 다시 굴리기는 운영자의 "고대로 만들기"만)
+    if ($ar > 0 && !$dev && (r_is_accessory($item) || $item['rarity'] === 'unique')) return null;
     $item = r_apply_ancient_rerolls($item, $ar);
     // 대장간 옵션 재련 (rf: 고른 줄 번호 목록, 고대 굴림 다음에)
     $rf = $q['rf'] ?? [];
@@ -589,13 +593,14 @@ function read_score(array $body, int $oldBest, string $key): array {
     // 장착 장비: 부위마다 1개, 검증을 통과한 것만
     $gear = [];
     $rejected = 0;
-    foreach (array_slice(is_array($body['gear'] ?? null) ? $body['gear'] : [], 0, count(R_SLOTS)) as $q) {
+    foreach (array_slice(is_array($body['gear'] ?? null) ? $body['gear'] : [], 0, count(EQUIP_SLOTS)) as $q) {
         $it = verify_item($q, $maxLvl);
-        if (!$it || isset($gear[$it['slot']]) || owned_by_other($it['id'], $key)) { $rejected++; continue; }
-        $gear[$it['slot']] = $it;
+        $at = $it ? ($it['slot'] === 'ring' && isset($gear['ring']) ? 'ring2' : $it['slot']) : null;   // 반지는 두 개까지
+        if (!$it || isset($gear[$at]) || owned_by_other($it['id'], $key)) { $rejected++; continue; }
+        $gear[$at] = $it;
     }
     $ordered = [];
-    foreach (R_SLOTS as $slot) if (isset($gear[$slot])) $ordered[] = $gear[$slot];
+    foreach (EQUIP_SLOTS as $slot) if (isset($gear[$slot])) $ordered[] = $gear[$slot];
     // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (v4 베타는 v4 장비로만)
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
