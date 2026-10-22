@@ -663,6 +663,7 @@ function r_apply_ancient_rerolls(array $item, int $ar): array {
 // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 최대치
 // 전설의 힘 (items.js LEGEND): v4 레전더리의 완성도에 따라 공격력·방어력·최대 HP +%
 const R_LEGEND = ['start' => 0.6, 'max' => 12, 'allRes' => 4];
+const R_SET_POWER = ['pct' => 12, 'allRes' => 4];   // 세트의 힘: 지옥의 세트 조각만 (items.js SET_POWER)
 function r_completeness(array $item): float {
     if (!isset($item['main'])) return 0;
     $sum = 0; $n = 0;
@@ -794,7 +795,7 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0];
     $setCounts = [];
     $rw = [];
     $shieldOnly = false;
@@ -820,6 +821,10 @@ function r_totals(array $equipped): array {
         $lp = r_legend_power($item);
         if ($lp) { $sum['atkPct'] += $lp; $sum['defPct'] += $lp; $sum['hpPct'] += $lp; $sum['legend'] += $lp; }
         $sum['allRes'] += r_legend_res($item);
+        if (!empty($item['set']) && r_is_hell_item($item)) {   // 세트의 힘 (지옥의 세트만)
+            $p = R_SET_POWER['pct'];
+            $sum['atkPct'] += $p; $sum['defPct'] += $p; $sum['hpPct'] += $p; $sum['setPower'] += $p; $sum['allRes'] += R_SET_POWER['allRes'];
+        }
     }
     $sets = [];
     foreach ($setCounts as $id => $count) {

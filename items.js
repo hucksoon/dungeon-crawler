@@ -638,6 +638,11 @@
   //   시뮬레이션: 나이트메어 25층 고대 레전더리 5부위가 보스 6턴·5마리 0%로 가장 고르게 강함 (+20%면 모든 세트를 압도해서 12%)
   // allRes: 모든 속성 저항도 +allRes% × c² (고대 레전더리 5부위 = +20%. 하나에 +20%면 고대 4개만으로 세 저항이 모두 75%라 저항 줄이 쓸모없어짐)
   const LEGEND = { start: 0.6, max: 12, allRes: 4 };
+  // 세트의 힘 (헬 장비만): 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +pct%, 모든 속성 저항 +allRes% (고대 레전더리의 전설의 힘과 같은 크기)
+  //   세트에는 전설의 힘이 없어서 헬 50층에서 세트 5부위가 레전더리보다 크게 약했음 (속성 세트 몰려오는 20마리 95~100%).
+  //   나이트메어·일반 세트는 그대로 (나이트메어 난이도는 안 바뀜)
+  const SET_POWER = { pct: 12, allRes: 4 };
+  const setPower = (item) => (item?.set && isHellItem(item) ? SET_POWER.pct : 0);
   function completeness(item) {
     if (!item.main) return 0;
     let sum = 0, n = 0;
@@ -990,7 +995,7 @@
   const runesOfName = (name) => [...name].map(c => RUNES.findIndex(r => r.name === CHO_RUNE[CHO.indexOf(CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)])]));
   // stats: 지옥의(헬) 아이템일 때 수치 (악몽의 ×0.75, 일반 ×0.5 — RUNEWORD_TIER_MUL). 특수 효과(special)는 단계와 상관없이 같음
   // special: undying 쓰러질 피해를 받으면 HP 1로 버팀(층마다 1번) · teleport 주변에 적이 안 보이면 N칸씩 이동(경로의 아이템도 주움)
-  //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 주변 8칸 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔)
+  //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 radius칸 안 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔. 주변 8칸 → 2칸: 파이어볼·체인 범위와 맞춤)
   //   splash 광란 세트 효과(주변 1칸 50%) · shield 매 every턴 최대 HP pct%의 보호막(다시 채움, 쌓이지 않음)
   //   skillLs 세트 스킬(룬워드 스킬 포함)에도 흡혈 · lsCap 흡혈 최대치 +N%p · autoPotion HP below% 이하면 every턴마다 포션 자동(쿨타임과 따로)
   //   skillFast 세트 스킬을 1턴 더 자주 · fireball 약한 파이어볼 (화염 세트 파이어볼이 있으면 그쪽)
@@ -1012,7 +1017,7 @@
   const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
   // 특수 효과의 고정 수치
   const RUNEWORD_FX = {
-    teleport: { steps: 3 }, vuln: { every: 2, turns: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
+    teleport: { steps: 3 }, vuln: { every: 2, turns: 2, radius: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
     skillLs: { share: 1 }, fireball: { every: 3, mul: 0.4 },
   };
   const BASE_NAMES = { chest: "갑옷", head: "투구", shield: "방패", longsword: "장검", weapon: "무기(단검·도끼·지팡이)", staff: "지팡이" };
@@ -1042,7 +1047,7 @@
     if (sp.undying) out.push("불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번)");
     if (sp.teleport) out.push(`텔레포트: 보이는 적이 없으면 한 번에 ${F.teleport.steps}칸 이동 (지나가는 칸의 아이템도 주움)`);
     if (sp.chain) out.push("체인 라이트닝 사용 (세트 없이)");
-    if (sp.vuln) out.push(`${F.vuln.every}턴마다 주변 8칸 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
+    if (sp.vuln) out.push(`${F.vuln.every}턴마다 ${F.vuln.radius}칸 안 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
     if (sp.splash) out.push(`광란 효과: 때린 적 주변 1칸의 적도 피해의 ${Math.round(SPLASH.mul * 100)}%`);
     if (sp.shield) out.push(`${F.shield.every}턴마다 최대 HP ${sp.shield}%의 보호막 (쌓이지 않음)`);
     if (sp.skillLs) out.push("세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈");
@@ -1109,7 +1114,7 @@
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0 };
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, setPower: 0 };
     const setCounts = {}, rw = {}, rwNames = [], uq = {}, uqNames = [];
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
@@ -1138,6 +1143,9 @@
       const lp = legendPower(item);
       if (lp) { sum.atkPct += lp; sum.defPct += lp; sum.hpPct += lp; sum.legend += lp; }
       sum.allRes += legendRes(item);
+      // 세트의 힘 (지옥의 세트만)
+      const sp = setPower(item);
+      if (sp) { sum.atkPct += sp; sum.defPct += sp; sum.hpPct += sp; sum.setPower += sp; sum.allRes += SET_POWER.allRes; }
     }
     const activeSets = [];
     for (const [id, count] of Object.entries(setCounts)) {
@@ -1172,7 +1180,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, SET_POWER, setPower, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;
