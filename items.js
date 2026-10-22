@@ -880,25 +880,50 @@
     return item;
   }
 
-  // ---- 추천 능력치 (끝판 목표) ----
-  // 모든 장비를 고대로 맞췄을 때 속성 저항 최대(75)·흡혈 최대(20)·치명타 최대(75)를 채우고 나이트메어 50층 보스를 잡는 조합.
-  // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님) + 고대 레전더리 장신구 3개, 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 1%
-  //   (장신구가 없으면 보스 0% (9턴)·몰려오는 몬스터 100%)
-  //   (+0이면 보스 11%·몰려오는 몬스터 100%. 장검 + 방패도 SHIELD_GUARD(흡혈 +10%, 최대 30%)로 몰려오는 몬스터 0%, 보스는 19턴으로 느림)
-  // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 장신구 3개의 저항 줄 약 28 → 75
-  // 흡혈: 무기·보조무기 주 능력치 6 × 2 + 추가 능력치 4 × 2 = 20. 치명타: 갑옷·팔 주 능력치 + 줄 6 × 7 → 75
+  // ---- 추천 능력치 (끝판 목표): 일반 · 나이트메어 · 헬 ----
+  // 단계마다 그 단계 끝(일반 75층·나이트메어 50층·헬 50층)을 깨는 조합. 아이템 상세의 "추천 n/5"는 그 아이템을 얻은 단계의 추천으로 셈 (recommendTier)
+  // 시뮬레이션 (sim/rec-tiers: 그 단계 끝 레벨 레전더리 +10, 몰려오는 20마리(8마리씩) / 보스 1:1, 장신구는 실제 아이템):
+  //   일반 75층 (줄 품질 80% +8): 저항 줄 자리에 HP·방어력 → 몰려옴 5%·보스 0% (저항 줄 자리를 비우면 76%, HP·공격력 68%, 방어력·공격력 88%, 장신구 없으면 100%). 고대 +10이면 0%
+  //     일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서 저항 목표 없음
+  //   나이트메어 50층 (고대 +10, 고대 장신구 3개): 갑옷 부위에 속성 저항 하나씩 + 팔 모든 저항, 무기는 HP, 장신구 저항 2줄씩 → 몰려옴 16%·보스 0% (7턴)
+  //     예전 추천(장비 저항 줄 7개)은 22%: 장신구가 저항을 채워 주니 장비 저항 줄을 HP로 바꾸는 게 나음. 장신구 저항 줄이 없으면 45%
+  //     저항: 속성 줄 20 + 모든 저항 줄 7 + 장신구 6줄(속성 하나 30 + 모든 속성 11 × 3 정도) → 75
+  //   헬 50층 (줄 품질 95% +10, 몰려옴 / 염라대왕, 내 저항 −10): 유니크 7 + 업경 목걸이 + 여우불 반지 2 → 0% / 0% (14턴 / 11턴, 가장 빠름)
+  //     명부의 반지 2면 흡혈 24%로 0% / 0%, 레전더리 + 같은 장신구 7% / 8%, 레전더리 + 레전더리 장신구 13% / 24%. 업경 목걸이로 저항 65 → 70
+  const W_MAIN = ["atk", "critDmg", "lifesteal"], CRIT3 = ["crit", "critDmg", "atkPct"];
+  const REC_ARMOR_MAIN = { head: ["def", "hp"], chest: ["def", "crit", "hp"], arms: ["def", "crit", "atkPct"], pants: ["def", "hp", "defPct"], boots: ["def", "hp"] };
+  const W_KIND = { weapon: "단검·지팡이·도끼 (장검 말고)", offhand: "보조 단검·지팡이·도끼 (방패 말고)" };
+  const recSlots = (weaponExtra, armorLines) => ({
+    weapon: { kind: W_KIND.weapon, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
+    offhand: { kind: W_KIND.offhand, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
+    ...Object.fromEntries(Object.entries(REC_ARMOR_MAIN).map(([slot, main]) => [slot, { main, lines: armorLines[slot] }])),
+  });
+  const NM_ARMOR = { head: ["fireRes", "hp", ...CRIT3], chest: ["iceRes", "hp", ...CRIT3], arms: ["allRes", "hp", ...CRIT3], pants: ["boltRes", "hp", ...CRIT3], boots: ["hp", "def", ...CRIT3] };
   const RECOMMEND = {
-    targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10 },
-    slots: {
-      weapon: { kind: "단검·지팡이·도끼 (장검 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "fireRes"] },
-      offhand: { kind: "보조 단검·지팡이·도끼 (방패 말고)", main: ["atk", "critDmg", "lifesteal"], lines: ["lifesteal", "atkPct", "critDmg", "crit", "iceRes"] },
-      head: { main: ["def", "hp"], lines: ["boltRes", "fireRes", "crit", "critDmg", "atkPct"] },
-      chest: { main: ["def", "crit", "hp"], lines: ["iceRes", "boltRes", "crit", "critDmg", "atkPct"] },
-      arms: { main: ["def", "crit", "atkPct"], lines: ["allRes", "hp", "crit", "critDmg", "atkPct"] },
-      pants: { main: ["def", "hp", "defPct"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
-      boots: { main: ["def", "hp"], lines: ["hp", "def", "crit", "critDmg", "atkPct"] },
+    tiers: ["normal", "nightmare", "hell"],
+    normal: {
+      name: "일반", goal: "일반 75층",
+      targets: { res: 0, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
+      slots: recSlots("atk", Object.fromEntries(Object.keys(REC_ARMOR_MAIN).map(slot => [slot, ["hp", "def", ...CRIT3]]))),
+      acc: "공격력·방어력·최대 HP %가 높은 것 (일반 던전에서는 저항 줄이 필요 없어요)",
+    },
+    nightmare: {
+      name: "나이트메어", goal: "나이트메어 50층",
+      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
+      slots: recSlots("hp", NM_ARMOR),
+      acc: "속성 저항 2줄 (모자란 속성 + 모든 속성 저항)",
+    },
+    hell: {
+      name: "헬", goal: "헬 50층",
+      targets: { res: 65, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3, uniques: 7 },   // 저항은 헬에서 −10 (최대 75 − 10, 업경 목걸이면 70)
+      slots: recSlots("hp", NM_ARMOR),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
+      uniques: { weapon: "foxorb", offhand: "scythe", head: "binyeo", chest: "ironscale", arms: "chains", pants: "robe", boots: "dragonboots" },
+      accUniques: { neck: ["eopgyeong"], ring: ["foxfire", "myeongbu"] },   // 반지는 여우불 2 (빠름) 또는 명부 (흡혈)
+      acc: "업경 목걸이 + 여우불 반지 2 (흡혈이 모자라면 명부의 반지). 저항 줄은 모든 속성 저항",
     },
   };
+  // 아이템을 얻은 단계 → 그 단계 추천 (일반 | nightmare | hell)
+  const recommendTier = (item) => (!item ? "normal" : isHellItem(item) ? "hell" : isNightmareItem(item) ? "nightmare" : "normal");
 
   // ---- 상점 ----
   // 보스 층(5층마다) 바로 전 층(4, 9, 14…층)의 계단 방에 열림. 보스와 싸우기 전에 장비를 갖추라고
@@ -1236,7 +1261,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

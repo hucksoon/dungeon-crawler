@@ -83,6 +83,9 @@
   .stat-line .range { opacity: 0.55; font-size: 0.9em; }
   .stat-line.max .range { opacity: 1; color: #ffd700; }
   .guide-slot { margin: 4px 0; line-height: 1.5; }
+  .guide-tiers { display: flex; gap: 4px; margin-bottom: 6px; }
+  .guide-tier { flex: 1; font-size: 12px; padding: 6px 4px; }
+  .guide-tier.on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .slot .fit { opacity: 0.75; }
   .sock-pick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
   .sock-pick select { font: inherit; background: var(--panel, #1a1d24); color: var(--text, #e8e8e8); border: 1px solid #444; border-radius: 4px; padding: 2px 4px; }
@@ -4348,65 +4351,104 @@
     afterGearChange();
   }
 
-  // ---- 추천 능력치 (끝판 목표, RLItems.RECOMMEND) ----
-  // 목표(저항 75·흡혈 20·치명타 75·고대 레전더리 7·+10)와 지금 값, 부위별 추천 주·추가 능력치 (장착한 아이템에 이미 있으면 ✓)
+  // ---- 추천 능력치 (끝판 목표, RLItems.RECOMMEND): 일반 · 나이트메어 · 헬 ----
+  // 추천 탭은 단계 버튼으로 고름 (처음엔 지금 있는 곳). 아이템 상세의 추천은 그 아이템을 얻은 단계 (RLItems.recommendTier)
   const lsCap = (g) => g.lsCap;   // 흡혈 상한 (장검 + 방패·룬워드 카리스마·기억이면 높음)
   const statLabel = (k) => RLItems.STATS[k].name + (RLItems.STATS[k].pct ? "%" : "");
-  // 그 아이템이 부위 추천 추가 능력치를 몇 개 가졌는지 { got, of }
+  const recOf = (item) => RLItems.RECOMMEND[RLItems.recommendTier(item)];
+  const uniqueLabel = (k) => { const U = RLItems.UNIQUE.items[k]; return `${U.name} (헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"})`; };
+  let guideTier = null;   // 추천 탭에서 고른 단계 (null이면 지금 있는 곳)
+  const zoneTier = () => (player?.zone === "hell" ? "hell" : player?.zone === "nm" ? "nightmare" : "normal");
+  // 그 아이템이 부위 추천 추가 능력치를 몇 개 가졌는지 { got, of } (유니크·장신구는 줄이 정해져 있거나 저항뿐이라 없음)
   function recommendFit(item) {
-    const r = RLItems.RECOMMEND.slots[item?.slot];
-    if (!r || !item?.lines) return null;
+    if (!item?.lines || item.rarity === "unique" || RLItems.isAccessory(item)) return null;
+    const r = recOf(item).slots[item.slot];
+    if (!r) return null;
     const has = new Set(item.lines.map(([k]) => k));
     return { got: r.lines.filter(k => has.has(k)).length, of: r.lines.length };
   }
-  // 아이템 상세의 "이 부위 추천": 주·추가 능력치 추천, 이 아이템에 있으면 ✓
+  // 아이템 상세의 "이 부위 추천" (그 아이템을 얻은 단계): 주·추가 능력치 추천, 이 아이템에 있으면 ✓. 헬은 추천 유니크도
   function recommendRows(item) {
-    const r = RLItems.RECOMMEND.slots[item.slot];
+    const rec = recOf(item), tierName = rec.name;
+    if (RLItems.isAccessory(item)) {
+      const want = rec.accUniques?.[item.slot] || [], ok = item.uq && want.includes(item.uq);
+      return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName})${ok ? " · ✓ 추천 유니크" : ""}`, [el("div", { className: "guide-slot" },
+        rec.acc, ...(want.length ? [el("br"), `✦ 추천 유니크: ${[...new Set(want)].map(uniqueLabel).join(" 또는 ")}`] : []))])];
+    }
+    const r = rec.slots[item.slot];
     if (!r) return [];
+    const uqWant = rec.uniques?.[item.slot];
+    if (item.rarity === "unique") {
+      const ok = uqWant === item.uq;
+      return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName})${ok ? " · ✓ 추천 유니크" : ""}`, [el("div", { className: "guide-slot" },
+        ok ? "이 부위 추천 유니크예요" : `이 부위 추천 유니크는 ${uniqueLabel(uqWant)}`)])];
+    }
     const has = new Set([...(item.main || []), ...(item.lines || [])].map(([k]) => k)), fit = recommendFit(item);
     const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
     const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
     // 장검 + 방패도 쓸 만함 (흡혈 보너스): 추천 종류가 아니면 대안으로 안내
     const alt = (item.slot === "weapon" && RLItems.isShieldOnly(item)) || (item.slot === "offhand" && item.type === "shield");
     const kindOk = !alt;
-    return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (끝판 목표) · 추가 능력치 ${fit.got}/${fit.of}`, [el("div", { className: "guide-slot" },
+    return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName}) · 추가 능력치 ${fit.got}/${fit.of}`, [el("div", { className: "guide-slot" },
+      ...(uqWant ? [el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ 추천 유니크: ${uniqueLabel(uqWant)}`), el("br"), el("span", { className: "meta" }, "유니크가 없으면 레전더리:"), el("br")] : []),
       ...(r.kind ? [el("span", { className: "meta" }, kindOk ? r.kind : `장검 + 방패 조합 (추천은 ${r.kind}): 흡혈 줄을 무기·방패·투구·가슴에 노리세요 (장검 + 방패 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%, 최대 ${RLItems.SHIELD_GUARD.cap}%)`), el("br")] : []),
       "★ ", ...join(r.main), el("br"),
       "◆ ", ...join(r.lines))])];
   }
+  // 단계마다 시뮬레이션 설명 (items.js RECOMMEND 주석)
+  const GUIDE_NOTE = {
+    normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·줄 품질 80%면 몰려오는 몬스터 5%·보스 0%. 그 자리를 비우면 76%, 장신구가 없으면 100%)",
+    nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 45%)",
+    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 7%·8%, 레전더리 + 레전더리 장신구 13%·24%)`,
+  };
   function renderGuide() {
-    const R = RLItems.RECOMMEND, T = R.targets, s = stats(), eq = Inv.equipped();
+    const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
     const worn = Object.values(eq).filter(Boolean);
-    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => (it.enh || 0) >= T.enh).length;
+    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= T.enh).length;
+    const uqOk = rec.uniques ? RLItems.SLOTS.filter(slot => eq[slot]?.uq && eq[slot].uq === rec.uniques[slot]).length : 0;
+    const accUq = worn.filter(it => RLItems.isAccessory(it) && it.uq && (rec.accUniques?.[it.slot] || []).includes(it.uq)).length;
     const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
-    const res = EL.list.map(k => s.res[k]);
+    // 저항: 그 단계 기준 (헬은 −10, 지금 있는 곳과 상관없이)
+    const cut = tier === "hell" ? HELL.playerResCut : 0;
+    const res = EL.list.map(k => Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - cut);
+    const tabs = el("div", { className: "guide-tiers" }, ...RLItems.RECOMMEND.tiers.map(t => el("button", {
+      type: "button", className: `guide-tier${t === tier ? " on" : ""}`, textContent: RLItems.RECOMMEND[t].name,
+      onclick: () => { guideTier = t; renderGuide(); },
+    })));
     const rows = [
-      el("h3", {}, "📋 추천 능력치 (끝판 목표)"),
-      el("div", { className: "meta" }, "모든 장비를 고대로 맞췄을 때 속성 저항·흡혈·치명타를 최대로 채우고 나이트메어 50층 보스를 잡는 조합이에요. (시뮬레이션: 50층 고대 레전더리 +10 + 고대 장신구 3개, 보스 0%·몰려오는 몬스터 1%. 장신구가 없으면 몰려오는 몬스터 100%)"),
-      goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%`),
-      goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${Inv.totals().stats.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
+      tabs,
+      el("h3", {}, `📋 추천 능력치 (${rec.goal})`),
+      el("div", { className: "meta" }, GUIDE_NOTE[tier]),
+      ...(T.res ? [goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%${cut ? ` (헬 −${cut})` : ""}`)] : []),
+      goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${g.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
       goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
-      goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`),
-      goal(accN >= 3, `장신구 ${accN} / 3칸 (목걸이·반지 2개: 공격력·방어력·최대 HP %와 속성 저항)`),
+      ...(T.uniques ? [goal(uqOk >= T.uniques, `추천 유니크 ${uqOk} / ${T.uniques}부위`), goal(accUq >= T.acc, `추천 유니크 장신구 ${accUq} / ${T.acc}칸`)]
+        : [goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`), goal(accN >= T.acc, `장신구 ${accN} / ${T.acc}칸 (목걸이·반지 2개)`)]),
       goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
       el("h3", { style: { marginTop: "6px" } }, "부위별 추천"),
     ];
     for (const slot of RLItems.SLOTS) {
-      const r = R.slots[slot], it = eq[slot];
+      const r = rec.slots[slot], it = eq[slot], uqWant = rec.uniques?.[slot];
       if (!r) continue;
       const has = new Set([...(it?.main || []), ...(it?.lines || [])].map(([k]) => k));
       const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
       const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
-      const fit = it ? recommendFit(it) : null;
+      const fit = it && RLItems.recommendTier(it) === tier ? recommendFit(it) : null, uqHit = uqWant && it?.uq === uqWant;
       rows.push(el("div", { className: "guide-slot" },
-        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}${fit ? ` · ${fit.got}/${fit.of}` : " · 비어 있음"}`), el("br"),
+        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}${uqHit ? " · ✓ 추천 유니크" : fit ? ` · ${fit.got}/${fit.of}` : it ? "" : " · 비어 있음"}`), el("br"),
+        ...(uqWant ? [el("span", { className: uqHit ? "set-on" : "", style: uqHit ? {} : { color: RLItems.RARITIES.unique.color } }, `✦ ${uniqueLabel(uqWant)}`), el("br"), el("span", { className: "meta" }, "또는 레전더리: "), el("br")] : []),
         "★ ", ...join(r.main), el("br"),
         "◆ ", ...join(r.lines)));
     }
-    rows.push(
-      el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 장신구 저항 줄 약 28% (모든 저항 최대 11%, 속성 하나 최대 30%) = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
-      el("div", { className: "meta" }, "저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
-      el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%라 보스는 느리지만(19턴) 몰려오는 몬스터 0%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요. 강화를 안 하면(+0) 보스 11%·몰려오는 몬스터 100%라서 +10까지 올리세요`));
+    const accWant = rec.accUniques ? [...new Set(Object.values(rec.accUniques).flat())] : [];
+    rows.push(el("div", { className: "guide-slot" }, el("b", {}, `장신구 (목걸이·반지 2개) · ${accN} / 3칸`), el("br"), rec.acc,
+      ...(accWant.length ? [el("br"), el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${accWant.map(uniqueLabel).join(" · ")}`)] : [])));
+    if (tier === "normal") rows.push(
+      el("div", { className: "meta" }, "흡혈: 무기·보조무기 주 능력치 + 추가 능력치 = 20%. 치명타: 갑옷·팔 주 능력치 + 줄 7개 → 75%"));
+    else rows.push(
+      el("div", { className: "meta" }, `저항: 속성 저항 줄(최대 ${RLItems.RES_R4.fireRes[1]}%) + 팔 모든 속성 저항(${RLItems.RES_R4.allRes[1]}%) + 장신구 저항 줄 6개(속성 하나 최대 ${RLItems.ACCESSORY.res.fireRes.legendary[1]}%, 모든 속성 최대 ${RLItems.ACCESSORY.res.allRes.legendary[1]}%) → ${EL.resCap}%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%`),
+      el("div", { className: "meta" }, "저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"));
+    rows.push(el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요`));
     invGuide.replaceChildren(...rows);
   }
 
@@ -5483,7 +5525,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP %와 속성 저항)이 맡아요. 일반 던전 장신구는 3~10%, 나이트메어·헬은 15~25%(유니크 18~30%). ` +
+        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP %와 속성 저항)이 맡아요. 일반 던전 장신구는 3~10%, 나이트메어·헬은 15~25%(유니크 18~30%). 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
         `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
         `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP +%(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
         `🛡 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
