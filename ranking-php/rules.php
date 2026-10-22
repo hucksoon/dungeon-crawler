@@ -271,7 +271,7 @@ const R_ACCESSORY = [
     ],
     'resLines' => ['normal' => ['0' => 0.5, '1' => 0.5], 'nightmare' => ['1' => 0.6, '2' => 0.4], 'hell' => ['1' => 0.5, '2' => 0.35, '3' => 0.15]],
     'power' => [[2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]],   // 범위 안에서 고르게 굴림 (items.js rollEven)
-    'powerNormal' => [[1, 3], [2, 4], [3, 6], [5, 9], [5, 15], [5, 15]],
+    'powerNormal' => [[1, 2], [1, 3], [2, 4], [3, 7], [3, 10], [3, 10]],
 ];
 function r_acc_tier(string $seed): string {
     if (preg_match('/\|(shop\|)?j\d+\|/', $seed)) return 'hell';
@@ -533,7 +533,6 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 // 시드 …|j층|u처치 순번, 출처 'unique'. 주 능력치 = 부위 후보 전부, 추가 능력치 4줄 고정 (범위는 레전더리 × mul)
 const R_UNIQUE = [
     'chance' => 0.15, 'mul' => 1.2,
-    'power' => ['pct' => 15, 'allRes' => 5],   // 유니크의 힘 (items.js UNIQUE.power)
     'items' => [
         'fang' => ['boss' => 10, 'name' => '송곳니', 'slot' => 'weapon', 'type' => 'dagger', 'lines' => ['crit', 'critDmg', 'atkPct', 'fireDmg'], 'stats' => []],
         'ironscale' => ['boss' => 10, 'name' => '쇠비늘 갑옷', 'slot' => 'chest', 'type' => null, 'lines' => ['crit', 'critDmg', 'atkPct', 'fireRes'], 'stats' => []],
@@ -726,26 +725,6 @@ function r_apply_ancient_rerolls(array $item, int $ar): array {
 }
 
 // 고대: 최고 등급(레전더리·세트)이면서 모든 능력치(방패는 패링도)가 최대치
-// 전설의 힘 (items.js LEGEND): v4 레전더리의 완성도에 따라 공격력·방어력·최대 HP +%
-const R_LEGEND = ['start' => 0.6, 'max' => 12, 'allRes' => 4];
-const R_SET_POWER = ['pct' => 12, 'allRes' => 4];   // 세트의 힘: 지옥의 세트 조각만 (items.js SET_POWER)
-function r_completeness(array $item): float {
-    if (!isset($item['main'])) return 0;
-    $sum = 0; $n = 0;
-    $add = function (array $r, int $v) use (&$sum, &$n) { [$lo, $hi] = $r; $sum += $hi > $lo ? ($v - $lo) / ($hi - $lo) : 1; $n++; };
-    foreach ($item['main'] as [$k, $v]) $add(r_main_range($k, $item), $v);
-    foreach ($item['lines'] as [$k, $v]) $add(r_line_range_of($k, $item), $v);
-    if (isset($item['parry'])) $add(R_PARRY['ranges'][$item['rarity']], $item['parry']);
-    return $n ? $sum / $n : 0;
-}
-function r_legend_curve(array $item): float {
-    if (($item['v'] ?? 0) !== 4 || $item['rarity'] !== 'legendary' || !isset($item['main']) || r_is_accessory($item)) return 0;   // 장신구는 전설의 힘 대신 power 줄
-    $c = max(0, min(1, (r_completeness($item) - R_LEGEND['start']) / (1 - R_LEGEND['start'])));
-    return $c * $c;
-}
-function r_legend_power(array $item): int { return r_round(R_LEGEND['max'] * r_legend_curve($item)); }
-function r_legend_res(array $item): int { return r_round(R_LEGEND['allRes'] * r_legend_curve($item)); }
-
 const R_ANCIENT_RARITIES = ['legendary', 'set', 'unique'];   // 유니크는 r7부터
 function r_is_ancient(array $item): bool {
     if (!isset($item['main']) || !in_array($item['rarity'], R_ANCIENT_RARITIES, true) || ($item['rarity'] === 'unique' && ($item['r'] ?? 0) < 7)) return false;
@@ -860,8 +839,8 @@ function r_effective_lines(array $item): array {
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
-        'legend' => 0, 'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'setPower' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
+        'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
     $setCounts = [];
     $rw = [];
     $shieldOnly = false;
@@ -880,20 +859,10 @@ function r_totals(array $equipped): array {
         $U = r_unique_of($item);   // 유니크 능력치 (특수 효과는 전투에서만)
         if ($U) {
             foreach ($U['stats'] as $k => $v) $sum[$k] += $v;
-            $P = R_UNIQUE['power'];
-            $sum['atkPct'] += $P['pct']; $sum['defPct'] += $P['pct']; $sum['hpPct'] += $P['pct']; $sum['allRes'] += $P['allRes'];
         }
         if (!empty($item['parry'])) $sum['parry'] += $item['parry'];
         if ($item['slot'] === 'offhand' && r_weapon_like($item)) $sum['dual'] = 1;
         if (!empty($item['set'])) $setCounts[$item['set']] = ($setCounts[$item['set']] ?? 0) + 1;
-        // 전설의 힘: 공격력·방어력·최대 HP +%
-        $lp = r_legend_power($item);
-        if ($lp) { $sum['atkPct'] += $lp; $sum['defPct'] += $lp; $sum['hpPct'] += $lp; $sum['legend'] += $lp; }
-        $sum['allRes'] += r_legend_res($item);
-        if (!empty($item['set']) && r_is_hell_item($item)) {   // 세트의 힘 (지옥의 세트만)
-            $p = R_SET_POWER['pct'];
-            $sum['atkPct'] += $p; $sum['defPct'] += $p; $sum['hpPct'] += $p; $sum['setPower'] += $p; $sum['allRes'] += R_SET_POWER['allRes'];
-        }
     }
     $sets = [];
     foreach ($setCounts as $id => $count) {

@@ -289,9 +289,10 @@
     },
     resLines: { normal: { 0: 0.5, 1: 0.5 }, nightmare: { 1: 0.6, 2: 0.4 }, hell: { 1: 0.5, 2: 0.35, 3: 0.15 } },
     // 공격력·방어력·최대 HP %: 나이트메어·헬 / 일반 던전(약 절반). 범위 안에서 고르게 굴림 (다른 장비처럼 최대치 20%가 아님) →
-    //   줄이 적은 장신구가 우연히 모두 최대치(고대)일 확률을 범위 칸 수로 낮춤 (레전더리 15~25 = 1/11, 일반 5~15 = 1/11)
+    //   줄이 적은 장신구가 우연히 모두 최대치(고대)일 확률을 범위 칸 수로 낮춤 (레전더리 15~25 = 1/11, 일반 3~10 = 1/8)
+    //   일반 던전은 3~10: 전설의 힘·세트의 힘·유니크의 힘이 빠져도 일반 던전이 쉬워지지 않게 (시뮬레이션)
     power: byRarity([2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]),
-    powerNormal: byRarity([1, 3], [2, 4], [3, 6], [5, 9], [5, 15], [5, 15]),
+    powerNormal: byRarity([1, 2], [1, 3], [2, 4], [3, 7], [3, 10], [3, 10]),
   };
   // 유니크 장신구: 공방HP는 레전더리 × 1.2 (UNIQUE.mul), 저항 줄은 레전더리 범위 (최대 30%·11%)
   ACCESSORY.power.unique = [18, 30];
@@ -463,8 +464,6 @@
   // 지옥의 아이템(헬 시드)이라 지옥의 힘 ×5·지옥 강화석. 고대·고대 다시 굴리기·옵션 재련·홈은 없음
   const UNIQUE = {
     chance: 0.15, mul: 1.2,
-    // 유니크의 힘: 하나마다 공격력·방어력·최대 HP +pct%, 모든 속성 저항 +allRes% (고대 레전더리의 전설의 힘 +12%·+4%보다 조금 크게)
-    power: { pct: 15, allRes: 5 },
     items: {
       fang:      { boss: 10, name: "송곳니", slot: "weapon", type: "dagger", lines: ["crit", "critDmg", "atkPct", "fireDmg"], stats: {}, special: { bite: 12 },
         text: "물어뜯기: 때린 적은 3턴 동안 받는 피해 +12%" },
@@ -723,36 +722,6 @@
       item.lines.every(([k, v]) => v === lineRangeOf(k, item)[1]);
   }
 
-  // ---- 전설의 힘 (v4 레전더리, 세트 아님) ----
-  // 완성도 = 주 능력치·추가 능력치(방패는 패링도)가 각자 범위 안에서 얼마나 높은지의 평균 (0~1, 고대 = 1)
-  // 레전더리 하나마다 공격력·방어력·최대 HP +max% × c², c = (완성도 − start) / (1 − start) (start 아래는 0)
-  //   → 평범한 레전더리(완성도 50% 안팎)는 그대로, 거의 완벽한 레전더리만 세트보다 좋아짐 (고대 레전더리 5부위 = 각 +12%)
-  //   시뮬레이션: 나이트메어 25층 고대 레전더리 5부위가 보스 6턴·5마리 0%로 가장 고르게 강함 (+20%면 모든 세트를 압도해서 12%)
-  // allRes: 모든 속성 저항도 +allRes% × c² (고대 레전더리 5부위 = +20%. 하나에 +20%면 고대 4개만으로 세 저항이 모두 75%라 저항 줄이 쓸모없어짐)
-  const LEGEND = { start: 0.6, max: 12, allRes: 4 };
-  // 세트의 힘 (헬 장비만): 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +pct%, 모든 속성 저항 +allRes% (고대 레전더리의 전설의 힘과 같은 크기)
-  //   세트에는 전설의 힘이 없어서 헬 50층에서 세트 5부위가 레전더리보다 크게 약했음 (속성 세트 몰려오는 20마리 95~100%).
-  //   나이트메어·일반 세트는 그대로 (나이트메어 난이도는 안 바뀜)
-  const SET_POWER = { pct: 12, allRes: 4 };
-  const setPower = (item) => (item?.set && isHellItem(item) ? SET_POWER.pct : 0);
-  function completeness(item) {
-    if (!item.main) return 0;
-    let sum = 0, n = 0;
-    const add = ([lo, hi], v) => { sum += hi > lo ? (v - lo) / (hi - lo) : 1; n++; };
-    for (const [k, v] of item.main) add(mainRange(k, item), v);
-    for (const [k, v] of item.lines) add(lineRangeOf(k, item), v);
-    if (item.parry != null) add(PARRY.ranges[item.rarity], item.parry);
-    return n ? sum / n : 0;
-  }
-  // c² (0~1): 완성도 start 아래는 0, 100%(고대)면 1
-  function legendCurve(item) {
-    if (item.v !== 4 || item.rarity !== "legendary" || !item.main || isAccessory(item)) return 0;   // 장신구는 전설의 힘 대신 power 줄
-    const c = Math.max(0, Math.min(1, (completeness(item) - LEGEND.start) / (1 - LEGEND.start)));
-    return c * c;
-  }
-  const legendPower = (item) => Math.round(LEGEND.max * legendCurve(item));    // 공격력·방어력·최대 HP +%
-  const legendRes = (item) => Math.round(LEGEND.allRes * legendCurve(item));   // 모든 속성 저항 +%
-
   // 처치 1회(또는 포션 자리 1곳)의 결과: 드롭 없으면 null. kind: "normal" | "elite" | "boss"
   function rollDrop(seed, level, kind = "normal") {
     const { chance, table } = DROPS[kind];
@@ -913,9 +882,10 @@
 
   // ---- 추천 능력치 (끝판 목표) ----
   // 모든 장비를 고대로 맞췄을 때 속성 저항 최대(75)·흡혈 최대(20)·치명타 최대(75)를 채우고 나이트메어 50층 보스를 잡는 조합.
-  // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님), 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 2%
+  // 나이트메어 50층 레벨 고대 레전더리 +10 7부위(세트 아님) + 고대 레전더리 장신구 3개, 두 손 무기. 시뮬레이션: 50층 보스 0% (7턴), 몰려오는 몬스터 20마리 1%
+  //   (장신구가 없으면 보스 0% (9턴)·몰려오는 몬스터 100%)
   //   (+0이면 보스 11%·몰려오는 몬스터 100%. 장검 + 방패도 SHIELD_GUARD(흡혈 +10%, 최대 30%)로 몰려오는 몬스터 0%, 보스는 19턴으로 느림)
-  // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 전설의 힘(고대 레전더리 하나마다 모든 저항 +4) × 7 = 28 → 75
+  // 저항: 줄 7개(불·얼음·번개 각 2 + 모든 저항 1) = 20 × 2 + 7, 장신구 3개의 저항 줄 약 28 → 75
   // 흡혈: 무기·보조무기 주 능력치 6 × 2 + 추가 능력치 4 × 2 = 20. 치명타: 갑옷·팔 주 능력치 + 줄 6 × 7 → 75
   const RECOMMEND = {
     targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10 },
@@ -1205,8 +1175,8 @@
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
-      legend: 0, fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, setPower: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
+      fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
     const setCounts = {}, rw = {}, rwNames = [], uq = {}, uqNames = [];
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
@@ -1228,19 +1198,10 @@
         uqNames.push(U.name);
         for (const [k, v] of Object.entries(U.stats)) sum[k] += v;
         for (const [k, v] of Object.entries(U.special)) uq[k] = Math.max(uq[k] || 0, v);
-        const P = UNIQUE.power;
-        sum.atkPct += P.pct; sum.defPct += P.pct; sum.hpPct += P.pct; sum.allRes += P.allRes;
       }
       if (item.parry) sum.parry += item.parry;
       if (item.slot === "offhand" && isWeaponLike(item)) sum.dual = 1;
       if (item.set) setCounts[item.set] = (setCounts[item.set] || 0) + 1;
-      // 전설의 힘: 공격력·방어력·최대 HP +%
-      const lp = legendPower(item);
-      if (lp) { sum.atkPct += lp; sum.defPct += lp; sum.hpPct += lp; sum.legend += lp; }
-      sum.allRes += legendRes(item);
-      // 세트의 힘 (지옥의 세트만)
-      const sp = setPower(item);
-      if (sp) { sum.atkPct += sp; sum.defPct += sp; sum.hpPct += sp; sum.setPower += sp; sum.allRes += SET_POWER.allRes; }
     }
     const activeSets = [];
     for (const [id, count] of Object.entries(setCounts)) {
@@ -1275,7 +1236,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
-    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, LEGEND, completeness, legendPower, legendRes, SET_POWER, setPower, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
+    enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLItems = api;

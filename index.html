@@ -106,7 +106,6 @@
   .ancient-note { color: #ffd700; font-size: 12px; margin: 2px 0 4px; }
   .nm-note { color: #d07bff; font-size: 12px; margin: 2px 0 4px; }
   .nm-note.hell-note { color: #ff6a3d; }
-  .legend-note { color: #ff9f2e; font-size: 12px; margin: 2px 0 4px; }
   .set-on { color: #2fd6b5; }
   #game {
     border: 1px solid var(--border);
@@ -345,7 +344,7 @@
   .inv-pane { flex: 1; min-height: 0; overflow-y: auto; margin-top: 0; }
   .inv-pane[hidden] { display: none; }
   .detail-close, .statline { display: none; }
-  /* 접는 칸 (세트 단계·홈·추천·전설의 힘): ▶ 제목을 누르면 펼침 */
+  /* 접는 칸 (세트 단계·홈·추천): ▶ 제목을 누르면 펼침 */
   details.fold { margin-top: 6px; }
   details.fold > summary { cursor: pointer; font-weight: bold; font-size: 12px; list-style: none; }
   details.fold > summary::-webkit-details-marker { display: none; }
@@ -4065,8 +4064,6 @@
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
-      ...(g.legend ? [`전설의 힘: 공격력·방어력·최대 HP +${g.legend}% (레전더리 완성도)`] : []),
-      ...(g.setPower ? [`세트의 힘: 공격력·방어력·최대 HP +${g.setPower}%, 모든 속성 저항 +${g.setPower / RLItems.SET_POWER.pct * RLItems.SET_POWER.allRes}% (지옥의 세트)`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
@@ -4274,8 +4271,8 @@
       el("div", { className: "meta" }, U.acc ? `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 장신구 · 공격력·방어력·최대 HP는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%, 속성 저항 2~3줄`
         : `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
       el("div", { className: "stat-line set-on", style: { color: RLItems.RARITIES.unique.color } }, `✦ ${U.text}`),
-      ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`)),
-      el("div", { className: "stat-line set-on" }, `✦ 유니크의 힘: 공격력·방어력·최대 HP +${RLItems.UNIQUE.power.pct}%, 모든 속성 저항 +${RLItems.UNIQUE.power.allRes}%`))];
+      ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`))
+    )];
   }
   function runewordRows(item) {
     // 완성된 룬워드: 능력치(아이템 단계 배율)와 특수 효과
@@ -4380,16 +4377,17 @@
   function renderGuide() {
     const R = RLItems.RECOMMEND, T = R.targets, s = stats(), eq = Inv.equipped();
     const worn = Object.values(eq).filter(Boolean);
-    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient).length, enhOk = worn.filter(it => (it.enh || 0) >= T.enh).length;
+    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => (it.enh || 0) >= T.enh).length;
     const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
     const res = EL.list.map(k => s.res[k]);
     const rows = [
       el("h3", {}, "📋 추천 능력치 (끝판 목표)"),
-      el("div", { className: "meta" }, "모든 장비를 고대로 맞췄을 때 속성 저항·흡혈·치명타를 최대로 채우고 나이트메어 50층 보스를 잡는 조합이에요. (시뮬레이션: 50층 고대 레전더리 +10, 보스 0%·몰려오는 몬스터 2%)"),
+      el("div", { className: "meta" }, "모든 장비를 고대로 맞췄을 때 속성 저항·흡혈·치명타를 최대로 채우고 나이트메어 50층 보스를 잡는 조합이에요. (시뮬레이션: 50층 고대 레전더리 +10 + 고대 장신구 3개, 보스 0%·몰려오는 몬스터 1%. 장신구가 없으면 몰려오는 몬스터 100%)"),
       goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%`),
       goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${Inv.totals().stats.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
       goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
-      goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위 (하나마다 전설의 힘: 공격력·방어력·최대 HP +12%, 모든 저항 +4%)`),
+      goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`),
+      goal(accN >= 3, `장신구 ${accN} / 3칸 (목걸이·반지 2개: 공격력·방어력·최대 HP %와 속성 저항)`),
       goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
       el("h3", { style: { marginTop: "6px" } }, "부위별 추천"),
     ];
@@ -4406,8 +4404,8 @@
         "◆ ", ...join(r.lines)));
     }
     rows.push(
-      el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 전설의 힘 4% × 7 = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
-      el("div", { className: "meta" }, "세트를 섞으면 그 부위의 전설의 힘(저항 +4%)이 빠져요 (지옥의 세트는 세트의 힘으로 같아요). 그만큼 저항 줄을 더 노리세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
+      el("div", { className: "meta" }, "저항: 불·얼음·번개 저항 줄 각 2개(20%) + 모든 속성 저항 줄 1개(7%) + 장신구 저항 줄 약 28% (모든 저항 최대 11%, 속성 하나 최대 30%) = 75%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%"),
+      el("div", { className: "meta" }, "저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"),
       el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%라 보스는 느리지만(19턴) 몰려오는 몬스터 0%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요. 강화를 안 하면(+0) 보스 11%·몰려오는 몬스터 100%라서 +10까지 올리세요`));
     invGuide.replaceChildren(...rows);
   }
@@ -4452,16 +4450,6 @@
         [el("div", { className: "meta" }, setNote(item.set)),
           ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, `${b.count}세트: ${b.text}`))]));
     }
-    // 전설의 힘: v4 레전더리의 완성도 (주·추가 능력치가 범위 안에서 얼마나 높은지)
-    if (item.v === 4 && item.rarity === "legendary" && item.main && !RLItems.isAccessory(item)) {
-      const q = Math.round(RLItems.completeness(item) * 100), lp = RLItems.legendPower(item);
-      rows.push(fold("legend", `전설의 힘${lp ? ` +${lp}%` : ""} · 완성도 ${q}%`, [el("div", { className: lp ? "legend-note" : "meta" }, lp
-        ? `완성도 ${q}% · 전설의 힘: 공격력·방어력·최대 HP +${lp}%${RLItems.legendRes(item) ? `, 모든 속성 저항 +${RLItems.legendRes(item)}%` : ""} (완성도 100%면 +${RLItems.LEGEND.max}%, 저항 +${RLItems.LEGEND.allRes}%)`
-        : `완성도 ${q}% · 전설의 힘은 완성도 ${Math.round(RLItems.LEGEND.start * 100)}%부터 붙어요 (100%면 공격력·방어력·최대 HP +${RLItems.LEGEND.max}%, 모든 속성 저항 +${RLItems.LEGEND.allRes}%)`)]));
-    }
-    // 세트의 힘: 지옥의 세트 조각만 (나이트메어·일반 세트에는 없음)
-    if (RLItems.setPower(item)) rows.push(el("div", { className: "legend-note" },
-      `세트의 힘 (지옥의 세트): 공격력·방어력·최대 HP +${RLItems.SET_POWER.pct}%, 모든 속성 저항 +${RLItems.SET_POWER.allRes}%`));
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
@@ -5487,7 +5475,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1022c:${owner}`;  // 유니크 장신구, 장신구, 세트의 힘·폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1022d:${owner}`;  // 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5495,10 +5483,11 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP %와 속성 저항)이 맡아요. 일반 던전 장신구는 3~10%, 나이트메어·헬은 15~25%(유니크 18~30%). ` +
         `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
         `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP +%(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
-        `🛡 세트의 힘: 지옥의 세트 조각 하나마다 공격력·방어력·최대 HP +12%, 모든 속성 저항 +4% (헬 장비만, 나이트메어 세트는 그대로). 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
-        `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120% + 유니크의 힘(공격·방어·HP +15%)과 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
+        `🛡 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
+        `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120%와 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
         `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
         `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +
         `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ` +
