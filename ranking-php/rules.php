@@ -479,7 +479,6 @@ const R_RUNEWORDS = [
     ['name' => '필살일격', 'bases' => ['longsword'], 'runes' => [12, 6, 7, 0], 'stats' => ['atkPct' => 35, 'crit' => 10, 'critDmg' => 50], 'special' => ['splash' => 1]],
     ['name' => '태산', 'bases' => ['chest', 'weapon'], 'runes' => [11, 6], 'stats' => ['defPct' => 30, 'hpPct' => 10, 'allRes' => 15], 'special' => ['shield' => 20, 'skillLs' => 1]],
     ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 8, 'mf' => 25], 'special' => ['lsCap' => 3, 'blast' => 20]],
-    ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5, 'mf' => 20], 'special' => ['autoPotion' => 1]],
     ['name' => '마음가짐', 'bases' => ['longsword', 'shield'], 'runes' => [4, 7, 0, 8], 'stats' => ['skillPct' => 30], 'special' => ['skillFast' => 1, 'skillLs' => 1]],
     ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['atkPct' => 20, 'crit' => 8, 'xp' => 25, 'mf' => 25], 'special' => ['whirl' => 50]],
     ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5, 'hpPct' => 15, 'mf' => 25], 'special' => ['counter' => 60]],
@@ -859,7 +858,7 @@ function r_effective_lines(array $item): array {
 
 function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
-        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
+        'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0, 'longsword' => 0,
         'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
         'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'mf' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
     $setCounts = [];
@@ -901,6 +900,7 @@ function r_totals(array $equipped): array {
     $shieldWorn = false;
     foreach ($equipped as $item) if ($item['slot'] === 'offhand' && ($item['type'] ?? null) === 'shield') $shieldWorn = true;
     if ($shieldOnly && $shieldWorn) { $sum['guard'] = 1; $sum['lifesteal'] += R_SHIELD_GUARD['lifesteal']; }
+    if ($shieldOnly) $sum['longsword'] = 1;   // 장검: 기본 공격 피해 ×2 (items.js LONGSWORD)
     // 룬워드: 광란 세트 효과·체인 라이트닝, 흡혈 최대치 +N%p
     if (!empty($rw['splash'])) $sum['splash'] = 1;
     if (!empty($rw['chain'])) $sum['chain'] = max($sum['chain'], 1);

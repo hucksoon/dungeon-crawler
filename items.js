@@ -93,6 +93,8 @@
   // 장검 + 방패를 같이 끼면 흡혈 +lifesteal%, 흡혈 상한도 cap%로 (장검·방패는 피해가 낮아 흡혈로 회복하는 양이 적어서,
   //   20%에 막히면 나이트메어 50층에서 몰려오는 몬스터에게 22%·11% 쓰러졌음 → +10%·상한 30%면 0%. 보스는 느리지만(19턴) 안전)
   const SHIELD_GUARD = { lifesteal: 10, cap: 30 };
+  // 장검(방패 전용 무기): 기본 공격 피해 ×hitMul (보조 단검 두 번째 공격을 못 쓰는 대신, dc#53). 스킬(회전 베기·반격 등)은 그대로
+  const LONGSWORD = { hitMul: 2 };
   // 광란의 세트: 때린 적 주변 1칸의 다른 적도 이 배율만큼 피해 (100% → 50%: 무리를 다른 무기보다 2배 빨리 잡던 것을 줄임)
   const SPLASH = { mul: 0.5 };
   // 무기처럼 쓰는 아이템: 무기 칸, 또는 보조 손의 방패가 아닌 것
@@ -491,7 +493,7 @@
       binyeo:    { boss: 20, name: "구미호의 비녀", slot: "head", type: null, lines: ["hp", "crit", "critDmg", "iceRes"], stats: {}, special: { dodge: 12 },
         text: "홀림: 몬스터의 공격을 12% 확률로 피함" },
       yeouiju:   { boss: 30, name: "여의주 검", slot: "weapon", type: "longsword", lines: ["crit", "critDmg", "atkPct", "boltDmg"], stats: { chain: 1 }, special: { chainPlus: 2 },
-        text: "여의주: 체인 라이트닝 (뇌전의 세트 없이도), 번개가 2번 더 튕김" },
+        text: "여의주: 체인 라이트닝 (뇌전의 세트 없이도), 번개가 2번 더 튕김, 주변에 다른 몬스터가 없으면 같은 몬스터를 다시 침" },
       dragonboots: { boss: 30, name: "용비늘 장화", slot: "boots", type: null, lines: ["hp", "def", "boltRes", "allRes"], stats: {}, special: { shield: 8 },
         text: "용비늘: 2턴마다 최대 HP 8% 보호막" },
       scythe:    { boss: 40, name: "사자의 낫", slot: "offhand", type: "axe", lines: ["crit", "critDmg", "atkPct", "lifesteal"], stats: {}, special: { reap: 2 },
@@ -499,7 +501,7 @@
       chains:    { boss: 40, name: "명부의 사슬", slot: "arms", type: null, lines: ["hp", "crit", "critDmg", "atkPct"], stats: {}, special: { bossDmg: 15 },
         text: "명부: 정예·보스에게 주는 피해 +15%" },
       mirror:    { boss: 50, name: "업경대", slot: "offhand", type: "shield", lines: ["hp", "def", "allRes", "lifesteal"], stats: { parry: 15 }, special: { reflect: 30 },
-        text: "업보: 받은 피해의 30%를 때린 몬스터에게 되돌림, 패링 확률 +15%" },
+        text: "업보: 받은 피해의 30%를 때린 몬스터에게 되돌림 (막아도 받을 피해만큼 되돌림), 패링 확률 +15%" },
       robe:      { boss: 50, name: "염라의 관복", slot: "pants", type: null, lines: ["hp", "def", "crit", "allRes"], stats: { allRes: 20, hpPct: 30 }, special: { lastStand: 30 },
         text: "저승의 왕: 모든 속성 저항 +20%, 최대 HP +30%, 쓰러질 피해를 받으면 30% 확률로 HP 1로 버팀" },
       // 유니크 장신구 (r7, acc): 네임드 처치마다 accChance로 따로 (시드 |j층|a처치 순번). 주 능력치 공격력·방어력·최대 HP (레전더리 × mul),
@@ -925,12 +927,15 @@
   const W_MAIN = ["atk", "critDmg", "lifesteal"], CRIT3 = ["crit", "critDmg", "atkPct"];
   const REC_ARMOR_MAIN = { head: ["def", "hp"], chest: ["def", "crit", "hp"], arms: ["def", "crit", "atkPct"], pants: ["def", "hp", "defPct"], boots: ["def", "hp"] };
   const W_KIND = { weapon: "단검·지팡이·도끼 (장검 말고)", offhand: "보조 단검·지팡이·도끼 (방패 말고)" };
-  const recSlots = (weaponExtra, armorLines) => ({
+  const recSlots = (weaponExtra, armorLines, offhandExtra = weaponExtra) => ({
     weapon: { kind: W_KIND.weapon, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
-    offhand: { kind: W_KIND.offhand, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
+    offhand: { kind: W_KIND.offhand, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", offhandExtra] },
     ...Object.fromEntries(Object.entries(REC_ARMOR_MAIN).map(([slot, main]) => [slot, { main, lines: armorLines[slot] }])),
   });
-  const NM_ARMOR = { head: ["fireRes", "hp", ...CRIT3], chest: ["iceRes", "hp", ...CRIT3], arms: ["allRes", "hp", ...CRIT3], pants: ["boltRes", "hp", ...CRIT3], boots: ["hp", "def", ...CRIT3] };
+  // 나이트메어·헬 (dc#54): 내 저항이 장비 합에서 −40·−70이라 저항 줄을 더 (투구 불·갑옷 얼음·바지 번개 + 모든 저항·장화 번개·팔 모든 저항, 무기 불·보조 얼음)
+  //   시뮬레이션 (줄 품질 95% +10, 장신구 저항 2줄 · 헬 3줄): 장비 합 115% → 나이트메어 75% (몰려옴 26%), 148% → 헬 75% (16% / 25%)
+  //   전 추천(저항 줄 4개 + 무기 HP)이면 89% → 49% (42%), 헬 122% → 52% (26% / 38%)
+  const NM_ARMOR = { head: ["fireRes", "hp", ...CRIT3], chest: ["iceRes", "hp", ...CRIT3], arms: ["allRes", "hp", ...CRIT3], pants: ["boltRes", "allRes", ...CRIT3], boots: ["boltRes", "hp", ...CRIT3] };
   const RECOMMEND = {
     tiers: ["normal", "nightmare", "hell"],
     normal: {
@@ -941,14 +946,14 @@
     },
     nightmare: {
       name: "나이트메어", goal: "나이트메어 50층",
-      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
-      slots: recSlots("hp", NM_ARMOR),
+      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },   // 장비 합 − 40 → 115% 모아야 75%
+      slots: recSlots("fireRes", NM_ARMOR, "iceRes"),
       acc: "속성 저항 2줄 (모자란 속성 + 모든 속성 저항), +10 강화",
     },
     hell: {
       name: "헬", goal: "헬 50층",
-      targets: { res: 65, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3, uniques: 7 },   // 저항은 헬에서 −10 (최대 75 − 10, 업경 목걸이면 70)
-      slots: recSlots("hp", NM_ARMOR),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
+      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3, uniques: 7 },   // 저항은 장비 합 − 70 (dc#54, monsters.js ELEMENTS.zonePenalty) → 145% 모아야 75%
+      slots: recSlots("fireRes", NM_ARMOR, "iceRes"),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
       uniques: { weapon: "foxorb", offhand: "scythe", head: "binyeo", chest: "ironscale", arms: "chains", pants: "robe", boots: "dragonboots" },
       accUniques: { neck: ["eopgyeong"], ring: ["foxfire", "myeongbu"] },   // 반지는 여우불 2 (빠름) 또는 명부 (흡혈)
       acc: "업경 목걸이 + 여우불 반지 2 (흡혈이 모자라면 명부의 반지), +10 강화. 저항 줄은 모든 속성 저항",
@@ -1116,7 +1121,7 @@
   // special: undying 쓰러질 피해를 받으면 HP 1로 버팀(층마다 1번) · teleport 주변에 적이 안 보이면 N칸씩 이동(경로의 아이템도 주움)
   //   chain 체인 라이트닝(세트 없이) · vuln 매 every턴 radius칸 안 몬스터의 속성 저항 −pct% (속성 피해·스킬이 더 아픔. 주변 8칸 → 2칸: 파이어볼·체인 범위와 맞춤)
   //   splash 광란 세트 효과(주변 1칸 50%) · shield 매 every턴 최대 HP pct%의 보호막(다시 채움, 쌓이지 않음)
-  //   skillLs 세트 스킬(룬워드 스킬 포함)에도 흡혈 · lsCap 흡혈 최대치 +N%p · autoPotion HP below% 이하면 every턴마다 포션 자동(쿨타임과 따로)
+  //   skillLs 세트 스킬(룬워드 스킬 포함)에도 흡혈 · lsCap 흡혈 최대치 +N%p
   //   skillFast 세트 스킬을 1턴 더 자주 · fireball 약한 파이어볼 (화염 세트 파이어볼이 있으면 그쪽)
   // 같은 종류의 특수 효과는 겹치지 않음 (가장 큰 것 하나). 능력치는 더해짐
   const RUNEWORDS = [
@@ -1126,7 +1131,6 @@
     { name: "태산", bases: ["chest", "weapon"], stats: { defPct: 30, hpPct: 10, allRes: 15 }, special: { shield: 20, skillLs: 1 } },
     // 장검·방패 파밍 룬워드 (dc#52): 아이템 발견 +25씩 + 공격 스킬 (흡혈 그대로). 기억·몰래와 합치면 발견 100%
     { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 8, mf: 25 }, special: { lsCap: 3, blast: 20 } },
-    { name: "치유", bases: ["head"], stats: { killHealPct: 5, mf: 20 }, special: { autoPotion: 1 } },
     { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
     { name: "선견지명", bases: ["longsword"], stats: { atkPct: 20, crit: 8, xp: 25, mf: 25 }, special: { whirl: 50 } },
     { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5, hpPct: 15, mf: 25 }, special: { counter: 60 } },
@@ -1137,7 +1141,7 @@
   const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
   // 특수 효과의 고정 수치
   const RUNEWORD_FX = {
-    teleport: { steps: 3 }, vuln: { every: 2, turns: 2, radius: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
+    teleport: { steps: 3 }, vuln: { every: 2, turns: 2, radius: 2 }, shield: { every: 2 },
     skillLs: { share: 1 }, fireball: { every: 3, mul: 0.4 },
     whirl: { every: 2 },   // 회전 베기: every턴마다 주변 8칸 적 모두 공격력의 whirl% (물리: 방어력만큼 줄고 흡혈 그대로)
     // 처치 폭발: 내가 쓰러뜨린 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로, 이어서 터짐. 분신은 안 터짐)
@@ -1176,7 +1180,6 @@
     if (sp.shield) out.push(`${F.shield.every}턴마다 최대 HP ${sp.shield}%의 보호막 (쌓이지 않음)`);
     if (sp.skillLs) out.push("세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈");
     if (sp.lsCap) out.push(`흡혈 최대치 +${sp.lsCap}%p`);
-    if (sp.autoPotion) out.push(`HP ${F.autoPotion.below}% 이하면 ${F.autoPotion.every}턴마다 포션 자동 (쿨타임과 따로)`);
     if (sp.skillFast) out.push("세트 스킬을 1턴 더 자주");
     if (sp.whirl) out.push(`회전 베기: ${F.whirl.every}턴마다 주변 8칸 적 모두에게 공격력의 ${sp.whirl}% (흡혈 됨)`);
     if (sp.blast) out.push(`처치 폭발: 쓰러뜨린 몬스터가 터져 주변 적에게 그 몬스터 최대 HP의 ${sp.blast}% (흡혈 됨, 이어서 터짐)`);
@@ -1244,7 +1247,7 @@
   function totals(equipped) {
     // parry: 패링 확률(최대 PARRY.max), dual: 보조 손에 무기(한 턴에 두 번 공격), splash: 주변 1칸 피해
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
-      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0, longsword: 0,
       fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
       fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, mf: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
     const setCounts = {}, rw = {}, rwNames = [], uq = {}, uqNames = [];
@@ -1283,6 +1286,7 @@
     sum.parry = Math.min(PARRY.max, sum.parry);
     // guard: 장검 + 방패 (흡혈 보너스·상한)
     if (shieldOnly && equipped.some(it => it && it.slot === "offhand" && it.type === "shield")) { sum.guard = 1; sum.lifesteal += SHIELD_GUARD.lifesteal; }
+    if (shieldOnly) sum.longsword = 1;   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
     // 룬워드: 광란 세트 효과·체인 라이트닝(세트 없이도), 흡혈 최대치 +N%p
     if (rw.splash) sum.splash = 1;
     if (rw.chain) sum.chain = Math.max(sum.chain, 1);
@@ -1298,7 +1302,7 @@
 
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_RARITIES, SLOTS_R7, ACC_SLOTS, EQUIP_SLOTS, equipKeysFor, isAccessory, ACCESSORY, accTier, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
-    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
+    OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, LONGSWORD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
     SOCKETS, socketRange, socketCount, socketLine, socketsLostBy, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,

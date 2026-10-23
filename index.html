@@ -542,7 +542,7 @@
         <div id="inv-equip" class="equip-grid"></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
-        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구)</button>
+        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
         <div id="inv-sell-ask" hidden></div>
       </div>
       <div id="inv-side" class="inv-side">
@@ -1430,7 +1430,7 @@
   const goldNM = () => inGold() && player.gn > 0;
   const nmMobs = () => inNM() || goldNM();   // 나이트메어 몬스터가 나오는 곳
   // 헬 던전: player.zone이 "hell"이면 depth는 헬 층(1~50). 나이트메어를 완료하면 열림. 최고 층·완료는 따로
-  // 몬스터는 속성 저항을 가지고, 헬에서는 플레이어의 속성 저항이 HELL.playerResCut%p 낮아짐. 아이템은 "지옥의" (126~175레벨)
+  // 몬스터는 속성 저항을 가지고, 헬에서는 플레이어의 속성 저항이 ELEMENTS.zonePenalty.hell%p 낮아짐 (장비 저항 합에서). 아이템은 "지옥의" (126~175레벨)
   const HELL = RLMonsters.HELL;
   let hellBest = 0, hellCleared = false;
   const inHell = () => player?.zone === "hell";
@@ -1482,6 +1482,7 @@
       killHeal: g.killHeal + Math.round(maxHp * g.killHealPct / 100),
       parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
+      longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
       // 화염의 세트: 파이어볼 (2세트), 맞은 적 화상 (3세트), 파이어볼 피해 +% (5세트)
       fireball: g.fireball > 0, fireballPct: g.fireballPct, fireballBurn: g.fireballBurn > 0,
@@ -1490,9 +1491,10 @@
       chain: g.chain > 0, chainPct: g.chainPct, chainMax: g.chainMax > 0,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
-      // 헬에서는 속성 저항 −HELL.playerResCut%p (최대치를 넘긴 만큼은 소용없음)
-      res: Object.fromEntries(EL.list.map(k => [k, Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
-      // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball·whirl·blast·counter
+      // 나이트메어 −40 · 헬 −70 (dc#54): 장비 저항 합에서 먼저 빼고 그 뒤 최대치 (RLMonsters.playerRes)
+      res: Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), resZone())])),
+      resRaw: Object.fromEntries(EL.list.map(k => [k, g[`${k}Res`] + g.allRes])),
+      // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·skillFast·fireball·whirl·blast·counter
       rw: T.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
       uq: T.uniques.special,
@@ -1501,6 +1503,8 @@
     };
   }
   // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
+  // 저항 감소를 받는 던전: 헬 · 나이트메어 몬스터가 나오는 곳(나이트메어, 악몽의 골드 던전)
+  const resZone = () => (scene === "dungeon" && player ? (inHell() ? "hell" : nmMobs() ? "nightmare" : "normal") : "normal");
   const resCapOf = (g, k) => EL.resCap + (g.allResMax || 0) + (g[`${k}ResMax`] || 0);
   const heal = (n) => { player.hp = Math.min(stats().maxHp, player.hp + n); };
   // 플레이어가 받는 피해: 룬워드 보호막(태산)·용비늘 장화 보호막이 먼저 막음. 실제로 깎인 HP
@@ -1753,7 +1757,8 @@
     if (attacker === player) {
       const s = stats();
       // 두 손 무기면 한 턴에 두 번 (두 번째 왼손 공격은 약하게). 첫 공격에 쓰러지면 끝
-      const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [1];
+      // 장검은 한 번에 ×LONGSWORD.hitMul (보조 단검 두 번째 공격을 못 쓰는 대신)
+      const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [s.longsword ? RLItems.LONGSWORD.hitMul : 1];
       const elemPct = s.elem.fire + s.elem.ice + s.elem.bolt;
       hits.forEach((mul, i) => {
         if (target.hp <= 0 || !enemies.includes(target)) return;
@@ -1780,6 +1785,15 @@
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, "막음", false);
         log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
+        // 업경대: 막아도 받을 피해의 %를 되돌림
+        if (s.uq.reflect && attacker.hp > 0) {
+          const would = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - RLMonsters.crowdCut(adjacentFoes()))));
+          const back = Math.max(1, Math.round(would * s.uq.reflect / 100));
+          attacker.hp -= back;
+          showDamage(attacker, back, false, RLItems.RARITIES.unique.color);
+          log(`업보: 막은 ${attacker.name}에게 ${back} 피해를 되돌렸다!`, null, RLItems.RARITIES.unique.color);
+          if (attacker.hp <= 0) { killEnemy(attacker); return; }
+        }
         // 도원결의 반격: 막은 몬스터에게 공격력의 counter% (물리, 흡혈 그대로)
         if (s.rw.counter && attacker.hp > 0 && enemies.includes(attacker)) {
           const crit = Math.random() * 100 < s.crit;
@@ -2829,9 +2843,9 @@
           const stillAlive = skillHit(at, dmg, crit, EL.colors.bolt, s);
           // 감전: 맞은 뒤부터 (다음 번개·공격부터 더 아픔), 플레이어의 다음 shock.turns턴 동안
           if (s.chainMax && stillAlive) at.shock = turn + CHAIN.shock.turns + 1;
-          // 다음: 앞에 맞은 적에서 3칸 안 가장 가까운 다른 적. 없으면 3세트부터만 같은 적(살아 있으면)
+          // 다음: 앞에 맞은 적에서 3칸 안 가장 가까운 다른 적. 없으면 3세트·여의주 검이면 같은 적(살아 있으면)
           const next = alive().filter(e => !hitOnce.has(e) && near8(e, from) <= CHAIN.range).sort((a, b) => near8(a, from) - near8(b, from))[0];
-          at = next || (s.chainMax && stillAlive ? at : null);
+          at = next || ((s.chainMax || s.uq.chainPlus) && stillAlive ? at : null);   // 여의주 검도 다른 적이 없으면 같은 적
         }
         flash(cells, "rgba(255, 225, 77, 0.45)");
         log(`⚡ 체인 라이트닝! ${n}번 튕겨 한 번에 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${s.chainMax ? " · 감전" : ""}`, null, EL.colors.bolt);
@@ -2878,17 +2892,11 @@
   function worldTurn() {
     turn++;
     if (player.potCd > 0) player.potCd--;
-    // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음), 치유는 HP가 낮으면 every턴마다 포션 자동 (쿨타임과 따로)
+    // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음)
     const s0 = stats(), rw = s0.rw;
     const shieldPct = Math.max(rw.shield || 0, s0.uq.shield || 0);   // 룬워드 태산·용비늘 장화 중 큰 것
     if (!shieldPct) player.shield = 0;
     else if (turn % RW_FX.shield.every === 0) player.shield = Math.round(s0.maxHp * shieldPct / 100);
-    if (rw.autoPotion && player.hp > 0 && player.hp <= s0.maxHp * RW_FX.autoPotion.below / 100 && turn - (player.apAt ?? -99) >= RW_FX.autoPotion.every) {
-      player.apAt = turn;
-      const before = player.hp;
-      heal(Math.max(POTION.min, Math.round(s0.maxHp * POTION.heal)));
-      log(`✦ 치유: 포션을 자동으로 마셨다. HP +${player.hp - before}`, "good");
-    }
     for (const e of [...enemies]) {
       const b0 = burnTick(e);
       if (!b0) continue;
@@ -3196,7 +3204,7 @@
     shopRerolls = 0;
     setScene("dungeon");
     if (from > 1) log(`나이트메어 ${from}층에 바로 들어왔다. ${from}층 보스를 쓰러뜨리면 룬 ${RLItems.RUNE_DROP.count}개를 떨어뜨린다!`, "rainbow");
-    else log(`나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! ${NM.floors}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 ${NM.itemBase + 1}~${NM.itemBase + NM.floors}.`, "bad");
+    else log(`나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! ${NM.floors}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 ${NM.itemBase + 1}~${NM.itemBase + NM.floors}. 내 속성 저항은 장비 합에서 ${EL.zonePenalty.nightmare}% 낮아진다.`, "bad");
     log("몬스터마다 속성이 있다: 불꽃(화상), 서리(느려짐), 번개(한 번 더 맞음). 여기서 얻는 장비에는 속성 피해·저항이 붙는다.", "info");
     newLevel(generateDungeon());
     saveGame(true);
@@ -3225,7 +3233,7 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    log(`🔥 ${floorName()}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 ${HELL.playerResCut}% 낮아진다.`, "bad");
+    log(`🔥 ${floorName()}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 장비 합에서 ${EL.zonePenalty.hell}% 낮아진다 (${EL.resCap}%가 되려면 ${EL.resCap + EL.zonePenalty.hell}%).`, "bad");
     log(`아이템 레벨 ${HELL.itemBase + 1}~${HELL.itemBase + HELL.floors} "지옥의" 아이템이 나온다. ${HELL.milestones.join("·")}층은 네임드 보스(${HELL.milestones.map(m => RLMonsters.namedAt(m).name).join("·")})가 지키고, 쓰러뜨리면 룬 ${RLMonsters.NAMED.runes}개와 함께 그 층을 골라서 다시 들어올 수 있다.`, "info");
     newLevel(generateDungeon());
     saveGame(true);
@@ -4126,6 +4134,7 @@
       ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
+      ...(s.longsword ? [`장검: 기본 공격 피해 ×${RLItems.LONGSWORD.hitMul} (스킬은 그대로)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
       ...(s.mf ? [`🔍 아이템 발견 +${s.mf}%${g.mf > s.mf ? ` (최대 ${RLItems.FIND.max}%)` : ""}: 처치마다 ${Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×${RLItems.findUniqueMul(s.mf).toFixed(2)}`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
@@ -4133,7 +4142,7 @@
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
       ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${(s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0)}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
       ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
-      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? ` (최대 ${resCapOf(g, k)}%)` : ""}`).join(" · ")}${EL.list.every(k => resCapOf(g, k) === EL.resCap) ? ` (최대 ${EL.resCap}%)` : ""}`] : []),
+      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? ` (최대 ${resCapOf(g, k)}%)` : ""}`).join(" · ")}${EL.list.every(k => resCapOf(g, k) === EL.resCap) ? ` (최대 ${EL.resCap}%)` : ""}${resZone() !== "normal" ? ` · 장비 합 ${EL.list.map(k => s.resRaw[k]).join("/")}% − ${EL.zonePenalty[resZone()]} (${resZone() === "hell" ? "헬" : "나이트메어"})` : ""}`] : []),
       // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
       ...(Inv.totals().runewords.names.length ? [`✦ 룬워드: ${Inv.totals().runewords.names.join(" · ")}`, ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
       ...(Inv.totals().uniques.names.length ? [`✦ 유니크: ${Inv.totals().uniques.names.join(" · ")}`, ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
@@ -4463,8 +4472,8 @@
   // 단계마다 시뮬레이션 설명 (items.js RECOMMEND 주석)
   const GUIDE_NOTE = {
     normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)",
-    nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개 +10, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 43%)",
-    hell: `헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 "최고 조합 보기"에서`,
+    nightmare: `나이트메어 50층을 깨는 조합이에요. 나이트메어에서는 내 저항이 장비 합에서 ${EL.zonePenalty.nightmare}% 낮아져서, ${EL.resCap}%가 되려면 장비 저항 ${EL.resCap + EL.zonePenalty.nightmare}%를 모아야 해요 — 방어구·무기에도 저항 줄을. (시뮬레이션: 레전더리 +10 · 장신구 저항 2줄, 장비 합 115%면 몰려오는 몬스터 26%·보스 0%. 저항 줄 4개뿐이면 89% → 49%로 42%)`,
+    hell: `헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 장비 합에서 ${EL.zonePenalty.hell}% 낮아져서, ${EL.resCap}%가 되려면 장비 저항 ${EL.resCap + EL.zonePenalty.hell}%를 모아야 해요 (업경 목걸이면 최대 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 "최고 조합 보기"에서`,
   };
   // 추천 탭 단계 버튼: 일반 · 나이트메어 · 헬 · 🔍 파밍
   const guideTabs = (tier) => el("div", { className: "guide-tiers" },
@@ -4515,15 +4524,15 @@
     const worn = Object.values(eq).filter(Boolean);
     const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= T.enh).length;
     const accUq = worn.filter(it => RLItems.isAccessory(it) && it.uq && (rec.accUniques?.[it.slot] || []).includes(it.uq)).length;
-    // 저항: 그 단계 기준 (헬은 −10, 지금 있는 곳과 상관없이)
-    const cut = tier === "hell" ? HELL.playerResCut : 0;
-    const res = EL.list.map(k => Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - cut);
+    // 저항: 그 단계 기준 (나이트메어 −40 · 헬 −70을 장비 합에서, 지금 있는 곳과 상관없이)
+    const cut = EL.zonePenalty[tier] || 0;
+    const res = EL.list.map(k => RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), tier));
     const tabs = guideTabs(tier);
     const rows = [
       tabs,
       el("h3", {}, `📋 추천 능력치 (${rec.goal})`),
       el("div", { className: "meta" }, GUIDE_NOTE[tier]),
-      ...(T.res ? [goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%${cut ? ` (헬 −${cut})` : ""}`)] : []),
+      ...(T.res ? [goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%${cut ? ` (장비 합 −${cut}: ${T.res + cut}% 모으기)` : ""}`)] : []),
       goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${g.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
       goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
       ...(T.uniques ? [goal(accUq >= T.acc, `추천 유니크 장신구 ${accUq} / ${T.acc}칸`)]
@@ -4579,6 +4588,15 @@
   // 실제 규칙으로 만듦 (유니크는 네임드 드롭과 같은 시드 모양·굴림, 세트·장신구는 그 단계 50층 보스 드롭). 운영자는 랭킹에 기록되지 않음
   let staffGift = false, giftTier = "hell", giftAncient = false;
   const GIFT_TIERS = { hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 } };
+  // 룬워드 베이스: 홈 개수가 룬 수와 딱 맞는 커먼 (일반 75층·나이트메어 50층·헬 50층 몬스터 드롭)
+  let rwGiftTier = "hell";
+  const RW_GIFT_TIERS = { normal: { name: "일반", tag: "d75", lvl: 75 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 }, hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 } };
+  const rwBases = () => RLItems.RUNEWORDS.flatMap(w => w.bases.map(base => ({ w, base })));
+  function giftRwBase({ w, base }) {
+    const t = RW_GIFT_TIERS[rwGiftTier], n = giftNonce();
+    return findGen(n, (s, i) => RLItems.generate(`${n}|${t.tag}|w${i}`, "drop", t.lvl),
+      it => it.rarity === "common" && RLItems.runewordBaseKeys(it).includes(base) && RLItems.socketCount(it) === w.runes.length && (base !== "weapon" || it.type === "dagger"));
+  }
   const giftNonce = () => `staff${randomId().replace(/-/g, "").slice(0, 10)}`;
   const findGen = (n, mk, pred, tries = 400000) => { for (let i = 0; i < tries; i++) { const it = mk(`${n}${i}`, i); if (it && pred(it)) return it; } return null; };
   function giftUnique(k) {
@@ -4627,6 +4645,11 @@
       el("div", { className: "gift-row" }, ...Object.entries(GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === giftTier ? " on" : ""}`, onclick: () => { giftTier = k; renderDetail(); } }, t.name))),
       el("div", { className: "gift-row" }, ...Object.entries(RLItems.SETS).map(([id, set]) => btn(`${set.name} (${Object.keys(set.pieces).length}부위)`, () => giveStaff(giftSet(id), set.name))),
         btn("레전더리 장신구 3개 (목걸이·반지 2)", () => giveStaff(giftAccessories(), "레전더리 장신구"))),
+      el("h3", {}, "룬워드 베이스 (홈이 룬 수와 맞는 커먼)"),
+      el("div", { className: "gift-row" }, ...Object.entries(RW_GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === rwGiftTier ? " on" : ""}`, onclick: () => { rwGiftTier = k; renderDetail(); } }, t.name))),
+      el("div", { className: "gift-row" }, ...rwBases().map(b => btn(`${b.w.name} (${RLItems.BASE_NAMES[b.base].replace(/\(.*\)/, "")} ${b.w.runes.length}홈)`, () => giveStaff([giftRwBase(b)], `${b.w.name} 베이스`), `${runeSeq(b.w)} 룬 순서`)),
+        btn(`전부 (${rwBases().length}개)`, () => giveStaff(rwBases().map(giftRwBase), "룬워드 베이스"))),
+      el("div", { className: "meta" }, "운영자는 룬을 쓰지 않고 넣을 수 있어요 (상세의 홈에 넣기에서 룬 고르기)"),
     ];
   }
   function openStaffGift() { if (!isStaff()) return; selected = null; staffGift = true; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
@@ -5703,7 +5726,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1023b:${owner}`;  // 아이템 발견·룬워드 남는 홈·나무, 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1023d:${owner}`;  // 저항 감소·몬스터 방어력, 장검 ×2·여의주 검·업경대·치유 삭제, 아이템 발견·룬워드 남는 홈·나무, 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5711,6 +5734,8 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `🛡 내 속성 저항이 나이트메어 −40 · 헬 −70으로 바뀌었어요: 장비 저항 합에서 먼저 빼고 그 뒤 최대 75% — 나이트메어는 115%, 헬은 145%를 모아야 75%예요 (추천 탭의 저항 줄도 늘었어요). 나이트메어·헬 몬스터 방어력이 공격력만큼 올라가고, 그만큼 HP·공격력은 조금 내려갔어요. ` +
+        `⚔ 장검 기본 공격 피해 ×2 (보조 단검 두 번째 공격 대신) — 헬 50층 유니크 없는 최고 조합 1~3위가 장검이에요. 여의주 검: 주변에 다른 몬스터가 없으면 번개가 같은 몬스터를 다시 침. 업경대: 막아도 반사. 룬워드 치유는 없어졌어요 (예전 치유 투구는 룬 효과만 남아요). ` +
         `🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ` +
         `💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ` +
         `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
