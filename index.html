@@ -542,7 +542,7 @@
         <div id="inv-equip" class="equip-grid"></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
-        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구)</button>
+        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
         <div id="inv-sell-ask" hidden></div>
       </div>
       <div id="inv-side" class="inv-side">
@@ -4585,6 +4585,15 @@
   // 실제 규칙으로 만듦 (유니크는 네임드 드롭과 같은 시드 모양·굴림, 세트·장신구는 그 단계 50층 보스 드롭). 운영자는 랭킹에 기록되지 않음
   let staffGift = false, giftTier = "hell", giftAncient = false;
   const GIFT_TIERS = { hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 } };
+  // 룬워드 베이스: 홈 개수가 룬 수와 딱 맞는 커먼 (일반 75층·나이트메어 50층·헬 50층 몬스터 드롭)
+  let rwGiftTier = "hell";
+  const RW_GIFT_TIERS = { normal: { name: "일반", tag: "d75", lvl: 75 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 }, hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 } };
+  const rwBases = () => RLItems.RUNEWORDS.flatMap(w => w.bases.map(base => ({ w, base })));
+  function giftRwBase({ w, base }) {
+    const t = RW_GIFT_TIERS[rwGiftTier], n = giftNonce();
+    return findGen(n, (s, i) => RLItems.generate(`${n}|${t.tag}|w${i}`, "drop", t.lvl),
+      it => it.rarity === "common" && RLItems.runewordBaseKeys(it).includes(base) && RLItems.socketCount(it) === w.runes.length && (base !== "weapon" || it.type === "dagger"));
+  }
   const giftNonce = () => `staff${randomId().replace(/-/g, "").slice(0, 10)}`;
   const findGen = (n, mk, pred, tries = 400000) => { for (let i = 0; i < tries; i++) { const it = mk(`${n}${i}`, i); if (it && pred(it)) return it; } return null; };
   function giftUnique(k) {
@@ -4633,6 +4642,11 @@
       el("div", { className: "gift-row" }, ...Object.entries(GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === giftTier ? " on" : ""}`, onclick: () => { giftTier = k; renderDetail(); } }, t.name))),
       el("div", { className: "gift-row" }, ...Object.entries(RLItems.SETS).map(([id, set]) => btn(`${set.name} (${Object.keys(set.pieces).length}부위)`, () => giveStaff(giftSet(id), set.name))),
         btn("레전더리 장신구 3개 (목걸이·반지 2)", () => giveStaff(giftAccessories(), "레전더리 장신구"))),
+      el("h3", {}, "룬워드 베이스 (홈이 룬 수와 맞는 커먼)"),
+      el("div", { className: "gift-row" }, ...Object.entries(RW_GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === rwGiftTier ? " on" : ""}`, onclick: () => { rwGiftTier = k; renderDetail(); } }, t.name))),
+      el("div", { className: "gift-row" }, ...rwBases().map(b => btn(`${b.w.name} (${RLItems.BASE_NAMES[b.base].replace(/\(.*\)/, "")} ${b.w.runes.length}홈)`, () => giveStaff([giftRwBase(b)], `${b.w.name} 베이스`), `${runeSeq(b.w)} 룬 순서`)),
+        btn(`전부 (${rwBases().length}개)`, () => giveStaff(rwBases().map(giftRwBase), "룬워드 베이스"))),
+      el("div", { className: "meta" }, "운영자는 룬을 쓰지 않고 넣을 수 있어요 (상세의 홈에 넣기에서 룬 고르기)"),
     ];
   }
   function openStaffGift() { if (!isStaff()) return; selected = null; staffGift = true; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
