@@ -422,6 +422,14 @@ const EQUIP_SLOTS = ['head', 'chest', 'arms', 'pants', 'boots', 'weapon', 'offha
 function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 0, bool $dev = false): bool {
     if ($dev) $seed = preg_replace('/\|r\d{1,6}\|s([0-5])$/', '|r1|s$1', $seed);
     $chance = r_drop_chance_for($v, $rev);  // r2부터 일반 15% / 정예 60% (그 전 8% / 40%)
+    // 아이템 발견 보너스 (r8, 시드 |f처치 순번): 보물 표(golden)로, 드롭 굴림이 최대 발견일 때의 확률 안 (items.js rollFindBonus)
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|([dnj])(\d{1,5})\|f\d{1,8}$/', $seed, $m)) {
+        $n = (int)$m[2];
+        if ($v !== 4 || $rev < 8 || $src !== 'golden' || r_drop_roll($v, $seed) >= r_find_max_bonus()) return false;
+        if ($m[1] === 'd') return $n === $lvl;
+        if ($m[1] === 'n') return $n >= 1 && $n <= NM_FLOORS && $lvl === NM_ITEM_BASE + $n;
+        return $n >= 1 && $n <= HELL_FLOORS && $lvl === HELL_ITEM_BASE + $n;
+    }
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|d(\d{1,5})\|k\d{1,8}$/', $seed, $m)) {           // 몬스터 처치
         if ((int)$m[1] !== $lvl) return false;
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];      // 정예 확률 안에 들어야 떨어짐
@@ -441,8 +449,10 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|j(\d{1,2})\|([kpua])\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[1];
         if ($v !== 4 || $rev < 6 || $n < 1 || $n > HELL_FLOORS || $lvl !== HELL_ITEM_BASE + $n) return false;
-        if ($m[2] === 'u') return $src === 'unique' && $rev >= 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'];
-        if ($m[2] === 'a') return $src === 'unique' && $rev >= 7 && in_array($n, HELL_NAMED, true) && r_unique_acc_roll($seed) < R_UNIQUE['accChance'];   // 유니크 장신구
+        // 유니크: 아이템 발견이 최대일 때의 확률까지 인정 (r8부터, 그 전 아이템은 원래 확률)
+        $uMul = $rev >= 8 ? r_find_max_unique_mul() : 1;
+        if ($m[2] === 'u') return $src === 'unique' && $rev >= 6 && in_array($n, HELL_NAMED, true) && r_unique_roll($seed) < R_UNIQUE['chance'] * $uMul;
+        if ($m[2] === 'a') return $src === 'unique' && $rev >= 7 && in_array($n, HELL_NAMED, true) && r_unique_acc_roll($seed) < R_UNIQUE['accChance'] * $uMul;   // 유니크 장신구
         if ($src === 'unique') return false;
         if ($m[2] === 'p') return $src === 'golden';   // 보물 자리
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];

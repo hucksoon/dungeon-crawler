@@ -123,7 +123,7 @@ const R_STAT_NAMES = [
     'fireRes' => ['불 저항', true], 'iceRes' => ['얼음 저항', true], 'boltRes' => ['번개 저항', true], 'allRes' => ['모든 속성 저항', true],
     'socket' => ['홈', false],   // 추가 능력치 한 줄 (r6), 값 = 홈 개수
     'power' => ['공격력·방어력·최대 HP', true],   // 장신구 주 능력치
-    'fireResMax' => ['불 저항 최대치', true], 'iceResMax' => ['얼음 저항 최대치', true], 'boltResMax' => ['번개 저항 최대치', true], 'allResMax' => ['모든 속성 저항 최대치', true], 'lsCap' => ['흡혈 최대치', true],
+    'fireResMax' => ['불 저항 최대치', true], 'iceResMax' => ['얼음 저항 최대치', true], 'boltResMax' => ['번개 저항 최대치', true], 'allResMax' => ['모든 속성 저항 최대치', true], 'lsCap' => ['흡혈 최대치', true], 'mf' => ['아이템 발견', true],
     'killHealPct' => ['처치 시 최대 HP 회복', true], 'skillPct' => ['스킬 피해', true],   // 룬 "차"·"타"
 ];
 // v4 % 능력치 등급별 고정 범위 (커먼, 언커먼, 레어, 에픽, 레전더리, 세트)
@@ -478,14 +478,14 @@ const R_RUNEWORDS = [
     ['name' => '폭풍전야', 'bases' => ['longsword'], 'runes' => [12, 12, 8, 7], 'stats' => ['boltDmg' => 20, 'critDmg' => 40], 'special' => ['chain' => 1, 'vuln' => 20]],
     ['name' => '필살일격', 'bases' => ['longsword'], 'runes' => [12, 6, 7, 0], 'stats' => ['atkPct' => 35, 'crit' => 10, 'critDmg' => 50], 'special' => ['splash' => 1]],
     ['name' => '태산', 'bases' => ['chest', 'weapon'], 'runes' => [11, 6], 'stats' => ['defPct' => 30, 'hpPct' => 10, 'allRes' => 15], 'special' => ['shield' => 20, 'skillLs' => 1]],
-    ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 8], 'special' => ['lsCap' => 3]],
-    ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5], 'special' => ['autoPotion' => 1]],
+    ['name' => '카리스마', 'bases' => ['longsword'], 'runes' => [10, 3, 6, 4], 'stats' => ['hpPct' => 25, 'atkPct' => 15, 'lifesteal' => 8, 'mf' => 25], 'special' => ['lsCap' => 3, 'blast' => 20]],
+    ['name' => '치유', 'bases' => ['head'], 'runes' => [9, 7], 'stats' => ['killHealPct' => 5, 'mf' => 20], 'special' => ['autoPotion' => 1]],
     ['name' => '마음가짐', 'bases' => ['longsword', 'shield'], 'runes' => [4, 7, 0, 8], 'stats' => ['skillPct' => 30], 'special' => ['skillFast' => 1, 'skillLs' => 1]],
-    ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['crit' => 8, 'xp' => 25], 'special' => ['shield' => 10]],
-    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5, 'hpPct' => 15], 'special' => []],
-    ['name' => '기억', 'bases' => ['head'], 'runes' => [0, 7], 'stats' => ['xp' => 25, 'crit' => 3], 'special' => ['lsCap' => 2]],
-    ['name' => '몰래', 'bases' => ['chest'], 'runes' => [4, 3], 'stats' => ['defPct' => 10, 'dmgReduce' => 3], 'special' => ['skillLs' => 1]],
-    ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20, 'lifesteal' => 4], 'special' => ['fireball' => 1]],
+    ['name' => '선견지명', 'bases' => ['longsword'], 'runes' => [6, 0, 8, 4], 'stats' => ['atkPct' => 20, 'crit' => 8, 'xp' => 25, 'mf' => 25], 'special' => ['whirl' => 50]],
+    ['name' => '도원결의', 'bases' => ['shield'], 'runes' => [2, 7, 0, 7], 'stats' => ['allRes' => 10, 'dmgReduce' => 5, 'parry' => 15, 'lifesteal' => 5, 'hpPct' => 15, 'mf' => 25], 'special' => ['counter' => 60]],
+    ['name' => '기억', 'bases' => ['head'], 'runes' => [0, 7], 'stats' => ['xp' => 25, 'crit' => 3, 'mf' => 25], 'special' => ['lsCap' => 2]],
+    ['name' => '몰래', 'bases' => ['chest'], 'runes' => [4, 3], 'stats' => ['defPct' => 10, 'dmgReduce' => 3, 'mf' => 25], 'special' => ['skillLs' => 1]],
+    ['name' => '나무', 'bases' => ['staff'], 'runes' => [1, 4], 'stats' => ['fireDmg' => 15, 'fireRes' => 20, 'lifesteal' => 4, 'atkPct' => 30, 'critDmg' => 30], 'special' => ['fireball' => 1]],
 ];
 const R_RUNEWORD_TIER_MUL = ['normal' => 0.5, 'nightmare' => 0.75, 'hell' => 1];
 function r_item_tier(array $item): string { return r_is_hell_item($item) ? 'hell' : (r_is_nightmare_item($item) ? 'nightmare' : 'normal'); }
@@ -498,12 +498,13 @@ function r_runeword_base_keys(array $item): array {
 function r_runeword_of(array $item): ?array {
     $gems = $item['gems'] ?? [];
     $n = count($gems);
-    if (($item['rarity'] ?? '') !== 'common' || !$n || $n !== r_socket_count($item)) return null;
+    if (($item['rarity'] ?? '') !== 'common' || !$n || $n > r_socket_count($item)) return null;
     $keys = r_runeword_base_keys($item);
     foreach (R_RUNEWORDS as $w) {
+        // 홈이 룬보다 많아도 됨: 앞 홈부터 정해진 순서의 룬을 모두 넣으면 완성, 남는 홈은 없어짐 (items.js runewordOf)
         if (count($w['runes']) !== $n || !array_intersect($w['bases'], $keys)) continue;
         $ok = true;
-        foreach ($gems as $i => $g) if (!r_is_rune($g) || $g[1] !== $w['runes'][$i]) { $ok = false; break; }
+        foreach ($w['runes'] as $i => $k) { $g = $gems[$i] ?? null; if (!r_is_rune($g) || $g[1] !== $k) { $ok = false; break; } }
         if ($ok) return $w;
     }
     return null;
@@ -550,7 +551,7 @@ function r_id(int $version, string $source, int $lv, string $seed, int $rev = 0)
 const R_UNIQUE = [
     'chance' => 0.15, 'mul' => 1.2,
     'items' => [
-        'fang' => ['boss' => 10, 'name' => '송곳니', 'slot' => 'weapon', 'type' => 'dagger', 'lines' => ['crit', 'critDmg', 'atkPct', 'fireDmg'], 'stats' => []],
+        'fang' => ['boss' => 10, 'name' => '송곳니', 'slot' => 'weapon', 'type' => 'dagger', 'lines' => ['crit', 'critDmg', 'atkPct', 'fireDmg'], 'stats' => ['mf' => 20]],
         'ironscale' => ['boss' => 10, 'name' => '쇠비늘 갑옷', 'slot' => 'chest', 'type' => null, 'lines' => ['crit', 'critDmg', 'atkPct', 'fireRes'], 'stats' => []],
         'foxorb' => ['boss' => 20, 'name' => '여우구슬 지팡이', 'slot' => 'weapon', 'type' => 'staff', 'lines' => ['crit', 'critDmg', 'atkPct', 'iceDmg'], 'stats' => ['nova' => 1, 'killHealPct' => 3]],
         'binyeo' => ['boss' => 20, 'name' => '구미호의 비녀', 'slot' => 'head', 'type' => null, 'lines' => ['hp', 'crit', 'critDmg', 'iceRes'], 'stats' => []],
@@ -561,9 +562,9 @@ const R_UNIQUE = [
         'mirror' => ['boss' => 50, 'name' => '업경대', 'slot' => 'offhand', 'type' => 'shield', 'lines' => ['hp', 'def', 'allRes', 'lifesteal'], 'stats' => ['parry' => 15]],
         'robe' => ['boss' => 50, 'name' => '염라의 관복', 'slot' => 'pants', 'type' => null, 'lines' => ['hp', 'def', 'crit', 'allRes'], 'stats' => ['allRes' => 20, 'hpPct' => 30]],
         // 유니크 장신구 (r7, items.js UNIQUE acc): 시드 |j층|a순번, 주 능력치 power, 저항 줄 2~3
-        'ironfang' => ['boss' => 10, 'name' => '쇠이빨 목걸이', 'slot' => 'neck', 'type' => null, 'acc' => true, 'stats' => ['fireResMax' => 5]],
+        'ironfang' => ['boss' => 10, 'name' => '쇠이빨 목걸이', 'slot' => 'neck', 'type' => null, 'acc' => true, 'stats' => ['fireResMax' => 5, 'mf' => 20]],
         'foxfire' => ['boss' => 20, 'name' => '여우불 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['crit' => 3, 'critDmg' => 10]],
-        'yeoui' => ['boss' => 30, 'name' => '여의 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['boltResMax' => 3]],
+        'yeoui' => ['boss' => 30, 'name' => '여의 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['boltResMax' => 3, 'mf' => 15]],
         'myeongbu' => ['boss' => 40, 'name' => '명부의 반지', 'slot' => 'ring', 'type' => null, 'acc' => true, 'stats' => ['lsCap' => 2]],
         'eopgyeong' => ['boss' => 50, 'name' => '업경 목걸이', 'slot' => 'neck', 'type' => null, 'acc' => true, 'stats' => ['allResMax' => 5]],
     ],
@@ -574,6 +575,10 @@ function r_unique_of(array $item): ?array {
     return ($item['rarity'] ?? '') === 'unique' ? (R_UNIQUE['items'][$item['uq'] ?? ''] ?? null) : null;
 }
 // 네임드 보스 처치 시드에서 유니크가 나오는지 (items.js rollUnique의 첫 굴림)
+// 아이템 발견 (items.js FIND): 서버는 굴림이 최대 발견(max%)일 때의 확률 안에 드는지만 확인 (그때 낀 장비는 모름)
+const R_FIND = ['max' => 100, 'bonus' => 0.1, 'uniqueDiv' => 300];
+function r_find_max_unique_mul(): float { return 1 + R_FIND['max'] / R_FIND['uniqueDiv']; }
+function r_find_max_bonus(): float { return R_FIND['bonus'] * R_FIND['max'] / 100; }
 function r_unique_roll(string $seed): float { return r_rng("v4|unique?|{$seed}")(); }
 function r_unique_acc_roll(string $seed): float { return r_rng("v4|uniqueacc?|{$seed}")(); }
 function r_generate_unique(string $seed, int $level, int $rev): array {
@@ -856,7 +861,7 @@ function r_totals(array $equipped): array {
     $sum = ['atk' => 0, 'def' => 0, 'hp' => 0, 'crit' => 0, 'lifesteal' => 0, 'gold' => 0, 'xp' => 0, 'killHeal' => 0,
         'atkPct' => 0, 'defPct' => 0, 'hpPct' => 0, 'critDmg' => 0, 'killHealPct' => 0, 'dmgReduce' => 0, 'parry' => 0, 'splash' => 0, 'dual' => 0, 'guard' => 0,
         'fireball' => 0, 'fireballPct' => 0, 'fireballBurn' => 0, 'nova' => 0, 'novaPct' => 0, 'novaSlow' => 0, 'chain' => 0, 'chainPct' => 0, 'chainMax' => 0,
-        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
+        'fireDmg' => 0, 'iceDmg' => 0, 'boltDmg' => 0, 'fireRes' => 0, 'iceRes' => 0, 'boltRes' => 0, 'allRes' => 0, 'skillPct' => 0, 'lsCap' => 0, 'mf' => 0, 'power' => 0, 'fireResMax' => 0, 'iceResMax' => 0, 'boltResMax' => 0, 'allResMax' => 0];
     $setCounts = [];
     $rw = [];
     $shieldOnly = false;
