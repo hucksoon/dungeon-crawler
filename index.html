@@ -331,7 +331,9 @@
   .bag-item { text-align: left; font-size: 12px; padding: 6px 8px; }
   .bag-item small { opacity: 0.55; }
   .bag-empty { font-size: 12px; opacity: 0.6; padding: 8px 2px; }
-  #inv-sell-all { width: 100%; font-size: 12px; flex: none; }
+  #inv-sell-all, #inv-staff-gift { width: 100%; font-size: 12px; flex: none; }
+  .gift-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+  .gift-row button { font-size: 12px; padding: 4px 6px; }
   #inv-sell-ask { flex: none; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; }
   #inv-sell-ask .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   #inv-sell-ask .row button { flex: 1 1 140px; font-size: 12px; }
@@ -539,6 +541,7 @@
         <div id="inv-equip" class="equip-grid"></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
+        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구)</button>
         <div id="inv-sell-ask" hidden></div>
       </div>
       <div id="inv-side" class="inv-side">
@@ -1443,8 +1446,10 @@
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
   const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() || inHell() ? { tag: floorTag(), level: itemLevel() } : {});
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
-  // 마지막으로 쓰러진 곳 { d: 층, z: "normal" | "nm" | "gold", gn: 골드 던전(악몽) 층 } — 운영자 입구가 여기로 바로 감. 새로 시작해도 남음
+  // 마지막으로 쓰러지거나 포탈(P)을 탄 곳 { d: 층, z: "normal" | "nm" | "gold" | "hell", gn: 골드 던전(악몽) 층 }
+  // — 운영자 입구가 이 층을 새로 만들어서 들어감 (같은 층을 다시 돌며 테스트). 새로 시작해도 남음
   let lastDeath = null;
+  const markLastSpot = () => { lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) }; };
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
   const rarityColor = (item) => (RLItems.runewordOf(item) ? RLItems.RUNEWORD_COLOR : RLItems.RARITIES[item.rarity].color);   // 룬워드는 금색
@@ -2249,7 +2254,7 @@
       return;
     }
     gameOver = true;
-    lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) };
+    markLastSpot();
     log(`당신은 ${floorName()}에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
     saveGame(true);
     openDeath();
@@ -3084,8 +3089,8 @@
   }
 
   // 운영자 입구 (운영자 기기만, 테스트용): 쓰러진 판이어도 그 자리에서 되살려(골드·레벨·장비 그대로)
-  // 마지막으로 쓰러진 던전(일반·나이트메어·골드)의 그 층으로 바로 (한 판에서는 층이 내려가기만 해서 그 판의 가장 깊은 층).
-  // 쓰러진 적이 없으면 일반 던전 최고 층, 나이트메어 기록이 있으면 나이트메어 최고 층으로 갈지 물어봄. 운영자는 랭킹에 기록되지 않음
+  // 마지막으로 쓰러지거나 포탈(P)을 탄 던전(일반·나이트메어·골드·헬)의 그 층을 새로 만들어서 (새 지도·새 몬스터, 같은 층을 다시 돌며 테스트)
+  // 그런 적이 없으면 일반 던전 최고 층, 나이트메어 기록이 있으면 나이트메어 최고 층으로 갈지 물어봄. 운영자는 랭킹에 기록되지 않음
   function enterStaffDoor() {
     if (!isStaff() || entering) return;
     let to;
@@ -3107,7 +3112,7 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    log(`운영자 입구: ${floorName()}에 바로 들어왔다. (테스트용, 랭킹에는 기록되지 않음)`, null, STAFF_COLOR);
+    log(`운영자 입구: ${floorName()}을(를) 새로 만들어 들어왔다. (마지막으로 쓰러지거나 포탈을 탄 층 · 테스트용, 랭킹에는 기록되지 않음)`, null, STAFF_COLOR);
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3226,6 +3231,7 @@
     if (gameOver) { openDeath(); return; }
     const reaper = reaperOn();
     if (reaper) { log(`${reaper.name}이(가) 길을 막고 있다… 쓰러뜨리기 전에는 포탈을 열 수 없다!`, "bad"); render(); return; }
+    markLastSpot();   // 운영자 입구가 이 층을 새로 만들어 다시 들어감
     saveGame(true);
     enterLobby({ from: "portal" });
   }
@@ -3969,9 +3975,9 @@
   let sideOpen = false; // 휴대폰: 탭 창이 아래에서 올라와 있는지
   const narrowScreen = () => matchMedia("(max-width: 899px)").matches;
   // 아이템을 고르면 [상세] 탭을 열어 보여줌
-  function pickItem(sel) { selected = sel; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
+  function pickItem(sel) { selected = sel; staffGift = false; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
   function showTab(tab) { invTab = tab; sideOpen = true; renderInventory(); }
-  function closeSide() { selected = null; invMsg = null; sideOpen = false; if (invTab === "detail") invTab = "stats"; renderInventory(); }
+  function closeSide() { selected = null; staffGift = false; invMsg = null; sideOpen = false; if (invTab === "detail") invTab = "stats"; renderInventory(); }
 
   // 접는 칸: 넓은 화면은 펼친 채로, 휴대폰은 접힌 채로 시작 (shut이면 늘 접힌 채로). 펼치거나 접은 상태는 다시 그려도 유지
   const folds = {};
@@ -4022,7 +4028,7 @@
       // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
       ...RLItems.mainStatsOf(item).map(([k, v]) => {
         const m = RLItems.nmPower(item, k), range = RLItems.statRange(item, "main", k);
-        if (RLItems.isAccessory(item)) return row("★", k, v, v, range, 0, null, v);   // 장신구 공방HP: 강화로 안 오름
+        if (k === "power") return row("★", k, v, v, range, 0, null, v);   // r7 장신구 공방HP%: 강화로 안 오름
         return row("★", k, enhanced[k], v * m, range && range.map(x => x * m), enhanced[k] - v * m, null, effBase[k]);
       }),
       ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
@@ -4123,6 +4129,7 @@
     sellAllBtn.disabled = !sellBag.length;
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
+    document.getElementById("inv-staff-gift").hidden = !isStaff();
 
     renderDetail();
   }
@@ -4397,9 +4404,9 @@
   }
   // 단계마다 시뮬레이션 설명 (items.js RECOMMEND 주석)
   const GUIDE_NOTE = {
-    normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·줄 품질 80%면 몰려오는 몬스터 5%·보스 0%. 그 자리를 비우면 76%, 장신구가 없으면 100%)",
-    nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 45%)",
-    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 7%·12%, 레전더리 + 레전더리 장신구 24%·33%)`,
+    normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)",
+    nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개 +10, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 43%)",
+    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 장신구도 +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 11%·10%, 레전더리 + 레전더리 장신구 17%·25%)`,
   };
   function renderGuide() {
     const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
@@ -4452,9 +4459,69 @@
     invGuide.replaceChildren(...rows);
   }
 
+  // ---- 운영자 아이템 받기 (테스트용): 유니크·세트·레전더리 장신구를 바로 가방에 ----
+  // 실제 규칙으로 만듦 (유니크는 네임드 드롭과 같은 시드 모양·굴림, 세트·장신구는 그 단계 50층 보스 드롭). 운영자는 랭킹에 기록되지 않음
+  let staffGift = false, giftTier = "hell", giftAncient = false;
+  const GIFT_TIERS = { hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 } };
+  const giftNonce = () => `staff${randomId().replace(/-/g, "").slice(0, 10)}`;
+  const findGen = (n, mk, pred, tries = 400000) => { for (let i = 0; i < tries; i++) { const it = mk(`${n}${i}`, i); if (it && pred(it)) return it; } return null; };
+  function giftUnique(k) {
+    const U = RLItems.UNIQUE.items[k], n = giftNonce(), roll = U.acc ? RLItems.rollUniqueAcc : RLItems.rollUnique;
+    return findGen(n, (s, i) => roll(`${s}|j${U.boss}|${U.acc ? "a" : "u"}${i}`, 125 + U.boss), it => it.uq === k);
+  }
+  function giftSet(id) {
+    const t = GIFT_TIERS[giftTier], n = giftNonce();
+    return Object.keys(RLItems.SETS[id].pieces).map(slot => findGen(n, (s, i) => RLItems.generate(`${n}|${t.tag}|${slot}k${i}`, "boss", t.lvl), it => it.set === id && it.slot === slot));
+  }
+  function giftAccessories() {
+    const t = GIFT_TIERS[giftTier], n = giftNonce();
+    return ["neck", "ring", "ring"].map((slot, j) => findGen(n, (s, i) => RLItems.generate(`${n}|${t.tag}|a${j}k${i}`, "boss", t.lvl), it => it.slot === slot && it.rarity === "legendary"));
+  }
+  function giveStaff(items, what) {
+    if (!isStaff()) return;
+    let got = 0, full = 0;
+    for (const item of items.filter(Boolean)) {
+      const r = Inv.add(item, { staff: 1 });
+      if (r === "full") { full++; continue; }
+      if (r !== "ok") continue;
+      got++;
+      // 고대로: 장신구·유니크는 "고대로 만들기", 레전더리·세트는 고대 굴리기 (운영자는 항상 성공)
+      if (giftAncient && canMakeAncient(item)) Inv.makeAncient(item.id);
+      else if (giftAncient && RLItems.canRerollAncient(item, true)) Inv.rerollAncient(item.id);
+    }
+    invMsg = got ? { cls: "good", text: `운영자: ${what} ${got}개를 가방에 넣었어요${giftAncient ? " (고대)" : ""}.${full ? ` 가방이 꽉 차서 ${full}개는 못 넣었어요.` : ""}` }
+      : { cls: "bad", text: full ? "가방이 꽉 찼어요. 먼저 비워 주세요." : "아이템을 만들지 못했어요." };
+    saveGame(true);
+    renderInventory();
+  }
+  function staffGiftRows() {
+    const free = BAG_SIZE - Inv.bag().length;
+    const btn = (label, fn, title) => el("button", { type: "button", className: "staff-btn", title: title || "", onclick: fn }, label);
+    const U = Object.entries(RLItems.UNIQUE.items), gear = U.filter(([, u]) => !u.acc), acc = U.filter(([, u]) => u.acc);
+    const uqBtn = ([k, u]) => btn(u.name, () => giveStaff([giftUnique(k)], u.name), `헬 ${u.boss}층 ${RLMonsters.namedAt(u.boss)?.name || "네임드"} · ${RLItems.SLOT_NAMES[u.slot]}`);
+    return [
+      el("h3", {}, "🎁 운영자 아이템 받기 (테스트용)"),
+      el("div", { className: "meta" }, `가방 빈 칸 ${free}개 · 받은 아이템은 +0 (강화·고대로 만들기는 운영자 무료) · 실제 규칙으로 만든 아이템이에요`),
+      el("label", { className: "meta" }, el("input", { type: "checkbox", checked: giftAncient, onchange: (e) => { giftAncient = e.target.checked; } }), " 고대로 받기 (모든 능력치 최대치)"),
+      el("h3", { style: { marginTop: "8px" } }, `유니크 장비 (${gear.length})`),
+      el("div", { className: "gift-row" }, ...gear.map(uqBtn), btn(`전부 (${gear.length}개)`, () => giveStaff(gear.map(([k]) => giftUnique(k)), "유니크 장비"))),
+      el("h3", {}, `유니크 장신구 (${acc.length})`),
+      el("div", { className: "gift-row" }, ...acc.map(uqBtn), btn(`전부 (${acc.length}개)`, () => giveStaff(acc.map(([k]) => giftUnique(k)), "유니크 장신구"))),
+      el("h3", {}, "세트 · 레전더리 장신구"),
+      el("div", { className: "gift-row" }, ...Object.entries(GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === giftTier ? " on" : ""}`, onclick: () => { giftTier = k; renderDetail(); } }, t.name))),
+      el("div", { className: "gift-row" }, ...Object.entries(RLItems.SETS).map(([id, set]) => btn(`${set.name} (${Object.keys(set.pieces).length}부위)`, () => giveStaff(giftSet(id), set.name))),
+        btn("레전더리 장신구 3개 (목걸이·반지 2)", () => giveStaff(giftAccessories(), "레전더리 장신구"))),
+    ];
+  }
+  function openStaffGift() { if (!isStaff()) return; selected = null; staffGift = true; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
+
   function renderDetail() {
     if (invTab === "guide") renderGuide();
     const item = selectedItem();
+    if (!item && staffGift && isStaff()) {
+      invDetail.replaceChildren(...(invMsg ? [el("div", { className: `msg-${invMsg.cls}` }, invMsg.text)] : []), ...staffGiftRows());
+      return;
+    }
     if (!item) {
       invDetail.replaceChildren(
         ...(invMsg ? [el("div", { className: `msg-${invMsg.cls}` }, invMsg.text)] : []),
@@ -4468,7 +4535,9 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, `장신구: ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄)만 붙어요. 강화로 오르지 않고, 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공방HP는 약 절반" : ""}`)]
+      ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, item.main?.[0]?.[0] === "power"
+        ? `예전 장신구(r7): ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄. 강화로 오르지 않아요`
+        : `장신구: ★ 공격력·방어력·최대 HP(강화하면 오름${RLItems.isHellItem(item) ? `, 지옥의 힘 ×${RLItems.HELL_POWER.mul}` : RLItems.isNightmareItem(item) ? `, 악몽의 힘 ×${RLItems.NM_POWER.mul}` : ""})와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄, 강화로 안 오름). 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공격력·방어력·최대 HP가 약 절반" : ""}`)]
         : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
         : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
       ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
@@ -4650,6 +4719,7 @@
   document.getElementById("inv-close").addEventListener("click", closeInventory);
   document.getElementById("inv-sell-all").addEventListener("click", sellAll);
   for (const b of invSide.querySelectorAll(".inv-tab")) b.addEventListener("click", () => showTab(b.dataset.tab));
+  document.getElementById("inv-staff-gift").addEventListener("click", openStaffGift);
   invSide.querySelector(".detail-close").addEventListener("click", closeSide);
   invModal.addEventListener("click", (e) => { if (e.target === invModal) closeInventory(); });
 
@@ -5517,7 +5587,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1022d:${owner}`;  // 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1023a:${owner}`;  // 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5525,9 +5595,10 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP %와 속성 저항)이 맡아요. 일반 던전 장신구는 3~10%, 나이트메어·헬은 15~25%(유니크 18~30%). 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
+        `💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ` +
+        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
         `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
-        `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP +%(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
+        `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
         `🛡 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
         `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120%와 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
         `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
