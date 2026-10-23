@@ -45,6 +45,8 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 | `POST api.php?r=market_buy` `{ id }` | 사기: 캐시(가격 + 수수료 1)를 Xsolla에서 차감 |
 | `GET api.php?r=market_mine` | 내가 올린 아이템, 지난 거래, 우편함 |
 | `POST api.php?r=mail_claim` `{ id }` | 우편 받기 (판매 캐시는 이때 Xsolla로 지급) |
+| `POST api.php?r=mail_claim` `{ id, pick }` | 고대 유니크 선택 상자 열기: 고른 유니크(`pick` = 유니크 키)를 고대로 |
+| `POST api.php?r=ubox_collect` | 현금으로 산 고대 유니크 선택 상자를 Xsolla 인벤토리에서 꺼내 우편함으로 (상점이 결제 직후 부름. `market_mine`도 같은 일을 함) |
 | `GET api.php?r=entry_status` | 오늘 무료 입장·광고 보상이 몇 번 남았는지 |
 | `POST api.php?r=entry` `{ adTicket? }` | 1층 문으로 새로 시작 (하루 무료 5회, 그 뒤엔 광고 티켓) |
 | `POST api.php?r=ad_start` `{ kind }` | 광고 보기 전에 티켓 받기 (entry / revive / fee) |
@@ -89,6 +91,17 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
     'xsolla_api_key' => '<프로젝트 API 키>',   // Publisher Account → 프로젝트 설정 → API 키. 판매 대금 지급에 필요
     // 'xsolla_project_id' => 317991,           // 기본값. 다른 Store 프로젝트를 쓸 때만
 ```
+
+## 한정 판매: 고대 유니크 선택 상자 (현금, 계정당 1회)
+
+- 상점(`shop.html`)의 **🎁 한정 판매**에서 **현금**($4.99 · ₩6,900 · ¥750)으로 사요. Xsolla 카탈로그의 `ancient_unique_box` (그룹 `limited_offers`, 구매 제한 계정당 1회 — `tools/xsolla-catalog.mjs`가 만듦). 다 사면 Xsolla가 그 사람의 상점 목록에서 빼요
+- 결제가 끝나면 Xsolla가 그 사람 **인벤토리**에 상자를 넣어요 → 서버가 **그 사람의 로그인 토큰**으로 상자를 꺼내(consume) **우편함**에 넣어요 (`mail` 표, kind `ubox`). 꺼내기에 성공한 만큼만 우편이 생겨서 두 번 들어가지 않아요
+- 로비 우편함에서 **열기** → 유니크 15종 중 하나를 고르면 서버가 시드 `buy|m우편 번호|유니크`로 **고대**(모든 능력치 최대치) 유니크를 만들어 돌려주고, 그 시드를 `bought_items` 표에 남겨요. 레벨은 그 유니크가 나오는 헬 층 (125 + 보스 층), 헬 아이템과 같은 규칙
+- 랭킹·거래소는 `bought_items`에 있는 시드만 인정해요 (위조 불가). 최고 층보다 레벨이 높아도 인정. 랭킹에는 **💰 구매 아이템**으로 표시돼요 (최고 층 기록의 장비·최고 아이템)
+- 저장하는 것: 우편·시드·사람 키(HMAC)뿐. Xsolla 사용자 ID·이메일·토큰은 저장하지 않아요
+- 상자를 꺼냈는데 우편을 못 넣은 경우(DB 오류)는 서버 로그에 `[ubox] consumed but mail failed`가 남아요 → 운영자가 다시 넣어 줘야 해요
+- 테스트로 같은 계정이 다시 사려면: Xsolla 관리자 API **Refresh purchase limit** (`user_external_id` = 그 사람의 Xsolla 로그인 사용자 ID). 환불해도 구매 제한은 자동으로 풀리지 않아요 (Xsolla 규칙)
+- 설정: `config.php`의 `'ubox_sku'` (기본 `ancient_unique_box`)
 
 ## 하루 입장과 광고 보상
 

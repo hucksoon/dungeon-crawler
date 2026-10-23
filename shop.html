@@ -100,6 +100,8 @@
   .name { font-weight: bold; text-align: center; }
   .desc { font-size: 12px; color: var(--muted); text-align: center; min-height: 2.6em; }
   .bonus { position: absolute; top: 8px; right: 8px; background: #3a1a20; color: #ffb3b3; border: 1px solid #ff6b6b; border-radius: 4px; font-size: 11px; padding: 2px 6px; font-weight: bold; }
+  .card.offer { border-color: #e0b44c; box-shadow: 0 0 12px rgba(224, 180, 76, 0.25); }
+  .card.offer .bonus { background: #3a2e10; color: #ffe08a; border-color: #e0b44c; }
   .card button { width: 100%; padding: 10px; }
   .total { font-size: 12px; color: var(--cash); text-align: center; }
   .skeleton { height: 190px; background: linear-gradient(90deg, var(--panel), var(--row), var(--panel)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
@@ -173,6 +175,12 @@
   <div id="login-note" class="notice login" hidden></div>
   <div id="page-msg" hidden></div>
 
+  <section id="offers-sec" hidden>
+    <h2 data-i18n="offerTitle"></h2>
+    <p class="sub" data-i18n="offerSub"></p>
+    <div class="grid" id="offers"></div>
+  </section>
+
   <section>
     <h2 data-i18n="cashTitle"></h2>
     <p class="sub" data-i18n="cashSub"></p>
@@ -227,6 +235,7 @@
 </div>
 
 <script src="items.js"></script>
+<script src="ranking-config.js"></script>
 <script src="vendor/pay-station-sdk/main.js"></script>
 <script>
 (() => {
@@ -237,10 +246,11 @@
   // 테스트 결제로 되돌릴 때는 여기만 true로 바꾸면 됨 (주문 생성과 결제창이 함께 바뀜)
   const SHOP = {
     projectId: 317991,
-    sandbox: false,
+    sandbox: true,
     cashSku: "cash",
     packGroup: "cash_packs",
     boxGroup: "equipment_boxes",
+    offerGroup: "limited_offers",   // 현금 1회 한정 (고대 유니크 선택 상자)
   };
   const STORE_API = `https://store.xsolla.com/api/v2/project/${SHOP.projectId}`;
   const LOGIN_API = "https://login.xsolla.com/api";
@@ -251,6 +261,9 @@
     ko: {
       title: "⚔ 던전 상점 ⚔", back: "게임으로", close: "닫기", toGame: "게임에서 가방 열기",
       cashTitle: "캐시 충전", cashSub: "캐시로 장비 상자를 열 수 있어요.",
+      offerTitle: "🎁 한정 판매", offerSub: "계정당 한 번만 살 수 있어요. 결제하면 게임 우편함으로 들어가요.",
+      offerLimit: "계정당 1회", offerSold: "구매 완료",
+      offerPaid: "결제 완료! 게임 우편함에 \"고대 유니크 선택 상자\"가 들어갔어요. 우편함에서 열어 유니크를 골라 주세요.",
       boxTitle: "장비 상자", boxSub: "무기 또는 방어구가 무작위로 나와요. 아이템 레벨은 지금까지 내려간 가장 깊은 층이에요.",
       rates: "등급별 확률", buy: "구매", buyLogin: "로그인하고 구매", notEnough: "캐시 부족",
       bonus: (n, p) => `+${n} 보너스 (+${p}%)`, total: (n) => `총 ${n} 캐시`,
@@ -263,6 +276,9 @@
       loading: "불러오는 중…", creating: "주문을 만드는 중…", noMethods: "쓸 수 있는 결제 수단이 없어요.",
       unsupported: "이 결제 수단은 아직 지원하지 않아요. 다른 결제 수단을 골라 주세요.",
       continue: "계속하기", waiting: "결제를 확인하는 중…",
+      openPayWindow: "결제 창 열기 (새 창)", payWindowHint: "새 창에서 결제를 마치면 이 창에서 자동으로 확인해요. 창이 안 열리면 팝업 차단을 풀어 주세요.",
+      payWindowClosed: "결제 창이 닫혔어요. 결제를 마쳤다면 잠시 뒤 여기서 확인돼요. 다시 열려면 버튼을 눌러 주세요.",
+      payWindowReturned: "결제 결과를 원래 창으로 보냈어요. 이 창은 닫아도 돼요.",
       moreMethods: (n) => `결제 수단 더 보기 (${n})`, searchMethods: "결제 수단 검색", noMatch: "찾는 결제 수단이 없어요.",
       paid: (n) => `결제 완료! 캐시 ${n}이 들어왔어요.`, paidNoAmount: "결제 완료! 캐시가 들어왔어요.",
       payFailed: "결제가 완료되지 않았어요. 다시 시도해 주세요.",
@@ -278,6 +294,9 @@
     en: {
       title: "⚔ Dungeon Shop ⚔", back: "Back to game", close: "Close", toGame: "Open bag in game",
       cashTitle: "Cash", cashSub: "Spend Cash on equipment boxes.",
+      offerTitle: "🎁 Limited offer", offerSub: "One purchase per account. It goes to your in-game mailbox after payment.",
+      offerLimit: "1 per account", offerSold: "Purchased",
+      offerPaid: "Payment complete! The Ancient Unique Choice Box is in your in-game mailbox. Open it there and pick a unique.",
       boxTitle: "Equipment boxes", boxSub: "Random weapons or armor. Item level equals the deepest floor you have reached.",
       rates: "Drop rates", buy: "Buy", buyLogin: "Log in to buy", notEnough: "Not enough Cash",
       bonus: (n, p) => `+${n} bonus (+${p}%)`, total: (n) => `${n} Cash in total`,
@@ -290,6 +309,9 @@
       loading: "Loading…", creating: "Creating your order…", noMethods: "No payment methods are available.",
       unsupported: "This payment method isn't supported yet. Please choose another one.",
       continue: "Continue", waiting: "Confirming your payment…",
+      openPayWindow: "Open payment window (new window)", payWindowHint: "Finish the payment in the new window — this page will confirm it automatically. Allow pop-ups if nothing opens.",
+      payWindowClosed: "The payment window was closed. If you finished paying, it will be confirmed here shortly. Press the button to open it again.",
+      payWindowReturned: "The payment result was sent to the original window. You can close this window.",
       moreMethods: (n) => `More payment methods (${n})`, searchMethods: "Search payment methods", noMatch: "No matching payment method.",
       paid: (n) => `Payment complete! ${n} Cash added.`, paidNoAmount: "Payment complete! Cash added.",
       payFailed: "The payment was not completed. Please try again.",
@@ -305,6 +327,9 @@
     ja: {
       title: "⚔ ダンジョンショップ ⚔", back: "ゲームに戻る", close: "閉じる", toGame: "ゲームでバッグを開く",
       cashTitle: "キャッシュ", cashSub: "キャッシュで装備ボックスを開けられます。",
+      offerTitle: "🎁 限定販売", offerSub: "アカウントごとに1回だけ購入できます。お支払い後、ゲームの郵便受けに届きます。",
+      offerLimit: "アカウントごとに1回", offerSold: "購入済み",
+      offerPaid: "お支払い完了！「古代ユニーク選択ボックス」がゲームの郵便受けに届きました。郵便受けで開けてユニークを選んでください。",
       boxTitle: "装備ボックス", boxSub: "武器または防具がランダムで出ます。アイテムレベルはこれまでに到達した最深階です。",
       rates: "レア度ごとの確率", buy: "購入", buyLogin: "ログインして購入", notEnough: "キャッシュ不足",
       bonus: (n, p) => `+${n} ボーナス (+${p}%)`, total: (n) => `合計 ${n} キャッシュ`,
@@ -317,6 +342,9 @@
       loading: "読み込み中…", creating: "注文を作成中…", noMethods: "利用できるお支払い方法がありません。",
       unsupported: "このお支払い方法はまだ対応していません。別の方法を選んでください。",
       continue: "続ける", waiting: "お支払いを確認中…",
+      openPayWindow: "決済ウィンドウを開く (新しいウィンドウ)", payWindowHint: "新しいウィンドウで決済を終えると、この画面で自動的に確認します。開かない場合はポップアップを許可してください。",
+      payWindowClosed: "決済ウィンドウが閉じられました。決済が完了していれば、まもなくここで確認されます。もう一度開くにはボタンを押してください。",
+      payWindowReturned: "決済結果を元のウィンドウに送りました。このウィンドウは閉じて構いません。",
       moreMethods: (n) => `その他のお支払い方法 (${n})`, searchMethods: "お支払い方法を検索", noMatch: "該当するお支払い方法がありません。",
       paid: (n) => `お支払い完了！キャッシュ ${n} が追加されました。`, paidNoAmount: "お支払い完了！キャッシュが追加されました。",
       payFailed: "お支払いが完了しませんでした。もう一度お試しください。",
@@ -450,7 +478,7 @@
   }
 
   // ---- 상품 ----
-  let packs = [], boxes = [];
+  let packs = [], boxes = [], offers = [];
   const money = (price) => {
     if (!price) return "";
     try { return new Intl.NumberFormat(lang, { style: "currency", currency: price.currency }).format(Number(price.amount)); }
@@ -459,12 +487,16 @@
 
   async function loadCatalog() {
     try {
+      // 로그인했으면 내 구매 제한(한정 판매)이 반영된 목록으로. 토큰이 만료됐으면 로그인 없이
+      const itemsUrl = `/items/virtual_items?locale=${lang}&limit=50`;
       const [p, v] = await Promise.all([
         api(`/items/virtual_currency/package?locale=${lang}&limit=50`),
-        api(`/items/virtual_items?locale=${lang}&limit=50`),
+        Auth.loggedIn() ? api(itemsUrl, { auth: true }).catch(() => api(itemsUrl)) : api(itemsUrl),
       ]);
       packs = (p.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.packGroup));
       boxes = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.boxGroup));
+      offers = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.offerGroup));
+      renderOffers();
       renderPacks();
       renderBoxes();
     } catch {
@@ -489,6 +521,25 @@
         el("div", { className: "art cash-art", textContent: "◆".repeat(Math.min(4, i + 1)) }),
         el("div", { className: "name", textContent: pack.name }),
         el("div", { className: "total", textContent: t("total", base + bonus) }),
+        btn);
+    }));
+  }
+
+  // 한정 판매: 현금 결제, 계정당 1회 (Xsolla 구매 제한. 다 샀으면 Xsolla가 목록에서 빼거나 available 0)
+  const offerLeft = (o) => o.can_be_bought === false ? 0 : (o.limits?.per_user?.available ?? 1);
+  function renderOffers() {
+    $("offers-sec").hidden = !offers.length;
+    $("offers").replaceChildren(...offers.map(o => {
+      const left = offerLeft(o);
+      const btn = el("button", { type: "button", className: "primary" });
+      if (!Auth.loggedIn()) { btn.textContent = t("buyLogin"); btn.onclick = () => (location.href = "./?login=shop"); }
+      else if (left <= 0) { btn.textContent = t("offerSold"); btn.disabled = true; }
+      else { btn.textContent = money(o.price); btn.onclick = () => buyOffer(o); }
+      return el("div", { className: "card offer", dataset: { sku: o.sku } },
+        el("span", { className: "bonus", textContent: t("offerLimit") }),
+        el("div", { className: "art box-art", textContent: "🎁" }),
+        el("div", { className: "name", textContent: o.name }),
+        el("div", { className: "desc", textContent: o.description }),
         btn);
     }));
   }
@@ -692,6 +743,39 @@
     }
   }
 
+  // 한정 판매 결제: 캐시 충전과 같은 결제 창. 주문 종류를 기억해 둠 (결제 사이트에서 돌아와도 무엇을 샀는지 알게)
+  const offerOrderKey = (id) => `rl_offer_order:${id}`;
+  async function buyOffer(offer) {
+    if (busy) return;
+    busy = true;
+    openPayModal(offer.name);
+    payMsg(t("creating"));
+    try {
+      const order = await api(`/payment/item/${encodeURIComponent(offer.sku)}`, {
+        method: "POST", auth: true,
+        body: { sandbox: SHOP.sandbox, locale: lang, quantity: 1 },
+      });
+      current = { offer, orderId: order.order_id, token: order.token };
+      store.set(offerOrderKey(order.order_id), offer.sku);
+      await ensureSdk();
+      await sdk.setToken(order.token);
+      subscribeOnce();
+      await showMethods();
+    } catch (e) {
+      payMsg(e instanceof ApiError ? friendly(e) : t("errGeneric", e.message), "bad");
+    } finally {
+      busy = false;
+    }
+  }
+  // 결제가 끝난 상자를 게임 서버가 Xsolla 인벤토리에서 꺼내 우편함으로 (실패해도 게임 우편함을 열 때 다시 함)
+  async function collectOffer() {
+    if (!window.RANKING_API) return;
+    try {
+      const tok = await Auth.token();
+      if (tok) await fetch(`${window.RANKING_API}?r=ubox_collect`, { method: "POST", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: "{}" });
+    } catch {}
+  }
+
   const ICON_BASE = "https://cdn.xsolla.net/headless-checkout-prod/assets/icons";
   function methodIcon(m) {
     const img = el("img", { alt: "", src: m.iconName ? `${ICON_BASE}/brand-logos/${m.iconName}` : `${ICON_BASE}/default-payment-icons/default.svg` });
@@ -840,22 +924,47 @@
     }
   }
 
-  // 같은 탭이 기본. 서버가 새 탭을 요구할 때만 버튼(사용자 클릭)으로 연다
+  // 결제 사이트(PayPal·은행·3DS 등)는 새 창으로 연다 (결제창이 통째로 다른 페이지로 넘어가지 않게, dc#55)
+  //   새 창은 사용자 클릭 안에서만 열 수 있어서 "결제 창 열기" 버튼을 보여 줌. 이 창은 그대로 두고 주문 상태를 확인
+  //   서버가 같은 창을 요구해도(isSameWindowRequired: 카드 확인 페이지도 이걸 보냄) 새 창으로 엶. 팝업이 막히면 이 창에서 이동
+  //   (Venmo·Alipay 같은 앱 연동 결제 수단은 새 창에서 안 될 수 있음 → 그런 수단이 생기면 여기서 예외로)
+  const PAY_WINDOW = "rl_pay_window";
+  let payWindow = null, payWindowTimer = null;
   function handleRedirect(redirect) {
     $("pay-form").hidden = true;
-    const { redirectUrl, data = {}, method, isNewWindowRequired } = redirect;
+    const { redirectUrl, data = {}, method } = redirect;
     const form = el("form", { method: String(method || "GET").toUpperCase() === "POST" ? "POST" : "GET", action: redirectUrl });
     for (const [name, value] of Object.entries(data)) form.append(el("input", { type: "hidden", name, value: String(value) }));
     document.body.append(form);
-    if (isNewWindowRequired) {
-      form.target = "_blank";
-      watchOrder();
-      $("pay-extra").replaceChildren(el("button", { type: "button", className: "primary", textContent: t("continue"), style: "width:100%", onclick: () => form.submit() }));
-      return;
-    }
-    payMsg(t("waiting"));
-    form.submit();
+    form.target = PAY_WINDOW;
+    // 새 창이 닫히기 전에 결과를 받을 수 있게 상태 확인을 한 번 시작 (그 뒤로는 status_updated + 주문 확인)
+    sdk.getStatus?.().catch?.(() => {});
+    watchOrder();
+    const open = () => {
+      window.rlPayOrder = String(current?.orderId || "");   // 돌아온 결제 창이 "내 주문"인지 확인하는 표시
+      payWindow = window.open("about:blank", PAY_WINDOW);
+      if (!payWindow) { form.target = ""; payMsg(t("waiting")); form.submit(); return; }   // 팝업 차단: 이 창에서
+      form.submit();
+      payMsg(t("payWindowHint"));
+      clearInterval(payWindowTimer);
+      payWindowTimer = setInterval(() => {
+        if (!payWindow || !payWindow.closed) return;
+        clearInterval(payWindowTimer);
+        if (watchTimer) payMsg(t("payWindowClosed"));
+      }, 1000);
+    };
+    payMsg(t("payWindowHint"));
+    $("pay-extra").replaceChildren(el("button", { type: "button", className: "primary pay-window-btn", textContent: t("openPayWindow"), style: "width:100%", onclick: open }));
   }
+  // 새 창에서 결제 사이트가 returnUrl(이 페이지)로 돌아오면: 원래 창에 알리고 이 창은 닫음
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.data?.type !== "rl-pay-return") return;
+    clearInterval(payWindowTimer);
+    try { payWindow?.close(); } catch {}
+    payWindow = null;
+    $("pay-extra").replaceChildren();
+    if (current && String(current.orderId) === String(e.data.orderId)) { payMsg(t("waiting")); watchOrder(); }
+  });
 
   // psdk-status는 결제가 있을 때만 만든다 (미리 두면 시작하자마자 상태 조회에 실패함)
   function showStatus() {
@@ -879,6 +988,15 @@
         const o = await api(`/order/${current.orderId}`, { auth: true });
         if (o.status === "done") {
           stopOrderWatch();
+          try { payWindow?.close(); } catch {}
+          $("pay-extra").replaceChildren();
+          if (current.offer || store.get(offerOrderKey(current.orderId))) {
+            store.del(offerOrderKey(current.orderId));
+            await collectOffer();
+            payMsg(t("offerPaid"), "good");
+            loadCatalog();   // 구매 제한 반영 (구매 완료)
+            return;
+          }
           const amount = current.pack ? cashIn(current.pack) + bonusOf(current.pack) : 0;
           payMsg(amount ? t("paid", amount) : t("paidNoAmount"), "good");
           refreshBalance();
@@ -891,13 +1009,22 @@
     };
     watchTimer = setTimeout(tick, 1000);
   }
-  function stopOrderWatch() { clearTimeout(watchTimer); watchTimer = null; }
+  function stopOrderWatch() { clearTimeout(watchTimer); watchTimer = null; clearInterval(payWindowTimer); }
 
   // 결제 사이트(3DS, PayPal 등)에서 돌아왔을 때: 같은 토큰으로 상태만 보여줌 (form.init 하지 않음)
   async function handleReturn() {
     const q = new URLSearchParams(location.search);
     const token = q.get("token"), orderId = q.get("paid");
     if (!token || !orderId) return false;
+    // 새 창(결제 창)으로 돌아온 경우: 원래 창이 확인하니 알리고 닫음
+    let opener = null;
+    try { opener = window.opener && window.opener.location.origin === location.origin && window.opener.rlPayOrder === orderId ? window.opener : null; } catch {}
+    if (opener) {   // window.name은 결제 사이트를 거치며 지워질 수 있어서 원래 창의 주문 번호로 확인
+      opener.postMessage({ type: "rl-pay-return", orderId, search: location.search }, location.origin);
+      showPageMsg(t("payWindowReturned"), "good");
+      setTimeout(() => window.close(), 300);
+      return true;
+    }
     openPayModal(t("payTitle"));
     current = { orderId, token, pack: null };
     try {

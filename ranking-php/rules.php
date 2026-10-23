@@ -84,7 +84,8 @@ function r_is_nightmare_item(array $item): bool { return ($item['v'] ?? 0) === 4
 // 헬 던전 아이템 ("지옥의", items.js HELL_SEED): 시드에 |j층|. 나이트메어처럼 속성 줄·속성 세트
 const R_HELL_SEED = '/\|(shop\|)?j\d+\|/';
 const R_DEEP_SEED = '/\|(shop\|)?[nj]\d+\|/';
-function r_is_hell_item(array $item): bool { return ($item['v'] ?? 0) === 4 && preg_match(R_HELL_SEED, (string)($item['seed'] ?? '')) === 1; }
+// 고대 유니크 선택 상자에서 고른 유니크(R_BUY_SEED)도 헬 아이템 (items.js isHellItem)
+function r_is_hell_item(array $item): bool { $seed = (string)($item['seed'] ?? ''); return ($item['v'] ?? 0) === 4 && (preg_match(R_HELL_SEED, $seed) === 1 || preg_match(R_BUY_SEED, $seed) === 1); }
 function r_is_deep_item(array $item): bool { return r_is_nightmare_item($item) || r_is_hell_item($item); }
 // 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄, 강화 전 값). 없으면 null (items.js itemElement)
 // 속성 피해 줄은 하나만 (items.js oneElementDmg): 가장 큰 것만 남기고 나머지는 다른 능력치로 (시드 el1|…)
@@ -580,11 +581,19 @@ function r_find_max_unique_mul(): float { return 1 + R_FIND['max'] / R_FIND['uni
 function r_find_max_bonus(): float { return R_FIND['bonus'] * R_FIND['max'] / 100; }
 function r_unique_roll(string $seed): float { return r_rng("v4|unique?|{$seed}")(); }
 function r_unique_acc_roll(string $seed): float { return r_rng("v4|uniqueacc?|{$seed}")(); }
+// 고대 유니크 선택 상자에서 고른 유니크 (items.js BUY_SEED): 항상 고대. 시드는 서버가 결제를 확인하고 기록한 것만 인정 (api.php)
+const R_BUY_SEED = '/^buy\|m([0-9a-f]{16})\|([a-z]+)$/';
+function r_bought_level(string $uq): int { return 125 + (R_UNIQUE['items'][$uq]['boss'] ?? 0); }
+
 function r_generate_unique(string $seed, int $level, int $rev): array {
-    if (!preg_match('/\|j(\d+)\|([ua])\d+$/', $seed, $m)) throw new InvalidArgumentException('bad unique seed');
-    $acc = $m[2] === 'a';   // u: 유니크 장비, a: 유니크 장신구
+    $bought = preg_match(R_BUY_SEED, $seed, $bm) === 1;
     $list = [];
-    foreach (R_UNIQUE['items'] as $k => $u) if ($u['boss'] === (int)$m[1] && !empty($u['acc']) === $acc) $list[] = $k;
+    if ($bought) { if (isset(R_UNIQUE['items'][$bm[2]])) $list[] = $bm[2]; }
+    else {
+        if (!preg_match('/\|j(\d+)\|([ua])\d+$/', $seed, $m)) throw new InvalidArgumentException('bad unique seed');
+        $acc = $m[2] === 'a';   // u: 유니크 장비, a: 유니크 장신구
+        foreach (R_UNIQUE['items'] as $k => $u) if ($u['boss'] === (int)$m[1] && !empty($u['acc']) === $acc) $list[] = $k;
+    }
     if (!$list) throw new InvalidArgumentException('no unique');
     $lv = max(1, $level);
     $rng = r_rng("v4|unique|{$seed}");
@@ -604,7 +613,7 @@ function r_generate_unique(string $seed, int $level, int $rev): array {
     }
     if ($U['type'] === 'shield') $item['parry'] = r_rand_int($rng, ...R_PARRY['ranges']['unique']);
     $item['id'] = r_id(4, 'unique', $lv, $seed, $rev);
-    if ($rev >= 7 && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);   // r7부터 드롭할 때 고대 굴림
+    if ($bought || ($rev >= 7 && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE)) $item = r_max_out($item);   // r7부터 드롭할 때 고대 굴림, 선택 상자는 항상 고대
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }

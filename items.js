@@ -256,7 +256,10 @@
   const isNightmareItem = (item) => item.v === 4 && NM_SEED.test(item.seed || "");
   // 헬 던전 아이템 ("지옥의"): 시드에 |j층| (h는 로비 시간 상점의 시간 번호라 j). 나이트메어처럼 속성 줄·속성 세트가 붙음
   const HELL_SEED = /\|(shop\|)?j\d+\|/;
-  const isHellItem = (item) => item.v === 4 && HELL_SEED.test(item.seed || "");
+  // 고대 유니크 선택 상자(현금 1회 한정)에서 고른 유니크: buy|m우편 번호|유니크 키. 서버가 결제를 확인하고 기록한 시드만 인정
+  // 헬 네임드 유니크와 같은 헬 아이템 (헬 배율·추천·판매가), 레벨은 그 유니크가 나오는 헬 층 (125 + 보스 층), 항상 고대
+  const BUY_SEED = /^buy\|m([0-9a-f]{16})\|([a-z]+)$/;
+  const isHellItem = (item) => item.v === 4 && (HELL_SEED.test(item.seed || "") || BUY_SEED.test(item.seed || ""));
   const DEEP_SEED = /\|(shop\|)?[nj]\d+\|/;   // 나이트메어·헬 (속성 줄·속성 세트 후보)
   const isDeepItem = (item) => isNightmareItem(item) || isHellItem(item);
   // 나이트메어 아이템의 속성: 속성 피해 줄 중 가장 큰 것 (같으면 먼저 붙은 줄). 강화 전 값으로 정해서 강화해도 이름이 안 바뀜. 없으면 null
@@ -525,9 +528,13 @@
   const UNIQUE_SEED = /\|j(\d+)\|([ua])\d+$/;   // u: 유니크 장비, a: 유니크 장신구
   const uniquesOf = (floor, acc = false) => Object.keys(UNIQUE.items).filter(k => UNIQUE.items[k].boss === floor && !!UNIQUE.items[k].acc === acc);
   const uniqueOf = (item) => (item?.rarity === "unique" && UNIQUE.items[item.uq]) || null;
+  // 고대 유니크 선택 상자에서 고른 유니크 (BUY_SEED)
+  const isBought = (item) => !!item && typeof item.seed === "string" && BUY_SEED.test(item.seed);
+  const boughtLevel = (uq) => 125 + (UNIQUE.items[uq]?.boss || 0);
   // 유니크 한 개 (seed의 헬 층 네임드 보스의 유니크 중 하나)
   function generateUnique(seed, level, rev = RULES_REV) {
-    const m = seed.match(UNIQUE_SEED), floor = +(m?.[1] || 0), list = uniquesOf(floor, m?.[2] === "a");
+    const bm = seed.match(BUY_SEED);
+    const m = seed.match(UNIQUE_SEED), floor = +(m?.[1] || 0), list = bm ? (UNIQUE.items[bm[2]] ? [bm[2]] : []) : uniquesOf(floor, m?.[2] === "a");
     if (!list.length) throw new Error(`no unique for ${seed}`);
     const lv = Math.max(1, Math.floor(level));
     const rng = rngFrom(`v4|unique|${seed}`);
@@ -546,7 +553,7 @@
     if (U.type === "shield") item.parry = randInt(rng, ...PARRY.ranges.unique);
     const [h1, h2] = hashSeed(`4r${rev}|unique|${lv}|${seed}`);
     item.id = h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
-    if (rev >= 7 && rngFrom(`anc|${item.id}`)() < ANCIENT.chance) maxOut(item);   // r7부터 드롭할 때 고대 굴림
+    if (bm || (rev >= 7 && rngFrom(`anc|${item.id}`)() < ANCIENT.chance)) maxOut(item);   // r7부터 드롭할 때 고대 굴림, 선택 상자는 항상 고대
     item.ancient = isAncient(item);
     return item;
   }
@@ -1308,7 +1315,7 @@
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };

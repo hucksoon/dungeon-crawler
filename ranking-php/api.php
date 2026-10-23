@@ -487,6 +487,9 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     if (preg_match('/^box\|o[0-9A-Za-z]{1,48}\|(\d{1,2})$/', $seed, $m)) {                   // 장비 상자 (최대 50회)
         return $src === 'box' && (int)$m[1] < 50;
     }
+    if (preg_match(R_BUY_SEED, $seed, $m)) {   // 고대 유니크 선택 상자 (현금): 서버가 결제를 확인하고 우편함에서 고를 때 기록한 시드만
+        return $src === 'unique' && $v === 4 && $rev >= 8 && $lvl === r_bought_level($m[2]) && bought_seed_ok($seed);
+    }
     return false;
 }
 
@@ -498,8 +501,8 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
     if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6, 7, 8], true) || ($rev > 0 && $v !== 4)) return null;   // r7: 장신구, r8: 장신구 공격력·방어력·최대 HP 고정 수치
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || (!isset(R_TABLES[$src]) && $src !== 'unique')) return null;
-    // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음
-    if (!is_int($lvl) || $lvl < 1 || $lvl > $maxLvl || !in_array($v, [1, 2, 3, 4], true)) return null;
+    // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음 (선택 상자에서 고른 유니크는 산 것이라 예외)
+    if (!is_int($lvl) || $lvl < 1 || ($lvl > $maxLvl && !preg_match(R_BUY_SEED, $seed)) || !in_array($v, [1, 2, 3, 4], true)) return null;
     if (!is_int($enh) || $enh < 0 || $enh > MAX_ENH) return null;
     if (!seed_origin_ok($v, $seed, $src, $lvl, $rev, $dev)) return null;
     $item = r_generate($v, $seed, $src, $lvl, $rev);
@@ -558,7 +561,7 @@ function item_view(array $it): array {
     return [
         'name' => r_item_name($it), 'rarity' => $it['rarity'], 'rarityName' => R_RARITIES[$it['rarity']]['name'],
         'slot' => $it['slot'], 'slotName' => SLOT_NAMES[$it['slot']], 'lvl' => $it['lvl'], 'enh' => $it['enh'],
-        'ancient' => !empty($it['ancient']), 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
+        'ancient' => !empty($it['ancient']), 'bought' => preg_match(R_BUY_SEED, (string)$it['seed']) === 1, 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
         'main' => $main, 'lines' => $lines,
         'runeword' => ($w = r_runeword_of($it)) ? $w['name'] : null,   // 완성된 룬워드 이름
         // 홈에 넣은 보석·룬: [이름, 효과, 룬인지]
@@ -714,8 +717,13 @@ const BOARDS = [
     'item' => ['where' => 'item_score >= 0', 'order' => 'item_score DESC, item_at ASC'],
 ];
 
+// 랭킹 기록에 현금으로 산 아이템(고대 유니크 선택 상자)이 있는지: 저장된 장비·아이템 화면 정보의 bought 표시
+function has_bought(?string $json): bool { return $json !== null && strpos($json, '"bought":true') !== false; }
+
 function row_out(array $r, ?int $rank): array {
     return [
+        'bought' => has_bought($r['stage_gear'] ?? null),          // 최고 층 기록의 장비에 구매 아이템
+        'itemBought' => has_bought($r['item_json'] ?? null),      // 최고 아이템이 구매 아이템
         'rank' => $rank,
         'id' => $r['pub_id'] ?? null,
         'name' => $r['display'],
@@ -736,7 +744,7 @@ function get_ranking(): array {
     // 공개 ID가 없는 예전 행은 채워 넣음
     $missing = db()->query("SELECT pkey FROM {$t} WHERE pub_id IS NULL LIMIT 200")->fetchAll();
     foreach ($missing as $m) db()->prepare("UPDATE {$t} SET pub_id = ? WHERE pkey = ?")->execute([pub_id($m['pkey']), $m['pkey']]);
-    $rows = db()->query("SELECT pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name FROM {$t} WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
+    $rows = db()->query("SELECT pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name, stage_gear, item_json FROM {$t} WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
     $total = (int)q_val("SELECT COUNT(*) FROM {$t} WHERE {$b['where']}");
     $out = [];
     foreach ($rows as $i => $r) $out[] = row_out($r, $i + 1);
@@ -888,6 +896,7 @@ try {
     elseif ($route === 'market_buy' && $method === 'POST') respond(200, market_buy());
     elseif ($route === 'market_mine' && $method === 'GET') respond(200, market_mine());
     elseif ($route === 'mail_claim' && $method === 'POST') respond(200, mail_claim());
+    elseif ($route === 'ubox_collect' && $method === 'POST') respond(200, ubox_collect());
     elseif ($route === 'entry_status' && $method === 'GET') respond(200, entry_status());
     elseif ($route === 'entry' && $method === 'POST') respond(200, entry_start());
     elseif ($route === 'ad_start' && $method === 'POST') respond(200, ad_start());

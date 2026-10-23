@@ -8,6 +8,9 @@
 //                                       adTicket(광고 티켓, ads.php)이 있으면 수수료 면제 (하루 AD_CAPS['fee']회)
 //   GET  api.php?r=market_mine            내 등록, 지난 거래, 우편함
 //   POST api.php?r=mail_claim   { id }    우편 받기: 아이템 참조·골드를 돌려주고, 캐시는 Xsolla로 지급
+//                               { id, pick }  고대 유니크 선택 상자: 고른 유니크(pick = 유니크 키)를 고대로 만들어 돌려줌
+//   POST api.php?r=ubox_collect           현금으로 산 고대 유니크 선택 상자를 Xsolla 인벤토리에서 꺼내(소모) 우편함으로
+//                                       (우편함을 열 때 market_mine도 같은 일을 함)
 //   (운영자 선물은 서버에서 gift.php로 우편함에 넣음)
 //
 // 원칙
@@ -67,6 +70,14 @@ function market_tables(PDO $pdo): void {
         state       VARCHAR(12) NOT NULL,
         created_at  BIGINT NOT NULL,
         claimed_at  BIGINT
+    )');
+    // 고대 유니크 선택 상자에서 고른 유니크의 시드 (buy|m우편 번호|유니크). 여기 있는 시드만 아이템으로 인정 (seed_origin_ok)
+    $pdo->exec('CREATE TABLE IF NOT EXISTS bought_items (
+        seed        VARCHAR(64) PRIMARY KEY,
+        mail_id     VARCHAR(32) NOT NULL,
+        owner_key   VARCHAR(64) NOT NULL,
+        uq          VARCHAR(24) NOT NULL,
+        created_at  BIGINT NOT NULL
     )');
     $pdo->exec('CREATE TABLE IF NOT EXISTS item_owner (
         item_id     VARCHAR(32) PRIMARY KEY,
@@ -385,6 +396,7 @@ function finish_sale(array $l): string {
 function market_mine(): array {
     $who = require_user();
     market_expire();
+    try { ubox_collect_for($who); } catch (Throwable $e) { /* 상자는 다음에 다시 */ }
     $pdo = db();
     $q = function (string $sql, array $args) use ($pdo): array { $st = $pdo->prepare($sql); $st->execute($args); return $st->fetchAll(); };
     $active = $q("SELECT * FROM listings WHERE seller_key = ? AND state IN ('active', 'buying') ORDER BY created_at DESC", [$who['key']]);
@@ -405,9 +417,11 @@ function market_mine(): array {
 
 function mail_claim(): array {
     $who = require_user();
-    $id = (string)(read_body(512)['id'] ?? '');
+    $body = read_body(512);
+    $id = (string)($body['id'] ?? '');
     $pdo = db();
     $m = q_row('SELECT * FROM mail WHERE id = ? AND owner_key = ?', [$id, $who['key']]);
+    if ($m && $m['kind'] === 'ubox') return ubox_open($who, $m, (string)($body['pick'] ?? ''));
     // 새 우편, 또는 캐시는 이미 지급했는데 마무리가 안 된 우편(이어서 받기: 다시 지급하지 않음)
     $resume = $m && $m['state'] === 'claiming' && $m['granted_at'] !== null;
     if (!$m || ($m['state'] !== 'new' && !$resume)) throw new HttpError(404, 'not_found');
@@ -438,6 +452,63 @@ function mail_claim(): array {
     $done->execute([now_ms(), $id]);
     if ($done->rowCount() !== 1) throw new HttpError(404, 'not_found');
     return ['ok' => true, 'mail' => mail_out($m), 'cashPaid' => $cashNow ? (int)$m['cash'] : 0];
+}
+
+// ---- 고대 유니크 선택 상자 (현금, 계정당 1회: Xsolla 카탈로그의 구매 제한) ----
+// 결제가 끝나면 Xsolla가 사용자 인벤토리에 상자를 넣음 → 서버가 사용자 토큰으로 꺼내(소모) 우편함에 넣음
+// → 우편함에서 유니크 하나를 고르면 서버가 시드(buy|m우편 번호|유니크)를 기록하고 아이템을 돌려줌
+const UBOX_NAME = '고대 유니크 선택 상자';
+const UBOX_REV = 8;   // 고른 유니크를 만드는 규칙 개정 (items.js RULES_REV)
+function ubox_sku(): string { return (string)(config()['ubox_sku'] ?? 'ancient_unique_box'); }
+
+// 인벤토리에 있는 상자를 우편함으로. 넣은 개수 (Xsolla 오류면 0 → 다음에 다시)
+function ubox_collect_for(array $who): int {
+    $auth = ["Authorization: Bearer {$who['token']}"];
+    [$status, $text] = http_request('GET', store_url('/user/inventory/items?limit=50'), null, $auth);
+    if ($status !== 200) return 0;
+    $have = 0;
+    foreach ((json_decode($text, true)['items'] ?? []) as $it) if (($it['sku'] ?? '') === ubox_sku()) $have += (int)($it['quantity'] ?? 0);
+    $got = 0;
+    for ($i = 0; $i < min($have, 5); $i++) {
+        // 소모가 성공한 만큼만 우편으로 (동시에 두 번 요청해도 Xsolla가 있는 개수만큼만 소모해 줌)
+        [$st] = http_request('POST', store_url('/user/inventory/item/consume'), json_encode(['sku' => ubox_sku(), 'quantity' => 1, 'instance_id' => null]), $auth);
+        if ($st < 200 || $st >= 300) break;
+        try {
+            add_mail($who['key'], 'ubox', ['item_name' => UBOX_NAME, 'rarity' => 'unique', 'note' => '현금 구매'], now_ms());
+        } catch (Throwable $e) {
+            error_log("[ubox] consumed but mail failed for {$who['key']}: " . $e->getMessage());   // 운영자가 gift로 다시 넣어 줘야 함
+            throw $e;
+        }
+        $got++;
+    }
+    return $got;
+}
+
+function ubox_collect(): array {
+    $who = require_user();
+    return ['ok' => true, 'added' => ubox_collect_for($who), 'mail' => mail_count($who['key'])];
+}
+
+// 상자 열기: 고른 유니크를 고대로 만들어 우편을 받은 것으로 바꿈 (한 번만)
+function ubox_open(array $who, array $m, string $pick): array {
+    if ($m['state'] !== 'new') throw new HttpError(404, 'not_found');
+    if (!isset(R_UNIQUE['items'][$pick])) throw new HttpError(400, 'bad_pick');
+    $seed = "buy|m{$m['id']}|{$pick}";
+    $item = r_generate(4, $seed, 'unique', r_bought_level($pick), UBOX_REV);
+    $ref = ['seed' => $seed, 'src' => 'unique', 'lvl' => $item['lvl'], 'v' => 4, 'enh' => 0, 'r' => UBOX_REV, 'id' => $item['id']];
+    $now = now_ms();
+    tx(function (PDO $pdo) use ($who, $m, $pick, $seed, $item, $ref, $now) {
+        $up = $pdo->prepare("UPDATE mail SET state = 'claimed', claimed_at = ?, item_id = ?, item_ref = ?, item_name = ? WHERE id = ? AND owner_key = ? AND state = 'new'");
+        $up->execute([$now, $item['id'], json_encode($ref), r_item_name($item), $m['id'], $who['key']]);
+        if ($up->rowCount() !== 1) throw new HttpError(404, 'not_found');
+        $pdo->prepare('INSERT INTO bought_items (seed, mail_id, owner_key, uq, created_at) VALUES (?, ?, ?, ?, ?)')->execute([$seed, $m['id'], $who['key'], $pick, $now]);
+        set_owner($item['id'], $who['key'], $now);
+    });
+    return ['ok' => true, 'mail' => mail_out(q_row('SELECT * FROM mail WHERE id = ?', [$m['id']])), 'cashPaid' => 0];
+}
+
+function bought_seed_ok(string $seed): bool {
+    return q_val('SELECT COUNT(*) FROM bought_items WHERE seed = ?', [$seed]) > 0;
 }
 
 function mail_count(string $key): int {

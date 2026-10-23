@@ -45,6 +45,7 @@
   .rank.r1 { color: #ffd54f; } .rank.r2 { color: #cfd8dc; } .rank.r3 { color: #d7a26b; }
   .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .who small { color: var(--muted); margin-left: 6px; }
+  .val small.bought { display: block; color: #e0b44c; font-size: 11px; }
   .val { text-align: right; white-space: nowrap; }
   .item { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
@@ -226,7 +227,7 @@
       l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null,
       l.eff ? el("span", { className: "plus", textContent: ` (적용 ${l.eff})` }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
-      el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}` }),
+      el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}${it.bought ? " · 💰 구매" : ""}` }),
       el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),
       ...it.main.map(l => line("★", l, false)),
       ...it.lines.map(l => line("◆", l, true)));
@@ -276,12 +277,15 @@
 
   // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
   const stageText = (n) => season.clear && n >= season.clear ? `${season.max}층 완료 ✓` : `${n}층`;
-  const stageValue = (r) => el("span", { className: "val", textContent: stageText(r.stage) });
+  // 현금으로 산 아이템(고대 유니크 선택 상자)을 쓴 기록 표시: 층 = 그 층을 세울 때 낀 장비, 아이템 = 최고 아이템
+  const boughtTag = () => el("small", { className: "bought", textContent: "💰 구매 아이템", title: "현금으로 산 고대 유니크 선택 상자의 아이템을 썼어요" });
+  const stageValue = (r) => el("span", { className: "val" }, stageText(r.stage), r.bought ? boughtTag() : null);
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
     return el("span", { className: "val" },
       el("span", { className: "item", textContent: r.item.name, style: `color:${rar.color}` }),
-      el("small", { textContent: `${rar.name} · +${r.item.enh} · Lv.${r.item.lvl}`, style: "color:var(--muted)" }));
+      el("small", { textContent: `${rar.name} · +${r.item.enh} · Lv.${r.item.lvl}`, style: "color:var(--muted)" }),
+      r.itemBought ? boughtTag() : null);
   }
 
   function renderMe(me) {
