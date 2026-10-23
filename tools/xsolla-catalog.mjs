@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Xsolla 카탈로그(캐시, 캐시 패키지, 장비 상자, 보너스 프로모션)를 만든다.
+// Xsolla 카탈로그(캐시, 캐시 패키지, 장비 상자, 한정 판매, 보너스 프로모션)를 만든다.
 //
 //   node tools/xsolla-catalog.mjs          # 무엇이 있고 무엇을 만들지 보여주기만 함
 //   node tools/xsolla-catalog.mjs --apply  # 없는 항목만 생성 (이미 있는 항목은 건드리지 않음)
@@ -30,6 +30,7 @@ const CASH_PRICE = (amount) => [{ sku: CASH, amount, is_default: true, is_enable
 const GROUPS = [
   { external_id: "cash_packs", name: { en: "Cash", ko: "캐시 충전" }, order: 1 },
   { external_id: "equipment_boxes", name: { en: "Equipment boxes", ko: "장비 상자" }, order: 2 },
+  { external_id: "limited_offers", name: { en: "Limited offers", ko: "한정 판매", ja: "限定販売" }, order: 0 },
   // 게임 안에서만 파는 아이템 (상점 페이지에는 보이지 않음)
   { external_id: "game_items", name: { en: "Game items", ko: "게임 아이템", ja: "ゲームアイテム" }, order: 3 },
 ];
@@ -91,6 +92,30 @@ const REVIVE = {
   is_show_in_store: true,
   order: 1,
 };
+
+// 한정 판매: 현금으로, 계정당 1회 (Xsolla 구매 제한 per_user 1). 결제되면 사용자 인벤토리에 들어가고
+// 게임 서버(ranking-php/market.php ubox_collect)가 꺼내서(소모) 게임 우편함으로 → 우편함에서 유니크 하나를 골라 고대로 받음
+const OFFERS = [{
+  sku: "ancient_unique_box",
+  name: { en: "Ancient Unique Choice Box", ko: "고대 유니크 선택 상자", ja: "古代ユニーク選択ボックス" },
+  description: {
+    en: "Pick any one of the 15 uniques and get it as an Ancient item (all stats at max). One per account.",
+    ko: "유니크 15종 중 하나를 골라 고대(모든 능력치 최대치)로 받아요. 계정당 1회.",
+    ja: "ユニーク15種から1つを選び、古代（全能力値が最大）で受け取れます。アカウントごとに1回。",
+  },
+  groups: ["limited_offers"],
+  virtual_item_type: "consumable",
+  // $4.99 · ₩6,900 · ¥750
+  prices: [
+    { currency: "USD", amount: 4.99, is_default: true, is_enabled: true },
+    { currency: "KRW", country_iso: "KR", amount: 6900, is_default: false, is_enabled: true },
+    { currency: "JPY", country_iso: "JP", amount: 750, is_default: false, is_enabled: true },
+  ],
+  limits: { per_user: { total: 1 }, per_item: null },
+  is_enabled: true,
+  is_show_in_store: true,
+  order: 1,
+}];
 
 // 패키지 보너스: +10% / +20% / +25%
 const PROMOTIONS = [
@@ -199,6 +224,11 @@ for (const b of BOXES)
 console.log("게임 아이템");
 await ensurePriced(`${REVIVE.sku}  ${REVIVE.vc_prices[0].amount}캐시`, `${V2}/items/virtual_items/sku/${REVIVE.sku}`,
   `${V2}/items/virtual_items`, REVIVE, "vc_prices");
+
+console.log("한정 판매");
+for (const o of OFFERS)
+  await ensurePriced(`${o.sku}  ${o.prices.map((x) => `${x.amount} ${x.currency}`).join(" / ")} · 계정당 ${o.limits.per_user.total}회`,
+    `${V2}/items/virtual_items/sku/${o.sku}`, `${V2}/items/virtual_items`, o);
 
 console.log("보너스 프로모션");
 const listPromos = async () => {

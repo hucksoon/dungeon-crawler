@@ -4674,6 +4674,7 @@
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
+      ...(RLItems.isBought(item) ? [el("div", { className: "meta" }, "💰 고대 유니크 선택 상자에서 고른 아이템 (현금 구매) · 랭킹에 \"구매 아이템\"으로 표시돼요")] : []),
       ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, item.main?.[0]?.[0] === "power"
         ? `예전 장신구(r7): ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄. 강화로 오르지 않아요`
         : `장신구: ★ 공격력·방어력·최대 HP(강화하면 오름${RLItems.isHellItem(item) ? `, 지옥의 힘 ×${RLItems.HELL_POWER.mul}` : RLItems.isNightmareItem(item) ? `, 악몽의 힘 ×${RLItems.NM_POWER.mul}` : ""})와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄, 강화로 안 오름). 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공격력·방어력·최대 HP가 약 절반" : ""}`)]
@@ -5447,8 +5448,12 @@
       `가방 ${Inv.bag().length}/${BAG_SIZE}칸 · 팔린 대금, 산 아이템, ${Market.rules.hours}시간이 지나거나 내린 아이템, 운영자 선물이 여기로 와요. 가방이 가득 차면 인벤토리에서 정리한 뒤 받으세요.`);
     if (!d) return [head, marketEmpty("불러오는 중…")];
     if (!d.mail.length) return [head, marketEmpty("우편함이 비어 있어요.")];
-    const kinds = { sale: "판매 대금", bought: "산 아이템", returned: "돌아온 아이템", gift: "운영자 선물" };
+    const box = Market.boxPick && d.mail.find(m => m.id === Market.boxPick && m.kind === "ubox");
+    if (box) return viewBoxPick(box);
+    const kinds = { sale: "판매 대금", bought: "산 아이템", returned: "돌아온 아이템", gift: "운영자 선물", ubox: "현금 구매" };
     const rows = d.mail.map(m => {
+      if (m.kind === "ubox") return viewRow(`🎁 ${m.itemName}`, RLItems.RARITIES.unique.color, `${kinds.ubox} · 유니크 ${Object.keys(RLItems.UNIQUE.items).length}종 중 하나를 골라 고대로 받아요 · ${dateText(m.createdAt)}`,
+        el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => { Market.boxPick = m.id; setMarketMsg(""); renderMarket(); } }, "열기"));
       const money = !m.ref;  // 판매 대금·선물: 골드·캐시만
       return viewRow(money ? priceText(m.gold, m.cash) : m.itemName, money ? "#ffcf5c" : RLItems.RARITIES[m.rarity]?.color,
         [kinds[m.kind] || "우편", m.kind === "sale" ? m.itemName : null, m.kind === "gift" && m.note === "운영자 선물" ? null : m.note, dateText(m.createdAt)].filter(Boolean).join(" · "),
@@ -5456,6 +5461,49 @@
     });
     return [head, el("button", { type: "button", id: "mail-all", disabled: Market.busy, onclick: claimAll, style: { marginBottom: "8px" } }, "모두 받기"),
       el("div", { className: "market-list" }, ...rows)];
+  }
+
+  // 고대 유니크 선택 상자: 유니크를 하나 고르면 서버가 고대로 만들어 줌 (이 우편 번호로 정해져서 보이는 능력치 그대로)
+  function viewBoxPick(m) {
+    const U = Object.entries(RLItems.UNIQUE.items);
+    const row = ([k, u]) => {
+      const it = RLItems.generateUnique(`buy|m${m.id}|${k}`, RLItems.boughtLevel(k));
+      const stats = [...(it.main || []), ...(it.lines || [])].map(([st, v]) => RLItems.formatStat(st, v)).join(", ");
+      return viewRow(RLItems.itemName(it), RLItems.RARITIES.unique.color,
+        `${RLItems.SLOT_NAMES[u.slot]} · 헬 ${u.boss}층 ${RLMonsters.namedAt(u.boss)?.name || "네임드"} · ${u.text} · ${stats}`,
+        el("button", { type: "button", className: "primary pick-uq", value: k, disabled: Market.busy, onclick: () => openBox(m.id, k, it) }, "고르기"));
+    };
+    return [
+      el("p", { className: "market-note" }, `🎁 ${m.itemName}: 하나만 고를 수 있고, 고른 뒤에는 바꿀 수 없어요. 모든 능력치가 최대치인 고대 유니크로 가방에 들어가요 (가방 ${Inv.bag().length}/${BAG_SIZE}칸). 랭킹에는 "구매 아이템"으로 표시돼요.`),
+      el("button", { type: "button", onclick: () => { Market.boxPick = null; renderMarket(); }, style: { marginBottom: "8px" } }, "← 우편함으로"),
+      el("h3", {}, "유니크 장비"), el("div", { className: "market-list" }, ...U.filter(([, u]) => !u.acc).map(row)),
+      el("h3", {}, "유니크 장신구"), el("div", { className: "market-list" }, ...U.filter(([, u]) => u.acc).map(row)),
+    ];
+  }
+
+  async function openBox(id, k, preview) {
+    if (Market.busy) return;
+    if (Inv.full()) return setMarketMsg(`가방이 가득 찼어요 (${BAG_SIZE}칸). 인벤토리에서 정리한 뒤 열어 주세요.`, "bad");
+    if (!confirm(`${RLItems.itemName(preview)}을(를) 고를까요? 고른 뒤에는 바꿀 수 없어요.`)) return;
+    Market.busy = true;
+    renderMarket();
+    try {
+      const res = await marketCall("mail_claim", { body: { id, pick: k } });
+      const item = itemFromRef(res.mail?.ref);
+      if (!item) throw new Error("아이템을 만들 수 없어요. 게임을 새로고침해 주세요.");
+      Inv.add(item, { from: "ubox", mail: id });
+      Market.mine.mail = Market.mine.mail.filter(x => x.id !== id);
+      setMailCount(Market.mine.mail.length);
+      Market.boxPick = null;
+      log(`고대 유니크 선택 상자에서 ${RLItems.itemName(item)}을(를) 받았다!`, "good");
+      setMarketMsg(`${RLItems.itemName(item)}을(를) 가방에 넣었어요.`, "good");
+      saveGame(true);
+      Ranking.schedule();
+    } catch (e) {
+      setMarketMsg(e.message, "bad");
+    }
+    Market.busy = false;
+    renderMarket();
   }
 
   // 우편 1개 받기: 아이템은 가방으로, 골드는 지금 판으로, 캐시는 서버가 Xsolla로 지급. 받았으면 true
@@ -5500,8 +5548,8 @@
     renderMarket();
     let got = 0;
     try {
-      for (const m of [...Market.mine.mail]) if (await claimMail(m.id, { quiet: true })) got++;
-      const left = Market.mine.mail.length;
+      for (const m of [...Market.mine.mail]) if (m.kind !== "ubox" && await claimMail(m.id, { quiet: true })) got++;
+      const left = Market.mine.mail.filter(m => m.kind !== "ubox").length;
       setMarketMsg(left ? `${got}개 받았어요. ${left}개는 가방이 가득 차서 남았어요. 인벤토리에서 정리한 뒤 받아 주세요.` : `${got}개 모두 받았어요.`, left ? "bad" : "good");
     } catch (e) {
       setMarketMsg(e.message, "bad");

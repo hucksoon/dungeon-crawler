@@ -100,6 +100,8 @@
   .name { font-weight: bold; text-align: center; }
   .desc { font-size: 12px; color: var(--muted); text-align: center; min-height: 2.6em; }
   .bonus { position: absolute; top: 8px; right: 8px; background: #3a1a20; color: #ffb3b3; border: 1px solid #ff6b6b; border-radius: 4px; font-size: 11px; padding: 2px 6px; font-weight: bold; }
+  .card.offer { border-color: #e0b44c; box-shadow: 0 0 12px rgba(224, 180, 76, 0.25); }
+  .card.offer .bonus { background: #3a2e10; color: #ffe08a; border-color: #e0b44c; }
   .card button { width: 100%; padding: 10px; }
   .total { font-size: 12px; color: var(--cash); text-align: center; }
   .skeleton { height: 190px; background: linear-gradient(90deg, var(--panel), var(--row), var(--panel)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
@@ -173,6 +175,12 @@
   <div id="login-note" class="notice login" hidden></div>
   <div id="page-msg" hidden></div>
 
+  <section id="offers-sec" hidden>
+    <h2 data-i18n="offerTitle"></h2>
+    <p class="sub" data-i18n="offerSub"></p>
+    <div class="grid" id="offers"></div>
+  </section>
+
   <section>
     <h2 data-i18n="cashTitle"></h2>
     <p class="sub" data-i18n="cashSub"></p>
@@ -227,6 +235,7 @@
 </div>
 
 <script src="items.js"></script>
+<script src="ranking-config.js"></script>
 <script src="vendor/pay-station-sdk/main.js"></script>
 <script>
 (() => {
@@ -241,6 +250,7 @@
     cashSku: "cash",
     packGroup: "cash_packs",
     boxGroup: "equipment_boxes",
+    offerGroup: "limited_offers",   // 현금 1회 한정 (고대 유니크 선택 상자)
   };
   const STORE_API = `https://store.xsolla.com/api/v2/project/${SHOP.projectId}`;
   const LOGIN_API = "https://login.xsolla.com/api";
@@ -251,6 +261,9 @@
     ko: {
       title: "⚔ 던전 상점 ⚔", back: "게임으로", close: "닫기", toGame: "게임에서 가방 열기",
       cashTitle: "캐시 충전", cashSub: "캐시로 장비 상자를 열 수 있어요.",
+      offerTitle: "🎁 한정 판매", offerSub: "계정당 한 번만 살 수 있어요. 결제하면 게임 우편함으로 들어가요.",
+      offerLimit: "계정당 1회", offerSold: "구매 완료",
+      offerPaid: "결제 완료! 게임 우편함에 \"고대 유니크 선택 상자\"가 들어갔어요. 우편함에서 열어 유니크를 골라 주세요.",
       boxTitle: "장비 상자", boxSub: "무기 또는 방어구가 무작위로 나와요. 아이템 레벨은 지금까지 내려간 가장 깊은 층이에요.",
       rates: "등급별 확률", buy: "구매", buyLogin: "로그인하고 구매", notEnough: "캐시 부족",
       bonus: (n, p) => `+${n} 보너스 (+${p}%)`, total: (n) => `총 ${n} 캐시`,
@@ -281,6 +294,9 @@
     en: {
       title: "⚔ Dungeon Shop ⚔", back: "Back to game", close: "Close", toGame: "Open bag in game",
       cashTitle: "Cash", cashSub: "Spend Cash on equipment boxes.",
+      offerTitle: "🎁 Limited offer", offerSub: "One purchase per account. It goes to your in-game mailbox after payment.",
+      offerLimit: "1 per account", offerSold: "Purchased",
+      offerPaid: "Payment complete! The Ancient Unique Choice Box is in your in-game mailbox. Open it there and pick a unique.",
       boxTitle: "Equipment boxes", boxSub: "Random weapons or armor. Item level equals the deepest floor you have reached.",
       rates: "Drop rates", buy: "Buy", buyLogin: "Log in to buy", notEnough: "Not enough Cash",
       bonus: (n, p) => `+${n} bonus (+${p}%)`, total: (n) => `${n} Cash in total`,
@@ -311,6 +327,9 @@
     ja: {
       title: "⚔ ダンジョンショップ ⚔", back: "ゲームに戻る", close: "閉じる", toGame: "ゲームでバッグを開く",
       cashTitle: "キャッシュ", cashSub: "キャッシュで装備ボックスを開けられます。",
+      offerTitle: "🎁 限定販売", offerSub: "アカウントごとに1回だけ購入できます。お支払い後、ゲームの郵便受けに届きます。",
+      offerLimit: "アカウントごとに1回", offerSold: "購入済み",
+      offerPaid: "お支払い完了！「古代ユニーク選択ボックス」がゲームの郵便受けに届きました。郵便受けで開けてユニークを選んでください。",
       boxTitle: "装備ボックス", boxSub: "武器または防具がランダムで出ます。アイテムレベルはこれまでに到達した最深階です。",
       rates: "レア度ごとの確率", buy: "購入", buyLogin: "ログインして購入", notEnough: "キャッシュ不足",
       bonus: (n, p) => `+${n} ボーナス (+${p}%)`, total: (n) => `合計 ${n} キャッシュ`,
@@ -459,7 +478,7 @@
   }
 
   // ---- 상품 ----
-  let packs = [], boxes = [];
+  let packs = [], boxes = [], offers = [];
   const money = (price) => {
     if (!price) return "";
     try { return new Intl.NumberFormat(lang, { style: "currency", currency: price.currency }).format(Number(price.amount)); }
@@ -468,12 +487,16 @@
 
   async function loadCatalog() {
     try {
+      // 로그인했으면 내 구매 제한(한정 판매)이 반영된 목록으로. 토큰이 만료됐으면 로그인 없이
+      const itemsUrl = `/items/virtual_items?locale=${lang}&limit=50`;
       const [p, v] = await Promise.all([
         api(`/items/virtual_currency/package?locale=${lang}&limit=50`),
-        api(`/items/virtual_items?locale=${lang}&limit=50`),
+        Auth.loggedIn() ? api(itemsUrl, { auth: true }).catch(() => api(itemsUrl)) : api(itemsUrl),
       ]);
       packs = (p.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.packGroup));
       boxes = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.boxGroup));
+      offers = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.offerGroup));
+      renderOffers();
       renderPacks();
       renderBoxes();
     } catch {
@@ -498,6 +521,25 @@
         el("div", { className: "art cash-art", textContent: "◆".repeat(Math.min(4, i + 1)) }),
         el("div", { className: "name", textContent: pack.name }),
         el("div", { className: "total", textContent: t("total", base + bonus) }),
+        btn);
+    }));
+  }
+
+  // 한정 판매: 현금 결제, 계정당 1회 (Xsolla 구매 제한. 다 샀으면 Xsolla가 목록에서 빼거나 available 0)
+  const offerLeft = (o) => o.can_be_bought === false ? 0 : (o.limits?.per_user?.available ?? 1);
+  function renderOffers() {
+    $("offers-sec").hidden = !offers.length;
+    $("offers").replaceChildren(...offers.map(o => {
+      const left = offerLeft(o);
+      const btn = el("button", { type: "button", className: "primary" });
+      if (!Auth.loggedIn()) { btn.textContent = t("buyLogin"); btn.onclick = () => (location.href = "./?login=shop"); }
+      else if (left <= 0) { btn.textContent = t("offerSold"); btn.disabled = true; }
+      else { btn.textContent = money(o.price); btn.onclick = () => buyOffer(o); }
+      return el("div", { className: "card offer", dataset: { sku: o.sku } },
+        el("span", { className: "bonus", textContent: t("offerLimit") }),
+        el("div", { className: "art box-art", textContent: "🎁" }),
+        el("div", { className: "name", textContent: o.name }),
+        el("div", { className: "desc", textContent: o.description }),
         btn);
     }));
   }
@@ -699,6 +741,39 @@
     } finally {
       busy = false;
     }
+  }
+
+  // 한정 판매 결제: 캐시 충전과 같은 결제 창. 주문 종류를 기억해 둠 (결제 사이트에서 돌아와도 무엇을 샀는지 알게)
+  const offerOrderKey = (id) => `rl_offer_order:${id}`;
+  async function buyOffer(offer) {
+    if (busy) return;
+    busy = true;
+    openPayModal(offer.name);
+    payMsg(t("creating"));
+    try {
+      const order = await api(`/payment/item/${encodeURIComponent(offer.sku)}`, {
+        method: "POST", auth: true,
+        body: { sandbox: SHOP.sandbox, locale: lang, quantity: 1 },
+      });
+      current = { offer, orderId: order.order_id, token: order.token };
+      store.set(offerOrderKey(order.order_id), offer.sku);
+      await ensureSdk();
+      await sdk.setToken(order.token);
+      subscribeOnce();
+      await showMethods();
+    } catch (e) {
+      payMsg(e instanceof ApiError ? friendly(e) : t("errGeneric", e.message), "bad");
+    } finally {
+      busy = false;
+    }
+  }
+  // 결제가 끝난 상자를 게임 서버가 Xsolla 인벤토리에서 꺼내 우편함으로 (실패해도 게임 우편함을 열 때 다시 함)
+  async function collectOffer() {
+    if (!window.RANKING_API) return;
+    try {
+      const tok = await Auth.token();
+      if (tok) await fetch(`${window.RANKING_API}?r=ubox_collect`, { method: "POST", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: "{}" });
+    } catch {}
   }
 
   const ICON_BASE = "https://cdn.xsolla.net/headless-checkout-prod/assets/icons";
@@ -915,6 +990,13 @@
           stopOrderWatch();
           try { payWindow?.close(); } catch {}
           $("pay-extra").replaceChildren();
+          if (current.offer || store.get(offerOrderKey(current.orderId))) {
+            store.del(offerOrderKey(current.orderId));
+            await collectOffer();
+            payMsg(t("offerPaid"), "good");
+            loadCatalog();   // 구매 제한 반영 (구매 완료)
+            return;
+          }
           const amount = current.pack ? cashIn(current.pack) + bonusOf(current.pack) : 0;
           payMsg(amount ? t("paid", amount) : t("paidNoAmount"), "good");
           refreshBalance();
