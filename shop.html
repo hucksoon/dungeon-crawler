@@ -237,7 +237,7 @@
   // 테스트 결제로 되돌릴 때는 여기만 true로 바꾸면 됨 (주문 생성과 결제창이 함께 바뀜)
   const SHOP = {
     projectId: 317991,
-    sandbox: false,
+    sandbox: true,
     cashSku: "cash",
     packGroup: "cash_packs",
     boxGroup: "equipment_boxes",
@@ -263,6 +263,9 @@
       loading: "불러오는 중…", creating: "주문을 만드는 중…", noMethods: "쓸 수 있는 결제 수단이 없어요.",
       unsupported: "이 결제 수단은 아직 지원하지 않아요. 다른 결제 수단을 골라 주세요.",
       continue: "계속하기", waiting: "결제를 확인하는 중…",
+      openPayWindow: "결제 창 열기 (새 창)", payWindowHint: "새 창에서 결제를 마치면 이 창에서 자동으로 확인해요. 창이 안 열리면 팝업 차단을 풀어 주세요.",
+      payWindowClosed: "결제 창이 닫혔어요. 결제를 마쳤다면 잠시 뒤 여기서 확인돼요. 다시 열려면 버튼을 눌러 주세요.",
+      payWindowReturned: "결제 결과를 원래 창으로 보냈어요. 이 창은 닫아도 돼요.",
       moreMethods: (n) => `결제 수단 더 보기 (${n})`, searchMethods: "결제 수단 검색", noMatch: "찾는 결제 수단이 없어요.",
       paid: (n) => `결제 완료! 캐시 ${n}이 들어왔어요.`, paidNoAmount: "결제 완료! 캐시가 들어왔어요.",
       payFailed: "결제가 완료되지 않았어요. 다시 시도해 주세요.",
@@ -290,6 +293,9 @@
       loading: "Loading…", creating: "Creating your order…", noMethods: "No payment methods are available.",
       unsupported: "This payment method isn't supported yet. Please choose another one.",
       continue: "Continue", waiting: "Confirming your payment…",
+      openPayWindow: "Open payment window (new window)", payWindowHint: "Finish the payment in the new window — this page will confirm it automatically. Allow pop-ups if nothing opens.",
+      payWindowClosed: "The payment window was closed. If you finished paying, it will be confirmed here shortly. Press the button to open it again.",
+      payWindowReturned: "The payment result was sent to the original window. You can close this window.",
       moreMethods: (n) => `More payment methods (${n})`, searchMethods: "Search payment methods", noMatch: "No matching payment method.",
       paid: (n) => `Payment complete! ${n} Cash added.`, paidNoAmount: "Payment complete! Cash added.",
       payFailed: "The payment was not completed. Please try again.",
@@ -317,6 +323,9 @@
       loading: "読み込み中…", creating: "注文を作成中…", noMethods: "利用できるお支払い方法がありません。",
       unsupported: "このお支払い方法はまだ対応していません。別の方法を選んでください。",
       continue: "続ける", waiting: "お支払いを確認中…",
+      openPayWindow: "決済ウィンドウを開く (新しいウィンドウ)", payWindowHint: "新しいウィンドウで決済を終えると、この画面で自動的に確認します。開かない場合はポップアップを許可してください。",
+      payWindowClosed: "決済ウィンドウが閉じられました。決済が完了していれば、まもなくここで確認されます。もう一度開くにはボタンを押してください。",
+      payWindowReturned: "決済結果を元のウィンドウに送りました。このウィンドウは閉じて構いません。",
       moreMethods: (n) => `その他のお支払い方法 (${n})`, searchMethods: "お支払い方法を検索", noMatch: "該当するお支払い方法がありません。",
       paid: (n) => `お支払い完了！キャッシュ ${n} が追加されました。`, paidNoAmount: "お支払い完了！キャッシュが追加されました。",
       payFailed: "お支払いが完了しませんでした。もう一度お試しください。",
@@ -840,22 +849,47 @@
     }
   }
 
-  // 같은 탭이 기본. 서버가 새 탭을 요구할 때만 버튼(사용자 클릭)으로 연다
+  // 결제 사이트(PayPal·은행·3DS 등)는 새 창으로 연다 (결제창이 통째로 다른 페이지로 넘어가지 않게, dc#55)
+  //   새 창은 사용자 클릭 안에서만 열 수 있어서 "결제 창 열기" 버튼을 보여 줌. 이 창은 그대로 두고 주문 상태를 확인
+  //   서버가 같은 창을 요구해도(isSameWindowRequired: 카드 확인 페이지도 이걸 보냄) 새 창으로 엶. 팝업이 막히면 이 창에서 이동
+  //   (Venmo·Alipay 같은 앱 연동 결제 수단은 새 창에서 안 될 수 있음 → 그런 수단이 생기면 여기서 예외로)
+  const PAY_WINDOW = "rl_pay_window";
+  let payWindow = null, payWindowTimer = null;
   function handleRedirect(redirect) {
     $("pay-form").hidden = true;
-    const { redirectUrl, data = {}, method, isNewWindowRequired } = redirect;
+    const { redirectUrl, data = {}, method } = redirect;
     const form = el("form", { method: String(method || "GET").toUpperCase() === "POST" ? "POST" : "GET", action: redirectUrl });
     for (const [name, value] of Object.entries(data)) form.append(el("input", { type: "hidden", name, value: String(value) }));
     document.body.append(form);
-    if (isNewWindowRequired) {
-      form.target = "_blank";
-      watchOrder();
-      $("pay-extra").replaceChildren(el("button", { type: "button", className: "primary", textContent: t("continue"), style: "width:100%", onclick: () => form.submit() }));
-      return;
-    }
-    payMsg(t("waiting"));
-    form.submit();
+    form.target = PAY_WINDOW;
+    // 새 창이 닫히기 전에 결과를 받을 수 있게 상태 확인을 한 번 시작 (그 뒤로는 status_updated + 주문 확인)
+    sdk.getStatus?.().catch?.(() => {});
+    watchOrder();
+    const open = () => {
+      window.rlPayOrder = String(current?.orderId || "");   // 돌아온 결제 창이 "내 주문"인지 확인하는 표시
+      payWindow = window.open("about:blank", PAY_WINDOW);
+      if (!payWindow) { form.target = ""; payMsg(t("waiting")); form.submit(); return; }   // 팝업 차단: 이 창에서
+      form.submit();
+      payMsg(t("payWindowHint"));
+      clearInterval(payWindowTimer);
+      payWindowTimer = setInterval(() => {
+        if (!payWindow || !payWindow.closed) return;
+        clearInterval(payWindowTimer);
+        if (watchTimer) payMsg(t("payWindowClosed"));
+      }, 1000);
+    };
+    payMsg(t("payWindowHint"));
+    $("pay-extra").replaceChildren(el("button", { type: "button", className: "primary pay-window-btn", textContent: t("openPayWindow"), style: "width:100%", onclick: open }));
   }
+  // 새 창에서 결제 사이트가 returnUrl(이 페이지)로 돌아오면: 원래 창에 알리고 이 창은 닫음
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.data?.type !== "rl-pay-return") return;
+    clearInterval(payWindowTimer);
+    try { payWindow?.close(); } catch {}
+    payWindow = null;
+    $("pay-extra").replaceChildren();
+    if (current && String(current.orderId) === String(e.data.orderId)) { payMsg(t("waiting")); watchOrder(); }
+  });
 
   // psdk-status는 결제가 있을 때만 만든다 (미리 두면 시작하자마자 상태 조회에 실패함)
   function showStatus() {
@@ -879,6 +913,8 @@
         const o = await api(`/order/${current.orderId}`, { auth: true });
         if (o.status === "done") {
           stopOrderWatch();
+          try { payWindow?.close(); } catch {}
+          $("pay-extra").replaceChildren();
           const amount = current.pack ? cashIn(current.pack) + bonusOf(current.pack) : 0;
           payMsg(amount ? t("paid", amount) : t("paidNoAmount"), "good");
           refreshBalance();
@@ -891,13 +927,22 @@
     };
     watchTimer = setTimeout(tick, 1000);
   }
-  function stopOrderWatch() { clearTimeout(watchTimer); watchTimer = null; }
+  function stopOrderWatch() { clearTimeout(watchTimer); watchTimer = null; clearInterval(payWindowTimer); }
 
   // 결제 사이트(3DS, PayPal 등)에서 돌아왔을 때: 같은 토큰으로 상태만 보여줌 (form.init 하지 않음)
   async function handleReturn() {
     const q = new URLSearchParams(location.search);
     const token = q.get("token"), orderId = q.get("paid");
     if (!token || !orderId) return false;
+    // 새 창(결제 창)으로 돌아온 경우: 원래 창이 확인하니 알리고 닫음
+    let opener = null;
+    try { opener = window.opener && window.opener.location.origin === location.origin && window.opener.rlPayOrder === orderId ? window.opener : null; } catch {}
+    if (opener) {   // window.name은 결제 사이트를 거치며 지워질 수 있어서 원래 창의 주문 번호로 확인
+      opener.postMessage({ type: "rl-pay-return", orderId, search: location.search }, location.origin);
+      showPageMsg(t("payWindowReturned"), "good");
+      setTimeout(() => window.close(), 300);
+      return true;
+    }
     openPayModal(t("payTitle"));
     current = { orderId, token, pack: null };
     try {
