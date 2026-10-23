@@ -23,7 +23,7 @@
   // r6: 추가 능력치 후보에 홈(SOCKETS)이 들어감 — 바지 빼고. 홈에는 보석(GEMS)을 넣음
   //     같은 r6에 유니크(UNIQUE, 출처 "unique")가 더해짐: 헬 네임드 보스만 떨어뜨리는 고정 아이템 (보통 아이템 규칙은 그대로)
   // r7: 장신구(목걸이·반지, ACCESSORY)가 부위 후보에 들어감 (SLOTS_R7). 유니크도 드롭할 때 고대 굴림 (고대 다시 굴리기는 안 됨)
-  const RULES_REV = 7;
+  const RULES_REV = 8;
   const ANCIENT = { chance: 0.03 };
   // 고대 다시 굴리기: 고대가 아닌 레전더리·세트(v4)를 골드로 다시 굴려 고대를 노림. 한 번에 5%, 아이템마다 최대 20번(최대 64%)
   // 비용은 그 아이템의 상점 가격 (레벨이 높을수록 비쌈, 53층 레전더리 약 2,500골드 ≈ 그 층에서 한 층 동안 모이는 골드)
@@ -277,7 +277,7 @@
   // 주 능력치 = "공격력·방어력·최대 HP +%" 한 줄 (power, 일반 던전에서 얻으면 약 절반)
   // 추가 능력치 = 속성 저항 줄만 (불·얼음·번개·모든 속성 중 하나씩, 같은 종류가 또 붙을 수 있음). 줄 수는 얻은 곳에 따라 확률 (resLines)
   //   범위는 등급별 (레전더리 각 속성 20~30%, 모든 속성 8~11%)
-  // 주 능력치·저항 줄 모두 강화로 오르지 않음
+  // 저항 줄은 강화로 오르지 않음 (r8 주 능력치 공격력·방어력·최대 HP는 다른 장비처럼 오름, r7 power는 그대로)
   const ACCESSORY = {
     names: { neck: "목걸이", ring: "반지" },
     resKeys: ["fireRes", "iceRes", "boltRes", "allRes"],
@@ -293,6 +293,15 @@
     //   일반 던전은 3~10: 전설의 힘·세트의 힘·유니크의 힘이 빠져도 일반 던전이 쉬워지지 않게 (시뮬레이션)
     power: byRarity([2, 5], [4, 8], [6, 12], [10, 18], [15, 25], [15, 25]),
     powerNormal: byRarity([1, 2], [1, 3], [2, 4], [3, 7], [3, 10], [3, 10]),
+    // r8부터: 공격력·방어력·최대 HP를 % 대신 고정 수치 3줄로 (다른 장비처럼 강화로 오르고, 악몽의 힘 ×3·지옥의 힘 ×5)
+    //   범위 = 다른 장비 주 능력치 범위(MAIN.range, 레벨) × 레전더리 1.75 × flat[능력치] × flatRarity[등급] (일반 던전은 × normalMul)
+    //   flat은 단계별 추천 장비(줄 품질 95% +10)에서 레전더리 장신구 공방HP 25%와 같은 세기의 절반 (+0 기준 공격 0.53~0.55·방어 2.1·HP 2.3~2.5)
+    //   → 강화하면 다른 장비 주 능력치처럼 +10에 2배라서, +10 장신구가 예전 25%와 같음 (+0 그대로 맞추면 +10에서 헬 50층 고대 아닌 장비도 0%가 됨)
+    //   일반 던전은 3~10%(10%)에 맞춰 × 0.55, 등급은 예전 % 범위 가운데 값 비율 (커먼 0.2 … 레전더리 1, 유니크 1.2 = UNIQUE.mul)
+    flatStats: ["atk", "def", "hp"],
+    flat: { atk: 0.275, def: 1.05, hp: 1.2 },
+    flatRarity: { common: 0.2, uncommon: 0.3, rare: 0.45, epic: 0.7, legendary: 1, set: 1, unique: 1.2 },
+    normalMul: 0.55,
   };
   // 유니크 장신구: 공방HP는 레전더리 × 1.2 (UNIQUE.mul), 저항 줄은 레전더리 범위 (최대 30%·11%)
   ACCESSORY.power.unique = [18, 30];
@@ -353,7 +362,7 @@
     return [a, Math.max(a, Math.round(hi * mul))];
   };
   function mainRange(stat, item) {
-    if (isAccessory(item)) return accPowerRange(item);   // 장신구 주 능력치는 power 하나
+    if (isAccessory(item)) return stat === "power" ? accPowerRange(item) : accFlatRange(stat, item);   // 장신구: r7은 power 하나, r8부터 공격력·방어력·최대 HP
     // 장검(v4): 공격력 말고 다른 주 능력치도 다른 부위 범위의 mainMul배 (공격력은 atkMul)
     const lsMul = item.v >= 4 && stat !== "atk" && isShieldOnly(item) ? WEAPONS[item.type].mainMul : 1;
     const fixed = fixedPct(item, PCT_MAIN, stat);
@@ -372,6 +381,11 @@
     (item.rarity === "unique" ? scaleRange(lineRange(stat, item.lvl), UNIQUE.mul) : lineRange(stat, item.lvl)));
   // 장신구 power 범위 (일반 던전에서 얻은 것은 powerNormal)
   const accPowerRange = (item) => (accTier(item.seed || "") === "normal" && item.rarity !== "unique" ? ACCESSORY.powerNormal : ACCESSORY.power)[item.rarity];
+  // r8 장신구 공격력·방어력·최대 HP 범위 (굴린 값은 이 범위, 악몽의 힘·지옥의 힘은 계산할 때 곱함)
+  const accFlatRange = (stat, item) => scaleRange(MAIN.range[stat](item.lvl),
+    1.75 * ACCESSORY.flat[stat] * ACCESSORY.flatRarity[item.rarity] * (accTier(item.seed || "") === "normal" && item.rarity !== "unique" ? ACCESSORY.normalMul : 1));
+  // 장신구 주 능력치 굴림: r8부터 공격력·방어력·최대 HP 3줄, 그 전은 power 한 줄 (모두 범위 안에서 고르게)
+  const rollAccMain = (rng, item, rev) => (rev >= 8 ? ACCESSORY.flatStats : ["power"]).map(k => [k, rollEven(rng, mainRange(k, item))]);
   // 장신구 굴림: 범위 안에서 고르게
   const rollEven = (rng, [lo, hi]) => randInt(rng, lo, hi);
   // 최대치 20%, 그 외에는 최소 ~ (최대 − 1)
@@ -516,7 +530,7 @@
     const item = { v: 4, seed, src: "unique", lvl: lv, slot: U.slot, type: U.type, rarity: "unique", set: null, r: rev, uq };
     if (U.acc) {   // 유니크 장신구: 장신구처럼 고르게 굴림, 저항 줄 2~3
       item.type = null;
-      item.main = [["power", rollEven(rng, mainRange("power", item))]];
+      item.main = rollAccMain(rng, item, rev);
       const n = +pickWeighted(rng, UNIQUE.accResLines);
       item.lines = [];
       for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollEven(rng, lineRangeOf(k, item))]); }
@@ -628,7 +642,7 @@
   function generateAccessory(rng, seed, source, lv, slot, rolled, rev) {
     const rarity = rolled === "set" ? "legendary" : rolled;
     const item = { v: 4, seed, src: source, lvl: lv, slot, type: null, rarity, set: null, r: rev };
-    item.main = [["power", rollEven(rng, mainRange("power", item))]];
+    item.main = rollAccMain(rng, item, rev);
     const n = +pickWeighted(rng, ACCESSORY.resLines[accTier(seed)]);
     item.lines = [];
     for (let i = 0; i < n; i++) { const k = pick(rng, ACCESSORY.resKeys); item.lines.push([k, rollEven(rng, lineRangeOf(k, item))]); }
@@ -779,7 +793,7 @@
     const out = {};
     for (let [k, v] of mainStatsOf(item)) {
       v = Math.round(v * nmPower(item, k));
-      // 저항(장검의 모든 속성 저항)과 장신구 power는 강화로 오르지 않음
+      // 저항(장검의 모든 속성 저항)과 장신구 power(r7)는 강화로 오르지 않음 (r8 장신구 공격력·방어력·최대 HP는 다른 장비처럼 오름)
       if (isResLine(k) || k === "power") { out[k] = v; continue; }
       // v4 % 능력치: 2단계마다 +1%p만
       if (item.v >= 4 && STATS[k].pct) { out[k] = v + Math.floor(n / 2); continue; }
@@ -883,13 +897,13 @@
   // ---- 추천 능력치 (끝판 목표): 일반 · 나이트메어 · 헬 ----
   // 단계마다 그 단계 끝(일반 75층·나이트메어 50층·헬 50층)을 깨는 조합. 아이템 상세의 "추천 n/5"는 그 아이템을 얻은 단계의 추천으로 셈 (recommendTier)
   // 시뮬레이션 (sim/rec-tiers: 그 단계 끝 레벨 레전더리 +10, 몰려오는 20마리(8마리씩) / 보스 1:1, 장신구는 실제 아이템):
-  //   일반 75층 (줄 품질 80% +8): 저항 줄 자리에 HP·방어력 → 몰려옴 5%·보스 0% (저항 줄 자리를 비우면 76%, HP·공격력 68%, 방어력·공격력 88%, 장신구 없으면 100%). 고대 +10이면 0%
+  //   일반 75층 (줄 품질 80%, 장비·장신구 +8, r8 장신구): 저항 줄 자리에 HP·방어력 → 몰려옴 1%·보스 0% (저항 줄 자리를 비우면 41%, HP·공격력 9%, 방어력·공격력 22%, 장신구 없으면 98%). 고대 +10이면 0%
   //     일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서 저항 목표 없음
-  //   나이트메어 50층 (고대 +10, 고대 장신구 3개): 갑옷 부위에 속성 저항 하나씩 + 팔 모든 저항, 무기는 HP, 장신구 저항 2줄씩 → 몰려옴 16%·보스 0% (7턴)
+  //   나이트메어 50층 (고대 +10, 고대 장신구 3개 +10): 갑옷 부위에 속성 저항 하나씩 + 팔 모든 저항, 무기는 HP, 장신구 저항 2줄씩 → 몰려옴 16%·보스 0% (6턴)
   //     예전 추천(장비 저항 줄 7개)은 22%: 장신구가 저항을 채워 주니 장비 저항 줄을 HP로 바꾸는 게 나음. 장신구 저항 줄이 없으면 45%
   //     저항: 속성 줄 20 + 모든 저항 줄 7 + 장신구 6줄(속성 하나 30 + 모든 속성 11 × 3 정도) → 75
   //   헬 50층 (줄 품질 95% +10, 몰려옴 / 염라대왕, 내 저항 −10): 유니크 7 + 업경 목걸이 + 여우불 반지 2 → 0% / 0% (14턴 / 11턴, 가장 빠름)
-  //     명부의 반지 2면 흡혈 24%로 0% / 0%, 레전더리 + 같은 장신구 7% / 12%, 레전더리 + 레전더리 장신구 24% / 33% (dc#48 헬 곡선 뒤). 업경 목걸이로 저항 65 → 70
+  //     명부의 반지 2면 흡혈 24%로 0% / 0%, 레전더리 + 같은 장신구 11% / 10%, 레전더리 + 레전더리 장신구 17% / 25% (dc#48 헬 곡선 뒤, r8 장신구 +10). 업경 목걸이로 저항 65 → 70
   const W_MAIN = ["atk", "critDmg", "lifesteal"], CRIT3 = ["crit", "critDmg", "atkPct"];
   const REC_ARMOR_MAIN = { head: ["def", "hp"], chest: ["def", "crit", "hp"], arms: ["def", "crit", "atkPct"], pants: ["def", "hp", "defPct"], boots: ["def", "hp"] };
   const W_KIND = { weapon: "단검·지팡이·도끼 (장검 말고)", offhand: "보조 단검·지팡이·도끼 (방패 말고)" };
@@ -905,13 +919,13 @@
       name: "일반", goal: "일반 75층",
       targets: { res: 0, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
       slots: recSlots("atk", Object.fromEntries(Object.keys(REC_ARMOR_MAIN).map(slot => [slot, ["hp", "def", ...CRIT3]]))),
-      acc: "공격력·방어력·최대 HP %가 높은 것 (일반 던전에서는 저항 줄이 필요 없어요)",
+      acc: "공격력·방어력·최대 HP가 높은 것 +10 강화 (일반 던전에서는 저항 줄이 필요 없어요)",
     },
     nightmare: {
       name: "나이트메어", goal: "나이트메어 50층",
       targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
       slots: recSlots("hp", NM_ARMOR),
-      acc: "속성 저항 2줄 (모자란 속성 + 모든 속성 저항)",
+      acc: "속성 저항 2줄 (모자란 속성 + 모든 속성 저항), +10 강화",
     },
     hell: {
       name: "헬", goal: "헬 50층",
@@ -919,7 +933,7 @@
       slots: recSlots("hp", NM_ARMOR),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
       uniques: { weapon: "foxorb", offhand: "scythe", head: "binyeo", chest: "ironscale", arms: "chains", pants: "robe", boots: "dragonboots" },
       accUniques: { neck: ["eopgyeong"], ring: ["foxfire", "myeongbu"] },   // 반지는 여우불 2 (빠름) 또는 명부 (흡혈)
-      acc: "업경 목걸이 + 여우불 반지 2 (흡혈이 모자라면 명부의 반지). 저항 줄은 모든 속성 저항",
+      acc: "업경 목걸이 + 여우불 반지 2 (흡혈이 모자라면 명부의 반지), +10 강화. 저항 줄은 모든 속성 저항",
     },
   };
   // 아이템을 얻은 단계 → 그 단계 추천 (일반 | nightmare | hell)
