@@ -84,6 +84,7 @@
   .stat-line.max .range { opacity: 1; color: #ffd700; }
   .guide-slot { margin: 4px 0; line-height: 1.5; }
   .guide-tiers { display: flex; gap: 4px; margin-bottom: 6px; }
+  .guide-builds { display: block; margin-top: 8px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); text-decoration: none; font-size: 12px; text-align: center; }
   .guide-tier { flex: 1; font-size: 12px; padding: 6px 4px; }
   .guide-tier.on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .slot .fit { opacity: 0.75; }
@@ -673,6 +674,7 @@
 
 <script src="items.js"></script>
 <script src="monsters.js"></script>
+<script src="builds.js"></script>
 <script src="ranking-config.js"></script>
 <script src="ads-config.js"></script>
 <script>
@@ -4406,13 +4408,12 @@
   const GUIDE_NOTE = {
     normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)",
     nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개 +10, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 43%)",
-    hell: `헬 50층을 깨는 조합이에요. 유니크 7부위 + 업경 목걸이 + 여우불 반지 2개가 가장 빨라요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). (시뮬레이션: 줄 품질 95% +10, 장신구도 +10, 몰려오는 몬스터 0%·염라대왕 0%. 레전더리 + 같은 장신구 11%·10%, 레전더리 + 레전더리 장신구 17%·25%)`,
+    hell: `헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 "최고 조합 보기"에서`,
   };
   function renderGuide() {
     const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
     const worn = Object.values(eq).filter(Boolean);
     const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= T.enh).length;
-    const uqOk = rec.uniques ? RLItems.SLOTS.filter(slot => eq[slot]?.uq && eq[slot].uq === rec.uniques[slot]).length : 0;
     const accUq = worn.filter(it => RLItems.isAccessory(it) && it.uq && (rec.accUniques?.[it.slot] || []).includes(it.uq)).length;
     const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
     // 저항: 그 단계 기준 (헬은 −10, 지금 있는 곳과 상관없이)
@@ -4429,11 +4430,26 @@
       ...(T.res ? [goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%${cut ? ` (헬 −${cut})` : ""}`)] : []),
       goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${g.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
       goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
-      ...(T.uniques ? [goal(uqOk >= T.uniques, `추천 유니크 ${uqOk} / ${T.uniques}부위`), goal(accUq >= T.acc, `추천 유니크 장신구 ${accUq} / ${T.acc}칸`)]
+      ...(T.uniques ? [goal(accUq >= T.acc, `추천 유니크 장신구 ${accUq} / ${T.acc}칸`)]
         : [goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`), goal(accN >= T.acc, `장신구 ${accN} / ${T.acc}칸 (목걸이·반지 2개)`)]),
       goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
-      el("h3", { style: { marginTop: "6px" } }, "부위별 추천"),
     ];
+    const buildsLink = el("a", { className: "guide-builds", href: "builds.html", target: "_blank", rel: "noopener" }, "🏆 최고 조합 보기 (새 창: 유니크 없이 · 유니크 포함 · 줄 고르기)");
+    // 헬: 부위별 줄 대신 가장 강한 유니크 순위 (builds.js, 헬 50층 시뮬레이션). 자세한 조합·줄은 최고 조합 페이지
+    if (tier === "hell" && window.RLBuilds) {
+      const have = new Set(Inv.items().map(it => it.uq).filter(Boolean)), worn = new Set(Object.values(eq).filter(Boolean).map(it => it.uq).filter(Boolean));
+      rows.push(el("h3", { style: { marginTop: "6px" } }, "✦ 가장 강한 유니크 (헬 50층)"),
+        el("div", { className: "meta" }, "그 유니크를 낄 때 가장 빠른 조합 순서예요 (몰려오는 몬스터 + 염라대왕 턴). 유니크를 모두 모으기보다 강한 유니크 + 세트를 섞는 게 가장 빨라요"),
+        ...RLBuilds.uniqueRank.map((r, i) => { const U = RLItems.UNIQUE.items[r.uq], on = worn.has(r.uq), got = have.has(r.uq);
+          return el("div", { className: `guide-slot${on ? " set-on" : ""}` }, el("b", { style: on ? {} : { color: RLItems.RARITIES.unique.color } }, `${i + 1}. ${U.name}`),
+            ` ${RLItems.SLOT_NAMES[U.slot]} · ${on ? "✓ 착용 중" : got ? "가방에 있음" : `헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"}`}`, el("br"),
+            el("span", { className: "meta" }, `같이: ${r.with} · ${r.turns[0]}턴 / ${r.turns[1]}턴${r.text ? ` · ${r.text}` : ""}`)); }),
+        el("div", { className: "guide-slot" }, el("b", {}, `장신구 · ${accN} / 3칸`), el("br"), rec.acc),
+        buildsLink);
+      invGuide.replaceChildren(...rows);
+      return;
+    }
+    rows.push(el("h3", { style: { marginTop: "6px" } }, "부위별 추천"));
     for (const slot of RLItems.SLOTS) {
       const r = rec.slots[slot], it = eq[slot], uqWant = rec.uniques?.[slot];
       if (!r) continue;
@@ -4455,7 +4471,7 @@
     else rows.push(
       el("div", { className: "meta" }, `저항: 속성 저항 줄(최대 ${RLItems.RES_R4.fireRes[1]}%) + 팔 모든 속성 저항(${RLItems.RES_R4.allRes[1]}%) + 장신구 저항 줄 6개(속성 하나 최대 ${RLItems.ACCESSORY.res.fireRes.legendary[1]}%, 모든 속성 최대 ${RLItems.ACCESSORY.res.allRes.legendary[1]}%) → ${EL.resCap}%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%`),
       el("div", { className: "meta" }, "저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"));
-    rows.push(el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요`));
+    rows.push(el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요`), buildsLink);
     invGuide.replaceChildren(...rows);
   }
 

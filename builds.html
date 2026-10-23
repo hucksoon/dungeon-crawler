@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>던전 크롤러 — 최고 조합</title>
+<style>
+  :root {
+    --bg: #0d0e14;
+    --panel: #16181f;
+    --row: #1b1e27;
+    --border: #2a2d3a;
+    --text: #cdd3de;
+    --muted: #8a91a0;
+    --accent: #ffcf5c;
+    --set: #2fd6b5;
+    --unique: #ffb347;
+    --rw: #ffd54f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  h1 { font-size: 20px; letter-spacing: 2px; margin: 0; color: var(--accent); text-shadow: 0 0 8px rgba(255, 207, 92, 0.3); }
+  a.btn { color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; text-decoration: none; font-size: 13px; }
+  @media (hover: hover) { a.btn:hover { border-color: var(--accent); color: var(--accent); } }
+  .cond { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { font: inherit; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; min-width: 0; }
+  section[hidden] { display: none; }
+  h2 { font-size: 15px; margin: 0 0 6px; color: var(--accent); }
+  h3 { font-size: 14px; margin: 14px 0 6px; }
+  .sub { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.6; }
+  .build { background: var(--row); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+  .build.top { border-color: var(--accent); }
+  .build-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: baseline; }
+  .build-head b { font-size: 14px; }
+  .rank { color: var(--accent); margin-right: 6px; }
+  .res { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .res b { color: #7ee787; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  th, td { text-align: left; padding: 5px 6px; border-top: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: normal; white-space: nowrap; width: 54px; }
+  .set { color: var(--set); } .uq { color: var(--unique); } .rw { color: var(--rw); }
+  .meta { color: var(--muted); }
+  .stat { display: inline-block; margin-right: 4px; }
+  .pieces { font-size: 12px; margin-top: 6px; line-height: 1.7; }
+  ul { margin: 6px 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  footer { font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+  @media (max-width: 560px) { main { padding: 12px; } th { width: 40px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🏆 최고 조합 (헬 50층)</h1>
+    <a class="btn" href="./">게임으로</a>
+  </header>
+  <div class="cond" id="cond"></div>
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="noUnique" aria-selected="true">1. 유니크 없이</button>
+    <button type="button" role="tab" data-tab="withUnique" aria-selected="false">2. 유니크 포함</button>
+    <button type="button" role="tab" data-tab="unused" aria-selected="false">잘 안 쓰이는 아이템</button>
+  </nav>
+  <section id="noUnique"></section>
+  <section id="withUnique" hidden></section>
+  <section id="unused" hidden></section>
+  <footer>
+    시뮬레이션은 실제 게임 규칙(아이템·몬스터·전투)으로 계산했어요. 부위를 하나씩 바꿔 가며 더 좋아지는 쪽으로 찾고, 상위 조합은 500번씩 다시 확인했어요.
+    턴이 같으면 오차(몇 턴) 안이라 순위가 바뀔 수 있어요. 폭풍전야는 맞는 몬스터 모두에게 걸려 있다고 봐서 실제보다 조금 좋게 나와요.
+  </footer>
+</main>
+<script src="items.js"></script>
+<script src="monsters.js"></script>
+<script src="builds.js"></script>
+<script>
+(() => {
+  const I = RLItems, B = RLBuilds, M = RLMonsters;
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); for (const k of kids.flat(Infinity)) if (k != null) e.append(k); return e; };
+  const ORDER = ["weapon", "offhand", "head", "chest", "arms", "pants", "boots"];
+  const stat = (k) => I.STATS[k].name + (I.STATS[k].pct ? "%" : "");
+  const res = (b) => el("span", { className: "res" }, "몰려옴 ", el("b", {}, `${b.wave[0]}%`), ` ${b.wave[1]}턴 · 염라대왕 `, el("b", {}, `${b.boss[0]}%`), ` ${b.boss[1]}턴`);
+  const uqName = (k) => I.UNIQUE.items[k].name;
+  const uqWhere = (k) => { const U = I.UNIQUE.items[k]; return `헬 ${U.boss}층 ${M.namedAt(U.boss)?.name || "네임드"}`; };
+  const BASE = { longsword: "장검", shield: "방패", chest: "갑옷", head: "투구", weapon: "단검", staff: "지팡이" };
+  // 슬롯 하나 → [이름(색), 설명]
+  function cell(slot, s) {
+    if (s.rw) {
+      const w = I.RUNEWORDS.find(x => x.name === s.rw);
+      return [el("span", { className: "rw" }, `룬워드 ${s.rw}`),
+        el("div", { className: "meta" }, `커먼 ${BASE[s.base] || s.base} (홈 ${w.runes.length}칸)에 ${w.runes.map(r => I.runeName(r).replace(" 룬", "")).join(" → ")} 룬`),
+        el("div", { className: "meta" }, [...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · "))];
+    }
+    if (s.uq) {
+      const U = I.UNIQUE.items[s.uq];
+      return [el("span", { className: "uq" }, `✦ ${U.name}`), el("div", { className: "meta" }, `${uqWhere(s.uq)} · 줄 고정 · ${U.text}`)];
+    }
+    const lines = [];
+    if (s.main) lines.push(el("div", {}, "★ ", s.main.map(stat).join(", ")));
+    if (s.lines) lines.push(el("div", {}, "◆ ", s.lines.map(stat).join(", ")));
+    if (s.set) return [el("span", { className: "set" }, I.SETS[s.set].pieces[slot]), ...lines];
+    const nm = s.leg === "offhandDagger" ? "레전더리 보조 단검" : `레전더리 ${I.SLOT_NAMES[slot]}`;
+    const rec = I.RECOMMEND.nightmare.slots[slot === "offhand" ? "offhand" : slot];
+    return [el("span", {}, nm), ...(lines.length ? lines : rec ? [el("div", { className: "meta" }, `◆ ${rec.lines.map(stat).join(", ")} (나이트메어 추천 줄)`)] : [])];
+  }
+  function buildCard(b, i, acc) {
+    const head = el("div", { className: "build-head" }, el("b", {}, el("span", { className: "rank" }, `${i + 1}위`), " ", b.name), res(b));
+    const kids = [head];
+    if (b.detail) {
+      kids.push(el("table", {}, el("tbody", {},
+        ...ORDER.filter(s => b.slots[s]).map(s => el("tr", {}, el("th", {}, I.SLOT_NAMES[s]), el("td", {}, ...cell(s, b.slots[s])))),
+        el("tr", {}, el("th", {}, "장신구"), el("td", {}, acc.text, el("div", {}, "◆ ", acc.lines.join(", ")))))));
+      if (b.why) kids.push(el("div", { className: "note" }, `왜: ${b.why}`));
+    } else {
+      kids.push(el("div", { className: "pieces" }, ORDER.filter(s => b.slots[s]).map((s, j) => {
+        const c = cell(s, b.slots[s])[0];
+        return [j ? " · " : "", el("span", { className: "meta" }, `${I.SLOT_NAMES[s]} `), c];
+      })));
+    }
+    if (b.note) kids.push(el("div", { className: "note" }, b.note));
+    return el("div", { className: `build${i === 0 ? " top" : ""}` }, ...kids);
+  }
+  function renderSide(id) {
+    const side = B[id];
+    document.getElementById(id).replaceChildren(
+      el("h2", {}, side.title),
+      el("p", { className: "sub" }, `장신구: ${side.acc.text}. 비교: ${side.compare.name} 몰려옴 ${side.compare.wave[0]}% · 염라대왕 ${side.compare.boss[0]}%`),
+      ...side.builds.map((b, i) => buildCard(b, i, side.acc)),
+      el("h3", {}, "줄 고르기 (주 능력치 ★ · 추가 능력치 ◆)"),
+      el("ul", {},
+        el("li", {}, "세트 조각: ★ 방어력·최대 HP (팔은 방어력·치명타 확률·공격력%, 바지는 방어력·최대 HP·방어력%). ◆ 치명타 확률·치명타 피해·공격력%에 + 최대 HP (장화는 방어력)"),
+        el("li", {}, "치명타 확률은 75%가 최대라, 장신구·유니크로 이미 75%면 그 자리는 최대 HP나 스킬 피해(불·얼음·번개 피해)가 나아요"),
+        el("li", {}, "흡혈은 20%가 최대: 무기·보조무기 주 능력치로 채우고, 모자라면(1위 유니크 없는 조합은 14%) 투구에 흡혈 줄"),
+        el("li", {}, "스킬이 있는 조합(화염의 세트 파이어볼, 여우구슬 지팡이 프로스트 노바)은 그 속성 피해 줄이 좋아요 (한 아이템에 속성 피해 줄은 하나만)"),
+        el("li", {}, "장신구 저항 줄: 불·얼음·번개를 하나씩 나눠 맞추고 나머지는 모든 속성 저항 (헬은 내 저항 −10이라 75%를 채워야 65%)")),
+      el("p", { className: "sub" }, "줄 고르기는 위 1위 조합에서 한 줄씩 바꿔 보며 찾았어요 (줄 품질 75~95%). 95%에서는 모든 조합이 0%라 차이가 거의 없고, 75%처럼 장비가 덜 좋을 때 위 줄이 더 잘 버텨요."));
+  }
+  function renderUnused() {
+    const U = B.unused;
+    const sum = (t) => t[0] + t[1];
+    const bestNo = sum([B.noUnique.builds[0].wave[1], B.noUnique.builds[0].boss[1]]), bestUq = sum([B.withUnique.builds[0].wave[1], B.withUnique.builds[0].boss[1]]);
+    document.getElementById("unused").replaceChildren(
+      el("h2", {}, "잘 안 쓰이는 룬워드·유니크"),
+      el("p", { className: "sub" }, `그 아이템을 꼭 낄 때 가장 좋은 조합의 결과예요 (모두 쓰러지지는 않아서 걸린 턴으로 비교). 1위 조합: 유니크 없이 ${bestNo}턴, 유니크 포함 ${bestUq}턴 (몰려옴 + 염라대왕)`),
+      el("h3", {}, "룬워드 (상위 조합에 안 들어감)"),
+      el("table", {}, el("tbody", {}, ...U.runewords.map(r => { const w = I.RUNEWORDS.find(x => x.name === r.name);
+        return el("tr", {}, el("th", {}, el("span", { className: "rw" }, r.name)), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, el("div", { className: "meta" }, `${w.bases.map(b => BASE[b] || b).join("·")} · ${[...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · ")}`))); }))),
+      el("p", { className: "sub" }, "상위 조합에 들어가는 룬워드: 필살일격 · 마음가짐 · 천하무적 · 태산 · 폭풍전야"),
+      el("h3", {}, "유니크 (상위 조합에 안 들어감)"),
+      el("table", {}, el("tbody", {}, ...U.uniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))),
+        ...U.accUniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, r.text, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))))),
+      el("p", { className: "sub" }, "방어구 유니크(구미호의 비녀·쇠비늘 갑옷·염라의 관복·용비늘 장화)는 유니크 7부위로 모을 때만 상위권 (4위, 25턴)이에요. 하나씩 끼면 세트가 더 좋아요"));
+  }
+  document.getElementById("cond").textContent = `조건: ${B.cond}. 쓰러질 확률이 같으면 더 빨리 끝내는 조합이 위예요.`;
+  renderSide("noUnique"); renderSide("withUnique"); renderUnused();
+  const show = (id) => { for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === id)); for (const s of document.querySelectorAll("main > section")) s.hidden = s.id !== id; };
+  for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => { show(b.dataset.tab); history.replaceState(null, "", `#${b.dataset.tab}`); });
+  const fromHash = () => { if (["noUnique", "withUnique", "unused"].includes(location.hash.slice(1))) show(location.hash.slice(1)); };
+  fromHash(); addEventListener("hashchange", fromHash);
+})();
+</script>
+</body>
+</html>

@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const M = require("../monsters.js");
+const RLB = require("../builds.js");
 const I = require("../items.js");
 const N = M.NIGHTMARE;
 const EL = M.ELEMENTS;
@@ -726,7 +727,11 @@ ${table(["부위", "주 능력치 ★", ...I.RECOMMEND.tiers.map(t => `◆ ${I.R
 - 시뮬레이션 (그 단계 끝 레벨 레전더리 +10, 몬스터 20마리가 8마리씩 몰려옴 / 보스 1:1, 장신구는 실제 아이템):
   - **일반 75층**: 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서 저항 목표가 없어요. 저항 줄 자리를 **HP·방어력**으로 채우면 (줄 품질 80%, 장비·장신구 +8) 몰려옴 1%·보스 0% — 비워 두면 41%, HP·공격력 9%, 방어력·공격력 22%, 장신구가 없으면 98%. 고대 +10이면 모두 0%
   - **나이트메어 50층** (고대 +10, 고대 장신구 3개 +10): 투구·갑옷·바지에 속성 저항 하나씩 + 팔 모든 속성 저항, 무기는 HP, 장신구 저항 2줄씩 → 몰려옴 16%·보스 0% (6턴). 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고 남는 자리는 HP (예전 추천인 장비 저항 줄 7개는 16~22%). 장신구 저항 줄이 없으면 43%
-  - **헬 50층** (줄 품질 95% +10, 몰려옴 / 염라대왕, 내 저항 −${M.HELL.playerResCut}): **유니크 7 + 업경 목걸이 + 여우불 반지 2** (장신구도 +10) 0% / 0% (14턴 / 11턴, 가장 빠름), 명부의 반지 2면 흡혈 24%로 0% / 0%, 레전더리 + 같은 장신구 11% / 10%, 레전더리 + 레전더리 장신구(모든 저항 3줄) 17% / 25%. 업경 목걸이로 저항 최대치가 올라 헬에서 65% → 70%
+  - **헬 50층**: 게임 추천 탭에는 **가장 강한 유니크 순위**만 보여요 (부위별 줄 대신). 조합·줄은 [최고 조합 페이지](https://game.apacimtest.com/builds.html) (추천 탭의 "🏆 최고 조합 보기", 새 창)
+    - 유니크 없이 1위: 룬워드 필살일격(장검) + 마음가짐(방패) + 천하무적 + 뇌전의 세트 4 — 0% / 0% (19턴 / 19턴)
+    - 유니크 포함 1위: 여우구슬 지팡이 + 레전더리 보조 단검 + 화염의 세트 5 — 0% / 0% (10턴 / 13턴). 유니크 7부위(14턴 / 11턴)보다 강한 유니크 + 세트를 섞는 게 빨라요
+    - 가장 강한 유니크: ${RLB.uniqueRank.map((r, i) => `${i + 1}. ${I.UNIQUE.items[r.uq].name}`).join(" · ")}
+    - 잘 안 쓰이는 것: 룬워드 ${RLB.unused.runewords.map(r => r.name).join("·")}, 유니크 ${[...RLB.unused.uniques, ...RLB.unused.accUniques].map(r => I.UNIQUE.items[r.uq].name).join("·")}
 - **저항** (나이트메어·헬): 속성 저항 줄(최대 ${I.RES_R4.fireRes[1]}%) + 팔 모든 속성 저항(${I.RES_R4.allRes[1]}%) + 장신구 저항 줄 6개(속성 하나 최대 ${I.ACCESSORY.res.fireRes.legendary[1]}%, 모든 속성 최대 ${I.ACCESSORY.res.allRes.legendary[1]}%) → 75%. 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요
 - **흡혈**: 무기·보조무기 주 능력치 ${I.PCT_MAIN.lifesteal.legendary[1]}% × 2 + 추가 능력치 ${I.PCT_LINE.lifesteal.legendary[1]}% × 2 = 20%
 - **장검 + 방패**도 돼요: 같이 끼면 **흡혈 +${I.SHIELD_GUARD.lifesteal}%, 흡혈 최대 ${I.SHIELD_GUARD.cap}%**. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요
