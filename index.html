@@ -4466,19 +4466,59 @@
     nightmare: "나이트메어 50층을 깨는 조합이에요. 장신구가 저항을 채워 주니 장비의 저항 줄은 4개면 되고, 남는 자리는 HP로. (시뮬레이션: 고대 레전더리 +10 + 고대 장신구 3개 +10, 보스 0%·몰려오는 몬스터 16%. 장신구 저항 줄이 없으면 43%)",
     hell: `헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 ${HELL.playerResCut}% 낮아져서 최대 ${EL.resCap - HELL.playerResCut}% (업경 목걸이면 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax - HELL.playerResCut}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 "최고 조합 보기"에서`,
   };
+  // 추천 탭 단계 버튼: 일반 · 나이트메어 · 헬 · 🔍 파밍
+  const guideTabs = (tier) => el("div", { className: "guide-tiers" },
+    ...[...RLItems.RECOMMEND.tiers.map(t => [t, RLItems.RECOMMEND[t].name]), ...(window.RLBuilds ? [["farm", "🔍 파밍"]] : [])].map(([t, name]) => el("button", {
+      type: "button", className: `guide-tier${t === tier ? " on" : ""}`, textContent: name,
+      onclick: () => { guideTier = t; renderGuide(); },
+    })));
+  // 파밍 추천 (builds.js farm): 아이템 발견 100% 조합을 부위별로, 착용 중·가방에 있음·얻는 곳
+  function renderFarmGuide() {
+    const s = stats(), g = Inv.totals().stats, F = RLBuilds.farm;
+    const worn = Object.values(Inv.equipped()).filter(Boolean), wornIds = new Set(worn.map(it => it.id));
+    const bag = Inv.items().filter(it => !wornIds.has(it.id));
+    const isIt = (p) => (it) => (p.rw ? RLItems.runewordOf(it)?.name === p.rw : it.uq === p.uq);
+    const mfOf = (p) => (p.rw ? RLItems.RUNEWORDS.find(w => w.name === p.rw).stats.mf : RLItems.UNIQUE.items[p.uq].stats.mf) || 0;
+    const nameOf = (p) => (p.rw ? `룬워드 ${p.rw}` : `✦ ${RLItems.UNIQUE.items[p.uq].name}`);
+    const whereOf = (p) => {
+      if (p.uq) { const U = RLItems.UNIQUE.items[p.uq]; return `헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"}`; }
+      const w = RLItems.RUNEWORDS.find(x => x.name === p.rw);
+      return `커먼 ${RLItems.BASE_NAMES[p.base]} 홈 ${w.runes.length}개 이상에 ${runeSeq(w)} 룬`;
+    };
+    const rows = [guideTabs("farm"),
+      el("h3", {}, `🔍 파밍 추천 (아이템 발견 ${s.mf} / ${RLItems.FIND.max}%)`),
+      el("div", { className: "meta" }, `처치마다 ${Math.round(RLItems.FIND.bonus * 100)}% × 발견% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 × (1 + 발견% / ${RLItems.FIND.uniqueDiv}). 100%면 헬 30층 레전더리·세트가 처치마다 약 ×2.3`),
+      goal(s.mf >= RLItems.FIND.max, `아이템 발견 ${g.mf || 0}% / ${RLItems.FIND.max}%`)];
+    for (const b of F.builds) {
+      rows.push(el("h3", { style: { marginTop: "8px" } }, b.name), el("div", { className: "meta" }, b.when));
+      const seen = {};
+      for (const p of b.slots) {
+        const key = p.rw || p.uq, n = (seen[key] = (seen[key] || 0) + 1) - 1;   // 같은 아이템 두 번째(여의 반지 2)
+        const w = worn.filter(isIt(p)).length, h = bag.filter(isIt(p)).length;
+        const on = w > n, got = !on && w + h > n;
+        rows.push(el("div", { className: `guide-slot${on ? " set-on" : ""}` },
+          el("b", {}, `${RLItems.SLOT_NAMES[p.slot]} · `),
+          el("span", { style: on ? {} : { color: p.rw ? RLItems.RUNEWORD_COLOR : RLItems.RARITIES.unique.color } }, nameOf(p)),
+          ` +${mfOf(p)}% · ${on ? "✓ 착용 중" : got ? "가방에 있음" : whereOf(p)}`));
+      }
+      rows.push(el("div", { className: "meta" }, `나머지: ${b.rest}`));
+      if (b.wave) rows.push(el("div", { className: "meta" }, `시뮬레이션 (헬 ${F.floors.join("·")}층): 몰려오는 20마리 ${b.wave.map(x => `${x[0]}% ${x[1]}턴`).join(" · ")}, 보통 보스 ${b.boss.map(x => `${x[0]}%`).join("·")} — 보통 장비(레전더리 단검 2)는 32~36턴`));
+      if (b.note) rows.push(el("div", { className: "meta" }, b.note));
+    }
+    rows.push(el("a", { className: "guide-builds", href: "builds.html#farm", target: "_blank", rel: "noopener" }, "🏆 파밍 조합 자세히 (새 창)"));
+    invGuide.replaceChildren(...rows);
+  }
+  const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
   function renderGuide() {
+    if (guideTier === "farm" && window.RLBuilds) { renderFarmGuide(); return; }
     const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
     const worn = Object.values(eq).filter(Boolean);
     const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= T.enh).length;
     const accUq = worn.filter(it => RLItems.isAccessory(it) && it.uq && (rec.accUniques?.[it.slot] || []).includes(it.uq)).length;
-    const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
     // 저항: 그 단계 기준 (헬은 −10, 지금 있는 곳과 상관없이)
     const cut = tier === "hell" ? HELL.playerResCut : 0;
     const res = EL.list.map(k => Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - cut);
-    const tabs = el("div", { className: "guide-tiers" }, ...RLItems.RECOMMEND.tiers.map(t => el("button", {
-      type: "button", className: `guide-tier${t === tier ? " on" : ""}`, textContent: RLItems.RECOMMEND[t].name,
-      onclick: () => { guideTier = t; renderGuide(); },
-    })));
+    const tabs = guideTabs(tier);
     const rows = [
       tabs,
       el("h3", {}, `📋 추천 능력치 (${rec.goal})`),
@@ -4504,7 +4544,7 @@
         el("div", { className: "guide-slot guide-early" }, el("b", {}, "헬 초반 (10~30층)"), el("br"),
           el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${RLItems.UNIQUE.items.fang.name}`), ` + 레전더리 보조 단검 (헬 ${RLItems.UNIQUE.items.fang.boss}층 ${RLMonsters.namedAt(RLItems.UNIQUE.items.fang.boss)?.name || "네임드"}). 없으면 룬워드 나무(지팡이) + 보조 단검`),
         el("div", { className: "guide-slot guide-farm" }, el("b", {}, `🔍 파밍: 아이템 발견 ${s.mf} / ${RLItems.FIND.max}%`), el("br"),
-          el("span", { className: "meta" }, "초반: 기억(투구)·몰래(갑옷) + 선견지명 또는 카리스마(장검) + 도원결의(방패) 룬워드 = 100% (네임드 층은 원래 장비로). 후반: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2. 처치마다 보너스 아이템, 유니크 확률도 올라요")),
+          el("span", { className: "meta" }, "초반: 기억(투구)·몰래(갑옷) + 선견지명 또는 카리스마(장검) + 도원결의(방패) 룬워드 = 100% (네임드 층은 원래 장비로). 후반: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2. 위 🔍 파밍 버튼에서 부위별로 볼 수 있어요")),
         buildsLink);
       invGuide.replaceChildren(...rows);
       return;
