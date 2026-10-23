@@ -39,7 +39,8 @@
   .build-head b { font-size: 14px; }
   .rank { color: var(--accent); margin-right: 6px; }
   .res { font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .res b { color: #7ee787; }
+  .res b, .fl b { color: #7ee787; }
+  .res b.bad, .fl b.bad { color: #ff7b72; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
   th, td { text-align: left; padding: 5px 6px; border-top: 1px solid var(--border); vertical-align: top; }
   th { color: var(--muted); font-weight: normal; white-space: nowrap; width: 54px; }
@@ -56,17 +57,21 @@
 <body>
 <main>
   <header>
-    <h1>🏆 최고 조합 (헬 50층)</h1>
+    <h1>🏆 최고 조합 (헬)</h1>
     <a class="btn" href="./">게임으로</a>
   </header>
   <div class="cond" id="cond"></div>
   <nav class="tabs" role="tablist">
     <button type="button" role="tab" data-tab="noUnique" aria-selected="true">1. 유니크 없이</button>
     <button type="button" role="tab" data-tab="withUnique" aria-selected="false">2. 유니크 포함</button>
+    <button type="button" role="tab" data-tab="early" aria-selected="false">3. 헬 초반</button>
+    <button type="button" role="tab" data-tab="farm" aria-selected="false">4. 파밍</button>
     <button type="button" role="tab" data-tab="unused" aria-selected="false">잘 안 쓰이는 아이템</button>
   </nav>
   <section id="noUnique"></section>
   <section id="withUnique" hidden></section>
+  <section id="early" hidden></section>
+  <section id="farm" hidden></section>
   <section id="unused" hidden></section>
   <footer>
     시뮬레이션은 실제 게임 규칙(아이템·몬스터·전투)으로 계산했어요. 부위를 하나씩 바꿔 가며 더 좋아지는 쪽으로 찾고, 상위 조합은 500번씩 다시 확인했어요.
@@ -91,7 +96,7 @@
     if (s.rw) {
       const w = I.RUNEWORDS.find(x => x.name === s.rw);
       return [el("span", { className: "rw" }, `룬워드 ${s.rw}`),
-        el("div", { className: "meta" }, `커먼 ${BASE[s.base] || s.base} (홈 ${w.runes.length}칸)에 ${w.runes.map(r => I.runeName(r).replace(" 룬", "")).join(" → ")} 룬`),
+        el("div", { className: "meta" }, `커먼 ${BASE[s.base] || s.base} (홈 ${w.runes.length}칸 이상)에 앞에서부터 ${w.runes.map(r => I.runeName(r).replace(" 룬", "")).join(" → ")} 룬`),
         el("div", { className: "meta" }, [...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · "))];
     }
     if (s.uq) {
@@ -102,7 +107,7 @@
     if (s.main) lines.push(el("div", {}, "★ ", s.main.map(stat).join(", ")));
     if (s.lines) lines.push(el("div", {}, "◆ ", s.lines.map(stat).join(", ")));
     if (s.set) return [el("span", { className: "set" }, I.SETS[s.set].pieces[slot]), ...lines];
-    const nm = s.leg === "offhandDagger" ? "레전더리 보조 단검" : `레전더리 ${I.SLOT_NAMES[slot]}`;
+    const nm = s.leg === "offhandDagger" ? "레전더리 보조 단검" : s.leg === "shield" ? "레전더리 방패" : `레전더리 ${I.SLOT_NAMES[slot]}`;
     const rec = I.RECOMMEND.nightmare.slots[slot === "offhand" ? "offhand" : slot];
     return [el("span", {}, nm), ...(lines.length ? lines : rec ? [el("div", { className: "meta" }, `◆ ${rec.lines.map(stat).join(", ")} (나이트메어 추천 줄)`)] : [])];
   }
@@ -147,18 +152,58 @@
       el("p", { className: "sub" }, `그 아이템을 꼭 낄 때 가장 좋은 조합의 결과예요 (모두 쓰러지지는 않아서 걸린 턴으로 비교). 1위 조합: 유니크 없이 ${bestNo}턴, 유니크 포함 ${bestUq}턴 (몰려옴 + 염라대왕)`),
       el("h3", {}, "룬워드 (상위 조합에 안 들어감)"),
       el("table", {}, el("tbody", {}, ...U.runewords.map(r => { const w = I.RUNEWORDS.find(x => x.name === r.name);
-        return el("tr", {}, el("th", {}, el("span", { className: "rw" }, r.name)), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, el("div", { className: "meta" }, `${w.bases.map(b => BASE[b] || b).join("·")} · ${[...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · ")}`))); }))),
-      el("p", { className: "sub" }, "상위 조합에 들어가는 룬워드: 필살일격 · 마음가짐 · 천하무적 · 태산 · 폭풍전야"),
+        return el("tr", {}, el("th", {}, el("span", { className: "rw" }, r.name)), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, r.use ? el("div", {}, `→ ${r.use}`) : null, el("div", { className: "meta" }, `${w.bases.map(b => BASE[b] || b).join("·")} · ${[...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · ")}`))); }))),
+      el("p", { className: "sub" }, "상위 조합에 들어가는 룬워드: 필살일격 · 마음가짐 · 천하무적 · 태산 · 폭풍전야. 나무·송곳니는 3. 헬 초반, 치유·기억·몰래·쇠이빨 목걸이·여의 반지는 4. 파밍(아이템 발견)에서 써요"),
       el("h3", {}, "유니크 (상위 조합에 안 들어감)"),
       el("table", {}, el("tbody", {}, ...U.uniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))),
         ...U.accUniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, r.text, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))))),
       el("p", { className: "sub" }, "방어구 유니크(구미호의 비녀·쇠비늘 갑옷·염라의 관복·용비늘 장화)는 유니크 7부위로 모을 때만 상위권 (4위, 25턴)이에요. 하나씩 끼면 세트가 더 좋아요"));
   }
-  document.getElementById("cond").textContent = `조건: ${B.cond}. 쓰러질 확률이 같으면 더 빨리 끝내는 조합이 위예요.`;
-  renderSide("noUnique"); renderSide("withUnique"); renderUnused();
-  const show = (id) => { for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === id)); for (const s of document.querySelectorAll("main > section")) s.hidden = s.id !== id; };
+  // 헬 초반: 층마다 [쓰러질 확률, 턴]
+  const pctB = (v) => el("b", { className: v >= 10 ? "bad" : "" }, `${v}%`);
+  function renderEarly() {
+    const E = B.early;
+    let rank = 0;
+    document.getElementById("early").replaceChildren(
+      el("h2", {}, E.title),
+      el("p", { className: "sub" }, "헬에 처음 들어가서 30층까지, 무기·보조무기를 뭘 낄까요? 다른 부위는 그 층 레전더리 그대로 두고 무기·보조무기만 바꿔서 쓰러질 확률과 걸린 턴을 쟀어요."),
+      ...E.builds.map((b) => {
+        const top = !b.cmp && rank === 0, head = el("div", { className: "build-head" }, el("b", {}, b.cmp ? null : el("span", { className: "rank" }, `${++rank}위`), b.cmp ? "" : " ", b.name));
+        const kids = [head, el("table", {}, el("tbody", {}, ...E.floors.map((f, j) => el("tr", {}, el("th", {}, `${f}층`),
+          el("td", { className: "fl" }, "몰려옴 ", pctB(b.wave[j][0]), ` ${b.wave[j][1]}턴 · ${M.namedAt(f)?.name || "보스"} `, pctB(b.boss[j][0]), ` ${b.boss[j][1]}턴`)))))];
+        if (b.slots) kids.push(el("div", { className: "pieces" }, ["weapon", "offhand"].map((sl, j) => [j ? " · " : "", el("span", { className: "meta" }, `${I.SLOT_NAMES[sl]} `), cell(sl, b.slots[sl])[0]])));
+        if (b.why) kids.push(el("div", { className: "note" }, `왜: ${b.why}`));
+        if (b.note) kids.push(el("div", { className: "note" }, b.note));
+        return el("div", { className: `build${top ? " top" : ""}` }, ...kids);
+      }));
+  }
+  // 파밍: 아이템 발견 %
+  const mfOf = (s) => (s.rw ? I.RUNEWORDS.find(w => w.name === s.rw).stats.mf : I.UNIQUE.items[s.uq].stats.mf) || 0;
+  function renderFarm() {
+    const F = B.farm, total = Math.min(I.FIND.max, F.slots.reduce((a, s) => a + mfOf(s), 0)), e0 = F.econ[0];
+    const items = [...I.RUNEWORDS.filter(w => w.stats.mf).map(w => [el("span", { className: "rw" }, w.name), ` 룬워드 (${w.bases.map(b => BASE[b] || b).join("·")}) +${w.stats.mf}%`]),
+      ...Object.values(I.UNIQUE.items).filter(U => U.stats?.mf).map(U => [el("span", { className: "uq" }, U.name), ` 유니크${U.acc ? " 장신구" : ""} (헬 ${U.boss}층) +${U.stats.mf}%${U.acc && U.slot === "ring" ? " (두 개면 두 배)" : ""}`])];
+    document.getElementById("farm").replaceChildren(
+      el("h2", {}, F.title),
+      el("p", { className: "sub" }, `아이템 발견 %: 처치할 때마다 ${Math.round(I.FIND.bonus * 100)}% × 발견% 확률로 보너스 아이템 하나 (레어 이상), 네임드 유니크·유니크 장신구 확률 × (1 + 발견% / ${I.FIND.uniqueDiv}). 최대 ${I.FIND.max}%`),
+      el("div", { className: "build top" },
+        el("div", { className: "build-head" }, el("b", {}, `아이템 발견 ${total}% 조합`)),
+        el("table", {}, el("tbody", {}, ...F.slots.map(s => el("tr", {}, el("th", {}, I.SLOT_NAMES[s.slot]), el("td", {}, ...cell(s.slot, s), el("div", {}, `🔍 아이템 발견 +${mfOf(s)}%`)))),
+          el("tr", {}, el("th", {}, "나머지"), el("td", {}, F.rest))))),
+      el("h3", {}, "얼마나 더 나올까 (헬 30층 몬스터 처치 1번)"),
+      el("table", {}, el("tbody", {}, ...F.econ.map(r => el("tr", {}, el("th", {}, `${r.mf}%`),
+        el("td", {}, `레전더리+세트 ${r.ls}% (×${(r.ls / e0.ls).toFixed(2)}) · 판매 골드 ${r.gold} · 원하는 유니크 하나에 네임드 평균 ${r.uq}번`))))),
+      el("p", { className: "note" }, F.note),
+      el("h3", {}, "아이템 발견이 붙는 아이템"),
+      el("ul", {}, ...items.map(k => el("li", {}, ...k))));
+  }
+  const COND = { early: B.early.cond, farm: "헬 30층 몬스터 처치 1번의 기댓값 (실제 드롭 규칙으로 3만 번)" };
+  const condOf = (id) => `조건: ${COND[id] || B.cond}.${id === "farm" ? "" : " 쓰러질 확률이 같으면 더 빨리 끝내는 조합이 위예요."}`;
+  document.getElementById("cond").textContent = condOf("noUnique");
+  renderSide("noUnique"); renderSide("withUnique"); renderEarly(); renderFarm(); renderUnused();
+  const show = (id) => { for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === id)); for (const s of document.querySelectorAll("main > section")) s.hidden = s.id !== id; document.getElementById("cond").textContent = condOf(id); };
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => { show(b.dataset.tab); history.replaceState(null, "", `#${b.dataset.tab}`); });
-  const fromHash = () => { if (["noUnique", "withUnique", "unused"].includes(location.hash.slice(1))) show(location.hash.slice(1)); };
+  const fromHash = () => { if (["noUnique", "withUnique", "early", "farm", "unused"].includes(location.hash.slice(1))) show(location.hash.slice(1)); };
   fromHash(); addEventListener("hashchange", fromHash);
 })();
 </script>

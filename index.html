@@ -1497,6 +1497,7 @@
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
       uq: T.uniques.special,
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
+      mf: RLItems.findPct(g.mf),   // 아이템 발견 % (최대 FIND.max): 보너스 아이템·유니크 확률
     };
   }
   // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
@@ -2019,6 +2020,16 @@
       items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
       gearLog(`${e.name}이(가) ${RLItems.itemName(item)}을(를) 떨어뜨렸다!${isRainbow(item) ? " ✨" : ""}`, item);
     }
+    // 아이템 발견: 보너스 아이템 (보물 표, 시드 |f처치 순번 → 서버가 같은 굴림으로 검증)
+    const mf = stats().mf;
+    if (mf > 0) {
+      const bonus = RLItems.rollFindBonus(`${player.rid}|${floorTag()}${depth}|f${player.kills}`, itemLevel(), mf);
+      if (bonus) {
+        const spot = dropSpot(e.x, e.y);
+        items.push({ x: spot.x, y: spot.y, type: "gear", item: bonus, from: "find" });
+        gearLog(`🔍 아이템 발견: ${e.name}이(가) ${RLItems.itemName(bonus)}을(를) 하나 더 떨어뜨렸다!${isRainbow(bonus) ? " ✨" : ""}`, bonus);
+      }
+    }
     // 보석: 장비와 따로 굴림 (반드시 떨어지지는 않음). 나이트메어는 높은 등급이 잘 나옴
     const gem = RLItems.rollGem(`${player.rid}|${floorTag()}${depth}|g${player.kills}`, e.kind, inNM() || inHell());
     if (gem) {
@@ -2036,14 +2047,14 @@
     }
     // 유니크: 헬 네임드 보스만, UNIQUE.chance 확률로 그 보스의 유니크 2개 중 하나 (시드 |u처치 순번 → 서버가 똑같이 검증)
     if (inHell() && e.named) {
-      const u = RLItems.rollUnique(`${player.rid}|${floorTag()}${depth}|u${player.kills}`, itemLevel());
+      const u = RLItems.rollUnique(`${player.rid}|${floorTag()}${depth}|u${player.kills}`, itemLevel(), mf);
       if (u) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: u, from: "boss" });
         log(`✦✦ ${e.name}이(가) 유니크 ${RLItems.itemName(u)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
       }
       // 유니크 장신구: 따로 굴림 (시드 |a처치 순번)
-      const ua = RLItems.rollUniqueAcc(`${player.rid}|${floorTag()}${depth}|a${player.kills}`, itemLevel());
+      const ua = RLItems.rollUniqueAcc(`${player.rid}|${floorTag()}${depth}|a${player.kills}`, itemLevel(), mf);
       if (ua) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: ua, from: "boss" });
@@ -4075,6 +4086,7 @@
       ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
       ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
       ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
+      ...(s.mf ? [`🔍 아이템 발견 +${s.mf}%${g.mf > s.mf ? ` (최대 ${RLItems.FIND.max}%)` : ""}: 처치마다 ${Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×${RLItems.findUniqueMul(s.mf).toFixed(2)}`] : []),
       ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
       ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
       ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
@@ -4294,7 +4306,7 @@
       const tierName = { normal: "일반", nightmare: "악몽의", hell: "지옥의" }[tier];
       return [el("div", { className: "rw-done" },
         el("h3", { style: { color: RLItems.RUNEWORD_COLOR } }, `✦ 룬워드 ${done.rank}위 ${done.name} (${runeSeq(done)})`),
-        el("div", { className: "meta" }, `${tierName} 아이템이라 능력치 ${Math.round(mul * 100)}% · 주 능력치는 레전더리 수준`),
+        el("div", { className: "meta" }, `${tierName} 아이템이라 능력치 ${Math.round(mul * 100)}% · 주 능력치는 레전더리 수준${RLItems.socketLine(item) > done.runes.length ? ` · 남는 홈 ${RLItems.socketLine(item) - done.runes.length}개는 룬워드를 완성하면서 없어졌어요 (홈 초기화하면 돌아와요)` : ""}`),
         ...Object.entries(RLItems.runewordStats(item)).map(([k, v]) => el("div", { className: "stat-line", style: { color: RLItems.RUNEWORD_COLOR } }, `✦ ${RLItems.formatStat(k, v)}`)),
         ...RLItems.runewordSpecialText(done.special).map(t => el("div", { className: "stat-line set-on" }, `✦ ${t}`)))];
     }
@@ -4304,7 +4316,7 @@
     return [fold(hi ? "rw" : "rw-quiet", [el("span", { className: hi ? "rainbow" : "" }, "✦ 룬워드 재료"), ` · ${ws.length}개 가능`],
       [el("div", { className: "rw-list" }, ...ws.map(w => el("div", {},
         el("b", {}, `${w.rank}위 ${w.name}`), ` — ${runeSeq(w)} (${put}/${w.runes.length} 넣음${put < w.runes.length ? `, 다음 ${RLItems.RUNES[w.runes[put]].name} 룬` : ""})`))),
-      el("div", { className: "meta" }, "커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요 (효과는 추가 예정). 다른 룬이나 보석을 넣으면 룬워드를 만들 수 없어요.")], !hi)];
+      el("div", { className: "meta" }, "커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요. 홈이 룬보다 많아도 되고, 룬을 다 넣으면 완성되면서 남는 홈은 없어져요. 다른 룬이나 보석을 먼저 넣으면 룬워드를 만들 수 없어요.")], !hi)];
   }
 
   // 룬: 없으면 아래 룬 3개씩 자동으로 합쳐 넣음 (쪼개기는 없음). 운영자는 룬을 쓰지 않고 넣음
@@ -4351,8 +4363,11 @@
     const how = pickPlanText(plan);
     // 룬워드 재료인데 순서에 안 맞는 걸 넣으면 룬워드를 못 만들게 됨 → 알려줌
     const before = RLItems.runewordsFor(item), after = RLItems.runewordsFor({ ...item, gems: [...(item.gems || []), pickIsRune() ? ["rune", gemPick.grade] : [gemPick.kind, gemPick.grade]] });
-    const lost = before.filter(w => !after.includes(w));
-    const warn = lost.length ? `\n⚠ 이걸 넣으면 룬워드(${lost.map(w => w.name).join(", ")})를 만들 수 없게 돼요.` : "";
+    const g = pickIsRune() ? ["rune", gemPick.grade] : [gemPick.kind, gemPick.grade];
+    const done = RLItems.runewordOf({ ...item, gems: [...(item.gems || []), g] }), cut = RLItems.socketsLostBy(item, g);
+    const lost = done ? [] : before.filter(w => !after.includes(w));
+    const warn = lost.length ? `\n⚠ 이걸 넣으면 룬워드(${lost.map(w => w.name).join(", ")})를 만들 수 없게 돼요.`
+      : done ? `\n✦ 룬워드 ${done.name} 완성!${cut ? ` 남는 홈 ${cut}개는 없어져요.` : ""}` : "";
     if (!plan || !confirm(`${RLItems.itemName(item)}의 홈에 ${name}을(를) 넣을까요?\n${how}${warn}\n한 번 넣으면 뺄 수 없어요.`)) return;
     if (!(pickIsRune() ? Inv.socketRune(item.id, gemPick.grade) : Inv.socketGem(item.id, gemPick.kind, gemPick.grade))) return;
     invMsg = { cls: "good", text: `${name}을(를) 홈에 넣었어요. (${how})` };
@@ -4434,7 +4449,7 @@
         : [goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`), goal(accN >= T.acc, `장신구 ${accN} / ${T.acc}칸 (목걸이·반지 2개)`)]),
       goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
     ];
-    const buildsLink = el("a", { className: "guide-builds", href: "builds.html", target: "_blank", rel: "noopener" }, "🏆 최고 조합 보기 (새 창: 유니크 없이 · 유니크 포함 · 줄 고르기)");
+    const buildsLink = el("a", { className: "guide-builds", href: "builds.html", target: "_blank", rel: "noopener" }, "🏆 최고 조합 보기 (새 창: 유니크 없이 · 유니크 포함 · 헬 초반 · 파밍)");
     // 헬: 부위별 줄 대신 가장 강한 유니크 순위 (builds.js, 헬 50층 시뮬레이션). 자세한 조합·줄은 최고 조합 페이지
     if (tier === "hell" && window.RLBuilds) {
       const have = new Set(Inv.items().map(it => it.uq).filter(Boolean)), worn = new Set(Object.values(eq).filter(Boolean).map(it => it.uq).filter(Boolean));
@@ -4445,6 +4460,10 @@
             ` ${RLItems.SLOT_NAMES[U.slot]} · ${on ? "✓ 착용 중" : got ? "가방에 있음" : `헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"}`}`, el("br"),
             el("span", { className: "meta" }, `같이: ${r.with} · ${r.turns[0]}턴 / ${r.turns[1]}턴${r.text ? ` · ${r.text}` : ""}`)); }),
         el("div", { className: "guide-slot" }, el("b", {}, `장신구 · ${accN} / 3칸`), el("br"), rec.acc),
+        el("div", { className: "guide-slot guide-early" }, el("b", {}, "헬 초반 (10~30층)"), el("br"),
+          el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${RLItems.UNIQUE.items.fang.name}`), ` + 레전더리 보조 단검 (헬 ${RLItems.UNIQUE.items.fang.boss}층 ${RLMonsters.namedAt(RLItems.UNIQUE.items.fang.boss)?.name || "네임드"}). 없으면 룬워드 나무(지팡이) + 보조 단검`),
+        el("div", { className: "guide-slot guide-farm" }, el("b", {}, `🔍 파밍: 아이템 발견 ${s.mf} / ${RLItems.FIND.max}%`), el("br"),
+          el("span", { className: "meta" }, "기억(투구)·몰래(갑옷) 룬워드 + 쇠이빨 목걸이 + 여의 반지 2 = 100%. 처치마다 보너스 아이템, 유니크 확률도 올라요")),
         buildsLink);
       invGuide.replaceChildren(...rows);
       return;
@@ -5603,7 +5622,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1023a:${owner}`;  // 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1023b:${owner}`;  // 아이템 발견·룬워드 남는 홈·나무, 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -5611,6 +5630,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
+        `🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ` +
         `💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ` +
         `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
         `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +

@@ -198,6 +198,7 @@
     // 유니크 장신구: 저항 최대치 (기본 75%), 흡혈 최대치
     fireResMax: { name: "불 저항 최대치", pct: true }, iceResMax: { name: "얼음 저항 최대치", pct: true }, boltResMax: { name: "번개 저항 최대치", pct: true },
     allResMax: { name: "모든 속성 저항 최대치", pct: true }, lsCap: { name: "흡혈 최대치", pct: true },
+    mf: { name: "아이템 발견", pct: true },   // FIND: 보너스 아이템·유니크 확률
   };
   const STAT_KEYS = ["atk", "def", "hp", "crit", "lifesteal", "gold", "xp"];  // 추가 능력치로 붙을 수 있는 것 (v2·v3)
   const STAT_KEYS_V4 = ["atk", "def", "hp", "crit", "critDmg", "atkPct", "lifesteal", "gold", "xp"];  // v4: 치명타 피해·공격력% 추가
@@ -319,7 +320,9 @@
   };
   const socketKey = (item) => item.slot === "offhand" ? (item.type === "shield" ? "shield" : "offhandWeapon") : isShieldOnly(item) ? "longsword" : item.slot;
   const socketRange = (item) => SOCKETS[socketKey(item)] || null;
-  const socketCount = (item) => (item.lines || []).find(([k]) => k === "socket")?.[1] || 0;
+  // 홈 개수: 아이템에 붙은 홈 줄. 룬워드를 완성하면 룬 수만큼만 남고 나머지 홈은 없어짐 (홈 초기화하면 돌아옴)
+  const socketLine = (item) => (item?.lines || []).find(([k]) => k === "socket")?.[1] || 0;
+  const socketCount = (item) => { const w = item?.gems?.length ? runewordOf(item) : null; return w ? w.runes.length : socketLine(item); };
   const fixedPct = (item, table, stat) => (item.v >= 4 && table[stat]
     ? (table === PCT_LINE && RES_R4[stat] && (item.r || 0) >= 4 ? RES_R4[stat] : item.rarity === "unique" ? scaleRange(table[stat].legendary, UNIQUE.mul) : table[stat][item.rarity]) : null);
 
@@ -479,8 +482,8 @@
   const UNIQUE = {
     chance: 0.15, mul: 1.2,
     items: {
-      fang:      { boss: 10, name: "송곳니", slot: "weapon", type: "dagger", lines: ["crit", "critDmg", "atkPct", "fireDmg"], stats: {}, special: { bite: 12 },
-        text: "물어뜯기: 때린 적은 3턴 동안 받는 피해 +12%" },
+      fang:      { boss: 10, name: "송곳니", slot: "weapon", type: "dagger", lines: ["crit", "critDmg", "atkPct", "fireDmg"], stats: { mf: 20 }, special: { bite: 12 },
+        text: "물어뜯기: 때린 적은 3턴 동안 받는 피해 +12% · 아이템 발견 +20%" },
       ironscale: { boss: 10, name: "쇠비늘 갑옷", slot: "chest", type: null, lines: ["crit", "critDmg", "atkPct", "fireRes"], stats: {}, special: { ironHide: 3 },
         text: "쇠비늘: 맞을 때마다 방어력 +3% (최대 +15%, 층을 떠나면 풀림)" },
       foxorb:    { boss: 20, name: "여우구슬 지팡이", slot: "weapon", type: "staff", lines: ["crit", "critDmg", "atkPct", "iceDmg"], stats: { nova: 1, killHealPct: 3 }, special: {},
@@ -501,12 +504,12 @@
         text: "저승의 왕: 모든 속성 저항 +20%, 최대 HP +30%, 쓰러질 피해를 받으면 30% 확률로 HP 1로 버팀" },
       // 유니크 장신구 (r7, acc): 네임드 처치마다 accChance로 따로 (시드 |j층|a처치 순번). 주 능력치 공격력·방어력·최대 HP (레전더리 × mul),
       //   추가 능력치는 속성 저항 줄만 2~3줄 (accResLines). stats는 더해짐 → 같은 반지 두 개면 효과도 두 배
-      ironfang:  { boss: 10, name: "쇠이빨 목걸이", slot: "neck", acc: true, stats: { fireResMax: 5 }, special: {},
-        text: "쇠이빨: 불 저항 최대치 +5% (75 → 80%)" },
+      ironfang:  { boss: 10, name: "쇠이빨 목걸이", slot: "neck", acc: true, stats: { fireResMax: 5, mf: 20 }, special: {},
+        text: "쇠이빨: 불 저항 최대치 +5% (75 → 80%) · 아이템 발견 +20%" },
       foxfire:   { boss: 20, name: "여우불 반지", slot: "ring", acc: true, stats: { crit: 3, critDmg: 10 }, special: {},
         text: "여우불: 치명타 확률 +3%, 치명타 피해 +10% (두 개 끼면 두 배)" },
-      yeoui:     { boss: 30, name: "여의 반지", slot: "ring", acc: true, stats: { boltResMax: 3 }, special: {},
-        text: "여의: 번개 저항 최대치 +3% (두 개 끼면 +6%)" },
+      yeoui:     { boss: 30, name: "여의 반지", slot: "ring", acc: true, stats: { boltResMax: 3, mf: 15 }, special: {},
+        text: "여의: 번개 저항 최대치 +3%, 아이템 발견 +15% (두 개 끼면 두 배)" },
       myeongbu:  { boss: 40, name: "명부의 반지", slot: "ring", acc: true, stats: { lsCap: 2 }, special: {},
         text: "명부: 흡혈 최대치 +2%p (두 개 끼면 +4%p)" },
       eopgyeong: { boss: 50, name: "업경 목걸이", slot: "neck", acc: true, stats: { allResMax: 5 }, special: {},
@@ -546,12 +549,12 @@
     return item;
   }
   // 네임드 보스 처치 1번: 유니크가 나오면 아이템, 아니면 null
-  function rollUnique(seed, level) {
-    return rngFrom(`v4|unique?|${seed}`)() < UNIQUE.chance ? generateUnique(seed, level) : null;
+  function rollUnique(seed, level, mf = 0) {
+    return rngFrom(`v4|unique?|${seed}`)() < UNIQUE.chance * findUniqueMul(mf) ? generateUnique(seed, level) : null;
   }
   // 네임드 보스 처치 1번: 유니크 장신구 (시드 …|a순번), 따로 accChance
-  function rollUniqueAcc(seed, level) {
-    return rngFrom(`v4|uniqueacc?|${seed}`)() < UNIQUE.accChance ? generateUnique(seed, level) : null;
+  function rollUniqueAcc(seed, level, mf = 0) {
+    return rngFrom(`v4|uniqueacc?|${seed}`)() < UNIQUE.accChance * findUniqueMul(mf) ? generateUnique(seed, level) : null;
   }
 
   // 그 부위로 나올 수 있는 세트 (정해진 순서: trial, frenzy, inferno, sturdy). nm4: 나이트메어 아이템(r4 이후)이면 나이트메어 전용 세트도
@@ -736,6 +739,21 @@
       item.lines.every(([k, v]) => v === lineRangeOf(k, item)[1]);
   }
 
+  // ---- 아이템 발견 (mf) ----
+  // 몬스터를 쓰러뜨릴 때 bonus × 발견%/100 확률로 보너스 아이템(보물 표: 레어 이상, 시드 …|f처치 순번) 하나 더,
+  // 네임드의 유니크·유니크 장신구 확률 × (1 + 발견% / uniqueDiv). 발견은 max%까지만
+  //   시뮬레이션 (헬 30층): 발견 100%면 레전더리·세트 ×2.3, 판매 골드 ×1.95, 유니크 15% → 20%. 파밍 조합(기억·몰래·쇠이빨·여의 반지)은
+  //   전투 조합보다 조금 느려서 같은 시간에 레전더리·세트 1.3~1.6배. 무기·보조에 붙이면 너무 느려져 손해라 방어구·장신구·송곳니에만
+  const FIND = { max: 100, bonus: 0.1, uniqueDiv: 300 };
+  const findPct = (mf) => Math.max(0, Math.min(FIND.max, mf || 0));
+  const findBonusChance = (mf) => FIND.bonus * findPct(mf) / 100;
+  const findUniqueMul = (mf) => 1 + findPct(mf) / FIND.uniqueDiv;
+  // 보너스 아이템 (없으면 null). 드롭 굴림과 같은 문(rngFrom drop?)이라 서버가 시드로 검증
+  function rollFindBonus(seed, level, mf) {
+    const c = findBonusChance(mf);
+    return c > 0 && rngFrom(`v${RULES_VERSION}|drop?|${seed}`)() < c ? generate(seed, "golden", level) : null;
+  }
+
   // 처치 1회(또는 포션 자리 1곳)의 결과: 드롭 없으면 null. kind: "normal" | "elite" | "boss"
   function rollDrop(seed, level, kind = "normal") {
     const { chance, table } = DROPS[kind];
@@ -834,7 +852,7 @@
   // r3까지 얻은 나이트메어 아이템의 저항 줄: 새 최대치(RES_R4)까지만 적용
   const oldResCap = (item, stat) => (item.v === 4 && RES_R4[stat] && (item.r || 0) < 4 ? RES_R4[stat][1] : null);
   function effectiveLines(item) {
-    return enhancedLines(item).map(([k, v, plus]) => { const cap = oldCap(item, "line", k) ?? oldResCap(item, k); return [k, cap != null ? Math.min(v, cap) : v, plus]; });
+    return enhancedLines(item).map(([k, v, plus]) => { if (k === "socket") return [k, socketCount(item), plus]; const cap = oldCap(item, "line", k) ?? oldResCap(item, k); return [k, cap != null ? Math.min(v, cap) : v, plus]; });
   }
 
   // 강화가 반영된 추가 능력치 [[stat, 값, 강화로 오른 양]]. 어느 줄이 오를지는 (아이템 ID, 단계) 시드로 정해짐
@@ -1107,13 +1125,13 @@
     { name: "필살일격", bases: ["longsword"], stats: { atkPct: 35, crit: 10, critDmg: 50 }, special: { splash: 1 } },
     { name: "태산", bases: ["chest", "weapon"], stats: { defPct: 30, hpPct: 10, allRes: 15 }, special: { shield: 20, skillLs: 1 } },
     { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 8 }, special: { lsCap: 3 } },
-    { name: "치유", bases: ["head"], stats: { killHealPct: 5 }, special: { autoPotion: 1 } },
+    { name: "치유", bases: ["head"], stats: { killHealPct: 5, mf: 20 }, special: { autoPotion: 1 } },
     { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
     { name: "선견지명", bases: ["longsword"], stats: { crit: 8, xp: 25 }, special: { shield: 10 } },
     { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5, hpPct: 15 }, special: {} },
-    { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3 }, special: { lsCap: 2 } },
-    { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3 }, special: { skillLs: 1 } },
-    { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20, lifesteal: 4 }, special: { fireball: 1 } },
+    { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3, mf: 25 }, special: { lsCap: 2 } },
+    { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3, mf: 25 }, special: { skillLs: 1 } },
+    { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20, lifesteal: 4, atkPct: 30, critDmg: 30 }, special: { fireball: 1 } },   // 공격력·치명타 피해: 헬 초반 무기로 (시뮬레이션: 헬 10~20층 네임드 5~9%, 레전더리 단검 10~18%)
   ].map((w, i) => ({ ...w, rank: i + 1, runes: runesOfName(w.name) }));
   const RUNEWORD_TIER_MUL = { normal: 0.5, nightmare: 0.75, hell: 1 };
   // 특수 효과의 고정 수치
@@ -1128,12 +1146,13 @@
     if (item.slot !== "weapon") return [];
     return isShieldOnly(item) ? ["longsword"] : item.type === "staff" ? ["weapon", "staff"] : ["weapon"];
   }
-  // 이 아이템으로 아직 만들 수 있는 룬워드들: 커먼 + 홈 개수 = 글자 수 + 베이스가 맞고, 이미 넣은 것이 그 순서의 룬일 때
+  // 이 아이템으로 아직 만들 수 있는 룬워드들: 커먼 + 홈 개수(홈 줄) ≥ 룬 수 + 베이스가 맞고, 이미 넣은 것이 그 순서의 룬일 때
   function runewordsFor(item) {
     if (!item || item.rarity !== "common") return [];
-    const n = socketCount(item), keys = runewordBaseKeys(item), put = item.gems || [];
+    const n = socketLine(item), keys = runewordBaseKeys(item), put = item.gems || [];
     if (!n) return [];
-    return RUNEWORDS.filter(w => w.runes.length === n && w.bases.some(b => keys.includes(b)) && put.every((g, i) => isRune(g) && g[1] === w.runes[i]));
+    // 홈이 룬보다 많아도 됨: 앞 홈부터 정해진 순서의 룬. 다 넣으면 완성되고 남는 홈은 없어짐 (r_runeword_of와 같게)
+    return RUNEWORDS.filter(w => w.runes.length <= n && w.bases.some(b => keys.includes(b)) && put.slice(0, w.runes.length).every((g, i) => isRune(g) && g[1] === w.runes[i]));
   }
   // 아이템 단계: 일반 → 악몽의 → (헬 난이도가 생기면) 지옥의
   const itemTier = (item) => (isHellItem(item) ? "hell" : isNightmareItem(item) ? "nightmare" : "normal");
@@ -1158,11 +1177,16 @@
     if (sp.fireball) out.push(`약한 파이어볼 (${F.fireball.every}턴마다, 화염 세트 파이어볼의 ${Math.round(F.fireball.mul / FIREBALL.mul * 100)}% 피해)`);
     return out;
   }
-  // 완성된 룬워드 (커먼, 홈을 모두 그 순서의 룬으로 채움). 없으면 null
+  // 완성된 룬워드 (커먼, 앞 홈부터 그 순서의 룬을 모두 넣음 — 남는 홈은 없어짐). 없으면 null
   function runewordOf(item) {
     const n = item?.gems?.length || 0;
-    if (!n || n !== socketCount(item)) return null;
+    if (!n || n > socketLine(item)) return null;
     return runewordsFor(item).find(w => w.runes.length === n) || null;
+  }
+  // 이 룬을 넣으면 룬워드가 완성되면서 없어지는 홈 개수 (룬워드가 안 되면 0)
+  function socketsLostBy(item, g) {
+    const w = runewordOf({ ...item, gems: [...(item.gems || []), g] });
+    return w ? socketLine(item) - w.runes.length : 0;
   }
   // 그 룬워드 아이템에 붙는 능력치 (아이템 단계 배율, 반올림·최소 1)
   function runewordStats(item) {
@@ -1215,7 +1239,7 @@
     const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
       atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0,
       fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
-      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: 0, mf: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
     const setCounts = {}, rw = {}, rwNames = [], uq = {}, uqNames = [];
     const shieldOnly = equipped.some(isShieldOnly);
     for (const item of equipped) {
@@ -1268,12 +1292,12 @@
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_RARITIES, SLOTS_R7, ACC_SLOTS, EQUIP_SLOTS, equipKeysFor, isAccessory, ACCESSORY, accTier, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
-    SOCKETS, socketRange, socketCount, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
+    SOCKETS, socketRange, socketCount, socketLine, socketsLostBy, GEMS, GEM_KINDS, GEM_GRADES, GEM_CAPS, GEM_DROP, isGem, gemName, gemPlace, gemEffect, gemStats, gemPlan, rollGem, setsFor, setFull,
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };

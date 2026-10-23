@@ -235,6 +235,8 @@ ${table(["어디서", "확률", "등급 확률"], [
   [`상점 (보스 전 층, 골드)`, `진열 ${I.SHOP.slots}개`, tableRates(I.TABLES[I.SHOP.table])],
   ["장비 상자 (캐시)", "-", tableRates(I.TABLES.box)],
 ])}
+
+- [아이템 발견](items.md#아이템-발견-r8-1023-dc51) %가 있으면 처치마다 ${pct(I.FIND.bonus)} × 발견% 확률로 보물 표 아이템 하나 더 (최대 ${I.FIND.max}% → ${pct(I.findBonusChance(I.FIND.max))})
 `;
 
 // ---------------------------------------------------------------- economy.md
@@ -540,7 +542,8 @@ ${table(["룬", "효과", "떨어질 확률"], I.RUNES.map((r, k) => [r.name, Ob
 ### 룬워드
 
 - **이름의 각 글자 초성 = 그 자음의 룬** (쌍자음은 기본 자음: ㄲ→가 ㄸ→다 ㅃ→바 ㅆ→사 ㅉ→자). 예: 천하무적 → 차·하·마·자, 신기루 → 사·가·라
-- **커먼 아이템**만 재료가 돼요. 홈 개수가 이름 글자 수와 같고 베이스(부위·종류)가 맞아야 해요. 앞 홈부터 이 순서로 룬을 넣으면 완성
+- **커먼 아이템**만 재료가 돼요. 홈 개수가 이름 글자 수 **이상**이고 베이스(부위·종류)가 맞아야 해요. 앞 홈부터 이 순서로 룬을 넣으면 완성
+- 홈이 룬보다 많아도 돼요 (10/23 dc#51): 앞 홈부터 룬을 모두 넣으면 **룬워드가 완성되면서 남는 홈은 없어져요** (예: 홈 6개 장검에 필살일격 4룬 → 홈 4개 필살일격). 홈 초기화하면 룬과 함께 지워지고 홈은 다시 원래대로. 예전에는 홈 개수가 정확히 같아야 했어요
 - 아이템 단계: 일반 → 악몽의 → (헬 난이도가 생기면) **지옥의**. 룬워드는 어느 단계에서도 만들 수 있지만, **좋은 옵션은 헬(지옥의) 아이템**에서 쓰라고 만들 거예요
 - 그래서 **헬 아이템만 눈에 띄게**: 줍는 순간 "✦ 룬워드 재료!", 인벤토리에서 분홍 점선 테두리와 **✦ 룬워드** 표시로 고대 아이템 바로 다음, 🔒 잠금, 가방 전부 판매에서 같이 팔지 물어봄
 - 일반·악몽의 아이템은 룬(나이트메어 50층)을 얻기 전에 줍는 것이라 표시하지 않아요. 상세에 접힌 "✦ 룬워드 재료" 칸으로만 (만들 수 있는 룬워드와 다음에 넣을 룬)
@@ -549,7 +552,7 @@ ${table(["룬", "효과", "떨어질 확률"], I.RUNES.map((r, k) => [r.name, Ob
 
 ${(() => { const per = I.RUNE_DROP.count * I.RUNE_ODDS.reduce((a, p, k) => a + p * 3 ** k, 0); return table(["순위", "룬워드", "룬 (순서대로)", "베이스", "비용"], I.RUNEWORDS.map(w => { const c = w.runes.reduce((a, k) => a + 3 ** k, 0) / per; return [w.rank, w.name, w.runes.map(k => I.RUNES[k].name).join("·"), `${w.bases.map(b => I.BASE_NAMES[b]).join("·")} ${w.runes.length}홈`, c >= 1 ? `약 ${Math.round(c)}판` : c >= 0.05 ? `${c.toFixed(1)}판` : "거의 바로"]; })); })()}
 
-- 커먼 아이템 중 룬워드 재료가 되는 건 약 0.8% (커먼 20만 개 생성 기준). 홈 5~6개 장검, 3홈 갑옷 등 맞는 룬워드가 없는 홈 개수도 있어요
+- 커먼 아이템 중 룬워드 재료가 되는 건 약 0.9% (커먼 20만 개 생성 기준, 홈 개수가 정확히 같아야 하던 때는 0.65%). 홈이 1개뿐이면 맞는 룬워드가 없어요
 
 #### 룬워드 효과
 
@@ -672,6 +675,23 @@ ${table(["네임드", "유니크", "부위", "추가 능력치 (고정)", "고�
 ${table(["네임드", "유니크 장신구", "부위", "고유 효과"],
   Object.values(I.UNIQUE.items).filter(U => U.acc).map(U => [`${U.boss}층 ${M.namedAt(U.boss).name}`, `**${U.name}**`, I.ACCESSORY.names[U.slot], U.text]))}
 
+## 아이템 발견 (r8, 10/23 dc#51)
+
+파밍용 능력치 **아이템 발견 %** 하나로 레전더리·세트·유니크가 더 많이 나와요. 지금은 잘 안 쓰이는 룬워드·유니크에 붙였어요.
+
+- **처치할 때마다 ${pct(I.FIND.bonus)} × 발견% 확률로 보너스 아이템 하나** (보물 표: 레어 이상). 발견 100%면 처치마다 ${pct(I.findBonusChance(100))} (시드 …|j층|f처치 수, 서버가 똑같이 다시 만들어 검증)
+- **네임드 유니크·유니크 장신구 확률 × (1 + 발견% / ${I.FIND.uniqueDiv})**: 발견 100%면 유니크 ${pct(I.UNIQUE.chance)} → ${pct(I.UNIQUE.chance * I.findUniqueMul(100))}, 유니크 장신구 ${pct(I.UNIQUE.accChance)} → ${pct(I.UNIQUE.accChance * I.findUniqueMul(100))}
+- 최대 **${I.FIND.max}%** (더 모아도 ${I.FIND.max}%로 셈). 인벤토리 능력치 요약에 🔍 줄로 보여요
+
+${table(["아이템", "종류", "아이템 발견"], [
+  ...I.RUNEWORDS.filter(w => w.stats.mf).map(w => [`**${w.name}**`, `룬워드 (${w.bases.map(b => I.BASE_NAMES[b]).join("·")} ${w.runes.length}홈)`, `+${w.stats.mf}% (지옥의 아이템, 악몽의 ×${I.RUNEWORD_TIER_MUL.nightmare})`]),
+  ...Object.values(I.UNIQUE.items).filter(U => U.stats?.mf).map(U => [`**${U.name}**`, `유니크${U.acc ? " 장신구" : ""} (헬 ${U.boss}층 ${M.namedAt(U.boss).name})`, `+${U.stats.mf}%${U.acc && U.slot === "ring" ? " (반지 두 개면 두 배)" : ""}`]),
+])}
+
+- 예: 기억(투구) + 몰래(갑옷) + 쇠이빨 목걸이 + 여의 반지 2 = 25 + 25 + 20 + 15 × 2 = **100%** (송곳니를 끼면 120% → 100%로 셈)
+- 시뮬레이션 (헬 30층 처치 1번의 기댓값, 실제 드롭 규칙 3만 번): 발견 0% 레전더리+세트 0.74% · 판매 골드 109 → **50% 1.23% (×1.67) · 161** → **100% 1.73% (×2.33) · 212**. 헬 10·50층도 ×2.1~2.2. 네임드에서 원하는 유니크 하나: 평균 13.3번 → 10번
+- 대신 파밍 장비는 최고 조합보다 느려서, 걸리는 시간까지 치면 **시간당 약 1.3~1.6배**예요. 다 맞춘 뒤 파밍할 때 갈아 끼우는 용도
+
 ## 나이트메어 아이템: 속성 피해와 저항 (규칙 r3)
 
 [나이트메어 던전](monsters.md#나이트메어-던전)에서 얻은 아이템(몬스터·보스·황금 고블린·보물·상점)은 추가 능력치 ◆ 후보에 **속성 줄 ${I.ELEMENT_LINES.keys.length}가지**가 더해져요. 일반 던전 아이템은 그대로예요.
@@ -731,7 +751,9 @@ ${table(["부위", "주 능력치 ★", ...I.RECOMMEND.tiers.map(t => `◆ ${I.R
     - 유니크 없이 1위: 룬워드 필살일격(장검) + 마음가짐(방패) + 천하무적 + 뇌전의 세트 4 — 0% / 0% (19턴 / 19턴)
     - 유니크 포함 1위: 여우구슬 지팡이 + 레전더리 보조 단검 + 화염의 세트 5 — 0% / 0% (10턴 / 13턴). 유니크 7부위(14턴 / 11턴)보다 강한 유니크 + 세트를 섞는 게 빨라요
     - 가장 강한 유니크: ${RLB.uniqueRank.map((r, i) => `${i + 1}. ${I.UNIQUE.items[r.uq].name}`).join(" · ")}
-    - 잘 안 쓰이는 것: 룬워드 ${RLB.unused.runewords.map(r => r.name).join("·")}, 유니크 ${[...RLB.unused.uniques, ...RLB.unused.accUniques].map(r => I.UNIQUE.items[r.uq].name).join("·")}
+    - **헬 초반 (10~30층)**: 무기·보조무기만 바꿔 보면 (그 층 레전더리 품질 85% +10) ${RLB.early.builds.filter(b => !b.cmp).map((b, i) => `${i + 1}. ${b.name} — 네임드 ${b.boss.map(x => x[0] + "%").join("·")}`).join(" / ")} (레전더리 단검 2는 ${RLB.early.builds.find(b => b.name.startsWith("레전더리 단검")).boss.map(x => x[0] + "%").join("·")}, 장검 + 방패 룬워드는 느려서 10·30층 93~100%)
+    - **파밍**: [아이템 발견](#아이템-발견-r8-1023-dc51) 100% = ${RLB.farm.slots.map(x => x.rw ? `${x.rw}(${I.BASE_NAMES[x.base]})` : I.UNIQUE.items[x.uq].name).join(" + ")}. 나머지 부위는 원래 조합 그대로
+    - 잘 안 쓰이는 것: 룬워드 ${RLB.unused.runewords.map(r => r.name).join("·")}, 유니크 ${[...RLB.unused.uniques, ...RLB.unused.accUniques].map(r => I.UNIQUE.items[r.uq].name).join("·")} (치유·기억·몰래·쇠이빨·여의 반지는 파밍용 아이템 발견이 붙었어요)
 - **저항** (나이트메어·헬): 속성 저항 줄(최대 ${I.RES_R4.fireRes[1]}%) + 팔 모든 속성 저항(${I.RES_R4.allRes[1]}%) + 장신구 저항 줄 6개(속성 하나 최대 ${I.ACCESSORY.res.fireRes.legendary[1]}%, 모든 속성 최대 ${I.ACCESSORY.res.allRes.legendary[1]}%) → 75%. 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요
 - **흡혈**: 무기·보조무기 주 능력치 ${I.PCT_MAIN.lifesteal.legendary[1]}% × 2 + 추가 능력치 ${I.PCT_LINE.lifesteal.legendary[1]}% × 2 = 20%
 - **장검 + 방패**도 돼요: 같이 끼면 **흡혈 +${I.SHIELD_GUARD.lifesteal}%, 흡혈 최대 ${I.SHIELD_GUARD.cap}%**. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요
