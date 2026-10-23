@@ -927,12 +927,15 @@
   const W_MAIN = ["atk", "critDmg", "lifesteal"], CRIT3 = ["crit", "critDmg", "atkPct"];
   const REC_ARMOR_MAIN = { head: ["def", "hp"], chest: ["def", "crit", "hp"], arms: ["def", "crit", "atkPct"], pants: ["def", "hp", "defPct"], boots: ["def", "hp"] };
   const W_KIND = { weapon: "단검·지팡이·도끼 (장검 말고)", offhand: "보조 단검·지팡이·도끼 (방패 말고)" };
-  const recSlots = (weaponExtra, armorLines) => ({
+  const recSlots = (weaponExtra, armorLines, offhandExtra = weaponExtra) => ({
     weapon: { kind: W_KIND.weapon, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
-    offhand: { kind: W_KIND.offhand, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", weaponExtra] },
+    offhand: { kind: W_KIND.offhand, main: W_MAIN, lines: ["lifesteal", "atkPct", "critDmg", "crit", offhandExtra] },
     ...Object.fromEntries(Object.entries(REC_ARMOR_MAIN).map(([slot, main]) => [slot, { main, lines: armorLines[slot] }])),
   });
-  const NM_ARMOR = { head: ["fireRes", "hp", ...CRIT3], chest: ["iceRes", "hp", ...CRIT3], arms: ["allRes", "hp", ...CRIT3], pants: ["boltRes", "hp", ...CRIT3], boots: ["hp", "def", ...CRIT3] };
+  // 나이트메어·헬 (dc#54): 내 저항이 장비 합에서 −40·−70이라 저항 줄을 더 (투구 불·갑옷 얼음·바지 번개 + 모든 저항·장화 번개·팔 모든 저항, 무기 불·보조 얼음)
+  //   시뮬레이션 (줄 품질 95% +10, 장신구 저항 2줄 · 헬 3줄): 장비 합 115% → 나이트메어 75% (몰려옴 26%), 148% → 헬 75% (16% / 25%)
+  //   전 추천(저항 줄 4개 + 무기 HP)이면 89% → 49% (42%), 헬 122% → 52% (26% / 38%)
+  const NM_ARMOR = { head: ["fireRes", "hp", ...CRIT3], chest: ["iceRes", "hp", ...CRIT3], arms: ["allRes", "hp", ...CRIT3], pants: ["boltRes", "allRes", ...CRIT3], boots: ["boltRes", "hp", ...CRIT3] };
   const RECOMMEND = {
     tiers: ["normal", "nightmare", "hell"],
     normal: {
@@ -943,14 +946,14 @@
     },
     nightmare: {
       name: "나이트메어", goal: "나이트메어 50층",
-      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
-      slots: recSlots("hp", NM_ARMOR),
+      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },   // 장비 합 − 40 → 115% 모아야 75%
+      slots: recSlots("fireRes", NM_ARMOR, "iceRes"),
       acc: "속성 저항 2줄 (모자란 속성 + 모든 속성 저항), +10 강화",
     },
     hell: {
       name: "헬", goal: "헬 50층",
-      targets: { res: 65, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3, uniques: 7 },   // 저항은 헬에서 −10 (최대 75 − 10, 업경 목걸이면 70)
-      slots: recSlots("hp", NM_ARMOR),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
+      targets: { res: 75, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3, uniques: 7 },   // 저항은 장비 합 − 70 (dc#54, monsters.js ELEMENTS.zonePenalty) → 145% 모아야 75%
+      slots: recSlots("fireRes", NM_ARMOR, "iceRes"),   // 유니크가 없는 부위는 레전더리로 (나이트메어와 같은 줄)
       uniques: { weapon: "foxorb", offhand: "scythe", head: "binyeo", chest: "ironscale", arms: "chains", pants: "robe", boots: "dragonboots" },
       accUniques: { neck: ["eopgyeong"], ring: ["foxfire", "myeongbu"] },   // 반지는 여우불 2 (빠름) 또는 명부 (흡혈)
       acc: "업경 목걸이 + 여우불 반지 2 (흡혈이 모자라면 명부의 반지), +10 강화. 저항 줄은 모든 속성 저항",

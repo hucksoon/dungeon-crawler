@@ -206,7 +206,12 @@
     // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (±3)
     // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
     monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },
-    hp: 2.5, atk: 1.0, bossHp: 1.5, bossAtk: 0.6,
+    // dc#54: 방어력이 올라가면 내 피해가 약 4% 줄고, 한 번에 덜 때리는 만큼 흡혈도 덜 들어옴 → HP × 0.96·공격력 × 0.98로 맞춤
+    //   (2.5·1.0·1.5·0.6 → 2.4·0.98·1.44·0.588). 시뮬레이션: 나이트메어 50층 추천 27% → 26%, 헬 50층 레전더리 15% → 13%, 턴은 그대로
+    //   헬 몬스터도 이걸 바탕으로 만들어서 같이 바뀜
+    hp: 2.4, atk: 0.98, bossHp: 1.44, bossAtk: 0.588,
+    // 방어력 (dc#54): 일반 75층 방어력(약 40)에 × def × 공격력 층 배율 → 플레이어 공격력의 약 10% (전에는 40으로 멈춰 있어서 거의 소용없었음)
+    def: 1.8,
     // 골드 배율: 몬스터 처치(보스·황금 고블린 포함) ×3, 바닥의 골드 더미($) ×8
     // 예전에는 한 층 몬스터가 일반 75층보다 적어서 나이트메어 한 층 골드(약 1,000~4,600)가 75층 한 층(약 5,300)보다 적었음
     // → 1층 약 3,900, 10층 7,700, 25층 10,700, 50층 15,300, 1~50층 합계 약 42만 (일반 1~75층 한 번 약 13만)
@@ -239,7 +244,12 @@
     ice: { chance: 0.25, turns: 4, immune: 4 },
     bolt: { mul: 1 / 3, jumps: 2, range: 3 },
     resCap: 75,
+    // 던전마다 내 속성 저항 감소 (dc#54): 장비 저항 합에서 먼저 빼고, 그 뒤 최대치(75%). 저항 줄을 더 모아야 최대치에 닿음
+    //   (전에는 최대치로 자른 뒤 헬만 −10 → 저항이 넘쳐서(나이트메어 추천 장비 합 111%, 헬 130~158%) 파밍할 이유가 없었음)
+    zonePenalty: { normal: 0, nightmare: 40, hell: 70 },
   };
+  // 그 던전에서의 내 속성 저항: min(최대치, 장비 저항 합 − 던전 감소)
+  const playerRes = (raw, cap, zone) => Math.min(cap, raw - (ELEMENTS.zonePenalty[zone] || 0));
   const pickElement = (rand) => ELEMENTS.list[Math.floor(rand() * ELEMENTS.list.length)];
   const withElement = (m, el) => (el ? { ...m, name: `악몽의 ${ELEMENTS.prefix[el]} ${m.name.replace(/^악몽의 /, "")}`, el } : m);
 
@@ -258,18 +268,18 @@
   function makeNightmare(t, kind, n, el = null) {
     const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(m.hp * NIGHTMARE.hp * k);
-    return withElement({ ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), nm: 1 }, el);
+    return withElement({ ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
   }
   function makeNightmareBoss(n, el = null) {
     const b = makeBoss(NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(b.hp * NIGHTMARE.bossHp * k);
-    return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), nm: 1 }, el);
+    return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
   }
 
   // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 마지막 50층 던전 (최종 목적지) ----
   // 몬스터 = 나이트메어 startNm층 몬스터 × 배율 × 층 배율 (나이트메어와 같은 모양의 곡선). 아이템 레벨 = 125 + 헬 층 (126~175, "지옥의" 아이템)
   // 모든 몬스터가 속성과 속성 저항을 가짐: 자기 속성 own%, 다른 속성은 층에 따라 otherFrom% → otherTo%, 보스는 +boss%
-  // 헬에서는 플레이어의 속성 저항도 playerResCut%p 낮아짐. 10·20·30·40·50층 보스는 네임드 (아래 NAMED)
+  // 헬에서는 플레이어의 속성 저항도 ELEMENTS.zonePenalty.hell%p 낮아짐 (장비 저항 합에서 먼저). 10·20·30·40·50층 보스는 네임드 (아래 NAMED)
   const HELL = {
     floors: 50, itemBase: NIGHTMARE.itemBase + NIGHTMARE.floors, startNm: NIGHTMARE.floors,
     // 층 배율: 나이트메어 곡선(50층 ×9.2) 그대로면 지옥의 장비가 따라가지 못해 헬 25층에서 고대 +10도 몰려오는 몬스터에게 100% 쓰러짐
@@ -285,7 +295,6 @@
     entry: { until: 4, mul: 0.9 },
     monsters: NIGHTMARE.monsters,
     res: { own: 50, otherFrom: 10, otherTo: 40, boss: 10 },
-    playerResCut: 10,
     gold: { kill: 5, pile: 12, floor: 0.75 },
     milestones: [10, 20, 30, 40, 50],   // 완료하면 로비 오른쪽 문으로 골라서 들어갈 수 있는 층
     clearStage: 51,
@@ -303,12 +312,12 @@
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
     const m = makeNightmare(t, kind, HELL.startNm, el), e = n <= HELL.entry.until ? HELL.entry.mul : 1;
     const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
-    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * e) }, n, el, false);
+    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * e), def: Math.round(m.def * hellAtkScale(n) * e) }, n, el, false);
   }
   function makeHellBoss(n, el = pickElement(Math.random)) {
     const b = makeNightmareBoss(HELL.startNm, el);
     const hp = Math.round(b.hp * HELL.bossHp * hellScale(n));
-    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n)) }, n, el, true);
+    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n)), def: Math.round(b.def * hellAtkScale(n)) }, n, el, true);
   }
 
   // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
@@ -360,7 +369,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,

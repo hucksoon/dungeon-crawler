@@ -1,5 +1,5 @@
 // 최고 조합 (헬 50층) 시뮬레이션 결과: builds.html(외부 창)과 게임 추천 탭(가장 강한 유니크)이 같이 씀
-// 시뮬레이션: 장비 옵션 품질 95% +10, 장신구 +10, 몰려오는 20마리(8마리씩 붙음) / 네임드 염라대왕 1:1 (내 저항 −10)
+// 시뮬레이션: 장비 옵션 품질 95% +10, 장신구 +10, 몰려오는 20마리(8마리씩 붙음) / 네임드 염라대왕 1:1 (내 저항 장비 합 −70, dc#54)
 //   부위를 하나씩 바꿔 가며 나아지는 쪽으로 찾고(sim/loadout), 줄은 한 줄씩 바꿔 보며(sim/build-lines, 줄 품질 75~95%) 고름
 //   wave·boss = [쓰러질 확률 %, 걸린 턴]. 폭풍전야는 맞는 몬스터 모두에게 걸려 있다고 봐서 실제보다 조금 좋게 나옴
 (function (root) {
@@ -30,19 +30,19 @@
       title: "유니크 없이 (세트 + 룬워드)",
       acc: { text: "레전더리 장신구 3개 (+10): 목걸이·반지 2, 저항 줄은 속성 하나 + 모든 속성 저항", lines: ["불·얼음·번개 저항% (하나씩 나눠서)", "모든 속성 저항%"] },
       builds: [
-        { name: "필살일격(장검) + 레전더리 방패 + 서리의 세트 5", wave: [0, 11], boss: [0, 18], detail: true,
-          slots: { weapon: { rw: "필살일격", base: "longsword" }, offhand: SHIELD, ...FROST },
-          why: "장검 기본 공격 ×2(dc#53)에 필살일격(치명타 +10%·치명타 피해 +50%, 광란)으로 크게 때리고, 장검 + 방패 흡혈(최대 30%)로 버텨요. 서리의 세트 프로스트 노바가 몰려오는 몬스터를 정리해요" },
-        { name: "폭풍전야(장검) + 도원결의(방패) + 서리의 세트 5", wave: [0, 16], boss: [0, 18], note: "폭풍전야(몬스터 속성 저항 −20%)를 시뮬레이션이 조금 좋게 봐서 실제로는 조금 느릴 수 있어요",
-          slots: { weapon: { rw: "폭풍전야", base: "longsword" }, offhand: { rw: "도원결의", base: "shield" }, ...setAll("frost", ARMOR) } },
+        { name: "폭풍전야(장검) + 도원결의(방패) + 서리의 세트 5", wave: [0, 16], boss: [0, 18], detail: true,
+          slots: { weapon: { rw: "폭풍전야", base: "longsword" }, offhand: { rw: "도원결의", base: "shield" }, ...FROST },
+          why: "장검 기본 공격 ×2에 폭풍전야(몬스터 속성 저항 −20%·체인 라이트닝)로 서리의 세트 프로스트 노바와 속성 피해가 잘 들어가고, 도원결의(패링·반격·흡혈)로 버텨요. 폭풍전야는 시뮬레이션이 조금 좋게 봐서 실제로는 조금 느릴 수 있어요" },
         { name: "폭풍전야(장검) + 도원결의(방패) + 뇌전의 세트 5", wave: [0, 21], boss: [0, 14],
           slots: { weapon: { rw: "폭풍전야", base: "longsword" }, offhand: { rw: "도원결의", base: "shield" }, ...setAll("storm", ARMOR) } },
-        { name: "태산(단검) + 레전더리 보조 단검 + 화염의 세트 5", wave: [0, 19], boss: [0, 24],
+        { name: "카리스마(장검) + 도원결의(방패) + 뇌전의 세트 5", wave: [0, 14], boss: [0, 21], note: "HP·흡혈이 가장 높아요 (흡혈 23%)",
+          slots: { weapon: { rw: "카리스마", base: "longsword" }, offhand: { rw: "도원결의", base: "shield" }, ...setAll("storm", ARMOR) } },
+        { name: "필살일격(장검) + 레전더리 방패 + 서리의 세트 5", wave: [0, 12], boss: [3, 18], note: "가장 빠르지만 염라대왕에게 3%",
+          slots: { weapon: { rw: "필살일격", base: "longsword" }, offhand: SHIELD, ...setAll("frost", ARMOR) } },
+        { name: "태산(단검) + 레전더리 보조 단검 + 화염의 세트 5", wave: [0, 18], boss: [0, 25],
           slots: { weapon: { rw: "태산", base: "weapon" }, offhand: { leg: "offhandDagger" }, ...setAll("inferno", ARMOR) } },
-        { name: "시험의 세트 6", wave: [0, 33], boss: [0, 15], note: "보스는 빠르지만 몰려오는 몬스터는 느려요",
-          slots: { weapon: { set: "trial" }, offhand: { leg: "offhandDagger" }, ...setAll("trial", ARMOR) } },
       ],
-      compare: { name: "전부 레전더리", wave: [21, 36], boss: [19, 20] },
+      compare: { name: "전부 레전더리", wave: [28, 34], boss: [34, 20] },
     },
     withUnique: {
       title: "유니크 포함 (유니크 + 세트 + 룬워드)",
@@ -50,17 +50,17 @@
       builds: [
         { name: "여우구슬 지팡이 + 사자의 낫 + 화염의 세트 5", wave: [0, 8], boss: [0, 11], detail: true,
           slots: { weapon: { uq: "foxorb" }, offhand: { uq: "scythe" }, ...FIRE },
-          why: "여우구슬 지팡이의 프로스트 노바와 처치할 때 HP 3% 회복, 화염의 세트 파이어볼로 몰려오는 몬스터를 가장 빨리 정리하고, 사자의 낫(처치할 때마다 공격력 +2%)이 갈수록 세져요. 스킬 피해 줄(얼음·불 피해)이 노바·파이어볼을 키워요" },
-        { name: "여우구슬 지팡이 + 레전더리 보조 단검 + 화염의 세트 5", wave: [0, 10], boss: [0, 13], note: "사자의 낫이 없을 때",
-          slots: { weapon: { uq: "foxorb" }, offhand: DAGGER, ...FIRE } },
+          why: "여우구슬 지팡이의 프로스트 노바와 처치할 때 HP 3% 회복, 화염의 세트 파이어볼로 몰려오는 몬스터를 가장 빨리 정리하고, 사자의 낫(처치할 때마다 공격력 +2%)이 갈수록 세져요. 스킬은 몬스터 방어력을 무시해요" },
         { name: "유니크 7", wave: [0, 14], boss: [0, 11],
           slots: { weapon: { uq: "foxorb" }, offhand: { uq: "scythe" }, head: { uq: "binyeo" }, chest: { uq: "ironscale" }, arms: { uq: "chains" }, pants: { uq: "robe" }, boots: { uq: "dragonboots" } } },
-        { name: "여우구슬 지팡이 + 레전더리 보조 단검 + 시험의 세트 5", wave: [0, 15], boss: [0, 11],
+        { name: "여우구슬 지팡이 + 레전더리 보조 단검 + 시험의 세트 5", wave: [0, 14], boss: [0, 11],
           slots: { weapon: { uq: "foxorb" }, offhand: { leg: "offhandDagger" }, ...setAll("trial", ARMOR) } },
+        { name: "여우구슬 지팡이 + 레전더리 보조 단검 + 화염의 세트 5", wave: [0, 10], boss: [2, 13], note: "사자의 낫이 없을 때 · 염라대왕 2%",
+          slots: { weapon: { uq: "foxorb" }, offhand: DAGGER, ...FIRE } },
         { name: "폭풍전야(장검) + 마음가짐(방패) + 뇌전의 세트 5", wave: [0, 18], boss: [0, 9], note: "유니크 장비 없이 유니크 장신구만으로 · 보스를 가장 빨리 잡아요",
           slots: { weapon: { rw: "폭풍전야", base: "longsword" }, offhand: { rw: "마음가짐", base: "shield" }, ...setAll("storm", ARMOR) } },
       ],
-      compare: { name: "전부 레전더리 + 유니크 장신구", wave: [12, 37], boss: [13, 19] },
+      compare: { name: "전부 레전더리 + 유니크 장신구", wave: [19, 35], boss: [24, 19] },
     },
     // 가장 강한 유니크 (그 유니크를 꼭 낄 때 가장 좋은 조합의 턴 합): 게임 추천 탭(헬)에 보여줌
     uniqueRank: [
@@ -80,14 +80,14 @@
       cond: "그 층 레전더리 장비 (나이트메어 추천 줄, 품질 85% +10) + 레전더리 장신구 +10에서 무기·보조무기만 바꿈 · 몰려오는 20마리 / 네임드 1:1",
       floors: [10, 20, 30],
       builds: [
-        { name: "송곳니 + 레전더리 보조 단검", slots: { weapon: { uq: "fang" }, offhand: { leg: "offhandDagger" } }, wave: [[0, 26], [0, 28], [0, 31]], boss: [[0, 10], [2, 18], [0, 12]],
+        { name: "송곳니 + 레전더리 보조 단검", slots: { weapon: { uq: "fang" }, offhand: { leg: "offhandDagger" } }, wave: [[0, 27], [0, 27], [0, 31]], boss: [[0, 10], [4, 18], [1, 12]],
           why: "헬 10층 불가사리에서 나와요. 물어뜯기(때린 적이 받는 피해 +12%)로 네임드를 가장 빨리 잡고, 아이템 발견 +20%로 파밍도 돼요" },
-        { name: "카리스마(장검) + 레전더리 방패", slots: { weapon: { rw: "카리스마", base: "longsword" }, offhand: { leg: "shield" } }, wave: [[0, 26], [0, 29], [0, 30]], boss: [[0, 18], [0, 29], [1, 24]],
+        { name: "카리스마(장검) + 레전더리 방패", slots: { weapon: { rw: "카리스마", base: "longsword" }, offhand: { leg: "shield" } }, wave: [[0, 27], [0, 29], [0, 30]], boss: [[0, 18], [0, 29], [6, 23]],
           why: "장검 기본 공격 ×2 (dc#53)에 장검 + 방패 흡혈 30%까지, HP·처치 폭발로 가장 안전해요. 송곳니보다 조금 느려요" },
-        { name: "나무(지팡이) + 레전더리 보조 단검", slots: { weapon: { rw: "나무", base: "staff" }, offhand: { leg: "offhandDagger" } }, wave: [[0, 23], [2, 25], [22, 26]], boss: [[5, 13], [11, 20], [12, 15]],
+        { name: "나무(지팡이) + 레전더리 보조 단검", slots: { weapon: { rw: "나무", base: "staff" }, offhand: { leg: "offhandDagger" } }, wave: [[0, 24], [3, 25], [30, 25]], boss: [[4, 12], [10, 20], [38, 14]],
           why: "룬 2개(나·마)라 가장 싸게 만드는 룬워드예요 (50층 보스 약 5판). 30층부터는 몰려오는 몬스터에 약해요" },
-        { name: "레전더리 단검 2 (비교)", cmp: true, wave: [[0, 32], [0, 33], [2, 36]], boss: [[14, 14], [17, 23], [34, 17]] },
-        { name: "레전더리 장검 + 방패 (비교)", cmp: true, wave: [[0, 35], [0, 35], [0, 45]], boss: [[13, 18], [0, 32], [51, 21]],
+        { name: "레전더리 단검 2 (비교)", cmp: true, wave: [[0, 33], [1, 34], [5, 36]], boss: [[20, 14], [26, 23], [69, 14]] },
+        { name: "레전더리 장검 + 방패 (비교)", cmp: true, wave: [[0, 36], [0, 36], [0, 38]], boss: [[13, 18], [1, 32], [62, 19]],
           note: "장검 기본 공격 ×2 전에는 100·88·100%였어요. 장검·방패 룬워드(선견지명·카리스마·도원결의)는 파밍에도 좋아요 → 4. 파밍" },
       ],
     },
@@ -100,14 +100,14 @@
         { name: "초반 파밍: 기억·몰래 + 선견지명(장검) + 도원결의(방패)", when: "헬 10~30층, 유니크 없이 룬워드 4개로 100%",
           slots: [{ slot: "head", rw: "기억", base: "head" }, { slot: "chest", rw: "몰래", base: "chest" }, { slot: "weapon", rw: "선견지명", base: "longsword" }, { slot: "offhand", rw: "도원결의", base: "shield" }],
           rest: "팔·바지·장화·장신구는 그 층 레전더리",
-          wave: [[0, 20], [0, 22], [0, 23]], boss: [[0, 7], [0, 8], [0, 9]], named: [69, 2, 99],
-          alt: { name: "선견지명 대신 카리스마", wave: [[0, 19], [0, 21], [0, 22]], text: "처치 폭발이 이어서 터지고 HP·흡혈이 더 높아서 네임드도 36·0·83%" },
+          wave: [[0, 20], [0, 23], [0, 25]], boss: [[0, 7], [0, 8], [0, 9]], named: [72, 6, 98],
+          alt: { name: "선견지명 대신 카리스마", wave: [[0, 20], [0, 22], [0, 23]], text: "처치 폭발이 이어서 터지고 HP·흡혈이 더 높아서 네임드도 42·0·84%" },
           note: "회전 베기·반격·처치 폭발 모두 흡혈이 돼서 몰려오는 몬스터를 빨리 정리해요. 네임드 층(10·20·30…)은 원래 장비로 바꿔 끼세요" },
         { name: "후반 파밍: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2", when: "네임드 유니크 장신구를 모은 뒤, 무기·보조무기는 자유",
           slots: [{ slot: "head", rw: "기억", base: "head" }, { slot: "chest", rw: "몰래", base: "chest" }, { slot: "neck", uq: "ironfang" }, { slot: "ring", uq: "yeoui" }, { slot: "ring", uq: "yeoui" }],
           rest: "무기·보조무기·팔·바지·장화는 원래 조합 그대로 (예: 여우구슬 지팡이 + 레전더리 보조 단검 + 화염의 세트 팔·바지·장화). 송곳니를 끼면 +20%" },
       ],
-      compare: { name: "기억·몰래 + 레전더리 단검 2 (발견 50%)", wave: [[0, 40], [8, 48], [27, 42]] },
+      compare: { name: "기억·몰래 + 레전더리 단검 2 (발견 50%)", wave: [[0, 42], [11, 45], [55, 36]] },
       econ: [{ mf: 0, ls: 0.74, gold: 109, uq: 13.3 }, { mf: 50, ls: 1.23, gold: 161, uq: 11.4 }, { mf: 100, ls: 1.73, gold: 212, uq: 10 }],
       note: "초반 파밍 조합은 보통 장비(레전더리 단검 2, 32~36턴)보다 몰려오는 몬스터를 더 빨리 정리해서, 걸리는 시간까지 치면 레전더리·세트가 시간당 약 3~4배예요",
     },
@@ -117,7 +117,7 @@
       runewords: [
       ],
       uniques: [
-        { uq: "yeouiju", turns: [17, 17], with: "업경대 + 화염의 세트 5 (dc#53: 장검 ×2·체인이 혼자 남은 적도 다시 침 → 0%)" },
+        { uq: "yeouiju", turns: [17, 18], with: "업경대 + 화염의 세트 5 (dc#53: 장검 ×2·체인이 혼자 남은 적도 다시 침 → 0%)" },
         { uq: "mirror", turns: [11, 16], with: "필살일격(장검) + 화염의 세트 5 (dc#53: 막아도 반사 → 0%)" },
       ],
       accUniques: [
