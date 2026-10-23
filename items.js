@@ -1124,11 +1124,12 @@
     { name: "폭풍전야", bases: ["longsword"], stats: { boltDmg: 20, critDmg: 40 }, special: { chain: 1, vuln: 20 } },
     { name: "필살일격", bases: ["longsword"], stats: { atkPct: 35, crit: 10, critDmg: 50 }, special: { splash: 1 } },
     { name: "태산", bases: ["chest", "weapon"], stats: { defPct: 30, hpPct: 10, allRes: 15 }, special: { shield: 20, skillLs: 1 } },
-    { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 8 }, special: { lsCap: 3 } },
+    // 장검·방패 파밍 룬워드 (dc#52): 아이템 발견 +25씩 + 공격 스킬 (흡혈 그대로). 기억·몰래와 합치면 발견 100%
+    { name: "카리스마", bases: ["longsword"], stats: { hpPct: 25, atkPct: 15, lifesteal: 8, mf: 25 }, special: { lsCap: 3, blast: 20 } },
     { name: "치유", bases: ["head"], stats: { killHealPct: 5, mf: 20 }, special: { autoPotion: 1 } },
     { name: "마음가짐", bases: ["longsword", "shield"], stats: { skillPct: 30 }, special: { skillFast: 1, skillLs: 1 } },
-    { name: "선견지명", bases: ["longsword"], stats: { crit: 8, xp: 25 }, special: { shield: 10 } },
-    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5, hpPct: 15 }, special: {} },
+    { name: "선견지명", bases: ["longsword"], stats: { atkPct: 20, crit: 8, xp: 25, mf: 25 }, special: { whirl: 50 } },
+    { name: "도원결의", bases: ["shield"], stats: { allRes: 10, dmgReduce: 5, parry: 15, lifesteal: 5, hpPct: 15, mf: 25 }, special: { counter: 60 } },
     { name: "기억", bases: ["head"], stats: { xp: 25, crit: 3, mf: 25 }, special: { lsCap: 2 } },
     { name: "몰래", bases: ["chest"], stats: { defPct: 10, dmgReduce: 3, mf: 25 }, special: { skillLs: 1 } },
     { name: "나무", bases: ["staff"], stats: { fireDmg: 15, fireRes: 20, lifesteal: 4, atkPct: 30, critDmg: 30 }, special: { fireball: 1 } },   // 공격력·치명타 피해: 헬 초반 무기로 (시뮬레이션: 헬 10~20층 네임드 5~9%, 레전더리 단검 10~18%)
@@ -1138,6 +1139,9 @@
   const RUNEWORD_FX = {
     teleport: { steps: 3 }, vuln: { every: 2, turns: 2, radius: 2 }, shield: { every: 2 }, autoPotion: { every: 5, below: 50 },
     skillLs: { share: 1 }, fireball: { every: 3, mul: 0.4 },
+    whirl: { every: 2 },   // 회전 베기: every턴마다 주변 8칸 적 모두 공격력의 whirl% (물리: 방어력만큼 줄고 흡혈 그대로)
+    // 처치 폭발: 내가 쓰러뜨린 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로, 이어서 터짐. 분신은 안 터짐)
+    // 반격: 방패로 막으면 그 몬스터에게 공격력의 counter% (물리, 흡혈 그대로)
   };
   const BASE_NAMES = { chest: "갑옷", head: "투구", shield: "방패", longsword: "장검", weapon: "무기(단검·도끼·지팡이)", staff: "지팡이" };
   function runewordBaseKeys(item) {
@@ -1174,6 +1178,9 @@
     if (sp.lsCap) out.push(`흡혈 최대치 +${sp.lsCap}%p`);
     if (sp.autoPotion) out.push(`HP ${F.autoPotion.below}% 이하면 ${F.autoPotion.every}턴마다 포션 자동 (쿨타임과 따로)`);
     if (sp.skillFast) out.push("세트 스킬을 1턴 더 자주");
+    if (sp.whirl) out.push(`회전 베기: ${F.whirl.every}턴마다 주변 8칸 적 모두에게 공격력의 ${sp.whirl}% (흡혈 됨)`);
+    if (sp.blast) out.push(`처치 폭발: 쓰러뜨린 몬스터가 터져 주변 적에게 그 몬스터 최대 HP의 ${sp.blast}% (흡혈 됨, 이어서 터짐)`);
+    if (sp.counter) out.push(`반격: 방패로 막으면 그 몬스터에게 공격력의 ${sp.counter}% (흡혈 됨)`);
     if (sp.fireball) out.push(`약한 파이어볼 (${F.fireball.every}턴마다, 화염 세트 파이어볼의 ${Math.round(F.fireball.mul / FIREBALL.mul * 100)}% 피해)`);
     return out;
   }

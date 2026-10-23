@@ -1492,7 +1492,7 @@
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 헬에서는 속성 저항 −HELL.playerResCut%p (최대치를 넘긴 만큼은 소용없음)
       res: Object.fromEntries(EL.list.map(k => [k, Math.min(resCapOf(g, k), g[`${k}Res`] + g.allRes) - (inHell() ? HELL.playerResCut : 0)])),
-      // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball
+      // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·autoPotion·skillFast·fireball·whirl·blast·counter
       rw: T.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
       uq: T.uniques.special,
@@ -1503,7 +1503,7 @@
   // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
   const resCapOf = (g, k) => EL.resCap + (g.allResMax || 0) + (g[`${k}ResMax`] || 0);
   const heal = (n) => { player.hp = Math.min(stats().maxHp, player.hp + n); };
-  // 플레이어가 받는 피해: 룬워드 보호막(태산·선견지명)이 먼저 막음. 실제로 깎인 HP
+  // 플레이어가 받는 피해: 룬워드 보호막(태산)·용비늘 장화 보호막이 먼저 막음. 실제로 깎인 HP
   function hurtPlayer(n) {
     const sh = Math.min(player.shield || 0, n);
     if (sh) { player.shield -= sh; showDamage(player, `🛡${sh}`, false, "#8fd3ff"); }
@@ -1780,6 +1780,11 @@
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, "막음", false);
         log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
+        // 도원결의 반격: 막은 몬스터에게 공격력의 counter% (물리, 흡혈 그대로)
+        if (s.rw.counter && attacker.hp > 0 && enemies.includes(attacker)) {
+          const crit = Math.random() * 100 < s.crit;
+          hitEnemy(attacker, (s.atk + rnd(2)) * s.rw.counter / 100 * (crit ? s.critMul : 1), crit, s, "🛡 반격: ");
+        }
         return;
       }
       // 받는 피해 감소(시험의 세트 5세트·보석)와 둘러싸임 방어는 방어력으로 줄어든 뒤에 (최소 1)
@@ -1982,6 +1987,27 @@
     if (s.uq.reap && (player.reap || 0) < UQ_FX.reap.max) player.reap = Math.min(UQ_FX.reap.max, (player.reap || 0) + s.uq.reap);   // 사자의 낫
     dropLoot(e);
     gainXp(xp);
+    if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
+  }
+  // 카리스마 처치 폭발: 쓰러진 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로).
+  // 폭발로 쓰러진 몬스터도 터짐 (분신은 이미 위에서 사라져 여기 오지 않음)
+  function corpseBlast(e, s) {
+    const near = enemies.filter(x => x.hp > 0 && near8(x, e) === 1);
+    if (!near.length) return;
+    const d = Math.max(1, Math.round(e.maxHp * s.rw.blast / 100));
+    const cells = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ x: e.x + dx, y: e.y + dy });
+    flash(cells, "rgba(255, 140, 90, 0.35)");
+    log(`💥 처치 폭발! ${e.name}이(가) 터져 ${near.length}마리에게 ${d} 피해`, null, "#ff8c5a");
+    for (const x of near) {
+      if (x.hp <= 0 || !enemies.includes(x)) continue;
+      const taken = Math.min(d, x.hp);
+      x.hp -= d;
+      showDamage(x, d, false, "#ff8c5a");
+      const drain = Math.floor(taken * s.lifesteal / 100 * lsMul());
+      if (drain > 0) heal(drain);
+      if (x.hp <= 0) killEnemy(x);
+    }
   }
 
   // 아이템을 떨어뜨릴 칸: (x, y)에 아무것도 없으면 거기, 이미 있으면 걸어서 닿는 가까운 빈 바닥으로 한 칸씩 밀려남
@@ -2741,6 +2767,20 @@
       for (const e of near) { e.vulnUntil = turn + RW_FX.vuln.turns; e.vulnPct = s.rw.vuln; }
       if (near.length) flash(near.map(e => ({ x: e.x, y: e.y })), "rgba(255, 225, 77, 0.25)");
     }
+    // 선견지명 회전 베기: every턴마다 주변 8칸 적 모두 공격력의 whirl% (물리: 방어력만큼 줄고 흡혈 그대로)
+    if (s.rw.whirl && ready("whirlCd")) {
+      const hit = alive().filter(e => near8(e, player) === 1);
+      if (hit.length) {
+        player.whirlCd = RW_FX.whirl.every;
+        const crit = Math.random() * 100 < s.crit;
+        const raw = (s.atk + rnd(2)) * s.rw.whirl / 100 * (crit ? s.critMul : 1);
+        const cells = [];
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
+        flash(cells, "rgba(255, 210, 127, 0.35)");
+        log(`🌀 회전 베기! ${hit.length}마리${crit ? " (치명타)" : ""}`, null, RLItems.RUNEWORD_COLOR);
+        for (const e of hit) if (e.hp > 0 && enemies.includes(e)) hitEnemy(e, raw, crit, s, "회전 베기: ");
+      }
+    }
     // 파이어볼 (화염의 세트, 또는 룬워드 나무의 약한 파이어볼)
     const fbSet = s.fireball, fbOn = fbSet || s.rw.fireball;
     const fbEvery = (fbSet ? FB.every : RW_FX.fireball.every) - fast, fbMul = fbSet ? FB.mul : RW_FX.fireball.mul;
@@ -2810,6 +2850,7 @@
     if (reaperOn()) out.push(`☠ 포탈 봉인 · 흡혈 ${Math.round(lsMul() * 100)}%`);
     const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
     one(s.fireball || s.rw.fireball, "🔥", "파이어볼", player.fbCd);
+    one(s.rw.whirl, "🌀", "회전 베기", player.whirlCd);
     if (s.rw.shield || s.uq.shield) out.push(`🛡 보호막 ${player.shield || 0}`);
     if (player.iron > 0) out.push(`🐉 쇠비늘 방어력 +${player.iron}%`);
     if (player.reap > 0) out.push(`💀 영혼 수확 공격력 +${player.reap}%`);
@@ -2839,7 +2880,7 @@
     if (player.potCd > 0) player.potCd--;
     // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음), 치유는 HP가 낮으면 every턴마다 포션 자동 (쿨타임과 따로)
     const s0 = stats(), rw = s0.rw;
-    const shieldPct = Math.max(rw.shield || 0, s0.uq.shield || 0);   // 룬워드(태산·선견지명)·용비늘 장화 중 큰 것
+    const shieldPct = Math.max(rw.shield || 0, s0.uq.shield || 0);   // 룬워드 태산·용비늘 장화 중 큰 것
     if (!shieldPct) player.shield = 0;
     else if (turn % RW_FX.shield.every === 0) player.shield = Math.round(s0.maxHp * shieldPct / 100);
     if (rw.autoPotion && player.hp > 0 && player.hp <= s0.maxHp * RW_FX.autoPotion.below / 100 && turn - (player.apAt ?? -99) >= RW_FX.autoPotion.every) {
@@ -4463,7 +4504,7 @@
         el("div", { className: "guide-slot guide-early" }, el("b", {}, "헬 초반 (10~30층)"), el("br"),
           el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${RLItems.UNIQUE.items.fang.name}`), ` + 레전더리 보조 단검 (헬 ${RLItems.UNIQUE.items.fang.boss}층 ${RLMonsters.namedAt(RLItems.UNIQUE.items.fang.boss)?.name || "네임드"}). 없으면 룬워드 나무(지팡이) + 보조 단검`),
         el("div", { className: "guide-slot guide-farm" }, el("b", {}, `🔍 파밍: 아이템 발견 ${s.mf} / ${RLItems.FIND.max}%`), el("br"),
-          el("span", { className: "meta" }, "기억(투구)·몰래(갑옷) 룬워드 + 쇠이빨 목걸이 + 여의 반지 2 = 100%. 처치마다 보너스 아이템, 유니크 확률도 올라요")),
+          el("span", { className: "meta" }, "초반: 기억(투구)·몰래(갑옷) + 선견지명 또는 카리스마(장검) + 도원결의(방패) 룬워드 = 100% (네임드 층은 원래 장비로). 후반: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2. 처치마다 보너스 아이템, 유니크 확률도 올라요")),
         buildsLink);
       invGuide.replaceChildren(...rows);
       return;
@@ -5630,7 +5671,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ` +
+        `🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ` +
         `💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ` +
         `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
         `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +

@@ -153,7 +153,7 @@
       el("h3", {}, "룬워드 (상위 조합에 안 들어감)"),
       el("table", {}, el("tbody", {}, ...U.runewords.map(r => { const w = I.RUNEWORDS.find(x => x.name === r.name);
         return el("tr", {}, el("th", {}, el("span", { className: "rw" }, r.name)), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, r.use ? el("div", {}, `→ ${r.use}`) : null, el("div", { className: "meta" }, `${w.bases.map(b => BASE[b] || b).join("·")} · ${[...Object.entries(w.stats).map(([k, v]) => I.formatStat(k, v)), ...I.runewordSpecialText(w.special)].join(" · ")}`))); }))),
-      el("p", { className: "sub" }, "상위 조합에 들어가는 룬워드: 필살일격 · 마음가짐 · 천하무적 · 태산 · 폭풍전야. 나무·송곳니는 3. 헬 초반, 치유·기억·몰래·쇠이빨 목걸이·여의 반지는 4. 파밍(아이템 발견)에서 써요"),
+      el("p", { className: "sub" }, "상위 조합에 들어가는 룬워드: 필살일격 · 마음가짐 · 천하무적 · 태산 · 폭풍전야. 나무·송곳니는 3. 헬 초반, 기억·몰래·선견지명·카리스마·도원결의·쇠이빨 목걸이·여의 반지는 4. 파밍(아이템 발견)에서 써요"),
       el("h3", {}, "유니크 (상위 조합에 안 들어감)"),
       el("table", {}, el("tbody", {}, ...U.uniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, `${sum(r.turns)}턴 (몰려옴 ${r.turns[0]} · 염라대왕 ${r.turns[1]}) · 같이: ${r.with}`, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))),
         ...U.accUniques.map(r => el("tr", {}, el("th", {}, el("span", { className: "uq" }, uqName(r.uq))), el("td", {}, r.text, el("div", { className: "meta" }, `${uqWhere(r.uq)} · ${I.UNIQUE.items[r.uq].text}`)))))),
@@ -177,19 +177,31 @@
         return el("div", { className: `build${top ? " top" : ""}` }, ...kids);
       }));
   }
-  // 파밍: 아이템 발견 %
+  // 파밍: 아이템 발견 % (초반: 룬워드 4개, 후반: 유니크 장신구)
   const mfOf = (s) => (s.rw ? I.RUNEWORDS.find(w => w.name === s.rw).stats.mf : I.UNIQUE.items[s.uq].stats.mf) || 0;
+  const floorRows = (floors, b, named) => el("table", {}, el("tbody", {}, ...floors.map((f, j) => el("tr", {}, el("th", {}, `${f}층`),
+    el("td", { className: "fl" }, "몰려옴 ", pctB(b.wave[j][0]), ` ${b.wave[j][1]}턴`, ...(b.boss ? [` · 보스(${f - 5}층) `, pctB(b.boss[j][0]), ` ${b.boss[j][1]}턴`] : []),
+      ...(named ? [` · ${M.namedAt(f)?.name || "네임드"} `, pctB(named[j])] : []))))));
   function renderFarm() {
-    const F = B.farm, total = Math.min(I.FIND.max, F.slots.reduce((a, s) => a + mfOf(s), 0)), e0 = F.econ[0];
+    const F = B.farm, e0 = F.econ[0];
     const items = [...I.RUNEWORDS.filter(w => w.stats.mf).map(w => [el("span", { className: "rw" }, w.name), ` 룬워드 (${w.bases.map(b => BASE[b] || b).join("·")}) +${w.stats.mf}%`]),
       ...Object.values(I.UNIQUE.items).filter(U => U.stats?.mf).map(U => [el("span", { className: "uq" }, U.name), ` 유니크${U.acc ? " 장신구" : ""} (헬 ${U.boss}층) +${U.stats.mf}%${U.acc && U.slot === "ring" ? " (두 개면 두 배)" : ""}`])];
+    const card = (b, i) => {
+      const total = Math.min(I.FIND.max, b.slots.reduce((a, s) => a + mfOf(s), 0));
+      const kids = [el("div", { className: "build-head" }, el("b", {}, b.name), el("span", { className: "res" }, `아이템 발견 ${total}%`)),
+        el("div", { className: "note" }, b.when),
+        el("table", {}, el("tbody", {}, ...b.slots.map(s => el("tr", {}, el("th", {}, I.SLOT_NAMES[s.slot]), el("td", {}, ...cell(s.slot, s), el("div", {}, `🔍 아이템 발견 +${mfOf(s)}%`)))),
+          el("tr", {}, el("th", {}, "나머지"), el("td", {}, b.rest))))];
+      if (b.wave) kids.push(el("h3", {}, "헬 초반 (그 층 레전더리 품질 85% +10)"), floorRows(F.floors, b, b.named));
+      if (b.alt) kids.push(el("div", { className: "note" }, `${b.alt.name}: 몰려옴 ${b.alt.wave.map(x => `${x[0]}% ${x[1]}턴`).join(" · ")} — ${b.alt.text}`));
+      if (b.note) kids.push(el("div", { className: "note" }, b.note));
+      return el("div", { className: `build${i === 0 ? " top" : ""}` }, ...kids);
+    };
     document.getElementById("farm").replaceChildren(
       el("h2", {}, F.title),
       el("p", { className: "sub" }, `아이템 발견 %: 처치할 때마다 ${Math.round(I.FIND.bonus * 100)}% × 발견% 확률로 보너스 아이템 하나 (레어 이상), 네임드 유니크·유니크 장신구 확률 × (1 + 발견% / ${I.FIND.uniqueDiv}). 최대 ${I.FIND.max}%`),
-      el("div", { className: "build top" },
-        el("div", { className: "build-head" }, el("b", {}, `아이템 발견 ${total}% 조합`)),
-        el("table", {}, el("tbody", {}, ...F.slots.map(s => el("tr", {}, el("th", {}, I.SLOT_NAMES[s.slot]), el("td", {}, ...cell(s.slot, s), el("div", {}, `🔍 아이템 발견 +${mfOf(s)}%`)))),
-          el("tr", {}, el("th", {}, "나머지"), el("td", {}, F.rest))))),
+      ...F.builds.map(card),
+      el("div", { className: "build" }, el("div", { className: "build-head" }, el("b", {}, `${F.compare.name} (비교)`)), floorRows(F.floors, F.compare)),
       el("h3", {}, "얼마나 더 나올까 (헬 30층 몬스터 처치 1번)"),
       el("table", {}, el("tbody", {}, ...F.econ.map(r => el("tr", {}, el("th", {}, `${r.mf}%`),
         el("td", {}, `레전더리+세트 ${r.ls}% (×${(r.ls / e0.ls).toFixed(2)}) · 판매 골드 ${r.gold} · 원하는 유니크 하나에 네임드 평균 ${r.uq}번`))))),
@@ -197,7 +209,7 @@
       el("h3", {}, "아이템 발견이 붙는 아이템"),
       el("ul", {}, ...items.map(k => el("li", {}, ...k))));
   }
-  const COND = { early: B.early.cond, farm: "헬 30층 몬스터 처치 1번의 기댓값 (실제 드롭 규칙으로 3만 번)" };
+  const COND = { early: B.early.cond, farm: "헬 10·20·30층 그 층 레전더리 품질 85% +10 + 레전더리 장신구 +10 · 몰려오는 20마리(8마리씩) / 보스 1:1 · 아이템 수입은 헬 30층 처치 1번의 기댓값 (실제 드롭 규칙으로 3만 번)" };
   const condOf = (id) => `조건: ${COND[id] || B.cond}.${id === "farm" ? "" : " 쓰러질 확률이 같으면 더 빨리 끝내는 조합이 위예요."}`;
   document.getElementById("cond").textContent = condOf("noUnique");
   renderSide("noUnique"); renderSide("withUnique"); renderEarly(); renderFarm(); renderUnused();
