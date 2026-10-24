@@ -34,6 +34,7 @@
         sturdy: { name: "Steadfast Set", pieces: { weapon: "Steadfast Longsword", offhand: "Steadfast Shield" } },
       },
       gem: { ruby: "Ruby", sapphire: "Sapphire", emerald: "Emerald", topaz: "Topaz", diamond: "Diamond" },
+      gemGrade: ["Chipped", "Gem", "Perfect"],
       runeword: {
         천하무적: "Invincible", 폭풍전야: "Calm Before the Storm", 필살일격: "Killing Blow", 태산: "Mount Tai", 카리스마: "Charisma",
         마음가짐: "Resolve", 선견지명: "Foresight", 도원결의: "Peach Garden Oath", 기억: "Memory", 몰래: "Stealth", 나무: "Tree",
