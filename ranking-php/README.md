@@ -190,22 +190,29 @@ sudo -u www-data php gift.php --resume <이메일>
 Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주소예요. 예: `https://apacimtest.com/ranking/webhook.php`
 
 - **1단계 (지금)**: 기록만 해요. 아이템·캐시는 지금처럼 상점 화면이 Xsolla 인벤토리에서 받아 가고, 여기서는 지급하지 않아요
-  - `user_validation` → 204 / `order_paid`·`order_canceled` → 주문 번호로 한 번만 기록 / `payment`·`refund`(예전 방식 프로젝트) → 거래 번호로 한 번만 기록 / 그 밖 → 204
+  - `user_validation` → 게임에 로그인한 적 있는 사용자면 204, 아니면 `400 INVALID_USER` (Xsolla 테스터의 "없는 사용자" 확인). 게임은 로그인하면 맨 먼저 계정 저장본을 불러오는데, 그때 사용자 HMAC 키를 `known_users`에 남겨요. 상점 로그인도 게임을 거치므로 사기 전에 남아요
+  - `order_paid`·`order_canceled` → 주문 번호로 한 번만 기록 / `payment`·`refund`(예전 방식 프로젝트) → 거래 번호로 한 번만 기록 / 그 밖 → 204
   - 같은 웹훅이 다시 와도(Xsolla 재전송) 204만 돌려주고 두 번 기록하지 않아요
   - 다른 프로젝트 번호가 적힌 웹훅은 400으로 거절해요
 - **서명**: `Authorization: Signature <sha1(받은 본문 + 비밀 키)>`. 틀리면 `400 INVALID_SIGNATURE`. 비밀 키가 설정되지 않았으면 `500 NOT_CONFIGURED`
+- **로그**: 400·500은 원인 코드와 웹훅 종류만 Apache 오류 로그에 남겨요: `sudo grep -h '\[webhook\]' /var/log/apache2/*error*.log | tail`
 - **개인정보**: 이메일·IP·사용자 ID 원본은 저장하지 않아요. 사용자는 게임과 같은 HMAC 키로만, 주문은 SKU·수량·금액·sandbox 여부만 (`xsolla_events` 표)
 
 ### 켜는 순서 (웹훅이 오류를 내면 결제가 막힐 수 있어서 이 순서로)
 
 1. `webhook.php`를 서버에 올리기 (아래 "업데이트")
 2. Publisher Account → 프로젝트 → 프로젝트 설정 → 웹훅의 **비밀 키**를 `config.php`에 넣기: `'webhook_secret' => '...'` (저장소·채팅에 올리지 않기)
-3. 서버에서 서명이 맞는 가짜 웹훅으로 확인 (204가 나와야 함, 키는 화면에 나오지 않음)
+3. 서버에서 서명이 맞는 가짜 웹훅으로 확인 (키는 화면에 나오지 않음). 없는 사용자라 `INVALID_USER … 400`이 나와야 함 (서명은 통과).
+   `INVALID_SIGNATURE`가 나오면 서명 계산이 서버와 다른 것
    ```bash
    cd /var/www/html/ranking
    B='{"notification_type":"user_validation","settings":{"project_id":317991},"user":{"id":"selftest"}}'
    S=$(sudo php -r '$c = require "config.php"; echo sha1($argv[1] . $c["webhook_secret"]);' "$B")
-   curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Signature $S" -H 'Content-Type: application/json' --data "$B" https://apacimtest.com/ranking/webhook.php
+   curl -s -w ' %{http_code}\n' -X POST -H "Authorization: Signature $S" -H 'Content-Type: application/json' --data "$B" https://apacimtest.com/ranking/webhook.php
+   ```
+   Xsolla 테스터가 보낸 요청의 서명이 이 서버의 키와 맞는지 보려면 (본문은 테스터에 나온 그대로, 서명은 Authorization 값):
+   ```bash
+   sudo php -r '$c = require "config.php"; echo sha1($argv[1] . $c["webhook_secret"]) === $argv[2] ? "키 같음\n" : "키 다름\n";' '<본문>' '<서명>'
    ```
 4. Publisher Account에서 이 프로젝트의 웹훅 주소만 `https://apacimtest.com/ranking/webhook.php`로 바꾸고 "테스트" 보내기 → sandbox 결제 한 번
 5. 받은 기록 보기: `sudo -u www-data php admin.php webhooks [개수]`

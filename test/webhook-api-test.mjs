@@ -11,7 +11,8 @@ fs.writeFileSync(CFG, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn
 fs.writeFileSync(CFG0, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}']);\n`);
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const serve = (port, cfg) => spawn("php", ["-S", `127.0.0.1:${port}`, "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, RANKING_CONFIG: cfg }, stdio: ["ignore", "ignore", "pipe"] });
+const JWT_SECRET = "webhook-jwt";
+const serve = (port, cfg) => spawn("php", ["-S", `127.0.0.1:${port}`, "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, RANKING_CONFIG: cfg, TEST_JWT_SECRET: JWT_SECRET }, stdio: ["ignore", "ignore", "pipe"] });
 const php = serve(8131, CFG), php0 = serve(8132, CFG0);
 let phpErr = ""; php.stderr.on("data", d => phpErr += d);
 await sleep(700);
@@ -25,6 +26,10 @@ async function hook(body, { sig, port = 8131, method = "POST", auth } = {}) {
   const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {} return { status: r.status, code: j?.error?.code, text: t };
 }
 // PHP가 막 쓴 직후엔 잠깐 잠겨 있을 수 있어서 몇 번 다시 읽음
+// 게임 로그인 흉내: 게임은 로그인하면 맨 먼저 계정 저장본을 불러옴 (GET profile) → 그때 서버가 사용자를 기억
+const b64u = (x) => Buffer.from(x).toString("base64url");
+const jwt = (sub) => { const h = b64u(JSON.stringify({ alg: "HS256" })), p = b64u(JSON.stringify({ sub, email: `${sub}@example.com`, exp: Math.floor(Date.now() / 1000) + 3600, xsolla_login_project_id: "30375188-893b-4b1a-ba1b-c8ba692fa5e3" })); return `${h}.${p}.${crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url")}`; };
+const game = (sub, method = "GET", body) => fetch("http://127.0.0.1:8131/api.php?r=profile", { method, headers: { Authorization: `Bearer ${jwt(sub)}`, "Content-Type": "application/json", Origin: "https://hucksoon.github.io" }, body }).then(r => r.json());
 const rows = () => { for (let i = 0; ; i++) { const d = new DatabaseSync(DB); try { return d.prepare("SELECT * FROM xsolla_events ORDER BY created_at, event_key").all(); } catch (e) { if (/no such table/.test(e.message)) return []; if (!/locked|busy/.test(e.message) || i >= 50) throw e; } finally { d.close(); } Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50); } };
 const userKey = (id) => crypto.createHmac("sha256", "k".repeat(40)).update("u:" + id).digest("hex");
 const USER = "a1b2c3d4-0000-4000-8000-0000000000aa", EMAIL = "buyer@example.com", IP = "203.0.113.77";
@@ -43,6 +48,12 @@ const paid = (orderId, txId, extra = {}) => ({
 try {
   // ---- 서명 ----
   check("GET → 404", (await hook(validation, { method: "GET" })).status === 404);
+  // ---- user_validation: 게임에 로그인한 적 있는 사용자만 ----
+  const rnd = { notification_type: "user_validation", settings: { project_id: 317991, merchant_id: 16851 }, user: { id: "test_xsolla_1792858782" } };
+  check("random user (Xsolla tester) → 400 INVALID_USER", (await hook(rnd)).code === "INVALID_USER");
+  check("real user before logging in to the game → 400 INVALID_USER", (await hook(validation)).code === "INVALID_USER");
+  const g = await game(USER);
+  check("game login (profile GET, no save yet) → user remembered", g.rev === 0 && g.data === null, JSON.stringify(g));
   const v = await hook(validation);
   check("user_validation, correct signature → 204", v.status === 204, v.text);
   check("wrong signature → 400 INVALID_SIGNATURE", (await hook(validation, { sig: sign(JSON.stringify(validation), "other-key") })).code === "INVALID_SIGNATURE");
@@ -60,6 +71,10 @@ try {
   check("broken JSON (signed) → 400 INVALID_PARAMETER", (await hook("{not json")).code === "INVALID_PARAMETER");
   check("no notification_type → 400", (await hook({ user: { id: USER } })).status === 400);
   check("user_validation writes nothing", rows().length === 0);
+  const SAVED = "b2c3d4e5-0000-4000-8000-0000000000bb";
+  await game(SAVED, "POST", JSON.stringify({ rev: 0, data: { v: 1, save: null, inv: { bag: [], equip: {}, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [] } }));
+  check("user with a saved game → 204", (await hook({ ...validation, user: { id: SAVED } })).status === 204);
+  check("logging in again does not add a second row", (await game(USER)).rev === 0 && (() => { const d = new DatabaseSync(DB); try { return d.prepare("SELECT COUNT(*) n FROM known_users").get().n === 1; } finally { d.close(); } })());
 
   // ---- order_paid (합쳐진 방식) ----
   const p1 = await hook(paid(5001, 9001));
@@ -100,5 +115,6 @@ try {
   check("admin.php webhooks lists recent rows", /웹훅 기록 \d+건 \(최근 3건\)/.test(out) && out.includes("refund") && out.includes("[sandbox]") && !out.includes(USER), out);
   check("admin.php webhooks shows SKUs and real/sandbox", execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), "webhooks", "50"], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString().includes("box_ancient×1, cash×500") && out.length > 0);
 } finally { php.kill(); php0.kill(); }
+check("400s logged with reason and type only", phpErr.includes("[webhook] 400 INVALID_USER type=user_validation") && phpErr.includes("[webhook] 400 INVALID_SIGNATURE") && !phpErr.includes(USER) && !phpErr.includes("test_xsolla_"), phpErr.slice(0, 300));
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);
