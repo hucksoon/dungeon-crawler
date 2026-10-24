@@ -1,0 +1,3 @@
+# 라이브러리 폴더는 웹에서 열 수 없게 (Apache)
+Require all denied
+Deny from all

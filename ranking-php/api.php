@@ -924,8 +924,36 @@ function lobby_ping(): array {
 
 // ---------------------------------------------------------------- 나라 (게임 언어 자동 설정)
 // 접속한 IP의 나라 코드(KR·JP·US …)만 돌려줌. IP는 저장하지도 기록하지도 않음
-// 찾는 순서: CDN 헤더(Cloudflare CF-IPCountry) → 웹 서버 GeoIP 모듈 환경변수 → PHP geoip 확장 → MaxMind DB(config geo_mmdb)
+// 찾는 순서: CDN 헤더(Cloudflare CF-IPCountry) → 웹 서버 GeoIP 모듈 환경변수 → PHP geoip 확장 → 나라 DB(.mmdb)
+//   나라 DB: config geo_mmdb, 없으면 cache_dir의 geo-country.mmdb (geo-update.sh가 DB-IP 무료 DB를 받아 둠)
+//   읽기는 vendor/maxmind-db (MaxMind DB Reader, Apache-2.0). 서버에 PHP maxminddb 확장이 있으면 그것
 // 아무것도 없으면 null (게임은 브라우저 언어로)
+function geo_mmdb_path(): string {
+    $cfg = config();
+    if (!empty($cfg['geo_mmdb'])) return (string)$cfg['geo_mmdb'];
+    return rtrim((string)($cfg['cache_dir'] ?? (__DIR__ . '/data')), '/') . '/geo-country.mmdb';
+}
+function geo_reader(string $path): ?object {
+    if (!is_readable($path)) return null;
+    if (!class_exists('MaxMind\\Db\\Reader')) {
+        $v = __DIR__ . '/vendor/maxmind-db/MaxMind/Db';
+        foreach (['Reader/InvalidDatabaseException', 'Reader/Util', 'Reader/Metadata', 'Reader/Decoder', 'Reader'] as $f) require_once "{$v}/{$f}.php";
+    }
+    return new MaxMind\Db\Reader($path);
+}
+// 나라 DB에서 IP의 나라 (country, 없으면 registered_country)
+function geo_lookup(string $ip, ?string $path = null): ?string {
+    try {
+        $r = geo_reader($path ?? geo_mmdb_path());
+        if (!$r) return null;
+        $rec = $r->get($ip);
+        $r->close();
+        $c = $rec['country']['iso_code'] ?? $rec['registered_country']['iso_code'] ?? null;
+        return is_string($c) && preg_match('/^[A-Z]{2}$/', strtoupper($c)) ? strtoupper($c) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
 function geo_country(): ?string {
     $ok = fn($c) => is_string($c) && preg_match('/^[A-Z]{2}$/', strtoupper($c)) && !in_array(strtoupper($c), ['XX', 'T1', 'A1', 'A2', 'EU', 'AP'], true);
     foreach (['HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'MM_COUNTRY_CODE', 'GEOIP2_COUNTRY_CODE', 'HTTP_X_COUNTRY_CODE'] as $k) {
@@ -937,16 +965,8 @@ function geo_country(): ?string {
         $c = @geoip_country_code_by_name($ip);
         if ($ok($c)) return strtoupper($c);
     }
-    $mmdb = config()['geo_mmdb'] ?? '';
-    if ($mmdb && is_readable($mmdb) && class_exists('MaxMind\\Db\\Reader')) {
-        try {
-            $r = new MaxMind\Db\Reader($mmdb);
-            $c = $r->get($ip)['country']['iso_code'] ?? null;
-            $r->close();
-            if ($ok($c)) return strtoupper($c);
-        } catch (Throwable $e) {}
-    }
-    return null;
+    $c = geo_lookup($ip);
+    return $ok($c) ? $c : null;
 }
 function get_geo(): array {
     header('Cache-Control: private, no-store');
