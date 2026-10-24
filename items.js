@@ -4,6 +4,11 @@
 (function (root) {
   "use strict";
 
+  // 다국어 (i18n.js가 있으면 그 언어, 없으면 한국어 원문). 언어별 이름 순서는 RLI18N.fmt
+  const I18N = () => (root && root.RLI18N) || (typeof globalThis !== "undefined" && globalThis.RLI18N) || null;
+  const tx = (key, ko, ...a) => { const L = I18N(); return L ? L.tx(key, ko, ...a) : (typeof ko === "function" ? ko(...a) : ko); };
+  const fmtOf = (name) => { const L = I18N(); return L ? L.fmt(name) : null; };
+
   // 생성 규칙이 바뀌면 올린다. 검증할 때는 아이템에 기록된 버전의 규칙으로 다시 계산해야 함
   // v1: 기본 능력치는 부위로 고정, 추가 능력치만 무작위
   // v2: 주 능력치(강화로 오름)도 등급별 개수만큼 무작위, 모든 능력치는 [최소~최대] 범위에서 최대치 20%
@@ -103,7 +108,7 @@
   const isShieldOnly = (item) => !!item && item.slot === "weapon" && !!WEAPONS[item.type]?.shieldOnly;
   // 아이템 종류 이름: 단검 / 보조 단검 / 방패 / 투구…
   function kindName(item) {
-    if (item.slot === "offhand") return item.type === "shield" ? OFFHAND.shieldName : `${OFFHAND.weaponPrefix} ${WEAPONS[item.type].name}`;
+    if (item.slot === "offhand") return item.type === "shield" ? OFFHAND.shieldName : tx("kind.offhand", (p, n) => `${p} ${n}`, OFFHAND.weaponPrefix, WEAPONS[item.type].name);
     if (isAccessory(item)) return ACCESSORY.names[item.slot];
     return item.type ? WEAPONS[item.type].name : ARMOR[item.slot].name;
   }
@@ -1031,7 +1036,7 @@
   // 받는 피해 감소는 모두 합쳐 최대 30% (에메랄드를 방어구 홈 14개에 다 넣으면 42%라서)
   const GEM_CAPS = { dmgReduce: 30 };
   const isGem = (g) => Array.isArray(g) && !!GEMS[g[0]] && Number.isInteger(g[1]) && g[1] >= 0 && g[1] < GEM_GRADES.length;
-  const gemName = (kind, grade) => grade === 0 ? `${GEMS[kind].name} 조각` : grade === 2 ? `완벽한 ${GEMS[kind].name}` : GEMS[kind].name;
+  const gemName = (kind, grade) => tx("gem.name", (n, g) => g === 0 ? `${n} 조각` : g === 2 ? `완벽한 ${n}` : n, GEMS[kind].name, grade);
   const gemPlace = (item) => (isWeaponLike(item) ? "weapon" : "armor");
   // 그 아이템에 넣으면 붙는 능력치 { stat: 값 }
   const gemEffect = (kind, grade, item) => Object.fromEntries(Object.entries(GEMS[kind][gemPlace(item)]).map(([k, v]) => [k, v[grade]]));
@@ -1102,7 +1107,7 @@
   // 룬마다 떨어질 확률 (합 1)
   const RUNE_ODDS = (() => { const w = RUNES.map((_, k) => RUNE_DROP.ratio ** k), sum = w.reduce((a, b) => a + b, 0); return w.map(x => x / sum); })();
   const isRune = (g) => Array.isArray(g) && g.length === 2 && g[0] === "rune" && Number.isInteger(g[1]) && g[1] >= 0 && g[1] < RUNES.length;
-  const runeName = (k) => `${RUNES[k].name} 룬`;
+  const runeName = (k) => tx("rune.name", (n) => `${n} 룬`, RUNES[k].name);   // 룬 이름(가~하)은 어느 언어든 한글 그대로
   // 홈에 넣은 것 (보석 또는 룬)의 이름과 효과
   const socketedName = (g) => (isRune(g) ? runeName(g[1]) : gemName(g[0], g[1]));
   const socketedEffect = (g, item) => (isRune(g) ? { ...RUNES[g[1]].fx } : gemEffect(g[0], g[1], item));
@@ -1179,19 +1184,19 @@
   // 특수 효과 설명 (special → 줄 목록)
   function runewordSpecialText(sp) {
     const F = RUNEWORD_FX, out = [];
-    if (sp.undying) out.push("불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번)");
-    if (sp.teleport) out.push(`텔레포트: 보이는 적이 없으면 한 번에 ${F.teleport.steps}칸 이동 (지나가는 칸의 아이템도 주움)`);
-    if (sp.chain) out.push("체인 라이트닝 사용 (세트 없이)");
-    if (sp.vuln) out.push(`${F.vuln.every}턴마다 ${F.vuln.radius}칸 안 몬스터의 속성 저항 −${sp.vuln}% (속성 피해·스킬이 더 들어감)`);
-    if (sp.splash) out.push(`광란 효과: 때린 적 주변 1칸의 적도 피해의 ${Math.round(SPLASH.mul * 100)}%`);
-    if (sp.shield) out.push(`${F.shield.every}턴마다 최대 HP ${sp.shield}%의 보호막 (쌓이지 않음)`);
-    if (sp.skillLs) out.push("세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈");
-    if (sp.lsCap) out.push(`흡혈 최대치 +${sp.lsCap}%p`);
-    if (sp.skillFast) out.push("세트 스킬을 1턴 더 자주");
-    if (sp.whirl) out.push(`회전 베기: ${F.whirl.every}턴마다 주변 8칸 적 모두에게 공격력의 ${sp.whirl}% (흡혈 됨)`);
-    if (sp.blast) out.push(`처치 폭발: 쓰러뜨린 몬스터가 터져 주변 적에게 그 몬스터 최대 HP의 ${sp.blast}% (흡혈 됨, 이어서 터짐)`);
-    if (sp.counter) out.push(`반격: 방패로 막으면 그 몬스터에게 공격력의 ${sp.counter}% (흡혈 됨)`);
-    if (sp.fireball) out.push(`약한 파이어볼 (${F.fireball.every}턴마다, 화염 세트 파이어볼의 ${Math.round(F.fireball.mul / FIREBALL.mul * 100)}% 피해)`);
+    if (sp.undying) out.push(tx("rw.undying", "불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번)"));
+    if (sp.teleport) out.push(tx("rw.teleport", (n) => `텔레포트: 보이는 적이 없으면 한 번에 ${n}칸 이동 (지나가는 칸의 아이템도 주움)`, F.teleport.steps));
+    if (sp.chain) out.push(tx("rw.chain", "체인 라이트닝 사용 (세트 없이)"));
+    if (sp.vuln) out.push(tx("rw.vuln", (e, r, v) => `${e}턴마다 ${r}칸 안 몬스터의 속성 저항 −${v}% (속성 피해·스킬이 더 들어감)`, F.vuln.every, F.vuln.radius, sp.vuln));
+    if (sp.splash) out.push(tx("rw.splash", (v) => `광란 효과: 때린 적 주변 1칸의 적도 피해의 ${v}%`, Math.round(SPLASH.mul * 100)));
+    if (sp.shield) out.push(tx("rw.shield", (e, v) => `${e}턴마다 최대 HP ${v}%의 보호막 (쌓이지 않음)`, F.shield.every, sp.shield));
+    if (sp.skillLs) out.push(tx("rw.skillLs", "세트 스킬(파이어볼·프로스트 노바·체인 라이트닝)에도 흡혈"));
+    if (sp.lsCap) out.push(tx("rw.lsCap", (v) => `흡혈 최대치 +${v}%p`, sp.lsCap));
+    if (sp.skillFast) out.push(tx("rw.skillFast", "세트 스킬을 1턴 더 자주"));
+    if (sp.whirl) out.push(tx("rw.whirl", (e, v) => `회전 베기: ${e}턴마다 주변 8칸 적 모두에게 공격력의 ${v}% (흡혈 됨)`, F.whirl.every, sp.whirl));
+    if (sp.blast) out.push(tx("rw.blast", (v) => `처치 폭발: 쓰러뜨린 몬스터가 터져 주변 적에게 그 몬스터 최대 HP의 ${v}% (흡혈 됨, 이어서 터짐)`, sp.blast));
+    if (sp.counter) out.push(tx("rw.counter", (v) => `반격: 방패로 막으면 그 몬스터에게 공격력의 ${v}% (흡혈 됨)`, sp.counter));
+    if (sp.fireball) out.push(tx("rw.fireball", (e, v) => `약한 파이어볼 (${e}턴마다, 화염 세트 파이어볼의 ${v}% 피해)`, F.fireball.every, Math.round(F.fireball.mul / FIREBALL.mul * 100)));
     return out;
   }
   // 완성된 룬워드 (커먼, 앞 홈부터 그 순서의 룬을 모두 넣음 — 남는 홈은 없어짐). 없으면 null
@@ -1225,11 +1230,18 @@
   // ---- 표시 ----
   // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 레어 바지 (속성 피해 줄이 없으면 속성 이름 없이)
   function itemName(item) {
+    const rw = runewordOf(item), U = uniqueOf(item);
+    // 다른 언어: 이름 조각을 넘겨서 그 언어의 순서로 (영어: +10 Ancient Legendary Hell Helm of Frost)
+    const f = fmtOf("itemName");
+    if (f) {
+      const zone = isHellItem(item) ? "hell" : isNightmareItem(item) ? "nm" : null;
+      return f({ ancient: !!item.ancient, enh: item.enh || 0, zone, el: zone ? itemElement(item) : null,
+        special: rw ? (rw.label || rw.name) : U ? (U.label || U.name) : null,
+        set: item.set ? SETS[item.set].pieces[item.slot] : null, rarity: RARITIES[item.rarity].name, kind: kindName(item) });
+    }
     // 룬워드: "+10 천하무적" (고대·강화만 앞에)
-    const rw = runewordOf(item);
     if (rw) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + rw.name;
     // 유니크: "+10 송곳니"
-    const U = uniqueOf(item);
     if (U) return (item.ancient ? "고대 " : "") + (item.enh ? `+${item.enh} ` : "") + U.name;
     const el = ELEMENT_LINES.names[itemElement(item)] || ELEMENT_LINES.none;
     const nm = isHellItem(item) ? `지옥의 ${el ? el + " " : ""}` : isNightmareItem(item) ? `악몽의 ${el ? el + " " : ""}` : "";
@@ -1239,7 +1251,7 @@
   }
 
   function formatStat(stat, value) {
-    if (stat === "socket") return `홈 ${value}개`;
+    if (stat === "socket") return tx("stat.socket", (n) => `홈 ${n}개`, value);
     const s = STATS[stat];
     return `${s.name} +${value}${s.pct ? "%" : ""}`;
   }

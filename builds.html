@@ -78,8 +78,12 @@
     턴이 같으면 오차(몇 턴) 안이라 순위가 바뀔 수 있어요. 폭풍전야는 맞는 몬스터 모두에게 걸려 있다고 봐서 실제보다 조금 좋게 나와요.
   </footer>
 </main>
+<script src="i18n.js"></script>
+<script src="i18n/en.js"></script>
+<script src="i18n/ja.js"></script>
 <script src="items.js"></script>
 <script src="monsters.js"></script>
+<script>RLI18N.apply(window.RLItems, window.RLMonsters); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script>
 (() => {

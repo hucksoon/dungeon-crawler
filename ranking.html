@@ -124,7 +124,11 @@
 </div>
 
 <script src="ranking-config.js"></script>
+<script src="i18n.js"></script>
+<script src="i18n/en.js"></script>
+<script src="i18n/ja.js"></script>
 <script src="monsters.js"></script>
+<script>RLI18N.apply(null, window.RLMonsters); document.documentElement.lang = RLI18N.lang;</script>
 <script>
 (() => {
   const API = String(window.RANKING_API || "").replace(/\/+$/, "");

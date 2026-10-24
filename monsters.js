@@ -4,6 +4,10 @@
 (function (root) {
   "use strict";
 
+  // 다국어 (i18n.js가 있으면 그 언어, 없으면 한국어 원문)
+  const I18N = () => (root && root.RLI18N) || (typeof globalThis !== "undefined" && globalThis.RLI18N) || null;
+  const tx = (key, ko, ...a) => { const L = I18N(); return L ? L.tx(key, ko, ...a) : (typeof ko === "function" ? ko(...a) : ko); };
+
   // from~until 층에서 나옴. 그 층에 나올 수 있는 종류 중 뒤(강한) 종류일수록 2배씩 자주 나옴
   const MONSTERS = [
     { id: "rat",        ch: "r", name: "쥐",          color: "#a58b6f", hp: 3,  atk: 1,  def: 0, xp: 2,  from: 1,  until: 5 },
@@ -159,7 +163,7 @@
     };
     if (kind === "elite") {
       Object.assign(m, {
-        name: `정예 ${t.name}`,
+        name: tx("mon.elite", (n) => `정예 ${n}`, t.name),
         hp: m.hp * ELITE.hpMul,
         atk: Math.ceil(m.atk * ELITE.atkMul),
         def: m.def + ELITE.defAdd,
@@ -251,7 +255,10 @@
   // 그 던전에서의 내 속성 저항: min(최대치, 장비 저항 합 − 던전 감소)
   const playerRes = (raw, cap, zone) => Math.min(cap, raw - (ELEMENTS.zonePenalty[zone] || 0));
   const pickElement = (rand) => ELEMENTS.list[Math.floor(rand() * ELEMENTS.list.length)];
-  const withElement = (m, el) => (el ? { ...m, name: `악몽의 ${ELEMENTS.prefix[el]} ${m.name.replace(/^악몽의 /, "")}`, el } : m);
+  // 나이트메어·헬 몬스터 이름: 악몽의 (불꽃) 대악마 / 지옥의 (서리) 고블린 왕. base = 정예까지 붙은 원래 이름
+  const zoneName = (zone, el, base) => tx("mon.zone", (z, p, b) => `${z} ${p ? p + " " : ""}${b}`,
+    zone === "hell" ? tx("mon.hell", "지옥의") : tx("mon.nm", "악몽의"), el ? ELEMENTS.prefix[el] : "", base);
+  const withElement = (m, el) => ({ ...m, name: zoneName(m.hell ? "hell" : "nm", el, m.base), ...(el ? { el } : {}) });
 
   const nmMonsterCount = (n) => Math.min(NIGHTMARE.monsters.max, Math.floor(NIGHTMARE.monsters.start + NIGHTMARE.monsters.perFloor * (Math.max(1, n) - 1)));
   const nmScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + (NIGHTMARE.perFloor2 || 0) * k * k; };
@@ -268,12 +275,12 @@
   function makeNightmare(t, kind, n, el = null) {
     const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(m.hp * NIGHTMARE.hp * k);
-    return withElement({ ...m, name: `악몽의 ${m.name}`, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
+    return withElement({ ...m, base: m.name, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
   }
   function makeNightmareBoss(n, el = null) {
     const b = makeBoss(NIGHTMARE.base), k = nmScale(n);
     const hp = Math.round(b.hp * NIGHTMARE.bossHp * k);
-    return withElement({ ...b, name: `악몽의 ${b.name}`, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
+    return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
   }
 
   // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 마지막 50층 던전 (최종 목적지) ----
@@ -308,7 +315,7 @@
     const add = boss ? HELL.res.boss : 0;
     return Object.fromEntries(ELEMENTS.list.map(k => [k, (k === el ? HELL.res.own : other) + add]));
   }
-  const toHell = (m, n, el, boss) => ({ ...m, name: m.name.replace(/^악몽의 /, "지옥의 "), nm: 0, hell: 1, res: hellRes(n, el, boss) });
+  const toHell = (m, n, el, boss) => ({ ...m, name: zoneName("hell", m.el || null, m.base), nm: 0, hell: 1, res: hellRes(n, el, boss) });
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
     const m = makeNightmare(t, kind, HELL.startNm, el), e = n <= HELL.entry.until ? HELL.entry.mul : 1;
     const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
