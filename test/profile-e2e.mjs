@@ -185,7 +185,10 @@ try {
   // 새로고침 때 처음 보는 몬스터가 있으면 도감이 바뀌어 저장되므로, 미리 모두 본 것으로
   const MON = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
   const allSeen = Object.fromEntries([...MON.MONSTERS.map(m => m.id), ...MON.BOSSES.map(b => b.id), MON.GOLDEN.id].map(k => [k, true]));
-  const F = await open({ rl_device_id: "f-dev", rl_auth: authOf(SUB3, "mv@example.com"), rl_save: save(300, 3, "move-run"), [`rl_inv:u:${SUB3}`]: inv([]), [`rl_dex:u:${SUB3}`]: JSON.stringify({ seen: allSeen, kills: {} }) });
+  // 포션 쿨타임(pc)이 남아 있으면 턴마다 줄어서 저장 내용이 반드시 바뀜. 없으면 벽에 막히거나 몬스터가 없을 때
+  // 저장 내용이 그대로라 "올릴 것 없음"이 되어 아래 확인이 무작위로 어긋남 (던전 배치는 매번 다름)
+  const moveSave = JSON.stringify({ ...JSON.parse(save(300, 3, "move-run")), run: { ...JSON.parse(save(300, 3, "move-run")).run, pc: 10 } });
+  const F = await open({ rl_device_id: "f-dev", rl_auth: authOf(SUB3, "mv@example.com"), rl_save: moveSave, [`rl_inv:u:${SUB3}`]: inv([]), [`rl_dex:u:${SUB3}`]: JSON.stringify({ seen: allSeen, kills: {} }) });
   const posts = () => F.state.profileCalls.filter(m => m === "POST").length;
   const fRow = () => db().prepare("SELECT rev, data FROM profiles").all().map(r => ({ rev: r.rev, data: JSON.parse(r.data) })).find(r => r.data.save?.run?.rid === "move-run");
   // 서버에 저장된 것뿐 아니라 게임이 응답까지 받아야(rev 1, 저장 완료) 새로고침해도 다시 올리지 않음

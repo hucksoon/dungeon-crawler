@@ -3,7 +3,8 @@
 //   예: https://apacimtest.com/ranking/webhook.php
 //
 // 1단계: 기록만 함. 아이템·캐시는 지금처럼 상점 화면이 Xsolla 인벤토리에서 받아 감 (여기서 지급하지 않음)
-//   user_validation            → 204 (Xsolla Login 사용자 ID가 있으면 게임 사용자)
+//   user_validation            → 게임에 로그인한 적 있는 사용자면 204, 아니면 400 INVALID_USER
+//                                 (계정 저장본이 있거나 known_users에 있음. 상점 로그인은 게임을 거치므로 사기 전에 기록됨)
 //   order_paid / order_canceled → 주문 번호로 한 번만 기록 (같은 웹훅이 다시 와도 204, 두 번 기록하지 않음)
 //   payment / refund           → (예전 방식 프로젝트) 거래 번호로 한 번만 기록
 //   그 밖의 종류                → 204 (기다리는 다음 웹훅이 막히지 않게)
@@ -11,6 +12,7 @@
 // 서명: Authorization: Signature <sha1(받은 본문 그대로 + 비밀 키)>. 비밀 키는 config.php의 webhook_secret
 //   (Publisher Account → 프로젝트 → 웹훅의 비밀 키). 틀리면 400 INVALID_SIGNATURE
 // 응답: 2xx 처리함 / 400 다시 보내지 않음(서명·형식 오류) / 500 잠시 뒤 다시 보냄(DB 오류 등)
+//   400·500은 원인 코드와 웹훅 종류만 Apache 오류 로그에 남김 ([webhook] …)
 // 개인정보: 이메일·IP·사용자 ID 원본은 저장하지 않음. 사용자는 게임과 같은 HMAC 키(u:<사용자 ID>)로만,
 //   주문은 SKU·수량·금액·sandbox 여부만. 확인은 서버에서 admin.php webhooks
 
@@ -39,10 +41,17 @@ function webhook_tables(PDO $pdo): void {
     )');
 }
 
-function webhook_fail(int $status, string $code): void {
+function webhook_fail(int $status, string $code, string $type = '-'): void {
+    error_log("[webhook] {$status} {$code} type={$type}");
     http_response_code($status);
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(['error' => ['code' => $code, 'message' => $code]]);
+}
+
+// 게임에 로그인한 적 있는 Xsolla Login 사용자인지 (게임과 같은 HMAC 키로 찾음)
+function webhook_user_known(string $uid): bool {
+    $key = hmac_hex('u:' . $uid);
+    return (bool)q_val('SELECT 1 FROM profiles WHERE pkey = ?', [$key]) || (bool)q_val('SELECT 1 FROM known_users WHERE ukey = ?', [$key]);
 }
 
 function webhook_signature_ok(string $raw, string $secret): bool {
@@ -109,27 +118,28 @@ if (defined('WEBHOOK_NO_ROUTE')) return;
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(404); exit; }
     $secret = (string)(config()['webhook_secret'] ?? '');
-    if ($secret === '') { error_log('[webhook] config.php에 webhook_secret이 없음'); webhook_fail(500, 'NOT_CONFIGURED'); exit; }
+    if ($secret === '') { webhook_fail(500, 'NOT_CONFIGURED'); exit; }  // config.php에 webhook_secret이 없음
     $raw = (string)file_get_contents('php://input', false, null, 0, WEBHOOK_MAX_BYTES + 1);
     if (strlen($raw) > WEBHOOK_MAX_BYTES) { webhook_fail(400, 'INVALID_PARAMETER'); exit; }
     if (!webhook_signature_ok($raw, $secret)) { webhook_fail(400, 'INVALID_SIGNATURE'); exit; }
     $e = json_decode($raw, true);
     $type = is_array($e) ? ($e['notification_type'] ?? null) : null;
     if (!is_string($type)) { webhook_fail(400, 'INVALID_PARAMETER'); exit; }
+    $type = mb_substr(preg_replace('/[^a-z_]/', '', $type), 0, 32);
     // 다른 프로젝트의 웹훅은 받지 않음 (프로젝트 번호가 있을 때)
     $project = $e['settings']['project_id'] ?? $e['billing']['settings']['project_id'] ?? null;
     $mine = (int)(config()['xsolla_project_id'] ?? DEFAULT_STORE_PROJECT);
-    if ($project !== null && (int)$project !== $mine) { webhook_fail(400, 'INVALID_PARAMETER'); exit; }
+    if ($project !== null && (int)$project !== $mine) { webhook_fail(400, 'INVALID_PARAMETER', $type); exit; }
 
     if ($type === 'user_validation') {
         $uid = $e['user']['id'] ?? null;
-        if (!is_scalar($uid) || (string)$uid === '' || strlen((string)$uid) > 128) { webhook_fail(400, 'INVALID_USER'); exit; }
+        if (!is_scalar($uid) || (string)$uid === '' || strlen((string)$uid) > 128 || !webhook_user_known((string)$uid)) { webhook_fail(400, 'INVALID_USER', $type); exit; }
         http_response_code(204);
         exit;
     }
     if (in_array($type, WEBHOOK_TYPES, true)) {
         $row = webhook_event($type, $e);
-        if ($row === null) { webhook_fail(400, 'INVALID_PARAMETER'); exit; }
+        if ($row === null) { webhook_fail(400, 'INVALID_PARAMETER', $type); exit; }
         webhook_tables(db());
         webhook_record($row);
     }

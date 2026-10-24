@@ -18,6 +18,18 @@ function profile_tables(PDO $pdo): void {
         data        TEXT NOT NULL,
         updated_at  BIGINT NOT NULL
     )');
+    // 게임에 로그인한 적 있는 사용자 (HMAC 키만). 아직 저장본이 없어도 웹훅 user_validation이 게임 사용자로 인정하게
+    $pdo->exec('CREATE TABLE IF NOT EXISTS known_users (
+        ukey        VARCHAR(64) PRIMARY KEY,
+        seen_at     BIGINT NOT NULL
+    )');
+}
+
+// 로그인하면 게임이 맨 먼저 부르는 profile_get에서 기록 (상점 로그인도 게임을 거침)
+function remember_user(string $key): void {
+    if (q_val('SELECT 1 FROM known_users WHERE ukey = ?', [$key])) return;
+    try { db()->prepare('INSERT INTO known_users (ukey, seen_at) VALUES (?, ?)')->execute([$key, now_ms()]); }
+    catch (PDOException $e) { if ((string)$e->getCode() !== '23000') throw $e; }  // 동시에 들어온 요청이 먼저 넣음
 }
 
 // 저장 내용이 게임이 쓰는 모양인지 (크기·개수만 확인)
@@ -51,6 +63,7 @@ function profile_valid($d): bool {
 function profile_get(): array {
     $who = require_user();
     $r = q_row('SELECT rev, data, updated_at FROM profiles WHERE pkey = ?', [$who['key']]);
+    if (!$r) remember_user($who['key']);
     return $r ? ['rev' => (int)$r['rev'], 'data' => json_decode($r['data']), 'updatedAt' => (int)$r['updated_at']]
               : ['rev' => 0, 'data' => null, 'updatedAt' => null];
 }
