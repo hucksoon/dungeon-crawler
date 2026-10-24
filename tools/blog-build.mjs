@@ -18,6 +18,7 @@ const POSTS = path.join(ROOT, "blog/posts"), OUT = path.join(ROOT, "blog"), IMAG
 const SITE = "https://game.apacimtest.com";
 const BLOG_URL = `${SITE}/blog/`;
 const BLOG_TITLE = "던전 크롤러 개발 블로그";
+const BANNER = `${SITE}/img/banner.png`;   // 게임 배너 (게임 로고 img/logo.png는 이 배너의 가운데)
 const BLOG_DESC = "Claude Code와 같이 라이브 코딩으로 만드는 브라우저 로그라이크 게임의 개발 이야기";
 const CHECK = process.argv.includes("--check");
 
@@ -136,6 +137,7 @@ const CSS = `
   figure { margin: 8px 0 24px; text-align: center; }
   figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
   figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
 `;
@@ -152,7 +154,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-${image ? `<meta property="og:image" content="${BLOG_URL}images/${image}">\n` : ""}
+${image ? `<meta property="og:image" content="${image}">\n` : ""}
 <style>${CSS}${extraHead}</style>
 </head>
 <body>
@@ -167,7 +169,7 @@ const tagList = (tags) => tags.length ? `<ul class="tags">${tags.map(t => `<li>$
 
 function postPage(p, prev, next) {
   return page({
-    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`, image: images(p.body)[0]?.file,
+    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`, image: images(p.body)[0] ? `${BLOG_URL}images/${images(p.body)[0].file}` : BANNER,
     body: `<nav class="nav"><a href="./">← 글 목록</a><a href="${SITE}/">게임 하기</a></nav>
 <article>
 <h1>${esc(p.title)}</h1>
@@ -180,8 +182,9 @@ ${markdown(p.body, NO_STYLE)}
 
 function indexPage(posts) {
   return page({
-    title: BLOG_TITLE, desc: BLOG_DESC, url: BLOG_URL,
+    title: BLOG_TITLE, desc: BLOG_DESC, url: BLOG_URL, image: BANNER,
     body: `<nav class="nav"><a href="${SITE}/">← 게임 하기</a><a href="feed.xml">RSS</a></nav>
+<a href="${SITE}/"><img class="banner" src="../img/banner.png" alt="던전 크롤러 (Dungeon Crawler)" width="773" height="253"></a>
 <h1>${esc(BLOG_TITLE)}</h1>
 <p class="meta">${esc(BLOG_DESC)}. 글은 날짜별 개발 일지를 바탕으로 써요.</p>
 ${posts.map(p => `<a class="post" href="${p.slug}.html"><b>${esc(p.title)}</b><p class="meta" style="margin:2px 0 0">${dateText(p.date)}</p><p>${esc(p.summary)}</p>${tagList(p.tags)}</a>`).join("\n")}`,
