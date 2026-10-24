@@ -45,7 +45,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
     if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: `window.RANKING_API = ${JSON.stringify(api ? API : "")};` });
     const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
-    r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : f.endsWith(".css") ? "text/css" : "text/html", body: fs.readFileSync(p) }); });
+    r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : f.endsWith(".css") ? "text/css" : f.endsWith(".webp") ? "image/webp" : f.endsWith(".png") ? "image/png" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://api.test/**", r => { const u = new URL(r.request().url()), route = u.searchParams.get("r");
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
     if (route === "ranking") return json(r, { type: u.searchParams.get("type") || "stage", season: "v4", seasonName: "v4 베타", current: true, total: 8, updatedAt: Date.now(), rows: rankingRows() });

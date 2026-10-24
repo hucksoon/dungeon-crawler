@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>던전 크롤러 — Roguelike</title>
+<meta name="description" content="브라우저에서 바로 하는 턴제 로그라이크. 던전을 내려가며 장비를 모으고 랭킹에 도전해요.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="던전 크롤러 — Dungeon Crawler">
+<meta property="og:description" content="브라우저에서 바로 하는 턴제 로그라이크">
+<meta property="og:url" content="https://game.apacimtest.com/">
+<meta property="og:image" content="https://game.apacimtest.com/img/banner.png">
 <style>
   :root {
     --bg: #0d0e14;
@@ -35,6 +44,11 @@
     color: var(--accent);
     text-shadow: 0 0 8px rgba(255, 207, 92, 0.3);
   }
+  /* 게임 로고 (img/logo.webp, 배경 투명). 글자 제목은 화면 읽기·번역용으로만 남김 */
+  h1.logo { margin: 0; line-height: 0; }
+  h1.logo img { height: 150px; width: auto; display: block; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
+  @media (max-width: 560px) { h1.logo img { height: 112px; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #stats {
     display: flex;
     gap: 18px;
@@ -475,7 +489,7 @@
 </head>
 <body class="in-lobby">
 <div id="app">
-  <h1 data-t>⚔ 던전 크롤러 ⚔</h1>
+  <h1 class="logo"><img src="img/logo.webp" alt="" width="780" height="408"><span class="sr-only" data-t>⚔ 던전 크롤러 ⚔</span></h1>
   <div id="account">
     <span id="account-status"></span>
     <button id="account-btn" type="button"></button>

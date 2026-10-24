@@ -59,6 +59,7 @@ try {
     for (const im of imgs) if (!im.ok || !im.cap) broken.push(`${slug}: ${im.src}`);
   }
   check("every post has at least one image, all load and have captions", broken.length === 0, broken.join(", "));
+  check("blog home shows the game banner and shares it (og:image)", fs.readFileSync(path.join(REPO, "blog/index.html"), "utf8").includes('class="banner" src="../img/banner.png"') && fs.readFileSync(path.join(REPO, "blog/index.html"), "utf8").includes('property="og:image" content="https://game.apacimtest.com/img/banner.png"'));
   check("post pages share their first image (og:image)", fs.readFileSync(path.join(REPO, `blog/${posts.at(-1)}.html`), "utf8").includes('property="og:image" content="https://game.apacimtest.com/blog/images/'));
   const rss = fs.readFileSync(path.join(REPO, "blog/feed.xml"), "utf8");
   check("RSS lists every post with links", posts.every(s => rss.includes(`https://game.apacimtest.com/blog/${s}.html`)) && rss.startsWith("<?xml"));
