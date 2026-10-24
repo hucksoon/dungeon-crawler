@@ -70,9 +70,21 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 1. CDN 헤더 `CF-IPCountry` (Cloudflare를 거칠 때)
 2. 웹 서버 GeoIP 모듈 환경변수 (`GEOIP_COUNTRY_CODE` · `MM_COUNTRY_CODE` · `GEOIP2_COUNTRY_CODE`)
 3. PHP `geoip` 확장 (`geoip_country_code_by_name`)
-4. MaxMind GeoLite2-Country `.mmdb` (`config.php`의 `geo_mmdb` 경로 + `maxmind-db/reader`)
+4. **나라 DB** (`.mmdb`): `config.php`의 `geo_mmdb`, 비워 두면 `cache_dir`의 `geo-country.mmdb`. 읽기 코드는 `vendor/maxmind-db` (MaxMind DB Reader v1.13.1, Apache-2.0)라 서버에 따로 설치할 것 없음
 
-아무것도 없으면 `null`이고 게임은 브라우저 언어를 써요. 서버에서 무엇이 되는지는 브라우저로 `api.php?r=geo`를 열어 보면 돼요.
+아무것도 없으면 `null`이고 게임은 브라우저 언어를 써요. IP는 저장하지 않아요.
+
+### 나라 DB 받기 (DB-IP IP to Country Lite, 무료 · CC BY 4.0)
+
+```sh
+cd /var/www/html/ranking
+sudo -u www-data sh geo-update.sh        # 이번 달(없으면 지난달) DB를 받아 확인(8.8.8.8 → US)한 뒤 바꿔 넣음
+sudo -u www-data php admin.php geo 8.8.8.8   # 확인: DB 종류·만든 날짜·나라
+```
+
+매달 새 DB가 나와요. cron (매달 3일 04:17): `17 4 3 * * cd /var/www/html/ranking && sh geo-update.sh >/dev/null` (www-data의 crontab에)
+
+출처 표기("IP Geolocation by DB-IP")는 `privacy.html`에 있어요.
 
 ## 로비 (지금 접속 중인 사람)
 

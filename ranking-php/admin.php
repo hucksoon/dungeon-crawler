@@ -12,6 +12,9 @@
 //   sudo -u www-data php admin.php devices remove <번호>
 //     list에 나온 번호의 기기를 지움 (기기를 바꿀 때)
 //
+//   sudo -u www-data php admin.php geo [IP] [DB 파일]
+//     게임 언어 자동 설정용 나라 DB 확인: 파일 위치·종류·만든 날짜와 그 IP(기본 8.8.8.8)의 나라. geo-update.sh가 새 DB를 쓰기 전에도 씀
+//
 //   sudo -u www-data php admin.php remove <공개ID> [시즌]
 //     그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로). 공개 ID는 list나 랭킹 화면 장비 보기 주소에서 확인
 //     예전 장비를 끼고 올라간 기록처럼 규칙에 맞지 않는 기록을 정리할 때 씀. 그 사람이 규칙대로 다시 하면 다시 올라감
@@ -26,6 +29,19 @@ require __DIR__ . '/api.php';
 function fail(string $msg): void { fwrite(STDERR, $msg . "\n"); exit(1); }
 
 $cmd = $argv[1] ?? '';
+
+if ($cmd === 'geo') {
+    $ip = (string)($argv[2] ?? '8.8.8.8');
+    $path = (string)($argv[3] ?? geo_mmdb_path());
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) fail('사용법: php admin.php geo [IP] [DB 파일]');
+    if (!is_readable($path)) fail("나라 DB가 없어요: {$path}  (sh geo-update.sh로 받기)");
+    try { $r = geo_reader($path); $m = $r->metadata(); $r->close(); }
+    catch (Throwable $e) { fail('나라 DB를 읽지 못했어요: ' . $e->getMessage()); }
+    printf("DB %s (%.1f MB)\n종류 %s · 만든 날 %s\n", $path, filesize($path) / 1048576, $m->databaseType, date('Y-m-d', (int)$m->buildEpoch));
+    $c = geo_lookup($ip, $path);
+    echo "{$ip} → " . ($c ?? '(모름)') . "\n";
+    exit($c === null ? 2 : 0);
+}
 
 if ($cmd === 'devices') {
     $sub = $argv[2] ?? 'list';
