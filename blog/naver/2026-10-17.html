@@ -61,56 +61,135 @@
 <p id="status" aria-live="polite"></p>
 <p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/lobby.png" download="2026-10-17-1-lobby.png">1. 로비: 거래소·우편함·시간 상점·골드 던전·나이트메어·대장간, 맨 위엔 헬 던전 (이 로비 모습은 지금 기준이에요)</a></p>
 <div id="paper">
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">지금까지 중 가장 긴 하루였어요. 새벽에 PR 여섯 개, 오후부터 밤까지 열네 개를 더 머지했어요. 혼자 하던 던전이 <strong>사람들이 모이는 로비</strong>와 <strong>거래소</strong>가 있는 게임이 됐고, 첫 상위 랭커와 함께 게임의 규칙을 크게 다듬었어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">던전 앞 광장, 로비</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>접속하면 바로 던전이 아니라 <strong>넓은 광장(로비)</strong> 에서 시작해요. 가운데 <strong>던전 입구</strong>로 들어가면 모험이 시작돼요</li><li>같이 접속한 사람들이 <strong>@와 이름</strong>으로 보이고, 움직이면 다른 사람 화면에서도 따라 움직여요</li><li>화면 아래 <strong>&quot;같이 접속한 사람들&quot;</strong> 목록에서 누가 로비에 있는지, 몇 층을 탐험 중인지 보여요</li><li>이름은 랭킹과 같은 가린 이름이에요. 개인정보 원본은 저장하지 않아요</li><li>층 랭킹 <strong>1~3위</strong>는 이름 왼쪽에 <strong>금·은·동 왕관</strong>이 붙어요</li></ul>
-<figure style="margin:0 0 20px;text-align:center;"><img src="https://game.apacimtest.com/blog/images/lobby.png" alt="로비: 거래소·우편함·시간 상점·골드 던전·나이트메어·대장간, 맨 위엔 헬 던전 (이 로비 모습은 지금 기준이에요)" loading="lazy" style="max-width:100%;height:auto;"><figcaption style="font-size:14px;color:#777;margin-top:6px;">로비: 거래소·우편함·시간 상점·골드 던전·나이트메어·대장간, 맨 위엔 헬 던전 (이 로비 모습은 지금 기준이에요)</figcaption></figure>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">거래소와 우편함</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">이 게임의 핵심은 <strong>아이템 파밍과 사용자끼리의 거래</strong>예요. 그래서 로비에 거래소를 열었어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>가방의 아이템을 <strong>골드나 캐시 가격</strong>으로 올리고, 다른 사람이 사요</li><li>모든 거래에 <strong>수수료 캐시 1</strong>. 사는 사람이 가격에 더해 내요</li><li><strong>레전더리·세트</strong>는 캐시 가격이 1 이상이어야 해요</li><li>캐시는 서버가 Xsolla를 통해 바로 차감하고 지급해요</li><li><strong>우편함</strong>으로 판매 대금, 산 아이템, 내린 아이템, <strong>24시간 동안 안 팔린 아이템</strong>이 와요</li><li><strong>복사 방지</strong>: 서버가 아이템마다 주인을 기록해서, 판 아이템의 복사본은 다시 올릴 수 없고 랭킹에서도 인정하지 않아요</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">거래소와 우편함은 버튼 대신 <strong>로비에서 걸어가서</strong> 열어요. 우편함은 거래소 옆 <strong>작은 빨간 상자</strong>인데, 우편이 오면 깃발이 서요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">재시작 대신 포탈</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>포탈(P)</strong>: 죽지 않았으면 골드·레벨·장비를 그대로 들고 로비로 돌아와요</li><li>던전 입구에는 <strong>문이 두 개</strong> 있어요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>왼쪽: <strong>1층부터</strong> (같은 캐릭터, 새 지도)</li><li>오른쪽: <strong>포탈을 탄 층</strong>으로, 떠난 그대로</li></ul></li><li>쓰러지면 골드와 레벨은 처음으로, <strong>장비는 그대로</strong> 로비에서 다시 시작해요</li><li>상점은 보스 층이 아니라 <strong>바로 전 층(4, 9, 14…층)</strong> 에 열어요. 보스 앞에서 장비를 갖추라는 뜻이에요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">돈이 오가는 곳은 더 조심스럽게</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">거래소를 열자마자 문제가 하나 보였어요. 서버가 Xsolla 응답을 기다리는 사이 다른 요청이 들어오면, 캐시는 빠졌는데 아이템이 안 오는 일이 생길 수 있었어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>캐시를 지급·차감한 순간을 <strong>먼저 기록</strong>해서, 중간에 멈춰도 이어서 마무리되게 했어요 (두 번 결제하지 않음)</li><li>테스트가 요청을 하나씩만 보내서 이 문제를 못 잡았어요. 실제처럼 <strong>여러 요청을 동시에 보내는 테스트</strong>를 추가했어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">광고와 하루 입장</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">하루 100명 기준으로 광고 수익을 계산해 보니 한 달 약 $5~$180 (보통 $27)이었어요. 캐시 부활 한 번이 광고 백 번 정도와 같아서, <strong>캐시와 광고를 같이</strong> 두기로 했어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>부활 가격</strong>을 50캐시에서 <strong>10캐시($1)</strong> 로 내렸어요</li><li><strong>하루 입장</strong>: 1층 문으로 새로 시작할 때만 세서 <strong>하루 5회 무료</strong>, 그 뒤엔 광고를 보고 입장</li><li><strong>광고로 대신하기</strong>: 부활 하루 1회(계정 없이도), 거래 수수료 면제 하루 3회</li><li>지금은 테스트 광고예요. 게임 소개 페이지와 개인정보처리방침을 만들고 구글 광고 심사를 기다리고 있어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">가방을 서버에 저장하기</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">로그인한 사람의 가방, 장착 장비, 강화석, 도감, 진행 중인 판을 서버에 저장해요. 같은 계정이면 다른 기기에서도 이어서 해요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">처음엔 바뀔 때마다 2초 뒤에 올렸는데, 던전에선 턴마다 HP가 바뀌어서 <strong>1시간에 1,400번쯤</strong> 보내게 됐어요. 그래서 이렇게 바꿨어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>아이템·골드 거래·층 이동 같은 <strong>중요한 변경은 2초 안에</strong></li><li>이동·전투는 <strong>1분에 한 번</strong>, 탭을 닫거나 숨길 때는 바로</li><li>결과: 요청이 <strong>약 95% 줄었어요</strong> (1시간 약 60번)</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">두 기기에서 동시에 하면 <strong>먼저 저장한 쪽이 기준</strong>이라, 서로의 저장을 지우거나 아이템이 복사되지 않아요. 게스트는 그 기기에만 저장돼요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">새 집으로 이사</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">게임을 <strong>전용 저장소</strong>로 옮기고, 게임만의 새 주소 <a href="https://game.apacimtest.com/">game.apacimtest.com</a>을 열었어요. 예전 주소는 안내 페이지가 되어 가방과 진행 상황을 새 주소로 넘겨 줘요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">한 랭커의 장비가 새 주소에서 안 보이는 일도 있었어요. 서버 저장이 생기기 전에 모은 장비가 예전 주소의 브라우저에만 있었거든요. 계정으로 하던 가방·도감·상자 보관함도 넘겨서, 로그인하면 서버 저장본 위에 합쳐지게 했어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">120층 랭커의 피드백</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;"><strong>120층을 넘긴 첫 랭커</strong>의 말에서 빈틈이 한꺼번에 보였어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>강화석</strong>: 아이템 레벨이 높을수록 더 받아요 (레벨당 +5%). 120레벨 레전더리는 16개 → <strong>111개</strong></li><li><strong>세트는 5개로</strong>: 시험의 세트 효과가 2·4·5개에서 켜지고, 무기는 자유롭게</li><li><strong>전부 판매</strong>: 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요</li><li>장착·강화·판매 버튼이 아이템 이름 바로 아래로</li><li>깊은 보스 층을 만들다 멈추던 버그 수정</li></ul>
-<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">몬스터 40종과 황금 고블린 정예·왕</h3>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>깊은 층 몬스터 <strong>20종을 더</strong> 만들어 모두 <strong>40종</strong>이에요. 그림자 드래곤, 대악마, 타이탄, 공허의 군주, 고룡까지</li><li><strong>황금 고블린 정예</strong>(10층부터 30%)와 <strong>왕</strong>(30층부터 12%): 맞으면 연막을 터뜨려 순간이동해요. 대신 장비 3·4개, 골드 2·4배!</li></ul>
-<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">득템은 무지개색</h3>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>여러 개가 떨어지면 가까운 빈 바닥으로 한 칸씩 펼쳐져요</li><li><strong>레전더리·세트</strong>는 바닥에서 <strong>무지개색으로 빛나요</strong>. 로그·인벤토리·거래소 이름도요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">보조 손과 패링</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>7번째 부위 <strong>보조 손</strong>: 절반은 <strong>방패</strong>, 절반은 <strong>보조무기</strong><ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>보조무기를 끼면 <strong>한 턴에 2번 공격</strong> (왼손은 60%)</li><li>방패는 확률로 <strong>패링</strong>(피해 0): 커먼~레어 9~11%, 에픽 16~18%, 레전더리·세트 23~25%</li></ul></li><li><strong>광란의 세트</strong>: 때린 적 주변 1칸의 적도 같은 피해</li><li><strong>견고의 세트</strong>: 패링 +15% (최대 40%)</li><li><strong>고대</strong>는 이제 레전더리·세트만 될 수 있어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">아이템 규칙 v4</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">치명타를 따져 보니 깊은 층 레전더리 하나에 치명타가 40% 넘게 붙었어요. 그래서 규칙을 바꿨어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>부위마다 붙는 주 능력치가 달라요</strong>. 예를 들어 치명타 확률은 가슴·팔에만, 경험치는 투구, 골드는 장화</li><li>치명타·흡혈 같은 % 능력치는 <strong>레벨과 상관없이 등급별 고정 범위</strong>예요. 7부위를 모두 레전더리 최대치로 맞춰도 치명타 62%라 상한 밑이에요</li><li>예전 아이템은 그대로 두고, 효과를 계산할 때만 새 기준 최대치까지 적용해요</li><li>게임과 서버가 아이템을 똑같이 다시 만드는지 <strong>3만 개로 확인</strong>했어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">느낌을 숫자로: 시뮬레이션</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">&quot;좋은 아이템 하나 얻으면 다시 얻을 필요가 없다&quot;는 느낌이 들었어요. 그래서 1층부터 150층까지 실제 드롭 규칙으로 줍고, 팔고, 강화하는 플레이어를 시뮬레이션했어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>공격력·방어력은 레벨에 정비례라 20층 더 내려가도 +15% 정도인데, <strong>+10 강화는 +100%</strong> 예요. 60층 레전더리 +10을 새 에픽이 따라잡으려면 139층을 더 내려가야 했어요</li><li>60층부터는 일반 몬스터를 모두 한 방에 잡아서 더 좋은 장비가 필요 없었어요</li><li>반대로 <strong>보스는 층 수의 제곱으로 강해져요</strong>. 보통 파밍 장비로 이길 수 있는 깊이는 약 120층이었어요</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">이 결과가 최대 층을 정하는 근거가 됐어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">150층 완료와 랭킹 시즌</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>일반 던전은 <strong>150층까지</strong>. 150층 보스를 쓰러뜨리면 <strong>일반 던전 완료</strong>예요</li><li>완료하면 로비로 돌아오고, 포탈로 150층의 새 구역에 들어가 계속 파밍해요</li><li>서버에 올려 보니 1위는 이미 172층이었어요. <strong>지금 랭커의 기록은 낮추지 않기로</strong> 했어요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>지금까지의 랭킹은 <strong>&quot;v3 베타&quot; 최종 기록</strong>으로 보관 (26명, 1위 172층)</li><li><strong>&quot;v4 베타&quot; 랭킹</strong>을 새로 시작</li></ul></li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">고대 아이템 3%</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">모든 능력치가 최대치인 고대는 v4에서 약 2만 개 중 1개라 사실상 못 보는 아이템이었어요. 이제 <strong>새로 얻는 레전더리·세트의 3%가 고대</strong>예요. 150층까지 한 번 내려가면 1개 남짓 만나요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">하루의 마지막엔 실제 결제로 캐시 충전, 부활, 거래소 사고팔기가 모두 잘 되는지 확인했어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">오늘 배운 점</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>실제 사용자가 최고의 테스터</strong>예요</li><li>규칙을 바꿀 때는 <strong>예전에 저장된 데이터</strong>가 가장 위험해요. 옛 저장본을 불러오는 테스트를 같이 만들었어요</li><li>서버 비용은 <strong>얼마나 자주 보내는지</strong>가 결정해요</li><li>규칙이 크게 바뀌면 <strong>기존 기록은 보관하고</strong> 시즌을 나눠요</li><li>테스트는 화면 하나하나만이 아니라 <strong>사람의 동선</strong>대로 따라가야 해요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">다음에는</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">시뮬레이션에서 나온 숙제도 남았어요. 20~90층 아이템이 지금보다 약해지는 안을 예전 아이템과 어떻게 맞출지예요. 다음 일기에서는 일반 던전과 새 난이도 나이트메어를 손봐요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-17.html">https://game.apacimtest.com/blog/2026-10-17.html</a><br>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+<p>지금까지 중 가장 긴 하루였어요. 새벽에 PR 여섯 개, 오후부터 밤까지 열네 개를 더 머지했어요. 혼자 하던 던전이 <strong>사람들이 모이는 로비</strong>와 <strong>거래소</strong>가 있는 게임이 됐고, 첫 상위 랭커와 함께 게임의 규칙을 크게 다듬었어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">던전 앞 광장, 로비</span></b></p>
+<p>• 접속하면 바로 던전이 아니라 <strong>넓은 광장(로비)</strong> 에서 시작해요. 가운데 <strong>던전 입구</strong>로 들어가면 모험이 시작돼요</p>
+<p>• 같이 접속한 사람들이 <strong>@와 이름</strong>으로 보이고, 움직이면 다른 사람 화면에서도 따라 움직여요</p>
+<p>• 화면 아래 <strong>&quot;같이 접속한 사람들&quot;</strong> 목록에서 누가 로비에 있는지, 몇 층을 탐험 중인지 보여요</p>
+<p>• 이름은 랭킹과 같은 가린 이름이에요. 개인정보 원본은 저장하지 않아요</p>
+<p>• 층 랭킹 <strong>1~3위</strong>는 이름 왼쪽에 <strong>금·은·동 왕관</strong>이 붙어요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/lobby.png" alt="로비: 거래소·우편함·시간 상점·골드 던전·나이트메어·대장간, 맨 위엔 헬 던전 (이 로비 모습은 지금 기준이에요)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">로비: 거래소·우편함·시간 상점·골드 던전·나이트메어·대장간, 맨 위엔 헬 던전 (이 로비 모습은 지금 기준이에요)</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">거래소와 우편함</span></b></p>
+<p>이 게임의 핵심은 <strong>아이템 파밍과 사용자끼리의 거래</strong>예요. 그래서 로비에 거래소를 열었어요.</p>
+<p><br></p>
+<p>• 가방의 아이템을 <strong>골드나 캐시 가격</strong>으로 올리고, 다른 사람이 사요</p>
+<p>• 모든 거래에 <strong>수수료 캐시 1</strong>. 사는 사람이 가격에 더해 내요</p>
+<p>• <strong>레전더리·세트</strong>는 캐시 가격이 1 이상이어야 해요</p>
+<p>• 캐시는 서버가 Xsolla를 통해 바로 차감하고 지급해요</p>
+<p>• <strong>우편함</strong>으로 판매 대금, 산 아이템, 내린 아이템, <strong>24시간 동안 안 팔린 아이템</strong>이 와요</p>
+<p>• <strong>복사 방지</strong>: 서버가 아이템마다 주인을 기록해서, 판 아이템의 복사본은 다시 올릴 수 없고 랭킹에서도 인정하지 않아요</p>
+<p><br></p>
+<p>거래소와 우편함은 버튼 대신 <strong>로비에서 걸어가서</strong> 열어요. 우편함은 거래소 옆 <strong>작은 빨간 상자</strong>인데, 우편이 오면 깃발이 서요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">재시작 대신 포탈</span></b></p>
+<p>• <strong>포탈(P)</strong>: 죽지 않았으면 골드·레벨·장비를 그대로 들고 로비로 돌아와요</p>
+<p>• 던전 입구에는 <strong>문이 두 개</strong> 있어요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 왼쪽: <strong>1층부터</strong> (같은 캐릭터, 새 지도)</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 오른쪽: <strong>포탈을 탄 층</strong>으로, 떠난 그대로</p>
+<p>• 쓰러지면 골드와 레벨은 처음으로, <strong>장비는 그대로</strong> 로비에서 다시 시작해요</p>
+<p>• 상점은 보스 층이 아니라 <strong>바로 전 층(4, 9, 14…층)</strong> 에 열어요. 보스 앞에서 장비를 갖추라는 뜻이에요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">돈이 오가는 곳은 더 조심스럽게</span></b></p>
+<p>거래소를 열자마자 문제가 하나 보였어요. 서버가 Xsolla 응답을 기다리는 사이 다른 요청이 들어오면, 캐시는 빠졌는데 아이템이 안 오는 일이 생길 수 있었어요.</p>
+<p><br></p>
+<p>• 캐시를 지급·차감한 순간을 <strong>먼저 기록</strong>해서, 중간에 멈춰도 이어서 마무리되게 했어요 (두 번 결제하지 않음)</p>
+<p>• 테스트가 요청을 하나씩만 보내서 이 문제를 못 잡았어요. 실제처럼 <strong>여러 요청을 동시에 보내는 테스트</strong>를 추가했어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">광고와 하루 입장</span></b></p>
+<p>하루 100명 기준으로 광고 수익을 계산해 보니 한 달 약 $5~$180 (보통 $27)이었어요. 캐시 부활 한 번이 광고 백 번 정도와 같아서, <strong>캐시와 광고를 같이</strong> 두기로 했어요.</p>
+<p><br></p>
+<p>• <strong>부활 가격</strong>을 50캐시에서 <strong>10캐시($1)</strong> 로 내렸어요</p>
+<p>• <strong>하루 입장</strong>: 1층 문으로 새로 시작할 때만 세서 <strong>하루 5회 무료</strong>, 그 뒤엔 광고를 보고 입장</p>
+<p>• <strong>광고로 대신하기</strong>: 부활 하루 1회(계정 없이도), 거래 수수료 면제 하루 3회</p>
+<p>• 지금은 테스트 광고예요. 게임 소개 페이지와 개인정보처리방침을 만들고 구글 광고 심사를 기다리고 있어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">가방을 서버에 저장하기</span></b></p>
+<p>로그인한 사람의 가방, 장착 장비, 강화석, 도감, 진행 중인 판을 서버에 저장해요. 같은 계정이면 다른 기기에서도 이어서 해요.</p>
+<p><br></p>
+<p>처음엔 바뀔 때마다 2초 뒤에 올렸는데, 던전에선 턴마다 HP가 바뀌어서 <strong>1시간에 1,400번쯤</strong> 보내게 됐어요. 그래서 이렇게 바꿨어요.</p>
+<p><br></p>
+<p>• 아이템·골드 거래·층 이동 같은 <strong>중요한 변경은 2초 안에</strong></p>
+<p>• 이동·전투는 <strong>1분에 한 번</strong>, 탭을 닫거나 숨길 때는 바로</p>
+<p>• 결과: 요청이 <strong>약 95% 줄었어요</strong> (1시간 약 60번)</p>
+<p><br></p>
+<p>두 기기에서 동시에 하면 <strong>먼저 저장한 쪽이 기준</strong>이라, 서로의 저장을 지우거나 아이템이 복사되지 않아요. 게스트는 그 기기에만 저장돼요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">새 집으로 이사</span></b></p>
+<p>게임을 <strong>전용 저장소</strong>로 옮기고, 게임만의 새 주소 <a href="https://game.apacimtest.com/">game.apacimtest.com</a>을 열었어요. 예전 주소는 안내 페이지가 되어 가방과 진행 상황을 새 주소로 넘겨 줘요.</p>
+<p><br></p>
+<p>한 랭커의 장비가 새 주소에서 안 보이는 일도 있었어요. 서버 저장이 생기기 전에 모은 장비가 예전 주소의 브라우저에만 있었거든요. 계정으로 하던 가방·도감·상자 보관함도 넘겨서, 로그인하면 서버 저장본 위에 합쳐지게 했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">120층 랭커의 피드백</span></b></p>
+<p><strong>120층을 넘긴 첫 랭커</strong>의 말에서 빈틈이 한꺼번에 보였어요.</p>
+<p><br></p>
+<p>• <strong>강화석</strong>: 아이템 레벨이 높을수록 더 받아요 (레벨당 +5%). 120레벨 레전더리는 16개 → <strong>111개</strong></p>
+<p>• <strong>세트는 5개로</strong>: 시험의 세트 효과가 2·4·5개에서 켜지고, 무기는 자유롭게</p>
+<p>• <strong>전부 판매</strong>: 레전더리·세트가 섞여 있으면 같이 팔지 물어봐요</p>
+<p>• 장착·강화·판매 버튼이 아이템 이름 바로 아래로</p>
+<p>• 깊은 보스 층을 만들다 멈추던 버그 수정</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">몬스터 40종과 황금 고블린 정예·왕</span></b></p>
+<p>• 깊은 층 몬스터 <strong>20종을 더</strong> 만들어 모두 <strong>40종</strong>이에요. 그림자 드래곤, 대악마, 타이탄, 공허의 군주, 고룡까지</p>
+<p>• <strong>황금 고블린 정예</strong>(10층부터 30%)와 <strong>왕</strong>(30층부터 12%): 맞으면 연막을 터뜨려 순간이동해요. 대신 장비 3·4개, 골드 2·4배!</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">득템은 무지개색</span></b></p>
+<p>• 여러 개가 떨어지면 가까운 빈 바닥으로 한 칸씩 펼쳐져요</p>
+<p>• <strong>레전더리·세트</strong>는 바닥에서 <strong>무지개색으로 빛나요</strong>. 로그·인벤토리·거래소 이름도요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">보조 손과 패링</span></b></p>
+<p>• 7번째 부위 <strong>보조 손</strong>: 절반은 <strong>방패</strong>, 절반은 <strong>보조무기</strong></p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 보조무기를 끼면 <strong>한 턴에 2번 공격</strong> (왼손은 60%)</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 방패는 확률로 <strong>패링</strong>(피해 0): 커먼~레어 9~11%, 에픽 16~18%, 레전더리·세트 23~25%</p>
+<p>• <strong>광란의 세트</strong>: 때린 적 주변 1칸의 적도 같은 피해</p>
+<p>• <strong>견고의 세트</strong>: 패링 +15% (최대 40%)</p>
+<p>• <strong>고대</strong>는 이제 레전더리·세트만 될 수 있어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">아이템 규칙 v4</span></b></p>
+<p>치명타를 따져 보니 깊은 층 레전더리 하나에 치명타가 40% 넘게 붙었어요. 그래서 규칙을 바꿨어요.</p>
+<p><br></p>
+<p>• <strong>부위마다 붙는 주 능력치가 달라요</strong>. 예를 들어 치명타 확률은 가슴·팔에만, 경험치는 투구, 골드는 장화</p>
+<p>• 치명타·흡혈 같은 % 능력치는 <strong>레벨과 상관없이 등급별 고정 범위</strong>예요. 7부위를 모두 레전더리 최대치로 맞춰도 치명타 62%라 상한 밑이에요</p>
+<p>• 예전 아이템은 그대로 두고, 효과를 계산할 때만 새 기준 최대치까지 적용해요</p>
+<p>• 게임과 서버가 아이템을 똑같이 다시 만드는지 <strong>3만 개로 확인</strong>했어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">느낌을 숫자로: 시뮬레이션</span></b></p>
+<p>&quot;좋은 아이템 하나 얻으면 다시 얻을 필요가 없다&quot;는 느낌이 들었어요. 그래서 1층부터 150층까지 실제 드롭 규칙으로 줍고, 팔고, 강화하는 플레이어를 시뮬레이션했어요.</p>
+<p><br></p>
+<p>• 공격력·방어력은 레벨에 정비례라 20층 더 내려가도 +15% 정도인데, <strong>+10 강화는 +100%</strong> 예요. 60층 레전더리 +10을 새 에픽이 따라잡으려면 139층을 더 내려가야 했어요</p>
+<p>• 60층부터는 일반 몬스터를 모두 한 방에 잡아서 더 좋은 장비가 필요 없었어요</p>
+<p>• 반대로 <strong>보스는 층 수의 제곱으로 강해져요</strong>. 보통 파밍 장비로 이길 수 있는 깊이는 약 120층이었어요</p>
+<p><br></p>
+<p>이 결과가 최대 층을 정하는 근거가 됐어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">150층 완료와 랭킹 시즌</span></b></p>
+<p>• 일반 던전은 <strong>150층까지</strong>. 150층 보스를 쓰러뜨리면 <strong>일반 던전 완료</strong>예요</p>
+<p>• 완료하면 로비로 돌아오고, 포탈로 150층의 새 구역에 들어가 계속 파밍해요</p>
+<p>• 서버에 올려 보니 1위는 이미 172층이었어요. <strong>지금 랭커의 기록은 낮추지 않기로</strong> 했어요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 지금까지의 랭킹은 <strong>&quot;v3 베타&quot; 최종 기록</strong>으로 보관 (26명, 1위 172층)</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ <strong>&quot;v4 베타&quot; 랭킹</strong>을 새로 시작</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">고대 아이템 3%</span></b></p>
+<p>모든 능력치가 최대치인 고대는 v4에서 약 2만 개 중 1개라 사실상 못 보는 아이템이었어요. 이제 <strong>새로 얻는 레전더리·세트의 3%가 고대</strong>예요. 150층까지 한 번 내려가면 1개 남짓 만나요.</p>
+<p><br></p>
+<p>하루의 마지막엔 실제 결제로 캐시 충전, 부활, 거래소 사고팔기가 모두 잘 되는지 확인했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">오늘 배운 점</span></b></p>
+<p>• <strong>실제 사용자가 최고의 테스터</strong>예요</p>
+<p>• 규칙을 바꿀 때는 <strong>예전에 저장된 데이터</strong>가 가장 위험해요. 옛 저장본을 불러오는 테스트를 같이 만들었어요</p>
+<p>• 서버 비용은 <strong>얼마나 자주 보내는지</strong>가 결정해요</p>
+<p>• 규칙이 크게 바뀌면 <strong>기존 기록은 보관하고</strong> 시즌을 나눠요</p>
+<p>• 테스트는 화면 하나하나만이 아니라 <strong>사람의 동선</strong>대로 따라가야 해요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">다음에는</span></b></p>
+<p>시뮬레이션에서 나온 숙제도 남았어요. 20~90층 아이템이 지금보다 약해지는 안을 예전 아이템과 어떻게 맞출지예요. 다음 일기에서는 일반 던전과 새 난이도 나이트메어를 손봐요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-17.html">https://game.apacimtest.com/blog/2026-10-17.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
 </div>
 <script>
   async function copy(html, text) {

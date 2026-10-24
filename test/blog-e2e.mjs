@@ -74,7 +74,7 @@ try {
   await page.locator("#copy-body").click();
   await page.waitForFunction(() => document.getElementById("status").textContent.includes("본문"));   // 복사가 끝난 뒤 읽기
   const clip = await page.evaluate(async () => { const [it] = await navigator.clipboard.read(); return { types: it.types, html: it.types.includes("text/html") ? await (await it.getType("text/html")).text() : "" }; });
-  check("② copies the body as rich HTML with inline styles and the original link", clip.types.includes("text/html") && /<h2 style="font-size:22px/.test(clip.html) && clip.html.includes(`https://game.apacimtest.com/blog/${slug}.html`) && (await page.locator("#status").innerText()).includes("본문을 복사했어요"), JSON.stringify(clip).slice(0, 200));
+  check("② copies the body for Naver: one-line paragraphs, blank lines as empty paragraphs, no list/heading tags, original link", clip.types.includes("text/html") && clip.html.includes('<b><span style="font-size:24px;">') && clip.html.includes("<p><br></p>") && !/<(ul|li|h2|h3)\b/.test(clip.html) && clip.html.includes(`https://game.apacimtest.com/blog/${slug}.html`) && (await page.locator("#status").innerText()).includes("본문을 복사했어요"), JSON.stringify(clip).slice(0, 200));
   check("copied body has images with full addresses (Naver can fetch them)", /<img src="https:\/\/game\.apacimtest\.com\/blog\/images\/[\w.-]+\.png"/.test(clip.html));
   const dl = page.locator('a[download]');
   check("each image also has a save link (if Naver drops pasted images)", (await dl.count()) === (await page.locator("#paper img").count()) && (await dl.count()) > 0);

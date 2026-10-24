@@ -61,34 +61,79 @@
 <p id="status" aria-live="polite"></p>
 <p class="steps">이미지 3장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/inventory.png" download="2026-10-15-1-inventory.png">1. 인벤토리: 부위별 장비와 아이템 상세(능력치 범위·강화)</a> · <a href="../images/dex.png" download="2026-10-15-2-dex.png">2. 몬스터 도감: 만난 몬스터와 처치 수</a> · <a href="../images/mobile.png" download="2026-10-15-3-mobile.png">3. 휴대폰 화면</a></p>
 <div id="paper">
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">어제 만든 작은 로그라이크에 오늘은 PR을 열 개나 머지했어요. 오후 3시부터 밤 10시까지 로그인, 장비, 몬스터, 경제, 모바일 조작, 랭킹, 상점을 차례로 붙이면서 &quot;게임다운 게임&quot;이 됐어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">로그인과 이어하기</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>기본은 <strong>게스트 플레이</strong>예요. 가입 없이 바로 시작할 수 있어요</li><li>원하면 이메일이나 문자 인증 코드로 계정을 연결해요 (Xsolla Login)</li><li>진행 상황을 계정에 저장해서, <strong>다른 기기에서 로그인해도 이어서</strong> 해요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">장비 시스템</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>장비 6부위: 머리, 갑옷, 팔, 바지, 신발, 무기</li><li>무기 3종: 단검, 지팡이, 도끼</li><li>등급 6단계와 <strong>세트 효과</strong></li></ul>
-<figure style="margin:0 0 20px;text-align:center;"><img src="https://game.apacimtest.com/blog/images/inventory.png" alt="인벤토리: 부위별 장비와 아이템 상세(능력치 범위·강화)" loading="lazy" style="max-width:100%;height:auto;"><figcaption style="font-size:14px;color:#777;margin-top:6px;">인벤토리: 부위별 장비와 아이템 상세(능력치 범위·강화)</figcaption></figure>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">재미있는 결정이 하나 있었어요. 아이템을 <strong>시드로 만들기로</strong> 한 거예요.</p>
-<blockquote style="border-left:4px solid #ccc;margin:0 0 16px;padding:4px 12px;color:#555;font-size:16px;">같은 시드면 언제 다시 만들어도 똑같은 아이템이 나와요.</blockquote>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">덕분에 나중에 서버가 &quot;이 아이템이 진짜 게임에서 나온 게 맞나?&quot;를 직접 확인할 수 있게 됐어요. 이 결정은 다음 날 랭킹 위조 검증에서 큰 역할을 해요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">몬스터 20종과 도감</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>몬스터에 <strong>방어력</strong>이 생기고, <strong>정예 몬스터</strong>와 <strong>5층마다 보스</strong>가 나와요</li><li>몬스터가 <strong>20종</strong>으로 늘었어요</li><li>새 얼굴 <strong>황금 고블린</strong>: 공격하지 않고 도망만 다니다가 30턴 뒤에 사라져요. 잡으면 좋은 아이템이 <strong>2개</strong>!</li><li>포션 자리에서 가끔 장비가 나와요</li><li>도감(B)에서 몬스터 정보와 처치 수를 볼 수 있어요</li></ul>
-<figure style="margin:0 0 20px;text-align:center;"><img src="https://game.apacimtest.com/blog/images/dex.png" alt="몬스터 도감: 만난 몬스터와 처치 수" loading="lazy" style="max-width:100%;height:auto;"><figcaption style="font-size:14px;color:#777;margin-top:6px;">몬스터 도감: 만난 몬스터와 처치 수</figcaption></figure>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">경제: 팔기, 강화, 상점</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>아이템을 버리는 대신 <strong>팔면 강화석</strong>을 받아요</li><li><strong>강화</strong>는 +1부터 +10까지. +5부터는 실패할 수 있지만, 실패해도 아이템은 사라지지 않아요</li><li>5층마다 <strong>상점</strong>이 열려요. 진열은 3번까지 바꿀 수 있고, 비용은 층마다 올라가요</li><li>몬스터를 잡으면 골드를 주고, 깊은 층일수록 많이 줘요</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">해 보니 골드가 너무 잘 모여서 <strong>골드 수입을 절반으로</strong> 줄였어요. 경제 규칙은 따로 문서로 정리하기 시작했어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">휴대폰에서도 손에 맞게</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">모바일 조작은 두 번에 걸쳐 다듬었어요.</p>
-<figure style="margin:0 0 20px;text-align:center;"><img src="https://game.apacimtest.com/blog/images/mobile.png" alt="휴대폰 화면" loading="lazy" style="max-width:100%;height:auto;"><figcaption style="font-size:14px;color:#777;margin-top:6px;">휴대폰 화면</figcaption></figure>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>방향키, 포션, 가방, 도감, 재시작 <strong>터치 버튼</strong>을 넣었어요</li><li>방향키를 화면 <strong>양쪽으로 나눠서</strong> 양손 엄지로 누르게 했어요</li><li>위·아래 버튼을 살짝 엇갈리게 놓아 헷갈리지 않게 했어요</li><li>진행 중에 재시작(R)을 누르면 한 번 더 물어봐요</li><li>한 번에 <strong>다 팔기</strong> 버튼도 생겼어요</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">작은 안전장치도 하나 넣었어요. <strong>주변 4칸 안에 몬스터가 있으면 계단을 못 내려가요.</strong> 실수로 도망치듯 내려가 버리는 일을 막으려고요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">랭킹과 개인정보 원칙</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>최고 층 랭킹</strong>과 <strong>최강 아이템 랭킹</strong>을 만들었어요</li><li>랭킹을 만들면서 개인정보 원칙도 정했어요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>이메일 원본은 저장하지 않고, <strong>가린 형태</strong>로만 보여요</li><li>개인정보는 암호화하거나 가린 값만 저장해요</li></ul></li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">공개 랭킹이 생기는 만큼 &quot;무엇을 저장하지 않을지&quot;를 먼저 정한 게 좋은 출발이었어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">상점과 결제</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>별도 상점 페이지에서 <strong>캐시 묶음</strong>과 <strong>장비 상자</strong>를 팔아요</li><li>Xsolla Headless Checkout으로 카드 결제 화면을 직접 만들었어요</li><li>원화와 엔화 가격도 넣었어요</li><li>아직은 <strong>샌드박스(테스트) 결제</strong>예요. 실제로 결제를 해 보면서 흐름을 다듬었어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">다음에는</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">기능을 하나씩 PR로 나눠서 붙이다 보니 하루에 열 개가 됐어요. 다음 날에는 밸런스를 크게 손보고, 드디어 <strong>실제 결제</strong>와 <strong>나만의 랭킹 서버</strong>가 생겨요. 지금 모습은 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 확인해 보세요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-15.html">https://game.apacimtest.com/blog/2026-10-15.html</a><br>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+<p>어제 만든 작은 로그라이크에 오늘은 PR을 열 개나 머지했어요. 오후 3시부터 밤 10시까지 로그인, 장비, 몬스터, 경제, 모바일 조작, 랭킹, 상점을 차례로 붙이면서 &quot;게임다운 게임&quot;이 됐어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">로그인과 이어하기</span></b></p>
+<p>• 기본은 <strong>게스트 플레이</strong>예요. 가입 없이 바로 시작할 수 있어요</p>
+<p>• 원하면 이메일이나 문자 인증 코드로 계정을 연결해요 (Xsolla Login)</p>
+<p>• 진행 상황을 계정에 저장해서, <strong>다른 기기에서 로그인해도 이어서</strong> 해요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">장비 시스템</span></b></p>
+<p>• 장비 6부위: 머리, 갑옷, 팔, 바지, 신발, 무기</p>
+<p>• 무기 3종: 단검, 지팡이, 도끼</p>
+<p>• 등급 6단계와 <strong>세트 효과</strong></p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/inventory.png" alt="인벤토리: 부위별 장비와 아이템 상세(능력치 범위·강화)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">인벤토리: 부위별 장비와 아이템 상세(능력치 범위·강화)</span></p>
+<p><br></p>
+<p>재미있는 결정이 하나 있었어요. 아이템을 <strong>시드로 만들기로</strong> 한 거예요.</p>
+<p><br></p>
+<p><span style="color:#666666;">❝ 같은 시드면 언제 다시 만들어도 똑같은 아이템이 나와요. ❞</span></p>
+<p><br></p>
+<p>덕분에 나중에 서버가 &quot;이 아이템이 진짜 게임에서 나온 게 맞나?&quot;를 직접 확인할 수 있게 됐어요. 이 결정은 다음 날 랭킹 위조 검증에서 큰 역할을 해요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">몬스터 20종과 도감</span></b></p>
+<p>• 몬스터에 <strong>방어력</strong>이 생기고, <strong>정예 몬스터</strong>와 <strong>5층마다 보스</strong>가 나와요</p>
+<p>• 몬스터가 <strong>20종</strong>으로 늘었어요</p>
+<p>• 새 얼굴 <strong>황금 고블린</strong>: 공격하지 않고 도망만 다니다가 30턴 뒤에 사라져요. 잡으면 좋은 아이템이 <strong>2개</strong>!</p>
+<p>• 포션 자리에서 가끔 장비가 나와요</p>
+<p>• 도감(B)에서 몬스터 정보와 처치 수를 볼 수 있어요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/dex.png" alt="몬스터 도감: 만난 몬스터와 처치 수" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">몬스터 도감: 만난 몬스터와 처치 수</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">경제: 팔기, 강화, 상점</span></b></p>
+<p>• 아이템을 버리는 대신 <strong>팔면 강화석</strong>을 받아요</p>
+<p>• <strong>강화</strong>는 +1부터 +10까지. +5부터는 실패할 수 있지만, 실패해도 아이템은 사라지지 않아요</p>
+<p>• 5층마다 <strong>상점</strong>이 열려요. 진열은 3번까지 바꿀 수 있고, 비용은 층마다 올라가요</p>
+<p>• 몬스터를 잡으면 골드를 주고, 깊은 층일수록 많이 줘요</p>
+<p><br></p>
+<p>해 보니 골드가 너무 잘 모여서 <strong>골드 수입을 절반으로</strong> 줄였어요. 경제 규칙은 따로 문서로 정리하기 시작했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">휴대폰에서도 손에 맞게</span></b></p>
+<p>모바일 조작은 두 번에 걸쳐 다듬었어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/mobile.png" alt="휴대폰 화면" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">휴대폰 화면</span></p>
+<p><br></p>
+<p>• 방향키, 포션, 가방, 도감, 재시작 <strong>터치 버튼</strong>을 넣었어요</p>
+<p>• 방향키를 화면 <strong>양쪽으로 나눠서</strong> 양손 엄지로 누르게 했어요</p>
+<p>• 위·아래 버튼을 살짝 엇갈리게 놓아 헷갈리지 않게 했어요</p>
+<p>• 진행 중에 재시작(R)을 누르면 한 번 더 물어봐요</p>
+<p>• 한 번에 <strong>다 팔기</strong> 버튼도 생겼어요</p>
+<p><br></p>
+<p>작은 안전장치도 하나 넣었어요. <strong>주변 4칸 안에 몬스터가 있으면 계단을 못 내려가요.</strong> 실수로 도망치듯 내려가 버리는 일을 막으려고요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">랭킹과 개인정보 원칙</span></b></p>
+<p>• <strong>최고 층 랭킹</strong>과 <strong>최강 아이템 랭킹</strong>을 만들었어요</p>
+<p>• 랭킹을 만들면서 개인정보 원칙도 정했어요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 이메일 원본은 저장하지 않고, <strong>가린 형태</strong>로만 보여요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 개인정보는 암호화하거나 가린 값만 저장해요</p>
+<p><br></p>
+<p>공개 랭킹이 생기는 만큼 &quot;무엇을 저장하지 않을지&quot;를 먼저 정한 게 좋은 출발이었어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">상점과 결제</span></b></p>
+<p>• 별도 상점 페이지에서 <strong>캐시 묶음</strong>과 <strong>장비 상자</strong>를 팔아요</p>
+<p>• Xsolla Headless Checkout으로 카드 결제 화면을 직접 만들었어요</p>
+<p>• 원화와 엔화 가격도 넣었어요</p>
+<p>• 아직은 <strong>샌드박스(테스트) 결제</strong>예요. 실제로 결제를 해 보면서 흐름을 다듬었어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">다음에는</span></b></p>
+<p>기능을 하나씩 PR로 나눠서 붙이다 보니 하루에 열 개가 됐어요. 다음 날에는 밸런스를 크게 손보고, 드디어 <strong>실제 결제</strong>와 <strong>나만의 랭킹 서버</strong>가 생겨요. 지금 모습은 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 확인해 보세요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-15.html">https://game.apacimtest.com/blog/2026-10-15.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
 </div>
 <script>
   async function copy(html, text) {

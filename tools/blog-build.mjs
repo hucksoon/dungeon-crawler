@@ -240,10 +240,40 @@ const NAVER_JS = `
   document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
   document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
 </script>`;
+// 네이버 스마트에디터는 붙여 넣은 HTML의 여백(margin)·목록(ul/li)·제목 태그를 버려서 줄이 붙어 버림.
+// 그래서 네이버용은 모두 한 줄짜리 문단(<p>)으로 만들고, 빈 줄은 빈 문단(<p><br></p>)으로, 목록은 • 글머리로, 제목은 굵고 큰 글씨로
+const N_BLANK = "<p><br></p>";
+function naverBody(md) {
+  const out = [];
+  const P = (html, style = "") => out.push(`<p${style ? ` style="${style}"` : ""}>${html}</p>`);
+  const blank = () => { if (out.length && out[out.length - 1] !== N_BLANK) out.push(N_BLANK); };
+  let para = [], inList = false;
+  const flushPara = () => { if (para.length) { P(inline(para.join(" "), NAVER_STYLE)); blank(); } para = []; };
+  const endList = () => { if (inList) blank(); inList = false; };
+  for (const raw of md.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    let m;
+    if (!line.trim()) { flushPara(); endList(); continue; }
+    if ((m = /^(#{2,3})\s+(.*)$/.exec(line))) { flushPara(); endList(); blank(); P(`<b><span style="font-size:${m[1].length === 2 ? 24 : 19}px;">${inline(m[2], NAVER_STYLE)}</span></b>`); continue; }
+    if ((m = /^!\[([^\]]*)\]\(images\/([\w.-]+)\)$/.exec(line.trim()))) {
+      flushPara(); endList();
+      P(`<img src="${BLOG_URL}images/${m[2]}" alt="${esc(m[1])}" style="max-width:100%;height:auto;">`, "text-align:center;");
+      if (m[1]) P(`<span style="font-size:13px;color:#888888;">${inline(m[1], NAVER_STYLE)}</span>`, "text-align:center;");
+      blank(); continue;
+    }
+    if ((m = /^>\s?(.*)$/.exec(line))) { flushPara(); endList(); P(`<span style="color:#666666;">❝ ${inline(m[1], NAVER_STYLE)} ❞</span>`); blank(); continue; }
+    if ((m = /^ {2,4}[-*]\s+(.*)$/.exec(line)) && inList) { P(`&nbsp;&nbsp;&nbsp;&nbsp;◦ ${inline(m[1], NAVER_STYLE)}`); continue; }
+    if ((m = /^[-*]\s+(.*)$/.exec(line))) { flushPara(); inList = true; P(`• ${inline(m[1], NAVER_STYLE)}`); continue; }
+    if (inList && /^ {2,}\S/.test(line)) { out[out.length - 1] = out[out.length - 1].replace(/<\/p>$/, ` ${inline(line.trim(), NAVER_STYLE)}</p>`); continue; }
+    endList(); para.push(line.trim());
+  }
+  flushPara(); endList();
+  return out.join("\n");
+}
 function naverPage(p) {
   const url = `${BLOG_URL}${p.slug}.html`;
   const imgs = images(p.body);
-  const body = markdown(p.body, NAVER_STYLE, BLOG_URL) + `\n<p${NAVER_STYLE.p}>📝 원문과 지난 개발 이야기: <a href="${url}">${url}</a><br>🎮 게임 하기: <a href="${SITE}/">${SITE}/</a></p>`;
+  const body = naverBody(p.body) + `\n${N_BLANK}\n<p>📝 원문과 지난 개발 이야기: <a href="${url}">${url}</a></p>\n<p>🎮 게임 하기: <a href="${SITE}/">${SITE}/</a></p>`;
   return page({
     title: `[네이버 옮기기] ${p.title}`, desc: p.summary, url: `${BLOG_URL}naver/${p.slug}.html`, noindex: true, extraHead: NAVER_CSS,
     body: `<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../${p.slug}.html">블로그 글 보기</a></nav>
