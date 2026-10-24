@@ -2,10 +2,13 @@
 // Xsolla 웹훅 (Store 프로젝트 config xsolla_project_id). Publisher Account → 프로젝트 → 웹훅에 이 파일 주소를 넣음
 //   예: https://apacimtest.com/ranking/webhook.php
 //
-// 1단계: 기록만 함. 아이템·캐시는 지금처럼 상점 화면이 Xsolla 인벤토리에서 받아 감 (여기서 지급하지 않음)
+// 기록하고, 장비 상자는 서버가 열어서 우편함으로 지급 (2단계). 캐시(가상 화폐)는 Xsolla가 직접 넣어 줌
 //   user_validation            → 게임에 로그인한 적 있는 사용자면 204, 아니면 400 INVALID_USER
 //                                 (계정 저장본이 있거나 known_users에 있음. 상점 로그인은 게임을 거치므로 사기 전에 기록됨)
-//   order_paid / order_canceled → 주문 번호로 한 번만 기록 (같은 웹훅이 다시 와도 204, 두 번 기록하지 않음)
+//   order_paid / order_canceled → 주문 번호로 한 번만 기록 (같은 웹훅이 다시 와도 204, 두 번 기록·지급하지 않음)
+//     order_paid에 장비 상자(box_equipment_N)가 있으면 열어서 그 사용자의 우편함에 (market.php box_grant)
+//     order_canceled면 그 주문의 상자 우편을 회수하고 아이템을 인정하지 않음 (box_revoke)
+//     기록과 지급은 한 트랜잭션: 중간에 실패하면 500 → Xsolla가 다시 보냄
 //   payment / refund           → (예전 방식 프로젝트) 거래 번호로 한 번만 기록
 //   그 밖의 종류                → 204 (기다리는 다음 웹훅이 막히지 않게)
 //
@@ -112,6 +115,19 @@ function webhook_record(array $row): bool {
     }
 }
 
+// 지급·회수 (order_*만. 나뉜 방식의 payment·refund는 기록만 해서 두 번 지급하지 않음). 결과 상태
+function webhook_fulfill(PDO $pdo, array $row, array $e): string {
+    if ($row['order_id'] === null) return 'recorded';
+    if ($row['type'] === 'order_canceled') return box_revoke($pdo, $row['order_id']) || q_val('SELECT 1 FROM box_items WHERE order_id = ?', [$row['order_id']]) ? 'revoked' : 'recorded';
+    if ($row['type'] !== 'order_paid') return 'recorded';
+    $items = is_array($e['items'] ?? null) ? $e['items'] : [];
+    if (!array_filter($items, function ($it) { return is_array($it) && box_draws((string)($it['sku'] ?? '')) > 0; })) return 'recorded';
+    if ($row['user_key'] === null) { error_log("[webhook] order {$row['order_id']}: box without user"); return 'no_user'; }
+    // 취소가 먼저 도착한 주문이면 지급하지 않음
+    if (q_val('SELECT 1 FROM xsolla_events WHERE event_key = ?', ["order_canceled:{$row['order_id']}"])) return 'canceled';
+    return box_grant($pdo, $row['user_key'], $row['order_id'], $items, $row['created_at']) > 0 ? 'granted' : 'recorded';
+}
+
 // 서버 명령(admin.php)이 함수만 빌려 쓸 때
 if (defined('WEBHOOK_NO_ROUTE')) return;
 
@@ -141,7 +157,11 @@ try {
         $row = webhook_event($type, $e);
         if ($row === null) { webhook_fail(400, 'INVALID_PARAMETER', $type); exit; }
         webhook_tables(db());
-        webhook_record($row);
+        tx(function (PDO $pdo) use ($row, $e) {
+            if (!webhook_record($row)) return;   // 이미 처리한 웹훅
+            $state = webhook_fulfill($pdo, $row, $e);
+            if ($state !== 'recorded') $pdo->prepare('UPDATE xsolla_events SET state = ? WHERE event_key = ?')->execute([$state, $row['event_key']]);
+        });
     }
     http_response_code(204);
 } catch (Throwable $err) {

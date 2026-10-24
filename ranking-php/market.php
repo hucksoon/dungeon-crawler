@@ -11,7 +11,8 @@
 //                               { id, pick }  고대 유니크 선택 상자: 고른 유니크(pick = 유니크 키)를 고대로 만들어 돌려줌
 //   POST api.php?r=ubox_collect           현금으로 산 고대 유니크 선택 상자를 Xsolla 인벤토리에서 꺼내(소모) 우편함으로
 //                                       (우편함을 열 때 market_mine도 같은 일을 함)
-//   (운영자 선물은 서버에서 gift.php로 우편함에 넣음)
+//   GET  api.php?r=box_order&order=<주문 번호>  캐시로 산 장비 상자의 결과 (웹훅이 처리했으면 아이템 참조 목록)
+//   (운영자 선물은 서버에서 gift.php로 우편함에 넣음, 장비 상자는 webhook.php가 order_paid를 받으면 우편함에 넣음)
 //
 // 원칙
 //   - 거래(등록·구매·우편)는 로그인 사용자만. 모든 거래에 캐시 수수료(MARKET_FEE_CASH)가 있어서 Xsolla 계정이 필요함
@@ -79,6 +80,18 @@ function market_tables(PDO $pdo): void {
         uq          VARCHAR(24) NOT NULL,
         created_at  BIGINT NOT NULL
     )');
+    // 장비 상자 (캐시로 산 상자를 웹훅 order_paid로 서버가 열어 우편함에 넣은 아이템). 시드 box|o주문 번호|순번
+    // state: granted | revoked (환불 order_canceled → 그 시드는 랭킹·거래소에서 인정하지 않음)
+    $pdo->exec('CREATE TABLE IF NOT EXISTS box_items (
+        seed        VARCHAR(64) PRIMARY KEY,
+        order_id    VARCHAR(32) NOT NULL,
+        owner_key   VARCHAR(64) NOT NULL,
+        mail_id     VARCHAR(32) NOT NULL,
+        item_id     VARCHAR(32) NOT NULL,
+        sku         VARCHAR(64) NOT NULL,
+        state       VARCHAR(12) NOT NULL,
+        created_at  BIGINT NOT NULL
+    )');
     $pdo->exec('CREATE TABLE IF NOT EXISTS item_owner (
         item_id     VARCHAR(32) PRIMARY KEY,
         owner_key   VARCHAR(64) NOT NULL,
@@ -95,6 +108,7 @@ function market_tables(PDO $pdo): void {
         'CREATE INDEX idx_listings_item ON listings (item_id, state)',
         'CREATE INDEX idx_mail_owner ON mail (owner_key, state)',
         'CREATE INDEX idx_mail_item ON mail (item_id, state)',
+        'CREATE INDEX idx_box_items_order ON box_items (order_id)',
     ] as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) { /* 이미 있음 */ }
     }
@@ -403,7 +417,7 @@ function market_mine(): array {
     $q = function (string $sql, array $args) use ($pdo): array { $st = $pdo->prepare($sql); $st->execute($args); return $st->fetchAll(); };
     $active = $q("SELECT * FROM listings WHERE seller_key = ? AND state IN ('active', 'buying') ORDER BY created_at DESC", [$who['key']]);
     $history = $q("SELECT * FROM listings WHERE (seller_key = ? OR buyer_key = ?) AND state IN ('sold', 'expired', 'cancelled') ORDER BY COALESCE(sold_at, ended_at) DESC LIMIT 30", [$who['key'], $who['key']]);
-    $mail = $q("SELECT * FROM mail WHERE owner_key = ? AND state <> 'claimed' ORDER BY created_at ASC LIMIT 100", [$who['key']]);
+    $mail = $q("SELECT * FROM mail WHERE owner_key = ? AND state IN ('new', 'claiming') ORDER BY created_at ASC LIMIT 100", [$who['key']]);
     $hist = array_map(function ($l) use ($who) {
         $o = listing_out($l, $who['key']);
         $o['role'] = $l['seller_key'] === $who['key'] ? 'seller' : 'buyer';
@@ -515,4 +529,81 @@ function bought_seed_ok(string $seed): bool {
 
 function mail_count(string $key): int {
     return (int)q_val("SELECT COUNT(*) FROM mail WHERE owner_key = ? AND state = 'new'", [$key]);
+}
+
+// ---- 장비 상자 (캐시): 웹훅 order_paid → 서버가 열어서 우편함으로 ----
+// 결과는 주문 번호로 정해짐 (box|o주문 번호|순번, 상점이 예전에 브라우저에서 열던 것과 같은 시드). 레벨은 계정 저장본의 최고 층
+const BOX_REV = 8;          // 상자 아이템을 만드는 규칙 개정 (items.js RULES_REV)
+const BOX_MAX_DRAWS = 50;   // seed_origin_ok: 순번 50 미만
+const BOX_MAX_QTY = 10;
+const BOX_SKU_RE = '/^box_equipment_(\d{1,2})$/';
+
+function box_draws(string $sku): int {
+    return preg_match(BOX_SKU_RE, $sku, $m) && (int)$m[1] >= 1 && (int)$m[1] <= BOX_MAX_DRAWS ? (int)$m[1] : 0;
+}
+// 상점이 쓰던 레벨: 이 계정의 최고 층 (rl_save.best). 저장본이 없으면 1
+function box_level(string $owner): int {
+    $data = q_val('SELECT data FROM profiles WHERE pkey = ?', [$owner]);
+    $best = $data ? (json_decode((string)$data, true)['save']['best'] ?? 1) : 1;
+    return max(1, min(CLEAR_STAGE, is_int($best) ? $best : 1));
+}
+
+// 주문의 상자를 열어 우편함에 넣음 (트랜잭션 안에서 부름). 넣은 아이템 수. 같은 시드가 이미 있으면 건너뜀
+function box_grant(PDO $pdo, string $owner, string $orderId, array $items, int $now): int {
+    $lvl = box_level($owner);
+    $n = 0;
+    foreach ($items as $it) {
+        $draws = box_draws((string)($it['sku'] ?? ''));
+        if (!$draws) continue;
+        $qty = max(1, min(BOX_MAX_QTY, (int)($it['quantity'] ?? 1)));
+        for ($k = 0; $k < $qty; $k++) {
+            $oid = $k === 0 ? $orderId : "{$orderId}q{$k}";   // 같은 주문에 상자가 여러 개면 서로 다른 시드
+            for ($i = 0; $i < $draws; $i++) {
+                $seed = "box|o{$oid}|{$i}";
+                if (q_val('SELECT 1 FROM box_items WHERE seed = ?', [$seed])) continue;
+                $item = r_generate(4, $seed, 'box', $lvl, BOX_REV);
+                $mailId = add_mail($owner, 'box', ['item_id' => $item['id'], 'item_ref' => json_encode(item_ref($item)), 'item_name' => r_item_name($item), 'rarity' => $item['rarity']], $now);
+                $pdo->prepare('INSERT INTO box_items (seed, order_id, owner_key, mail_id, item_id, sku, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$seed, $orderId, $owner, $mailId, $item['id'], (string)$it['sku'], 'granted', $now]);
+                set_owner($item['id'], $owner, $now);
+                $n++;
+            }
+        }
+    }
+    return $n;
+}
+
+// 환불: 아직 받지 않은 우편은 회수, 시드는 revoked (이미 받은 아이템은 랭킹·거래소에서 인정하지 않음). 회수한 우편 수
+function box_revoke(PDO $pdo, string $orderId): int {
+    $st = $pdo->prepare("SELECT mail_id FROM box_items WHERE order_id = ? AND state = 'granted'");
+    $st->execute([$orderId]);
+    $mails = $st->fetchAll(PDO::FETCH_COLUMN);
+    $taken = 0;
+    foreach ($mails as $id) {
+        $up = $pdo->prepare("UPDATE mail SET state = 'revoked' WHERE id = ? AND state = 'new'");
+        $up->execute([$id]);
+        $taken += $up->rowCount();
+    }
+    $pdo->prepare("UPDATE box_items SET state = 'revoked' WHERE order_id = ?")->execute([$orderId]);
+    return $taken;
+}
+
+function box_seed_revoked(string $seed): bool {
+    return q_val("SELECT 1 FROM box_items WHERE seed = ? AND state = 'revoked'", [$seed]) !== false;
+}
+
+// 상점: 방금 산 상자의 결과. 웹훅이 아직 안 왔으면 ready=false (상점이 잠시 뒤 다시 물음)
+function box_order(): array {
+    $who = require_user();
+    $order = (string)($_GET['order'] ?? '');
+    if (!preg_match('/^[0-9A-Za-z_-]{1,32}$/', $order)) throw new HttpError(400, 'bad_order');
+    $st = db()->prepare("SELECT b.state, m.item_ref, m.state AS mail_state FROM box_items b JOIN mail m ON m.id = b.mail_id WHERE b.order_id = ? AND b.owner_key = ? ORDER BY b.created_at, b.seed");
+    $st->execute([$order, $who['key']]);
+    $rows = $st->fetchAll();
+    return [
+        'ready' => (bool)$rows,
+        'revoked' => $rows && $rows[0]['state'] === 'revoked',
+        'items' => array_map(function ($r) { return json_decode($r['item_ref'], true); }, $rows),
+        'mail' => mail_count($who['key']),
+    ];
 }

@@ -5493,12 +5493,12 @@
     if (!Account.loggedIn()) return loginNote(T("우편함은 계정을 연결하면 쓸 수 있어요."));
     const d = Market.mine;
     const head = el("p", { className: "market-note" },
-      T("가방 {0}/{1}칸 · 팔린 대금, 산 아이템, {2}시간이 지나거나 내린 아이템, 운영자 선물이 여기로 와요. 가방이 가득 차면 인벤토리에서 정리한 뒤 받으세요.", Inv.bag().length, BAG_SIZE, Market.rules.hours));
+      T("가방 {0}/{1}칸 · 팔린 대금, 산 아이템, {2}시간이 지나거나 내린 아이템, 운영자 선물, 상점에서 연 장비 상자가 여기로 와요. 가방이 가득 차면 인벤토리에서 정리한 뒤 받으세요.", Inv.bag().length, BAG_SIZE, Market.rules.hours));
     if (!d) return [head, marketEmpty(T("불러오는 중…"))];
     if (!d.mail.length) return [head, marketEmpty(T("우편함이 비어 있어요."))];
     const box = Market.boxPick && d.mail.find(m => m.id === Market.boxPick && m.kind === "ubox");
     if (box) return viewBoxPick(box);
-    const kinds = { sale: T("판매 대금"), bought: T("산 아이템"), returned: T("돌아온 아이템"), gift: T("운영자 선물"), ubox: T("현금 구매") };
+    const kinds = { sale: T("판매 대금"), bought: T("산 아이템"), returned: T("돌아온 아이템"), gift: T("운영자 선물"), ubox: T("현금 구매"), box: T("장비 상자") };
     const rows = d.mail.map(m => {
       if (m.kind === "ubox") return viewRow(`🎁 ${T("고대 유니크 선택 상자")}`, RLItems.RARITIES.unique.color, T("{0} · 유니크 {1}종 중 하나를 골라 고대로 받아요 · {2}", kinds.ubox, Object.keys(RLItems.UNIQUE.items).length, dateText(m.createdAt)),
         el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => { Market.boxPick = m.id; setMarketMsg(""); renderMarket(); } }, T("열기")));

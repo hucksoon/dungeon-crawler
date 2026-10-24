@@ -189,10 +189,15 @@ sudo -u www-data php gift.php --resume <이메일>
 
 Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주소예요. 예: `https://apacimtest.com/ranking/webhook.php`
 
-- **1단계 (지금)**: 기록만 해요. 아이템·캐시는 지금처럼 상점 화면이 Xsolla 인벤토리에서 받아 가고, 여기서는 지급하지 않아요
+- **장비 상자 (2단계)**: 캐시로 산 장비 상자(`box_equipment_N`)는 `order_paid`가 오면 서버가 열어서 그 사용자의 **우편함**에 넣어요 (우편 종류 `box`)
+  - 결과는 주문 번호로 정해져요 (시드 `box|o주문 번호|순번`, 예전에 상점이 브라우저에서 열던 것과 같은 아이템). 레벨은 계정 저장본의 최고 층
+  - 상점은 `api.php?r=box_order&order=…`로 결과를 받아 보여줘요 (최대 20초 기다리고, 그래도 안 오면 "곧 우편함에 도착" 안내)
+  - 환불(`order_canceled`)이 오면 아직 받지 않은 상자 우편은 회수하고, 이미 받은 아이템은 랭킹·거래소에서 인정하지 않아요 (`box_items.state = revoked`)
+  - 캐시(가상 화폐)·고대 유니크 선택 상자(현금)는 지금처럼: 캐시는 Xsolla가 직접 넣고, 선택 상자는 우편함을 열 때 서버가 Xsolla 인벤토리에서 꺼내요
+- 기록
   - `user_validation` → 게임에 로그인한 적 있는 사용자면 204, 아니면 `400 INVALID_USER` (Xsolla 테스터의 "없는 사용자" 확인). 게임은 로그인하면 맨 먼저 계정 저장본을 불러오는데, 그때 사용자 HMAC 키를 `known_users`에 남겨요. 상점 로그인도 게임을 거치므로 사기 전에 남아요
   - `order_paid`·`order_canceled` → 주문 번호로 한 번만 기록 / `payment`·`refund`(예전 방식 프로젝트) → 거래 번호로 한 번만 기록 / 그 밖 → 204
-  - 같은 웹훅이 다시 와도(Xsolla 재전송) 204만 돌려주고 두 번 기록하지 않아요
+  - 같은 웹훅이 다시 와도(Xsolla 재전송) 204만 돌려주고 두 번 기록·지급하지 않아요 (기록과 지급은 한 트랜잭션, 중간에 실패하면 500 → Xsolla가 다시 보냄)
   - 다른 프로젝트 번호가 적힌 웹훅은 400으로 거절해요
 - **서명**: `Authorization: Signature <sha1(받은 본문 + 비밀 키)>`. 틀리면 `400 INVALID_SIGNATURE`. 비밀 키가 설정되지 않았으면 `500 NOT_CONFIGURED`
 - **로그**: 400·500은 원인 코드와 웹훅 종류만 Apache 오류 로그에 남겨요: `sudo grep -h '\[webhook\]' /var/log/apache2/*error*.log | tail`
@@ -215,7 +220,7 @@ Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주�
    sudo php -r '$c = require "config.php"; echo sha1($argv[1] . $c["webhook_secret"]) === $argv[2] ? "키 같음\n" : "키 다름\n";' '<본문>' '<서명>'
    ```
 4. Publisher Account에서 이 프로젝트의 웹훅 주소만 `https://apacimtest.com/ranking/webhook.php`로 바꾸고 "테스트" 보내기 → sandbox 결제 한 번
-5. 받은 기록 보기: `sudo -u www-data php admin.php webhooks [개수]`
+5. 받은 기록 보기: `sudo -u www-data php admin.php webhooks [개수]` (`[캐시]`는 캐시로 산 주문, `→ 우편함 지급`·`→ 회수`는 장비 상자)
 
 ## 랭킹 관리 (admin.php)
 
