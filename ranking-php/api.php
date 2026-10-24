@@ -874,6 +874,37 @@ function lobby_ping(): array {
     ];
 }
 
+// ---------------------------------------------------------------- 나라 (게임 언어 자동 설정)
+// 접속한 IP의 나라 코드(KR·JP·US …)만 돌려줌. IP는 저장하지도 기록하지도 않음
+// 찾는 순서: CDN 헤더(Cloudflare CF-IPCountry) → 웹 서버 GeoIP 모듈 환경변수 → PHP geoip 확장 → MaxMind DB(config geo_mmdb)
+// 아무것도 없으면 null (게임은 브라우저 언어로)
+function geo_country(): ?string {
+    $ok = fn($c) => is_string($c) && preg_match('/^[A-Z]{2}$/', strtoupper($c)) && !in_array(strtoupper($c), ['XX', 'T1', 'A1', 'A2', 'EU', 'AP'], true);
+    foreach (['HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'MM_COUNTRY_CODE', 'GEOIP2_COUNTRY_CODE', 'HTTP_X_COUNTRY_CODE'] as $k) {
+        if ($ok($_SERVER[$k] ?? null)) return strtoupper($_SERVER[$k]);
+    }
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) return null;
+    if (function_exists('geoip_country_code_by_name')) {
+        $c = @geoip_country_code_by_name($ip);
+        if ($ok($c)) return strtoupper($c);
+    }
+    $mmdb = config()['geo_mmdb'] ?? '';
+    if ($mmdb && is_readable($mmdb) && class_exists('MaxMind\\Db\\Reader')) {
+        try {
+            $r = new MaxMind\Db\Reader($mmdb);
+            $c = $r->get($ip)['country']['iso_code'] ?? null;
+            $r->close();
+            if ($ok($c)) return strtoupper($c);
+        } catch (Throwable $e) {}
+    }
+    return null;
+}
+function get_geo(): array {
+    header('Cache-Control: private, no-store');
+    return ['country' => geo_country()];
+}
+
 // ---------------------------------------------------------------- 시작
 
 // 서버 명령(gift.php 등)이 함수만 빌려 쓸 때는 요청 처리를 하지 않음
@@ -903,6 +934,7 @@ try {
     elseif ($route === 'revive_ad' && $method === 'POST') respond(200, revive_ad());
     elseif ($route === 'profile' && $method === 'GET') respond(200, profile_get());
     elseif ($route === 'profile' && $method === 'POST') respond(200, profile_put());
+    elseif ($route === 'geo' && $method === 'GET') respond(200, get_geo());
     else respond(404, ['error' => 'not_found']);
 } catch (HttpError $e) {
     respond($e->status, ['error' => $e->codeName]);
