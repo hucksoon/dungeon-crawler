@@ -475,64 +475,64 @@
 </head>
 <body class="in-lobby">
 <div id="app">
-  <h1>⚔ 던전 크롤러 ⚔</h1>
+  <h1 data-t>⚔ 던전 크롤러 ⚔</h1>
   <div id="account">
     <span id="account-status"></span>
     <button id="account-btn" type="button"></button>
-    <button id="inv-btn" type="button">인벤토리 (I)</button>
-    <button id="dex-btn" type="button">도감 (B)</button>
-    <a id="shop-btn" class="btn" href="shop.html">상점</a>
-    <a id="rank-btn" class="btn" href="ranking.html">랭킹</a>
+    <button id="inv-btn" type="button" data-t>인벤토리 (I)</button>
+    <button id="dex-btn" type="button" data-t>도감 (B)</button>
+    <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
+    <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
     <select id="lang-select" aria-label="Language" hidden></select>
-    <button id="portal-btn" class="keys-only dungeon-only" type="button">포탈 (P)</button>
-    <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-close" aria-label="안내 닫기">✕</button></div>
-    <span id="guest-note" hidden>게스트는 이 기기에만 저장돼요. 계정을 연결하면 가방과 진행 상황이 서버에 보존돼요.</span>
+    <button id="portal-btn" class="keys-only dungeon-only" type="button" data-t>포탈 (P)</button>
+    <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-close" aria-label="안내 닫기" data-t-aria>✕</button></div>
+    <span id="guest-note" hidden data-t>게스트는 이 기기에만 저장돼요. 계정을 연결하면 가방과 진행 상황이 서버에 보존돼요.</span>
   </div>
   <div id="stats">
-    <span><span id="zone"></span>층 <b id="depth">1</b> (최고 <span id="best">0</span>)</span>
+    <span data-t><span id="zone"></span>층 <b id="depth">1</b> (최고 <span id="best">0</span>)</span>
     <span class="hp">HP <b id="hp">--</b></span>
-    <span>공격 <b id="atk">--</b></span>
-    <span>방어 <b id="def">0</b></span>
-    <span class="gold">골드 <b id="gold">0</b></span>
+    <span data-t>공격 <b id="atk">--</b></span>
+    <span data-t>방어 <b id="def">0</b></span>
+    <span class="gold" data-t>골드 <b id="gold">0</b></span>
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)</span>
     <span id="status" hidden></span>
   </div>
   <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div></div>
-  <div id="touch-pad" aria-label="터치 조작">
+  <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 양손 엄지로 누르기 좋게: 왼쪽 ▲◀, 가운데 기능 버튼, 오른쪽 ▶▼ -->
     <div class="dpad dpad-left">
-      <button type="button" class="up" data-dir="0,-1" aria-label="위로">▲</button>
-      <button type="button" class="left" data-dir="-1,0" aria-label="왼쪽으로">◀</button>
+      <button type="button" class="up" data-dir="0,-1" aria-label="위로" data-t-aria>▲</button>
+      <button type="button" class="left" data-dir="-1,0" aria-label="왼쪽으로" data-t-aria>◀</button>
     </div>
     <div class="actions">
-      <button type="button" id="tp-potion" class="dungeon-only">포션</button>
-      <button type="button" id="tp-inv">인벤토리</button>
-      <button type="button" id="tp-dex">도감</button>
-      <button type="button" id="tp-portal" class="dungeon-only">포탈</button>
+      <button type="button" id="tp-potion" class="dungeon-only" data-t>포션</button>
+      <button type="button" id="tp-inv" data-t>인벤토리</button>
+      <button type="button" id="tp-dex" data-t>도감</button>
+      <button type="button" id="tp-portal" class="dungeon-only" data-t>포탈</button>
     </div>
     <div class="dpad dpad-right">
-      <button type="button" class="right" data-dir="1,0" aria-label="오른쪽으로">▶</button>
-      <button type="button" class="down" data-dir="0,1" aria-label="아래로">▼</button>
+      <button type="button" class="right" data-dir="1,0" aria-label="오른쪽으로" data-t-aria>▶</button>
+      <button type="button" class="down" data-dir="0,1" aria-label="아래로" data-t-aria>▼</button>
     </div>
   </div>
   <div id="lobby-panel" class="lobby-only">
     <div id="entry-info"></div>
-    <div class="lobby-head"><b>같이 접속한 사람들</b><span id="lobby-count"></span></div>
+    <div class="lobby-head"><b data-t>같이 접속한 사람들</b><span id="lobby-count"></span></div>
     <ul id="lobby-list"></ul>
   </div>
   <div id="log"></div>
-  <p class="hint"><span class="keys-only">이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 포탈(로비로): P<br></span>
-  <span class="touch-only">방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
-  적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
+  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <span class="touch-only" data-t>방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
+  <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 <b>*</b>로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br>
-  <a href="privacy.html" style="color: inherit">개인정보처리방침</a></p>
+  로비의 파란 <b>*</b>로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br></span>
+  <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
 <div id="inv-modal" class="overlay" hidden>
   <div class="modal inv" role="dialog" aria-modal="true" aria-labelledby="inv-title">
     <div class="inv-head">
-      <h2 id="inv-title">인벤토리</h2>
+      <h2 id="inv-title" data-t>인벤토리</h2>
       <span id="inv-count"></span>
     </div>
     <!-- 넓은 화면: 왼쪽(고르기) 장비·가방, 오른쪽(읽기) [상세][능력치][추천] 탭. 두 칸이 따로 스크롤
@@ -543,46 +543,46 @@
         <div id="inv-equip" class="equip-grid"></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
-        <button id="inv-staff-gift" class="staff-btn" type="button" hidden>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
+        <button id="inv-staff-gift" class="staff-btn" type="button" hidden data-t>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
         <div id="inv-sell-ask" hidden></div>
       </div>
       <div id="inv-side" class="inv-side">
         <div class="inv-tabs" role="tablist">
-          <button type="button" class="inv-tab" role="tab" data-tab="detail">상세</button>
-          <button type="button" class="inv-tab" role="tab" data-tab="stats">능력치</button>
-          <button type="button" class="inv-tab" role="tab" data-tab="guide">추천</button>
-          <button type="button" class="detail-close">▼ 닫기</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="detail" data-t>상세</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="stats" data-t>능력치</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="guide" data-t>추천</button>
+          <button type="button" class="detail-close" data-t>▼ 닫기</button>
         </div>
         <div id="inv-detail" class="detail inv-pane" data-pane="detail"></div>
         <div id="inv-summary" class="summary inv-pane" data-pane="stats"></div>
         <div id="inv-guide" class="detail inv-pane" data-pane="guide"></div>
       </div>
     </div>
-    <button id="inv-close" type="button">닫기 (I)</button>
+    <button id="inv-close" type="button" data-t>닫기 (I)</button>
   </div>
 </div>
 
 <div id="shop-modal" class="overlay" hidden>
   <div class="modal inv" role="dialog" aria-modal="true" aria-labelledby="shop-title">
     <div class="inv-head">
-      <h2 id="shop-title">상점</h2>
+      <h2 id="shop-title" data-t>상점</h2>
       <span id="shop-gold"></span>
     </div>
     <p id="shop-sub" class="sub"></p>
     <p id="shop-msg"></p>
     <div id="shop-items" class="shop-grid"></div>
     <button id="shop-reroll" type="button"></button>
-    <button id="shop-close" type="button">닫기 (Esc)</button>
+    <button id="shop-close" type="button" data-t>닫기 (Esc)</button>
   </div>
 </div>
 
 <div id="death-modal" class="overlay" hidden>
   <div class="modal death" role="dialog" aria-modal="true" aria-labelledby="death-title">
-    <h2 id="death-title">쓰러졌다…</h2>
+    <h2 id="death-title" data-t>쓰러졌다…</h2>
     <p class="sub" id="death-sub"></p>
     <div id="death-revive"></div>
     <p id="death-msg"></p>
-    <button id="death-restart" type="button">로비에서 새로 시작 (R)</button>
+    <button id="death-restart" type="button" data-t>로비에서 새로 시작 (R)</button>
   </div>
 </div>
 
@@ -590,101 +590,107 @@
   <div class="modal notice" role="dialog" aria-modal="true" aria-labelledby="notice-title">
     <h2 id="notice-title"></h2>
     <ul id="notice-body"></ul>
-    <button id="notice-ok" type="button">확인</button>
+    <button id="notice-ok" type="button" data-t>확인</button>
   </div>
 </div>
 
 <div id="hellpick-modal" class="overlay" hidden>
   <div class="modal notice hellpick" role="dialog" aria-modal="true" aria-labelledby="hellpick-title">
-    <h2 id="hellpick-title">🔥 헬 던전 · 층 고르기</h2>
-    <p class="meta">완료한 10·20·30·40·50층 중에서 골라 그 층(네임드 보스 층)부터 들어가요.</p>
+    <h2 id="hellpick-title" data-t>🔥 헬 던전 · 층 고르기</h2>
+    <p class="meta" data-t>완료한 10·20·30·40·50층 중에서 골라 그 층(네임드 보스 층)부터 들어가요.</p>
     <div id="hellpick-list" class="hellpick-list"></div>
-    <button id="hellpick-close" type="button">닫기</button>
+    <button id="hellpick-close" type="button" data-t>닫기</button>
   </div>
 </div>
 
 <div id="ad-modal" class="overlay" hidden>
   <div class="modal ad" role="dialog" aria-labelledby="ad-title">
-    <h2 id="ad-title">광고</h2>
+    <h2 id="ad-title" data-t>광고</h2>
     <p class="sub" id="ad-sub"></p>
     <div id="ad-box">
-      <div class="ad-tag">테스트 광고</div>
+      <div class="ad-tag" data-t>테스트 광고</div>
       <div class="ad-art">⚔</div>
-      <p>실제 광고가 들어갈 자리예요.<br>구글 광고 승인을 받으면 진짜 광고가 떠요.</p>
+      <p data-t>실제 광고가 들어갈 자리예요.<br>구글 광고 승인을 받으면 진짜 광고가 떠요.</p>
     </div>
     <p id="ad-count"></p>
-    <button id="ad-claim" type="button" class="primary" disabled>보상 받기</button>
-    <button id="ad-close" type="button">닫기 (보상 없음)</button>
+    <button id="ad-claim" type="button" class="primary" disabled data-t>보상 받기</button>
+    <button id="ad-close" type="button" data-t>닫기 (보상 없음)</button>
   </div>
 </div>
 
 <div id="market-modal" class="overlay" hidden>
   <div class="modal market" role="dialog" aria-labelledby="market-title">
     <div class="inv-head">
-      <h2 id="market-title">거래소</h2>
+      <h2 id="market-title" data-t>거래소</h2>
       <span id="market-wallet"></span>
     </div>
     <div class="tabs" id="market-tabs">
-      <button type="button" data-tab="buy">구매</button>
-      <button type="button" data-tab="sell">판매 등록</button>
-      <button type="button" data-tab="mine">내 거래</button>
-      <button type="button" data-tab="mail">우편함</button>
+      <button type="button" data-tab="buy" data-t>구매</button>
+      <button type="button" data-tab="sell" data-t>판매 등록</button>
+      <button type="button" data-tab="mine" data-t>내 거래</button>
+      <button type="button" data-tab="mail" data-t>우편함</button>
     </div>
     <p id="market-msg"></p>
     <div id="market-body"></div>
-    <button id="market-close" type="button">닫기 (Esc)</button>
+    <button id="market-close" type="button" data-t>닫기 (Esc)</button>
   </div>
 </div>
 
 <div id="dex-modal" class="overlay" hidden>
   <div class="modal inv" role="dialog" aria-modal="true" aria-labelledby="dex-title">
     <div class="inv-head">
-      <h2 id="dex-title">몬스터 도감</h2>
+      <h2 id="dex-title" data-t>몬스터 도감</h2>
       <span id="dex-count"></span>
     </div>
     <div id="dex-body"></div>
-    <button id="dex-close" type="button">닫기 (B)</button>
+    <button id="dex-close" type="button" data-t>닫기 (B)</button>
   </div>
 </div>
 
 <div id="login-modal" class="overlay" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
-    <h2 id="login-title">계정 연결</h2>
-    <p class="sub">받은 인증 코드를 입력하면 어느 기기에서든 진행 상황을 이어서 플레이할 수 있어요. 지금 게스트 진행 상황은 계정으로 옮겨져요.</p>
+    <h2 id="login-title" data-t>계정 연결</h2>
+    <p class="sub" data-t>받은 인증 코드를 입력하면 어느 기기에서든 진행 상황을 이어서 플레이할 수 있어요. 지금 게스트 진행 상황은 계정으로 옮겨져요.</p>
     <div class="tabs">
-      <button type="button" data-kind="email" class="on">이메일</button>
-      <button type="button" data-kind="phone">휴대폰</button>
+      <button type="button" data-kind="email" class="on" data-t>이메일</button>
+      <button type="button" data-kind="phone" data-t>휴대폰</button>
     </div>
     <form id="step-id">
-      <label for="login-id" id="login-id-label">이메일</label>
+      <label for="login-id" id="login-id-label" data-t>이메일</label>
       <input id="login-id" type="email" autocomplete="email" required>
-      <button class="primary" type="submit">인증 코드 받기</button>
+      <button class="primary" type="submit" data-t>인증 코드 받기</button>
     </form>
     <form id="step-code" hidden>
-      <label for="login-code" id="login-code-label">인증 코드</label>
+      <label for="login-code" id="login-code-label" data-t>인증 코드</label>
       <input id="login-code" inputmode="numeric" autocomplete="one-time-code" required>
       <div class="row">
-        <button type="button" id="login-back">다시 입력</button>
-        <button class="primary" type="submit">확인</button>
+        <button type="button" id="login-back" data-t>다시 입력</button>
+        <button class="primary" type="submit" data-t>확인</button>
       </div>
     </form>
     <p id="login-msg"></p>
-    <button id="login-close" type="button">닫기</button>
+    <button id="login-close" type="button" data-t>닫기</button>
   </div>
 </div>
 
 <script src="i18n.js"></script>
 <script src="i18n/en.js"></script>
 <script src="i18n/ja.js"></script>
+<script src="i18n/en-ui.js"></script>
+<script src="i18n/ja-ui.js"></script>
 <script src="items.js"></script>
 <script src="monsters.js"></script>
-<script>RLI18N.apply(window.RLItems, window.RLMonsters); document.documentElement.lang = RLI18N.lang;</script>
+<script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
 <script src="ads-config.js"></script>
 <script>
 (() => {
   "use strict";
+  // 화면 문구 번역: T("한국어 원문 {0}", 값) — 키는 원문 그대로, 번역은 i18n/en-ui.js · ja-ui.js
+  const T = RLI18N.t;
+  // 룬워드 이름(룬 조합의 키, 한국어) → 화면에 보일 이름
+  const rwLabel = (name) => RLItems.RUNEWORDS.find(w => w.name === name)?.label || name;
 
   // ---- 설정 ----
   const TILE = 20;                 // 타일 픽셀 크기
@@ -931,7 +937,7 @@
   const isStaff = () => !!Lobby.me()?.unlimited;
   const canPay = (cost) => isStaff() || (!!player && !gameOver && player.gold >= cost);
   const pay = (cost) => { if (!isStaff()) player.gold -= cost; };
-  const costText = (cost) => (isStaff() ? "운영자 무료" : `-${cost.toLocaleString()}골드`);
+  const costText = (cost) => (isStaff() ? T("운영자 무료") : T("-{0}골드", cost.toLocaleString()));
   // 운영자만: "고대로 만들기" (장신구·유니크는 드롭할 때만 고대라 고대 굴리기가 없음)
   const canMakeAncient = (item) => isStaff() && item?.v === 4 && !!item.main && !item.ancient && RLItems.ANCIENT_RARITIES.includes(item.rarity) &&
     !(item.rarity === "unique" && (item.r || 0) < 7) && !RLItems.canRerollAncient(item, true);
@@ -1211,11 +1217,11 @@
       // 결과 { ok, to, chance } 또는 { error }
       enhance(id) {
         const item = all().find(x => x.id === id);
-        if (!item) return { error: "아이템이 없어요." };
+        if (!item) return { error: T("아이템이 없어요.") };
         const to = (item.enh || 0) + 1;
-        if (to > RLItems.ENHANCE.max) return { error: `+${RLItems.ENHANCE.max}이 최대예요.` };
+        if (to > RLItems.ENHANCE.max) return { error: T("+{0}이 최대예요.", RLItems.ENHANCE.max) };
         const cost = isStaff() ? 0 : RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);   // 운영자는 강화석 안 씀
-        if ((data[k] || 0) < cost) return { error: `${RLItems.STONE_NAMES[k]}이 부족해요. (필요 ${cost}개)` };
+        if ((data[k] || 0) < cost) return { error: T("{0}이 부족해요. (필요 {1}개)", RLItems.STONE_NAMES[k], cost) };
         const result = RLItems.rollEnhance(item);
         if (isStaff()) result.ok = true;   // 운영자 테스트: 강화는 항상 성공 (서버는 강화 단계만 확인)
         data[k] = (data[k] || 0) - cost;
@@ -1230,7 +1236,7 @@
       // 운영자 테스트: 장신구·유니크(드롭으로만 고대)도 고대로 (고대가 나오는 굴림 번호를 기록 → 서버도 같은 계산)
       makeAncient(id) {
         const item = all().find(x => x.id === id);
-        if (!item || !canMakeAncient(item)) return { error: "고대로 만들 수 없는 아이템이에요." };
+        if (!item || !canMakeAncient(item)) return { error: T("고대로 만들 수 없는 아이템이에요.") };
         const r = RLItems.rerollAncient(item, true);
         record("ancient", item, { ok: r.ok, n: r.n, staff: 1 });
         write();
@@ -1238,7 +1244,7 @@
       },
       rerollAncient(id) {
         const item = all().find(x => x.id === id);
-        if (!item || !RLItems.canRerollAncient(item, isStaff())) return { error: "고대 굴리기를 할 수 없는 아이템이에요." };
+        if (!item || !RLItems.canRerollAncient(item, isStaff())) return { error: T("고대 굴리기를 할 수 없는 아이템이에요.") };
         const r = RLItems.rerollAncient(item, isStaff());   // 운영자는 항상 성공
         record("ancient", item, { ok: r.ok, n: r.n });
         write();
@@ -1443,11 +1449,11 @@
   const maxFloor = () => (inNM() ? NM.floors : inHell() ? HELL.floors : RLMonsters.MAX_FLOOR);
   const itemLevel = () => (inHell() ? HELL.itemBase + depth : nmMobs() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125, 헬 126~175)
   const floorTag = () => (inNM() ? "n" : inHell() ? "j" : "d");      // 아이템 시드의 층 표시 (서버가 층·레벨을 검증, 헬은 j)
-  const floorName = (n = depth, nm = inNM(), gold = inGold(), hell = inHell()) => (hell ? `헬 ${n}층` : nm ? `나이트메어 ${n}층` : gold ? (goldNM() ? `골드 던전(악몽 ${player.gn}층)` : "골드 던전") : `${n}층`);
+  const floorName = (n = depth, nm = inNM(), gold = inGold(), hell = inHell()) => (hell ? T("헬 {0}층", n) : nm ? T("나이트메어 {0}층", n) : gold ? (goldNM() ? T("골드 던전(악몽 {0}층)", player.gn) : T("골드 던전")) : T("{0}층", n));
   // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층, 골드 던전은 2000 + 층, 헬은 3000 + 층으로 보내고 받음
   const presenceFloor = (n, nm, gold = inGold(), hell = inHell()) => (n ? (hell ? HELL.presence + n : nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
-  const presenceLabel = (n) => (n > HELL.presence ? `헬 ${n - HELL.presence}층` : n > GD.presence ? (n - GD.presence <= NM.floors ? `골드 던전(악몽 ${n - GD.presence}층)` : "골드 던전")
-    : n > NM.presence ? `악몽 ${n - NM.presence}층` : `${n}층`);
+  const presenceLabel = (n) => (n > HELL.presence ? T("헬 {0}층", n - HELL.presence) : n > GD.presence ? (n - GD.presence <= NM.floors ? T("골드 던전(악몽 {0}층)", n - GD.presence) : T("골드 던전"))
+    : n > NM.presence ? T("악몽 {0}층", n - NM.presence) : T("{0}층", n));
   // 던전 입구 오른쪽 문: 일반 던전 최고 층 − 10층부터 (보스 2~3마리를 다시 잡으며 파밍). 2층 이상일 때만 열림. 완료자는 65층
   const skipFloor = () => Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth) - 10);
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
@@ -3824,14 +3830,14 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    document.getElementById("zone").textContent = inHell() ? "헬 " : inNM() ? "나이트메어 " : goldNM() ? "골드 던전 · 나이트메어 " : inGold() ? "골드 던전 " : "";
-    document.getElementById("best").textContent = inHell() ? (hellCleared ? `${hellBest} 완료` : (hellBest || "-")) : inNM() ? (nmCleared ? `${nmBest} 완료` : (nmBest || "-"))
-      : cleared ? `${bestDepth} 완료` : (bestDepth || "-");
-    document.getElementById("tp-potion").textContent = player.potCd > 0 ? `포션 (${player.potCd}턴)` : "포션 (준비됨)";
+    document.getElementById("zone").textContent = inHell() ? T("헬 ") : inNM() ? T("나이트메어 ") : goldNM() ? T("골드 던전 · 나이트메어 ") : inGold() ? T("골드 던전 ") : "";
+    document.getElementById("best").textContent = inHell() ? (hellCleared ? T("{0} 완료", hellBest) : (hellBest || "-")) : inNM() ? (nmCleared ? T("{0} 완료", nmBest) : (nmBest || "-"))
+      : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
+    document.getElementById("tp-potion").textContent = player.potCd > 0 ? T("포션 ({0}턴)", player.potCd) : T("포션 (준비됨)");
     const st = [
       ...(skillHud()),
-      ...(player.burn ? [`🔥 화상 ${player.burn.left}회`] : []),
-      ...(player.slow > 0 ? [`❄ 느려짐 ${player.slow}턴`] : player.immune > 0 ? [`❄ 면역 ${player.immune}턴`] : []),
+      ...(player.burn ? [T("🔥 화상 {0}회", player.burn.left)] : []),
+      ...(player.slow > 0 ? [T("❄ 느려짐 {0}턴", player.slow)] : player.immune > 0 ? [T("❄ 면역 {0}턴", player.immune)] : []),
     ];
     const statusEl = document.getElementById("status");
     statusEl.textContent = st.join(" · ");
@@ -3886,25 +3892,25 @@
   let loginReturn = null;  // 로그인 뒤 돌아갈 페이지 (상점에서 ?login=shop 으로 왔을 때)
 
   function renderAccount() {
-    const guest = `게스트 #${Account.deviceId().slice(0, 6)} 로 플레이 중`;
+    const guest = T("게스트 #{0} 로 플레이 중", Account.deviceId().slice(0, 6));
     // 서버 저장은 로그인한 사람만: 게스트에게 계정 연결 안내
     document.getElementById("guest-note").hidden = !(RANKING_API && Account.configured() && !Account.loggedIn());
     if (!Account.configured()) {
       accountStatus.textContent = guest;
-      accountBtn.textContent = "계정 연결";
+      accountBtn.textContent = T("계정 연결");
       accountBtn.disabled = true;
-      accountBtn.title = "Xsolla Login 설정(loginProjectId, clientId)이 필요합니다";
+      accountBtn.title = T("Xsolla Login 설정(loginProjectId, clientId)이 필요합니다");
       return;
     }
     accountBtn.disabled = false;
     accountBtn.title = "";
     if (Account.loggedIn()) {
       const c = Account.claims();
-      accountStatus.textContent = Lobby.me()?.staff ? "운영자 로그인됨" : `${c?.email || c?.phone_number || "계정"} 로그인됨`;
-      accountBtn.textContent = "로그아웃";
+      accountStatus.textContent = Lobby.me()?.staff ? T("운영자 로그인됨") : T("{0} 로그인됨", c?.email || c?.phone_number || T("계정"));
+      accountBtn.textContent = T("로그아웃");
     } else {
       accountStatus.textContent = guest;
-      accountBtn.textContent = "계정 연결";
+      accountBtn.textContent = T("계정 연결");
     }
   }
 
@@ -3923,10 +3929,10 @@
     loginKind = kind;
     for (const b of modal.querySelectorAll(".tabs button")) b.classList.toggle("on", b.dataset.kind === kind);
     const email = kind === "email";
-    document.getElementById("login-id-label").textContent = email ? "이메일" : "휴대폰 번호";
+    document.getElementById("login-id-label").textContent = email ? T("이메일") : T("휴대폰 번호");
     idInput.type = email ? "email" : "tel";
     idInput.autocomplete = email ? "email" : "tel";
-    idInput.placeholder = email ? "you@example.com" : "010-1234-5678 또는 +82 10…";
+    idInput.placeholder = email ? "you@example.com" : T("010-1234-5678 또는 +82 10…");
     idInput.value = "";
     setMsg("");
     showStep("id");
@@ -3957,15 +3963,15 @@
     e.preventDefault();
     loginValue = loginKind === "phone" ? normalizePhone(idInput.value.trim()) : idInput.value.trim();
     if (loginKind === "phone" && !/^\+\d{8,15}$/.test(loginValue)) {
-      setMsg("휴대폰 번호 형식을 확인해 주세요.", "err");
+      setMsg(T("휴대폰 번호 형식을 확인해 주세요."), "err");
       return;
     }
     busy(stepId, async () => {
-      setMsg("인증 코드를 보내는 중…");
+      setMsg(T("인증 코드를 보내는 중…"));
       try {
         operationId = await Account.requestCode(loginKind, loginValue);
         codeInput.value = "";
-        setMsg(`${loginValue}(으)로 인증 코드를 보냈어요.`, "ok");
+        setMsg(T("{0}(으)로 인증 코드를 보냈어요.", loginValue), "ok");
         showStep("code");
       } catch (err) {
         setMsg(err.message, "err");
@@ -3976,7 +3982,7 @@
   stepCode.addEventListener("submit", (e) => {
     e.preventDefault();
     busy(stepCode, async () => {
-      setMsg("확인하는 중…");
+      setMsg(T("확인하는 중…"));
       try {
         await Account.confirmCode(loginKind, loginValue, codeInput.value.trim(), operationId);
         closeLogin();
@@ -3991,7 +3997,7 @@
         else if (gameOver && deathModal.hidden) openDeath();
       } catch (err) {
         // 코드는 1회용이라 실패하면 새 코드를 받아야 할 수 있음
-        setMsg(`${err.message} 코드가 만료됐다면 '다시 입력'으로 새 코드를 받아 주세요.`, "err");
+        setMsg(T("{0} 코드가 만료됐다면 '다시 입력'으로 새 코드를 받아 주세요.", err.message), "err");
       }
     });
   });
@@ -4019,7 +4025,7 @@
     hellBest = 0;
     hellCleared = false;
     newGame();
-    log("로그아웃했다. 게스트로 새로 시작한다.", "info");
+    log(T("로그아웃했다. 게스트로 새로 시작한다."), "info");
     renderAccount();
   });
 
@@ -4078,9 +4084,9 @@
   function setNote(id) {
     const set = RLItems.SETS[id];
     const counts = set.bonuses.map(b => b.count);
-    if (id === "trial") return `${set.name}: ${counts.join("·")}개를 입으면 효과가 켜져요. 6부위 중 아무거나 5개면 전부 켜져서 무기는 자유롭게 골라도 돼요.`;
-    if (set.bonuses.length > 1) return `${set.name}: 방어구 ${Object.keys(set.pieces).length}부위 중 ${counts.join("·")}개를 입으면 효과가 하나씩 켜져요. 나이트메어에서만 나와요. 다른 세트와 나눠 입을 수 있어요 (예: 시험의 세트 2 + ${set.name} 3).`;
-    return `${set.name}: ${Object.values(set.pieces).join(" + ")} — 둘 다 끼면 ${set.bonuses.map(b => b.text).join(", ")}`;
+    if (id === "trial") return T("{0}: {1}개를 입으면 효과가 켜져요. 6부위 중 아무거나 5개면 전부 켜져서 무기는 자유롭게 골라도 돼요.", set.name, counts.join("·"));
+    if (set.bonuses.length > 1) return T("{0}: 방어구 {1}부위 중 {2}개를 입으면 효과가 하나씩 켜져요. 나이트메어에서만 나와요. 다른 세트와 나눠 입을 수 있어요 (예: {3} 2 + {0} 3).", set.name, Object.keys(set.pieces).length, counts.join("·"), RLItems.SETS.trial.name);
+    return T("{0}: {1} — 둘 다 끼면 {2}", set.name, Object.values(set.pieces).join(" + "), set.bonuses.map(b => b.text).join(", "));
   }
 
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
@@ -4094,8 +4100,8 @@
       return el(tag, { className: `stat-line${isMax ? " max" : ""}`, style: color ? { color } : {} },
         `${mark} ${RLItems.formatStat(k, v)}`,
         range ? el("span", { className: "range" }, ` [${RLItems.formatRange(k, range)}]${isMax ? " ▲" : ""}`) : null,
-        plus ? el("span", { className: "meta" }, ` (강화 +${plus})`) : null,
-        applied < v ? el("span", { className: "meta capped" }, ` (적용 ${RLItems.formatRange(k, [applied, applied])})`) : null);
+        plus ? el("span", { className: "meta" }, T(" (강화 +{0})", plus)) : null,
+        applied < v ? el("span", { className: "meta capped" }, T(" (적용 {0})", RLItems.formatRange(k, [applied, applied]))) : null);
     };
     // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
     const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
@@ -4122,8 +4128,15 @@
     collectMail();
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
-    document.getElementById("inv-count").textContent =
-      `${isStaff() ? "운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100% · " : Lobby.me()?.staff ? `운영자 기기 아님 (이 기기 ID ${Account.deviceId()}) · ` : ""}골드 ${(player && !gameOver ? player.gold : 0).toLocaleString()} · 강화석 ${Inv.stones()}${showNmStones() ? ` · 악몽 강화석 ${Inv.nmStones()}` : ""}${Inv.hellStones() > 0 || Inv.items().some(RLItems.isHellItem) ? ` · 지옥 강화석 ${Inv.hellStones()}` : ""} · 가방 ${Inv.bag().length}/${BAG_SIZE}${waiting ? ` · 보관함 ${waiting}` : ""}`;
+    document.getElementById("inv-count").textContent = [
+      isStaff() ? T("운영자: 골드·강화석·보석·횟수 제한 없음, 강화·고대 굴리기 100%") : Lobby.me()?.staff ? T("운영자 기기 아님 (이 기기 ID {0})", Account.deviceId()) : null,
+      T("골드 {0}", (player && !gameOver ? player.gold : 0).toLocaleString()),
+      `${RLItems.STONE_NAMES.stones} ${Inv.stones()}`,
+      showNmStones() ? `${RLItems.STONE_NAMES.nmStones} ${Inv.nmStones()}` : null,
+      Inv.hellStones() > 0 || Inv.items().some(RLItems.isHellItem) ? `${RLItems.STONE_NAMES.hellStones} ${Inv.hellStones()}` : null,
+      T("가방 {0}/{1}", Inv.bag().length, BAG_SIZE),
+      waiting ? T("보관함 {0}", waiting) : null,
+    ].filter(Boolean).join(" · ");
 
     invEquip.replaceChildren(...RLItems.EQUIP_SLOTS.map(slot => {
       const item = equip[slot];
@@ -4133,55 +4146,55 @@
         className: `slot${item ? "" : " empty"}${sel ? " sel" : ""}${item?.ancient ? " ancient" : ""}${rwTag(item) ? " rw-base" : ""}`,
         onclick: () => { if (item) pickItem({ from: "equip", slot }); },
         title: item ? RLItems.itemName(item) : "",
-      }, el("small", {}, RLItems.SLOT_NAMES[slot], item && recommendFit(item) ? el("span", { className: "fit" }, ` · 추천 ${recommendFit(item).got}/${recommendFit(item).of}`) : null),
-        item?.lock ? "🔒 " : "", rwTag(item), item ? itemLabel(item) : "비어 있음");
+      }, el("small", {}, RLItems.SLOT_NAMES[slot], item && recommendFit(item) ? el("span", { className: "fit" }, T(" · 추천 {0}/{1}", recommendFit(item).got, recommendFit(item).of)) : null),
+        item?.lock ? "🔒 " : "", rwTag(item), item ? itemLabel(item) : T("비어 있음"));
     }));
 
     // 능력치 합계와 세트 효과
     const { stats: g, sets } = Inv.totals();
     const s = stats();
     const statRows = [
-      `공격력 ${s.atk} (장비 +${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""})`, `방어력 ${s.def}${g.defPct ? ` (+${g.defPct}%)` : ""}`, `최대 HP ${s.maxHp} (장비 +${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""})`,
-      `치명타 ${s.crit}% (피해 ×${s.critMul.toFixed(1)}) · 흡혈 ${s.lifesteal}%${s.lifesteal >= lsCap(g) ? ` (최대 ${lsCap(g)}%)` : ""}`, `골드 +${s.gold}% · 경험치 +${s.xp}%`,
-      ...(g.guard ? [`장검 + 방패: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}% (흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%)`] : []),
-      ...(s.killHeal ? [`처치 시 HP +${s.killHeal}`] : []),
-      ...(s.parry ? [`패링 ${s.parry}% (최대 ${RLItems.PARRY.max}%)`] : []),
-      ...(s.dual ? [`두 손 무기: 한 턴에 2번 공격 (왼손 ${Math.round(RLItems.DUAL_WIELD.secondHit * 100)}%)`] : []),
-      ...(s.longsword ? [`장검: 기본 공격 피해 ×${RLItems.LONGSWORD.hitMul} (스킬은 그대로)`] : []),
-      ...(s.dmgReduce ? [`받는 피해 −${s.dmgReduce}%`] : []),
-      ...(s.mf ? [`🔍 아이템 발견 +${s.mf}%${g.mf > s.mf ? ` (최대 ${RLItems.FIND.max}%)` : ""}: 처치마다 ${Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×${RLItems.findUniqueMul(s.mf).toFixed(2)}`] : []),
-      ...(s.splash ? [`광란: 때린 적 주변 1칸도 피해의 ${Math.round(RLItems.SPLASH.mul * 100)}%`] : []),
-      ...(s.fireball ? [`파이어볼: ${RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))} (방어력 무시)${s.fireballBurn ? " · 화상" : ""}`] : []),
-      ...(s.nova ? [`프로스트 노바: ${RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0)}턴마다 주변 8칸, 피해 약 ${Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))} (방어력 무시)${s.novaSlow ? " · 느려짐" : ""}`] : []),
-      ...(s.chain ? [`체인 라이트닝: ${RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0)}턴마다 ${(s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0)}번 튕김, 한 번에 약 ${Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))} (방어력 무시)${s.chainMax ? ` · 감전 (받는 피해 +${RLItems.CHAIN.shock.pct}%)` : ""}`] : []),
-      ...(EL.list.some(k => s.elem[k]) ? [`속성 피해: ${EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · ")}`] : []),
-      ...(EL.list.some(k => s.res[k]) ? [`속성 저항: ${EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? ` (최대 ${resCapOf(g, k)}%)` : ""}`).join(" · ")}${EL.list.every(k => resCapOf(g, k) === EL.resCap) ? ` (최대 ${EL.resCap}%)` : ""}${resZone() !== "normal" ? ` · 장비 합 ${EL.list.map(k => s.resRaw[k]).join("/")}% − ${EL.zonePenalty[resZone()]} (${resZone() === "hell" ? "헬" : "나이트메어"})` : ""}`] : []),
+      T("공격력 {0} (장비 +{1})", s.atk, `${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""}`), T("방어력 {0}", s.def) + (g.defPct ? ` (+${g.defPct}%)` : ""), T("최대 HP {0} (장비 +{1})", s.maxHp, `${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""}`),
+      T("치명타 {0}% (피해 ×{1}) · 흡혈 {2}%", s.crit, s.critMul.toFixed(1), s.lifesteal) + (s.lifesteal >= lsCap(g) ? T(" (최대 {0}%)", lsCap(g)) : ""), T("골드 +{0}% · 경험치 +{1}%", s.gold, s.xp),
+      ...(g.guard ? [T("장검 + 방패: 흡혈 +{0}% (흡혈 최대 {1}%)", RLItems.SHIELD_GUARD.lifesteal, RLItems.SHIELD_GUARD.cap)] : []),
+      ...(s.killHeal ? [T("처치 시 HP +{0}", s.killHeal)] : []),
+      ...(s.parry ? [T("패링 {0}% (최대 {1}%)", s.parry, RLItems.PARRY.max)] : []),
+      ...(s.dual ? [T("두 손 무기: 한 턴에 2번 공격 (왼손 {0}%)", Math.round(RLItems.DUAL_WIELD.secondHit * 100))] : []),
+      ...(s.longsword ? [T("장검: 기본 공격 피해 ×{0} (스킬은 그대로)", RLItems.LONGSWORD.hitMul)] : []),
+      ...(s.dmgReduce ? [T("받는 피해 −{0}%", s.dmgReduce)] : []),
+      ...(s.mf ? [T("🔍 아이템 발견 +{0}%{1}: 처치마다 {2}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×{3}", s.mf, g.mf > s.mf ? T(" (최대 {0}%)", RLItems.FIND.max) : "", Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10, RLItems.findUniqueMul(s.mf).toFixed(2))] : []),
+      ...(s.splash ? [T("광란: 때린 적 주변 1칸도 피해의 {0}%", Math.round(RLItems.SPLASH.mul * 100))] : []),
+      ...(s.fireball ? [T("파이어볼: {0}턴마다 3×3, 피해 약 {1} (방어력 무시)", RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))) + (s.fireballBurn ? T(" · 화상") : "")] : []),
+      ...(s.nova ? [T("프로스트 노바: {0}턴마다 주변 8칸, 피해 약 {1} (방어력 무시)", RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))) + (s.novaSlow ? T(" · 느려짐") : "")] : []),
+      ...(s.chain ? [T("체인 라이트닝: {0}턴마다 {1}번 튕김, 한 번에 약 {2} (방어력 무시)", RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0), (s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0), Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))) + (s.chainMax ? T(" · 감전 (받는 피해 +{0}%)", RLItems.CHAIN.shock.pct) : "")] : []),
+      ...(EL.list.some(k => s.elem[k]) ? [T("속성 피해: {0}", EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · "))] : []),
+      ...(EL.list.some(k => s.res[k]) ? [T("속성 저항: {0}", EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? T(" (최대 {0}%)", resCapOf(g, k)) : ""}`).join(" · ")) + (EL.list.every(k => resCapOf(g, k) === EL.resCap) ? T(" (최대 {0}%)", EL.resCap) : "") + (resZone() !== "normal" ? T(" · 장비 합 {0}% − {1} ({2})", EL.list.map(k => s.resRaw[k]).join("/"), EL.zonePenalty[resZone()], resZone() === "hell" ? T("헬") : T("나이트메어")) : "")] : []),
       // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
-      ...(Inv.totals().runewords.names.length ? [`✦ 룬워드: ${Inv.totals().runewords.names.join(" · ")}`, ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
-      ...(Inv.totals().uniques.names.length ? [`✦ 유니크: ${Inv.totals().uniques.names.join(" · ")}`, ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
-      ...(!s.fireball && s.rw.fireball ? [`파이어볼(나무): ${RLItems.RUNEWORD_FX.fireball.every - (s.rw.skillFast ? 1 : 0)}턴마다 3×3, 피해 약 ${Math.round(s.atk * RLItems.RUNEWORD_FX.fireball.mul * (1 + (s.fireballPct + s.elem.fire) / 100))}`] : []),
+      ...(Inv.totals().runewords.names.length ? [T("✦ 룬워드: {0}", Inv.totals().runewords.names.map(rwLabel).join(" · ")), ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
+      ...(Inv.totals().uniques.names.length ? [T("✦ 유니크: {0}", Inv.totals().uniques.names.join(" · ")), ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
+      ...(!s.fireball && s.rw.fireball ? [T("파이어볼(나무): {0}턴마다 3×3, 피해 약 {1}", RLItems.RUNEWORD_FX.fireball.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.RUNEWORD_FX.fireball.mul * (1 + (s.fireballPct + s.elem.fire) / 100)))] : []),
     ];
     const oldEquipped = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     const pouch = RLItems.GEM_KINDS.filter(k => Inv.gemCount(k).some(Boolean));
     const runeTotal = Inv.runeCount().reduce((a, b) => a + b, 0);
     invSummary.replaceChildren(
-      el("h3", {}, "능력치"), ...statRows.map(t => el("div", {}, t)),
-      ...(oldEquipped ? [el("div", { className: "meta" }, `예전 규칙 장비 ${oldEquipped}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.`)] : []),
-      ...(player?.oldGear ? [el("div", { className: "msg-bad" }, "이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.")] : []),
+      el("h3", {}, T("능력치")), ...statRows.map(t => el("div", {}, t)),
+      ...(oldEquipped ? [el("div", { className: "meta" }, T("예전 규칙 장비 {0}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.", oldEquipped))] : []),
+      ...(player?.oldGear ? [el("div", { className: "msg-bad" }, T("이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."))] : []),
       // 세트는 한 줄씩 (누르면 모든 단계), 보석 주머니는 접어서
       ...sets.map(set => fold(`set:${set.id}`,
         [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
-          el("span", { className: "meta" }, ` · 효과 ${set.bonuses.filter(b => b.on).length}/${set.bonuses.length}`)],
-        set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, `${b.count}세트: ${b.text}`)), true)),
-      ...(pouch.length ? [fold("pouch", `보석 주머니 (${pouch.length}종)`,
+          el("span", { className: "meta" }, T(" · 효과 {0}/{1}", set.bonuses.filter(b => b.on).length, set.bonuses.length))],
+        set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, T("{0}세트: {1}", b.count, b.text))), true)),
+      ...(pouch.length ? [fold("pouch", T("보석 주머니 ({0}종)", pouch.length),
         [el("div", { className: "gem-pouch" }, ...pouch.map(k => el("div", { style: { color: RLItems.GEMS[k].color } }, `♦ ${RLItems.GEMS[k].name}: ${countText(Inv.gemCount(k))}`)))], true)] : []),
-      ...(runeTotal ? [fold("runes", [el("span", { className: "rainbow" }, "룬 주머니"), ` (${runeTotal}개)`],
-        [el("div", { className: "rune-pouch" }, `♦ ${runeCountText(Inv.runeCount())}`), el("div", { className: "meta" }, "아래 룬 3개 = 바로 위 룬 1개 (홈에 넣을 때 자동으로 합쳐요)")], true)] : []),
+      ...(runeTotal ? [fold("runes", [el("span", { className: "rainbow" }, T("룬 주머니")), T(" ({0}개)", runeTotal)],
+        [el("div", { className: "rune-pouch" }, `♦ ${runeCountText(Inv.runeCount())}`), el("div", { className: "meta" }, T("아래 룬 3개 = 바로 위 룬 1개 (홈에 넣을 때 자동으로 합쳐요)"))], true)] : []),
     );
     // 휴대폰: 능력치 한 줄 요약 (누르면 [능력치] 탭)
-    const short = (n) => (n >= 10000 ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}만` : String(n));
+    const short = (n) => (n >= 10000 ? (RLI18N.lang === "ko" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}만` : RLI18N.lang === "ja" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}万` : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`) : String(n));
     const statline = document.getElementById("inv-statline");
-    statline.textContent = `공 ${short(s.atk)} · 방 ${short(s.def)} · HP ${short(s.maxHp)} · 흡혈 ${s.lifesteal}%${sets.length ? ` · ${sets.map(x => `${x.name.replace(/의 세트$/, "")} ${Math.min(x.count, x.full)}/${x.full}`).join(" · ")}` : ""} ▼`;
+    statline.textContent = T("공 {0} · 방 {1} · HP {2} · 흡혈 {3}%", short(s.atk), short(s.def), short(s.maxHp), s.lifesteal) + (sets.length ? ` · ${sets.map(x => `${x.name.replace(/의 세트$| Set$|のセット$/, "").replace(/^Set of /, "")} ${Math.min(x.count, x.full)}/${x.full}`).join(" · ")}` : "") + " ▼";
     statline.onclick = () => showTab("stats");
     // 탭: 고른 탭의 칸만 보임. 휴대폰은 탭 창이 열렸을 때만
     for (const b of invSide.querySelectorAll(".inv-tab")) b.classList.toggle("on", b.dataset.tab === invTab);
@@ -4197,12 +4210,12 @@
       className: `bag-item${selected?.from === "bag" && selected.id === item.id ? " sel" : ""}${item.ancient ? " ancient" : ""}${rwTag(item) ? " rw-base" : ""}`,
       onclick: () => pickItem({ from: "bag", id: item.id }),
     }, item.lock ? "🔒 " : "", rwTag(item), itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)))
-      : [el("div", { className: "bag-empty" }, "가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요.")]));
+      : [el("div", { className: "bag-empty" }, T("가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요."))]));
 
     const sellAllBtn = document.getElementById("inv-sell-all");
     const sellBag = sellable(), gemKept = bag.length - sellBag.length;
     const totalGold = sellBag.reduce((s, item) => s + RLItems.sellGold(item), 0);
-    sellAllBtn.textContent = sellBag.length ? `가방 전부 판매 (${sellBag.length}개 → ${stonesText(sellBag)} · 골드 +${totalGold.toLocaleString()}${gemKept ? ` · 잠금·보석 ${gemKept}개 빼고` : ""})` : "가방 전부 판매";
+    sellAllBtn.textContent = sellBag.length ? T("가방 전부 판매 ({0}개 → {1} · 골드 +{2}{3})", sellBag.length, stonesText(sellBag), totalGold.toLocaleString(), gemKept ? T(" · 잠금·보석 {0}개 빼고", gemKept) : "") : T("가방 전부 판매");
     sellAllBtn.disabled = !sellBag.length;
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
@@ -4217,9 +4230,9 @@
     const sum = { stones: 0, nmStones: 0, hellStones: 0 };
     for (const item of items) sum[RLItems.stoneKey(item)] += RLItems.sellStones(item);
     const parts = Object.keys(sum).filter(k => sum[k]).map(k => `${RLItems.STONE_NAMES[k]} ${sign}${sum[k]}`);
-    return parts.length ? parts.join(" · ") : `강화석 ${sign}0`;
+    return parts.length ? parts.join(" · ") : `${RLItems.STONE_NAMES.stones} ${sign}0`;
   }
-  const gainText = (r) => [r.stones ? `강화석 +${r.stones}` : "", r.nmStones ? `악몽 강화석 +${r.nmStones}` : "", r.hellStones ? `지옥 강화석 +${r.hellStones}` : ""].filter(Boolean).join(" · ") || "강화석 +0";
+  const gainText = (r) => ["stones", "nmStones", "hellStones"].filter(k => r[k]).map(k => `${RLItems.STONE_NAMES[k]} +${r[k]}`).join(" · ") || `${RLItems.STONE_NAMES.stones} +0`;
 
   // 가방 전부 판매: 레전더리·세트·룬워드 재료가 섞여 있으면 같이 팔지 물어봄 (안 팔면 가방에 남김).
   // 없으면 레어 이상 개수를 보여주고 한 번 더 확인
@@ -4233,9 +4246,9 @@
     if (bag.some(isPrecious)) { sellAsk = true; renderInventory(); return; }
     const valuable = bag.filter(item => RARITY_ORDER.indexOf(item.rarity) <= RARITY_ORDER.indexOf("rare"));
     const detail = valuable.length
-      ? ` 레어 이상 ${valuable.length}개(${valuable.map(RLItems.itemName).slice(0, 5).join(", ")}${valuable.length > 5 ? " …" : ""})도 포함돼요.`
+      ? T(" 레어 이상 {0}개({1})도 포함돼요.", valuable.length, valuable.map(RLItems.itemName).slice(0, 5).join(", ") + (valuable.length > 5 ? " …" : ""))
       : "";
-    if (!confirm(`가방의 아이템 ${bag.length}개를 모두 판매하고 ${stonesText(bag, "")}개를 받을까요?${detail} 장착 중인 아이템, 잠긴 아이템, 보석·룬을 넣은 아이템은 판매되지 않아요.`)) return;
+    if (!confirm(T("가방의 아이템 {0}개를 모두 판매하고 {1}개를 받을까요?{2} 장착 중인 아이템, 잠긴 아이템, 보석·룬을 넣은 아이템은 판매되지 않아요.", bag.length, stonesText(bag, ""), detail))) return;
     doSellAll(() => false);
   }
   function doSellAll(keep) {
@@ -4244,7 +4257,7 @@
     const kept = Inv.bag().length;
     const gold = sellGoldIn(r.gold);
     selected = null;
-    invMsg = { cls: "good", text: `아이템 ${r.count}개 판매 → ${gainText(r)}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}${kept ? ` (${kept}개는 가방에 남김)` : ""}` };
+    invMsg = { cls: "good", text: T("아이템 {0}개 판매 → {1}", r.count, gainText(r)) + (gold ? T(" · 골드 +{0}", gold.toLocaleString()) : "") + (kept ? T(" ({0}개는 가방에 남김)", kept) : "") };
     log(invMsg.text, "good");
     afterGearChange();
   }
@@ -4258,66 +4271,66 @@
     const sum = (list) => stonesText(list);
     const names = precious.map(RLItems.itemName);
     box.replaceChildren(
-      el("div", {}, `${[precious.some(it => !RLItems.runewordHighlight(it)) ? "레전더리·세트" : "", precious.some(RLItems.runewordHighlight) ? "룬워드 재료" : ""].filter(Boolean).join("·")} ${precious.length}개도 같이 팔까요?`),
-      el("div", { className: "meta" }, `${names.slice(0, 4).join(", ")}${names.length > 4 ? ` 외 ${names.length - 4}개` : ""}`),
+      el("div", {}, T("{0} {1}개도 같이 팔까요?", [precious.some(it => !RLItems.runewordHighlight(it)) ? T("레전더리·세트") : "", precious.some(RLItems.runewordHighlight) ? T("룬워드 재료") : ""].filter(Boolean).join("·"), precious.length)),
+      el("div", { className: "meta" }, names.slice(0, 4).join(", ") + (names.length > 4 ? T(" 외 {0}개", names.length - 4) : "")),
       el("div", { className: "row" },
         el("button", { type: "button", className: "primary", disabled: !rest.length, onclick: () => doSellAll(isPrecious) },
-          rest.length ? `남기고 나머지 ${rest.length}개만 판매 (${sum(rest)})` : "남길 것 빼면 팔 게 없어요"),
-        el("button", { type: "button", onclick: () => doSellAll(() => false) }, `모두 판매 ${bag.length}개 (${sum(bag)})`),
-        el("button", { type: "button", onclick: () => { sellAsk = false; renderInventory(); } }, "취소")),
+          rest.length ? T("남기고 나머지 {0}개만 판매 ({1})", rest.length, sum(rest)) : T("남길 것 빼면 팔 게 없어요")),
+        el("button", { type: "button", onclick: () => doSellAll(() => false) }, T("모두 판매 {0}개 ({1})", bag.length, sum(bag))),
+        el("button", { type: "button", onclick: () => { sellAsk = false; renderInventory(); } }, T("취소"))),
     );
   }
 
   // ---- 대장간 ----
   let forgeMode = false;   // 로비 대장간에서 인벤토리를 열었을 때
   function forgeRows(item) {
-    const out = [el("h3", { style: { color: FORGE_COLOR } }, "⚒ 대장간")];
+    const out = [el("h3", { style: { color: FORGE_COLOR } }, T("⚒ 대장간"))];
     const gold = player && !gameOver ? player.gold : 0;
     if (RLItems.canReforge(item)) {
       const cost = RLItems.reforgeCost(item);
       const F = RLItems.FORGE.reforge, locked = RLItems.reforgeLineOf(item), n = (item.rf || []).length;
-      out.push(el("div", { className: "meta" }, `옵션 재련: 추가 능력치 한 줄을 다시 굴려요 (다른 줄에 없는 능력치 중 무작위${item.ancient ? ", 고대라 새 줄도 최대치" : ""}). ` +
-        `${isStaff() ? "운영자: 모든 줄을 재련할 수 있어요" : locked == null ? "아이템마다 한 줄만 고를 수 있어요 (처음 재련한 줄만 계속 다시 굴려요)" : "이 아이템은 처음 재련한 줄만 다시 굴릴 수 있어요"}. ` +
-        `${cost.toLocaleString()}골드 · ${n}번 재련함, 할 때마다 ×${F.growth} (최대 처음의 ${F.cap}배) · 보유 ${gold.toLocaleString()}골드`));
+      out.push(el("div", { className: "meta" }, T("옵션 재련: 추가 능력치 한 줄을 다시 굴려요 (다른 줄에 없는 능력치 중 무작위{0}). ", item.ancient ? T(", 고대라 새 줄도 최대치") : "") +
+        (isStaff() ? T("운영자: 모든 줄을 재련할 수 있어요") : locked == null ? T("아이템마다 한 줄만 고를 수 있어요 (처음 재련한 줄만 계속 다시 굴려요)") : T("이 아이템은 처음 재련한 줄만 다시 굴릴 수 있어요")) + ". " +
+        T("{0}골드 · {1}번 재련함, 할 때마다 ×{2} (최대 처음의 {3}배) · 보유 {4}골드", cost.toLocaleString(), n, F.growth, F.cap, gold.toLocaleString())));
       item.lines.forEach(([k, v], i) => {
         if (!RLItems.reforgeableLine(item, i)) return;
         const ok = RLItems.canReforgeLine(item, i, isStaff());
         out.push(el("div", { className: "sock-pick" },
           el("span", { className: "stat-line" }, `◆ ${RLItems.formatStat(k, v)}${locked === i ? " ⚒" : ""}`),
-          ok ? el("button", { type: "button", className: "reforge-btn", disabled: !canPay(cost), onclick: () => reforgeItem(item, i) }, `재련 (${cost.toLocaleString()}골드)`)
-            : el("span", { className: "meta" }, "재련 불가 (다른 줄을 재련함)")));
+          ok ? el("button", { type: "button", className: "reforge-btn", disabled: !canPay(cost), onclick: () => reforgeItem(item, i) }, T("재련 ({0}골드)", cost.toLocaleString()))
+            : el("span", { className: "meta" }, T("재련 불가 (다른 줄을 재련함)"))));
       });
-    } else out.push(el("div", { className: "meta" }, "옵션 재련은 레전더리·세트(v4)만 할 수 있어요."));
+    } else out.push(el("div", { className: "meta" }, T("옵션 재련은 레전더리·세트(v4)만 할 수 있어요.")));
     if (item.gems?.length) {
       const cost = RLItems.socketResetCost(item);
       out.push(el("div", { className: "sock-pick" },
-        el("span", { className: "meta" }, `홈 초기화: 넣은 보석·룬 ${item.gems.length}개를 모두 지워요 (보석·룬은 사라져요)`),
-        el("button", { type: "button", className: "socket-reset-btn", disabled: !canPay(cost), onclick: () => resetSockets(item) }, `홈 초기화 (${cost.toLocaleString()}골드)`)));
-    } else if (RLItems.socketCount(item)) out.push(el("div", { className: "meta" }, "홈 초기화: 넣은 보석이 없어요."));
+        el("span", { className: "meta" }, T("홈 초기화: 넣은 보석·룬 {0}개를 모두 지워요 (보석·룬은 사라져요)", item.gems.length)),
+        el("button", { type: "button", className: "socket-reset-btn", disabled: !canPay(cost), onclick: () => resetSockets(item) }, T("홈 초기화 ({0}골드)", cost.toLocaleString()))));
+    } else if (RLItems.socketCount(item)) out.push(el("div", { className: "meta" }, T("홈 초기화: 넣은 보석이 없어요.")));
     return out;
   }
   function reforgeItem(item, i) {
     const cost = RLItems.reforgeCost(item);
     // 처음 재련할 때: 이 줄로 정해지면 다른 줄은 재련할 수 없음 (운영자는 빼고)
     if (!isStaff() && RLItems.reforgeLineOf(item) == null && item.lines.filter((_, j) => RLItems.reforgeableLine(item, j)).length > 1
-      && !confirm(`${RLItems.formatStat(...item.lines[i])} 줄을 재련할까요?\n이 아이템은 앞으로 이 줄만 재련할 수 있어요.`)) return;
-    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+      && !confirm(T("{0} 줄을 재련할까요?\n이 아이템은 앞으로 이 줄만 재련할 수 있어요.", RLItems.formatStat(...item.lines[i])))) return;
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", cost.toLocaleString()) }; renderInventory(); return; }
     const before = RLItems.formatStat(...item.lines[i]);
     const line = Inv.reforge(item.id, i);
     if (!line) return;
     pay(cost);
-    invMsg = { cls: "good", text: `⚒ 재련: ${before} → ${RLItems.formatStat(...line)} (${costText(cost)})` };
+    invMsg = { cls: "good", text: T("⚒ 재련: {0} → {1} ({2})", before, RLItems.formatStat(...line), costText(cost)) };
     log(invMsg.text, "good");
     saveGame(true);
     afterGearChange();
   }
   function resetSockets(item) {
     const cost = RLItems.socketResetCost(item);
-    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
-    if (!confirm(`${RLItems.itemName(item)}의 홈을 초기화할까요? 넣은 보석·룬 ${item.gems.length}개가 사라져요. (${cost.toLocaleString()}골드)`)) return;
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", cost.toLocaleString()) }; renderInventory(); return; }
+    if (!confirm(T("{0}의 홈을 초기화할까요? 넣은 보석·룬 {1}개가 사라져요. ({2}골드)", RLItems.itemName(item), item.gems.length, cost.toLocaleString()))) return;
     if (!Inv.resetSockets(item.id)) return;
     pay(cost);
-    invMsg = { cls: "good", text: `⚒ 홈을 초기화했어요. 다시 보석·룬을 넣을 수 있어요. (${costText(cost)})` };
+    invMsg = { cls: "good", text: T("⚒ 홈을 초기화했어요. 다시 보석·룬을 넣을 수 있어요. ({0})", costText(cost)) };
     log(invMsg.text, "good");
     saveGame(true);
     afterGearChange();
@@ -4327,18 +4340,18 @@
   // 넣을 보석을 고르면(종류·등급) 가진 보석을 자동으로 합치거나 쪼개서 넣음. 넣으면 뺄 수 없음
   let gemPick = { kind: RLItems.GEM_KINDS[0], grade: 0 };
   const fxText = (fx) => Object.entries(fx).map(([k, v]) => RLItems.formatStat(k, v)).join(", ");
-  const countText = (n) => RLItems.GEM_GRADES.map((g, i) => n[i] ? `${g} ${n[i]}` : "").filter(Boolean).join(" · ") || "없음";
+  const countText = (n) => RLItems.GEM_GRADES.map((g, i) => n[i] ? `${g} ${n[i]}` : "").filter(Boolean).join(" · ") || T("없음");
   // 보석을 어떻게 만들어 넣는지 설명
   // 운영자는 보석을 쓰지 않고 넣음
   const gemPlanFor = (kind, grade) => (isStaff() ? { free: true, used: [0, 0, 0], got: [0, 0, 0] } : RLItems.gemPlan(Inv.gemCount(kind), grade));
   function planText(kind, grade, plan) {
     const name = RLItems.gemName(kind, grade);
-    if (plan?.free) return "운영자: 보석을 쓰지 않고 넣어요";
-    if (!plan) return `${name}이(가) 없어요 (가진 ${RLItems.GEMS[kind].name}을 합쳐도 모자라요)`;
-    const list = (n) => n.map((c, i) => c ? `${RLItems.gemName(kind, i)} ${c}개` : "").filter(Boolean).join(", ");
-    if (plan.got.some(Boolean)) return `${list(plan.used)}를 쪼개서 넣어요 (남는 ${list(plan.got)}는 주머니에)`;
-    if (plan.used[grade] === 1) return `가진 ${name}을(를) 넣어요`;
-    return `${list(plan.used)}를 합쳐서 넣어요`;
+    if (plan?.free) return T("운영자: 보석을 쓰지 않고 넣어요");
+    if (!plan) return T("{0}이(가) 없어요 (가진 {1}을 합쳐도 모자라요)", name, RLItems.GEMS[kind].name);
+    const list = (n) => n.map((c, i) => c ? T("{0} {1}개", RLItems.gemName(kind, i), c) : "").filter(Boolean).join(", ");
+    if (plan.got.some(Boolean)) return T("{0}를 쪼개서 넣어요 (남는 {1}는 주머니에)", list(plan.used), list(plan.got));
+    if (plan.used[grade] === 1) return T("가진 {0}을(를) 넣어요", name);
+    return T("{0}를 합쳐서 넣어요", list(plan.used));
   }
   // ---- 룬워드 재료 ----
   // 홈이 맞는 커먼 아이템: 상세에 만들 수 있는 룬워드와 넣을 순서.
@@ -4346,7 +4359,7 @@
   const runeSeq = (w) => w.runes.map(k => RLItems.RUNES[k].name).join("·");
   function rwTag(item) {
     const ws = RLItems.runewordHighlight(item) ? RLItems.runewordsFor(item) : [];
-    return ws.length ? el("span", { className: "rw-tag rainbow", title: `룬워드 재료: ${ws.map(w => w.name).join(", ")}` }, "✦ 룬워드") : null;
+    return ws.length ? el("span", { className: "rw-tag rainbow", title: T("룬워드 재료: {0}", ws.map(w => w.label).join(", ")) }, T("✦ 룬워드")) : null;
   }
   // 유니크: 어느 네임드 보스의 것인지, 유니크 능력치·특수 효과
   function uniqueRows(item) {
@@ -4354,9 +4367,9 @@
     if (!U) return [];
     const boss = RLMonsters.namedAt(U.boss);
     return [el("div", { className: "rw-done" },
-      el("h3", { className: "unique-glow", style: { color: RLItems.RARITIES.unique.color } }, `✦ 유니크 ${U.name}`),
-      el("div", { className: "meta" }, U.acc ? `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 장신구 · 공격력·방어력·최대 HP는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%, 속성 저항 2~3줄`
-        : `헬 ${U.boss}층 네임드 ${boss?.name || ""}의 유니크 · 주 능력치·추가 능력치는 레전더리의 ${Math.round(RLItems.UNIQUE.mul * 100)}%`),
+      el("h3", { className: "unique-glow", style: { color: RLItems.RARITIES.unique.color } }, T("✦ 유니크 {0}", U.name)),
+      el("div", { className: "meta" }, U.acc ? T("헬 {0}층 네임드 {1}의 유니크 장신구 · 공격력·방어력·최대 HP는 레전더리의 {2}%, 속성 저항 2~3줄", U.boss, boss?.name || "", Math.round(RLItems.UNIQUE.mul * 100))
+        : T("헬 {0}층 네임드 {1}의 유니크 · 주 능력치·추가 능력치는 레전더리의 {2}%", U.boss, boss?.name || "", Math.round(RLItems.UNIQUE.mul * 100))),
       el("div", { className: "stat-line set-on", style: { color: RLItems.RARITIES.unique.color } }, `✦ ${U.text}`),
       ...Object.entries(U.stats).filter(([k]) => RLItems.STATS[k] && !U.text.includes(RLItems.STATS[k].name)).map(([k, v]) => el("div", { className: "stat-line set-on" }, `✦ ${RLItems.formatStat(k, v)}`))
     )];
@@ -4366,31 +4379,31 @@
     const done = RLItems.runewordOf(item);
     if (done) {
       const tier = RLItems.itemTier(item), mul = RLItems.RUNEWORD_TIER_MUL[tier];
-      const tierName = { normal: "일반", nightmare: "악몽의", hell: "지옥의" }[tier];
+      const tierName = { normal: T("일반"), nightmare: T("악몽의"), hell: T("지옥의") }[tier];
       return [el("div", { className: "rw-done" },
-        el("h3", { style: { color: RLItems.RUNEWORD_COLOR } }, `✦ 룬워드 ${done.rank}위 ${done.name} (${runeSeq(done)})`),
-        el("div", { className: "meta" }, `${tierName} 아이템이라 능력치 ${Math.round(mul * 100)}% · 주 능력치는 레전더리 수준${RLItems.socketLine(item) > done.runes.length ? ` · 남는 홈 ${RLItems.socketLine(item) - done.runes.length}개는 룬워드를 완성하면서 없어졌어요 (홈 초기화하면 돌아와요)` : ""}`),
+        el("h3", { style: { color: RLItems.RUNEWORD_COLOR } }, T("✦ 룬워드 {0}위 {1} ({2})", done.rank, done.label, runeSeq(done))),
+        el("div", { className: "meta" }, T("{0} 아이템이라 능력치 {1}% · 주 능력치는 레전더리 수준", tierName, Math.round(mul * 100)) + (RLItems.socketLine(item) > done.runes.length ? T(" · 남는 홈 {0}개는 룬워드를 완성하면서 없어졌어요 (홈 초기화하면 돌아와요)", RLItems.socketLine(item) - done.runes.length) : "")),
         ...Object.entries(RLItems.runewordStats(item)).map(([k, v]) => el("div", { className: "stat-line", style: { color: RLItems.RUNEWORD_COLOR } }, `✦ ${RLItems.formatStat(k, v)}`)),
         ...RLItems.runewordSpecialText(done.special).map(t => el("div", { className: "stat-line set-on" }, `✦ ${t}`)))];
     }
     const ws = RLItems.runewordsFor(item);
     if (!ws.length) return [];
     const put = (item.gems || []).length, hi = RLItems.runewordHighlight(item);
-    return [fold(hi ? "rw" : "rw-quiet", [el("span", { className: hi ? "rainbow" : "" }, "✦ 룬워드 재료"), ` · ${ws.length}개 가능`],
+    return [fold(hi ? "rw" : "rw-quiet", [el("span", { className: hi ? "rainbow" : "" }, T("✦ 룬워드 재료")), T(" · {0}개 가능", ws.length)],
       [el("div", { className: "rw-list" }, ...ws.map(w => el("div", {},
-        el("b", {}, `${w.rank}위 ${w.name}`), ` — ${runeSeq(w)} (${put}/${w.runes.length} 넣음${put < w.runes.length ? `, 다음 ${RLItems.RUNES[w.runes[put]].name} 룬` : ""})`))),
-      el("div", { className: "meta" }, "커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요. 홈이 룬보다 많아도 되고, 룬을 다 넣으면 완성되면서 남는 홈은 없어져요. 다른 룬이나 보석을 먼저 넣으면 룬워드를 만들 수 없어요.")], !hi)];
+        el("b", {}, T("{0}위 {1}", w.rank, w.label)), ` — ${runeSeq(w)} (` + T("{0}/{1} 넣음", put, w.runes.length) + (put < w.runes.length ? T(", 다음 {0}", RLItems.runeName(w.runes[put])) : "") + ")"))),
+      el("div", { className: "meta" }, T("커먼 아이템의 홈에 앞에서부터 이 순서로 룬을 넣으면 룬워드가 돼요. 홈이 룬보다 많아도 되고, 룬을 다 넣으면 완성되면서 남는 홈은 없어져요. 다른 룬이나 보석을 먼저 넣으면 룬워드를 만들 수 없어요."))], !hi)];
   }
 
   // 룬: 없으면 아래 룬 3개씩 자동으로 합쳐 넣음 (쪼개기는 없음). 운영자는 룬을 쓰지 않고 넣음
   const runePlanFor = (k) => (isStaff() ? { free: true, used: RLItems.RUNES.map(() => 0) } : RLItems.runePlan(Inv.runeCount(), k));
-  const runeCountText = (n) => n.map((c, i) => c ? `${RLItems.RUNES[i].name} ${c}` : "").filter(Boolean).join(" · ") || "없음";
+  const runeCountText = (n) => n.map((c, i) => c ? `${RLItems.RUNES[i].name} ${c}` : "").filter(Boolean).join(" · ") || T("없음");
   function runePlanText(k, plan) {
     const name = RLItems.runeName(k);
-    if (plan?.free) return "운영자: 룬을 쓰지 않고 넣어요";
-    if (!plan) return `${name}이(가) 없어요 (아래 룬 3개씩 합쳐도 모자라요)`;
-    if (plan.used[k] === 1) return `가진 ${name}을(를) 넣어요`;
-    return `${plan.used.map((c, i) => c ? `${RLItems.runeName(i)} ${c}개` : "").filter(Boolean).join(", ")}를 합쳐서 넣어요`;
+    if (plan?.free) return T("운영자: 룬을 쓰지 않고 넣어요");
+    if (!plan) return T("{0}이(가) 없어요 (아래 룬 3개씩 합쳐도 모자라요)", name);
+    if (plan.used[k] === 1) return T("가진 {0}을(를) 넣어요", name);
+    return T("{0}를 합쳐서 넣어요", plan.used.map((c, i) => c ? T("{0} {1}개", RLItems.runeName(i), c) : "").filter(Boolean).join(", "));
   }
   // 고른 것 (보석 종류·등급 또는 룬): 이름·효과·만드는 방법
   const pickIsRune = () => gemPick.kind === "rune";
@@ -4399,26 +4412,26 @@
   const pickPlanText = (plan) => (pickIsRune() ? runePlanText(gemPick.grade, plan) : planText(gemPick.kind, gemPick.grade, plan));
   function socketRows(item) {
     const sockets = RLItems.socketCount(item), put = item.gems || [];
-    const out = [el("h3", {}, `홈 ${put.length}/${sockets}`)];
+    const out = [el("h3", {}, T("홈 {0}/{1}", put.length, sockets))];
     for (let i = 0; i < sockets; i++) {
       const g = put[i], rune = g && RLItems.isRune(g);
       out.push(el("div", { className: `stat-line${rune ? " rainbow" : ""}`, style: g && !rune ? { color: RLItems.GEMS[g[0]].color } : {} },
-        g ? `♦ ${RLItems.socketedName(g)}: ${fxText(RLItems.socketedEffect(g, item))}` : "◇ 빈 홈"));
+        g ? `♦ ${RLItems.socketedName(g)}: ${fxText(RLItems.socketedEffect(g, item))}` : T("◇ 빈 홈")));
     }
     if (put.length >= sockets) return out;
     const { kind, grade } = gemPick;
     const plan = pickPlan(), runes = Inv.runeCount();
     const kinds = [...RLItems.GEM_KINDS.map(k => el("option", { value: k, selected: k === kind }, `${RLItems.GEMS[k].name} (${countText(Inv.gemCount(k))})`)),
-      ...(runes.some(Boolean) || isStaff() ? [el("option", { value: "rune", selected: kind === "rune" }, `룬 (${runes.reduce((a, b) => a + b, 0)}개)`)] : [])];
+      ...(runes.some(Boolean) || isStaff() ? [el("option", { value: "rune", selected: kind === "rune" }, T("룬 ({0}개)", runes.reduce((a, b) => a + b, 0)))] : [])];
     out.push(el("div", { className: "sock-pick" },
-      el("select", { title: "보석·룬 종류", className: "gem-kind", onchange: (e) => { gemPick.kind = e.target.value; if (!pickIsRune() && gemPick.grade >= RLItems.GEM_GRADES.length) gemPick.grade = 0; renderDetail(); } }, ...kinds),
-      el("select", { title: pickIsRune() ? "룬" : "보석 등급", className: "gem-grade", onchange: (e) => { gemPick.grade = Number(e.target.value); renderDetail(); } },
-        ...(pickIsRune() ? RLItems.RUNES.map((r, i) => el("option", { value: String(i), selected: i === grade }, `${r.name} 룬 (${runes[i]})`))
+      el("select", { title: T("보석·룬 종류"), className: "gem-kind", onchange: (e) => { gemPick.kind = e.target.value; if (!pickIsRune() && gemPick.grade >= RLItems.GEM_GRADES.length) gemPick.grade = 0; renderDetail(); } }, ...kinds),
+      el("select", { title: pickIsRune() ? T("룬") : T("보석 등급"), className: "gem-grade", onchange: (e) => { gemPick.grade = Number(e.target.value); renderDetail(); } },
+        ...(pickIsRune() ? RLItems.RUNES.map((r, i) => el("option", { value: String(i), selected: i === grade }, `${RLItems.runeName(i)} (${runes[i]})`))
           : RLItems.GEM_GRADES.map((g, i) => el("option", { value: String(i), selected: i === grade }, g)))),
-      el("button", { type: "button", className: "primary gem-put", disabled: !plan, onclick: () => putGem(item) }, "홈에 넣기")));
+      el("button", { type: "button", className: "primary gem-put", disabled: !plan, onclick: () => putGem(item) }, T("홈에 넣기"))));
     const fx = pickIsRune() ? RLItems.RUNES[grade].fx : RLItems.gemEffect(kind, grade, item);
     out.push(el("div", { className: "meta" },
-      `${pickName()}: ${fxText(fx)} · ${pickPlanText(plan)} · 넣으면 뺄 수 없어요 (로비 대장간에서 홈 초기화)`));
+      T("{0}: {1} · {2} · 넣으면 뺄 수 없어요 (로비 대장간에서 홈 초기화)", pickName(), fxText(fx), pickPlanText(plan))));
     return out;
   }
   function putGem(item) {
@@ -4429,11 +4442,11 @@
     const g = pickIsRune() ? ["rune", gemPick.grade] : [gemPick.kind, gemPick.grade];
     const done = RLItems.runewordOf({ ...item, gems: [...(item.gems || []), g] }), cut = RLItems.socketsLostBy(item, g);
     const lost = done ? [] : before.filter(w => !after.includes(w));
-    const warn = lost.length ? `\n⚠ 이걸 넣으면 룬워드(${lost.map(w => w.name).join(", ")})를 만들 수 없게 돼요.`
-      : done ? `\n✦ 룬워드 ${done.name} 완성!${cut ? ` 남는 홈 ${cut}개는 없어져요.` : ""}` : "";
-    if (!plan || !confirm(`${RLItems.itemName(item)}의 홈에 ${name}을(를) 넣을까요?\n${how}${warn}\n한 번 넣으면 뺄 수 없어요.`)) return;
+    const warn = lost.length ? "\n" + T("⚠ 이걸 넣으면 룬워드({0})를 만들 수 없게 돼요.", lost.map(w => w.label).join(", "))
+      : done ? "\n" + T("✦ 룬워드 {0} 완성!", done.label) + (cut ? T(" 남는 홈 {0}개는 없어져요.", cut) : "") : "";
+    if (!plan || !confirm(T("{0}의 홈에 {1}을(를) 넣을까요?", RLItems.itemName(item), name) + `\n${how}${warn}\n` + T("한 번 넣으면 뺄 수 없어요."))) return;
     if (!(pickIsRune() ? Inv.socketRune(item.id, gemPick.grade) : Inv.socketGem(item.id, gemPick.kind, gemPick.grade))) return;
-    invMsg = { cls: "good", text: `${name}을(를) 홈에 넣었어요. (${how})` };
+    invMsg = { cls: "good", text: T("{0}을(를) 홈에 넣었어요. ({1})", name, how) };
     log(invMsg.text, pickIsRune() ? "rainbow" : "good");
     afterGearChange();
   }
@@ -4443,7 +4456,7 @@
   const lsCap = (g) => g.lsCap;   // 흡혈 상한 (장검 + 방패·룬워드 카리스마·기억이면 높음)
   const statLabel = (k) => RLItems.STATS[k].name + (RLItems.STATS[k].pct ? "%" : "");
   const recOf = (item) => RLItems.RECOMMEND[RLItems.recommendTier(item)];
-  const uniqueLabel = (k) => { const U = RLItems.UNIQUE.items[k]; return `${U.name} (헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"})`; };
+  const uniqueLabel = (k) => { const U = RLItems.UNIQUE.items[k]; return T("{0} (헬 {1}층 {2})", U.name, U.boss, RLMonsters.namedAt(U.boss)?.name || T("네임드")); };
   let guideTier = null;   // 추천 탭에서 고른 단계 (null이면 지금 있는 곳)
   const zoneTier = () => (player?.zone === "hell" ? "hell" : player?.zone === "nm" ? "nightmare" : "normal");
   // 그 아이템이 부위 추천 추가 능력치를 몇 개 가졌는지 { got, of } (유니크·장신구는 줄이 정해져 있거나 저항뿐이라 없음)
@@ -4600,10 +4613,10 @@
   // ---- 운영자 아이템 받기 (테스트용): 유니크·세트·레전더리 장신구를 바로 가방에 ----
   // 실제 규칙으로 만듦 (유니크는 네임드 드롭과 같은 시드 모양·굴림, 세트·장신구는 그 단계 50층 보스 드롭). 운영자는 랭킹에 기록되지 않음
   let staffGift = false, giftTier = "hell", giftAncient = false;
-  const GIFT_TIERS = { hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 } };
+  const GIFT_TIERS = { hell: { name: T("헬 (지옥의)"), tag: "j50", lvl: 175 }, nightmare: { name: T("나이트메어 (악몽의)"), tag: "n50", lvl: 125 } };
   // 룬워드 베이스: 홈 개수가 룬 수와 딱 맞는 커먼 (일반 75층·나이트메어 50층·헬 50층 몬스터 드롭)
   let rwGiftTier = "hell";
-  const RW_GIFT_TIERS = { normal: { name: "일반", tag: "d75", lvl: 75 }, nightmare: { name: "나이트메어 (악몽의)", tag: "n50", lvl: 125 }, hell: { name: "헬 (지옥의)", tag: "j50", lvl: 175 } };
+  const RW_GIFT_TIERS = { normal: { name: T("일반"), tag: "d75", lvl: 75 }, nightmare: { name: T("나이트메어 (악몽의)"), tag: "n50", lvl: 125 }, hell: { name: T("헬 (지옥의)"), tag: "j50", lvl: 175 } };
   const rwBases = () => RLItems.RUNEWORDS.flatMap(w => w.bases.map(base => ({ w, base })));
   function giftRwBase({ w, base }) {
     const t = RW_GIFT_TIERS[rwGiftTier], n = giftNonce();
@@ -4636,8 +4649,8 @@
       if (giftAncient && canMakeAncient(item)) Inv.makeAncient(item.id);
       else if (giftAncient && RLItems.canRerollAncient(item, true)) Inv.rerollAncient(item.id);
     }
-    invMsg = got ? { cls: "good", text: `운영자: ${what} ${got}개를 가방에 넣었어요${giftAncient ? " (고대)" : ""}.${full ? ` 가방이 꽉 차서 ${full}개는 못 넣었어요.` : ""}` }
-      : { cls: "bad", text: full ? "가방이 꽉 찼어요. 먼저 비워 주세요." : "아이템을 만들지 못했어요." };
+    invMsg = got ? { cls: "good", text: T("운영자: {0} {1}개를 가방에 넣었어요{2}.", what, got, giftAncient ? T(" (고대)") : "") + (full ? T(" 가방이 꽉 차서 {0}개는 못 넣었어요.", full) : "") }
+      : { cls: "bad", text: full ? T("가방이 꽉 찼어요. 먼저 비워 주세요.") : T("아이템을 만들지 못했어요.") };
     saveGame(true);
     renderInventory();
   }
@@ -4645,24 +4658,24 @@
     const free = BAG_SIZE - Inv.bag().length;
     const btn = (label, fn, title) => el("button", { type: "button", className: "staff-btn", title: title || "", onclick: fn }, label);
     const U = Object.entries(RLItems.UNIQUE.items), gear = U.filter(([, u]) => !u.acc), acc = U.filter(([, u]) => u.acc);
-    const uqBtn = ([k, u]) => btn(u.name, () => giveStaff([giftUnique(k)], u.name), `헬 ${u.boss}층 ${RLMonsters.namedAt(u.boss)?.name || "네임드"} · ${RLItems.SLOT_NAMES[u.slot]}`);
+    const uqBtn = ([k, u]) => btn(u.name, () => giveStaff([giftUnique(k)], u.name), T("헬 {0}층 {1} · {2}", u.boss, RLMonsters.namedAt(u.boss)?.name || T("네임드"), RLItems.SLOT_NAMES[u.slot]));
     return [
-      el("h3", {}, "🎁 운영자 아이템 받기 (테스트용)"),
-      el("div", { className: "meta" }, `가방 빈 칸 ${free}개 · 받은 아이템은 +0 (강화·고대로 만들기는 운영자 무료) · 실제 규칙으로 만든 아이템이에요`),
-      el("label", { className: "meta" }, el("input", { type: "checkbox", checked: giftAncient, onchange: (e) => { giftAncient = e.target.checked; } }), " 고대로 받기 (모든 능력치 최대치)"),
-      el("h3", { style: { marginTop: "8px" } }, `유니크 장비 (${gear.length})`),
-      el("div", { className: "gift-row" }, ...gear.map(uqBtn), btn(`전부 (${gear.length}개)`, () => giveStaff(gear.map(([k]) => giftUnique(k)), "유니크 장비"))),
-      el("h3", {}, `유니크 장신구 (${acc.length})`),
-      el("div", { className: "gift-row" }, ...acc.map(uqBtn), btn(`전부 (${acc.length}개)`, () => giveStaff(acc.map(([k]) => giftUnique(k)), "유니크 장신구"))),
-      el("h3", {}, "세트 · 레전더리 장신구"),
+      el("h3", {}, T("🎁 운영자 아이템 받기 (테스트용)")),
+      el("div", { className: "meta" }, T("가방 빈 칸 {0}개 · 받은 아이템은 +0 (강화·고대로 만들기는 운영자 무료) · 실제 규칙으로 만든 아이템이에요", free)),
+      el("label", { className: "meta" }, el("input", { type: "checkbox", checked: giftAncient, onchange: (e) => { giftAncient = e.target.checked; } }), T(" 고대로 받기 (모든 능력치 최대치)")),
+      el("h3", { style: { marginTop: "8px" } }, T("유니크 장비 ({0})", gear.length)),
+      el("div", { className: "gift-row" }, ...gear.map(uqBtn), btn(T("전부 ({0}개)", gear.length), () => giveStaff(gear.map(([k]) => giftUnique(k)), T("유니크 장비")))),
+      el("h3", {}, T("유니크 장신구 ({0})", acc.length)),
+      el("div", { className: "gift-row" }, ...acc.map(uqBtn), btn(T("전부 ({0}개)", acc.length), () => giveStaff(acc.map(([k]) => giftUnique(k)), T("유니크 장신구")))),
+      el("h3", {}, T("세트 · 레전더리 장신구")),
       el("div", { className: "gift-row" }, ...Object.entries(GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === giftTier ? " on" : ""}`, onclick: () => { giftTier = k; renderDetail(); } }, t.name))),
-      el("div", { className: "gift-row" }, ...Object.entries(RLItems.SETS).map(([id, set]) => btn(`${set.name} (${Object.keys(set.pieces).length}부위)`, () => giveStaff(giftSet(id), set.name))),
-        btn("레전더리 장신구 3개 (목걸이·반지 2)", () => giveStaff(giftAccessories(), "레전더리 장신구"))),
-      el("h3", {}, "룬워드 베이스 (홈이 룬 수와 맞는 커먼)"),
+      el("div", { className: "gift-row" }, ...Object.entries(RLItems.SETS).map(([id, set]) => btn(T("{0} ({1}부위)", set.name, Object.keys(set.pieces).length), () => giveStaff(giftSet(id), set.name))),
+        btn(T("레전더리 장신구 3개 (목걸이·반지 2)"), () => giveStaff(giftAccessories(), T("레전더리 장신구")))),
+      el("h3", {}, T("룬워드 베이스 (홈이 룬 수와 맞는 커먼)")),
       el("div", { className: "gift-row" }, ...Object.entries(RW_GIFT_TIERS).map(([k, t]) => el("button", { type: "button", className: `guide-tier${k === rwGiftTier ? " on" : ""}`, onclick: () => { rwGiftTier = k; renderDetail(); } }, t.name))),
-      el("div", { className: "gift-row" }, ...rwBases().map(b => btn(`${b.w.name} (${RLItems.BASE_NAMES[b.base].replace(/\(.*\)/, "")} ${b.w.runes.length}홈)`, () => giveStaff([giftRwBase(b)], `${b.w.name} 베이스`), `${runeSeq(b.w)} 룬 순서`)),
-        btn(`전부 (${rwBases().length}개)`, () => giveStaff(rwBases().map(giftRwBase), "룬워드 베이스"))),
-      el("div", { className: "meta" }, "운영자는 룬을 쓰지 않고 넣을 수 있어요 (상세의 홈에 넣기에서 룬 고르기)"),
+      el("div", { className: "gift-row" }, ...rwBases().map(b => btn(T("{0} ({1} {2}홈)", b.w.label, RLItems.BASE_NAMES[b.base].replace(/\(.*\)/, "").trim(), b.w.runes.length), () => giveStaff([giftRwBase(b)], T("{0} 베이스", b.w.label)), T("{0} 룬 순서", runeSeq(b.w)))),
+        btn(T("전부 ({0}개)", rwBases().length), () => giveStaff(rwBases().map(giftRwBase), T("룬워드 베이스")))),
+      el("div", { className: "meta" }, T("운영자는 룬을 쓰지 않고 넣을 수 있어요 (상세의 홈에 넣기에서 룬 고르기)")),
     ];
   }
   function openStaffGift() { if (!isStaff()) return; selected = null; staffGift = true; invMsg = null; invTab = "detail"; sideOpen = true; renderInventory(); }
@@ -4677,7 +4690,7 @@
     if (!item) {
       invDetail.replaceChildren(
         ...(invMsg ? [el("div", { className: `msg-${invMsg.cls}` }, invMsg.text)] : []),
-        el("span", { className: "meta" }, "아이템을 선택하면 자세한 정보가 보여요."));
+        el("span", { className: "meta" }, T("아이템을 선택하면 자세한 정보가 보여요.")));
       return;
     }
     const kind = RLItems.kindName(item);
@@ -4686,19 +4699,19 @@
     rows.push(
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
-      ...(item.ancient ? [el("div", { className: "ancient-note" }, "고대 아이템 · 모든 능력치가 최대치예요!")] : []),
-      ...(RLItems.isBought(item) ? [el("div", { className: "meta" }, "💰 고대 유니크 선택 상자에서 고른 아이템 (현금 구매) · 랭킹에 \"구매 아이템\"으로 표시돼요")] : []),
+      ...(item.ancient ? [el("div", { className: "ancient-note" }, T("고대 아이템 · 모든 능력치가 최대치예요!"))] : []),
+      ...(RLItems.isBought(item) ? [el("div", { className: "meta" }, T("💰 고대 유니크 선택 상자에서 고른 아이템 (현금 구매) · 랭킹에 \"구매 아이템\"으로 표시돼요"))] : []),
       ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, item.main?.[0]?.[0] === "power"
-        ? `예전 장신구(r7): ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄. 강화로 오르지 않아요`
-        : `장신구: ★ 공격력·방어력·최대 HP(강화하면 오름${RLItems.isHellItem(item) ? `, 지옥의 힘 ×${RLItems.HELL_POWER.mul}` : RLItems.isNightmareItem(item) ? `, 악몽의 힘 ×${RLItems.NM_POWER.mul}` : ""})와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄, 강화로 안 오름). 고대는 드롭할 때만${RLItems.accTier(item.seed) === "normal" ? " · 일반 던전 장신구라 공격력·방어력·최대 HP가 약 절반" : ""}`)]
-        : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, `지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.HELL_POWER.mul} (아래 값에 반영됨)`)]
-        : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, `악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×${RLItems.NM_POWER.mul} (아래 값에 반영됨)`)] : []),
-      ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, `장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×${RLItems.WEAPONS[item.type].atkMul}, 다른 주 능력치도 ×${RLItems.WEAPONS[item.type].mainMul}${item.main?.some(([k]) => k === "allRes") ? " · 모든 속성 저항은 강화로 오르지 않아요" : ""}`)] : []),
+        ? T("예전 장신구(r7): ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄. 강화로 오르지 않아요")
+        : T("장신구: ★ 공격력·방어력·최대 HP(강화하면 오름{0})와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄, 강화로 안 오름). 고대는 드롭할 때만", RLItems.isHellItem(item) ? T(", 지옥의 힘 ×{0}", RLItems.HELL_POWER.mul) : RLItems.isNightmareItem(item) ? T(", 악몽의 힘 ×{0}", RLItems.NM_POWER.mul) : "") + (RLItems.accTier(item.seed) === "normal" ? T(" · 일반 던전 장신구라 공격력·방어력·최대 HP가 약 절반") : ""))]
+        : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, T("지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×{0} (아래 값에 반영됨)", RLItems.HELL_POWER.mul))]
+        : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, T("악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×{0} (아래 값에 반영됨)", RLItems.NM_POWER.mul))] : []),
+      ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, T("장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×{0}, 다른 주 능력치도 ×{1}", RLItems.WEAPONS[item.type].atkMul, RLItems.WEAPONS[item.type].mainMul) + (item.main?.some(([k]) => k === "allRes") ? T(" · 모든 속성 저항은 강화로 오르지 않아요") : ""))] : []),
       ...statLines(item),
-      ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, `예전 규칙(v${item.v}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.`)] : []),
+      ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, T("예전 규칙(v{0}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.", item.v))] : []),
       el("div", { className: "meta" }, item.main
-        ? `★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름)${item.parry != null ? " · 🛡 패링 확률(강화로 오르지 않음)" : ""} · [최소~최대] ▲ 최대치`
-        : "예전 규칙 아이템: 기본 능력치는 범위가 없어요."),
+        ? T("★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름){0} · [최소~최대] ▲ 최대치", item.parry != null ? T(" · 🛡 패링 확률(강화로 오르지 않음)") : "")
+        : T("예전 규칙 아이템: 기본 능력치는 범위가 없어요.")),
     );
     // 홈과 보석
     rows.push(...runewordRows(item), ...uniqueRows(item));
@@ -4710,20 +4723,20 @@
     if (item.set) {
       // 세트의 모든 단계 (지금 입은 개수로 켜진 단계는 밝게)
       const set = RLItems.SETS[item.set], worn = Inv.totals().sets.find(x => x.id === item.set)?.count || 0;
-      rows.push(fold("settier", [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} 단계`), el("span", { className: "meta" }, ` · ${worn}개 착용`)],
+      rows.push(fold("settier", [el("span", { style: { color: RLItems.RARITIES.set.color } }, T("{0} 단계", set.name)), el("span", { className: "meta" }, T(" · {0}개 착용", worn))],
         [el("div", { className: "meta" }, setNote(item.set)),
-          ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, `${b.count}세트: ${b.text}`))]));
+          ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, T("{0}세트: {1}", b.count, b.text)))]));
     }
 
     const to = (item.enh || 0) + 1;
     const canEnhance = to <= RLItems.ENHANCE.max;
     const enhGold = canEnhance ? RLItems.enhanceGold(to, item) : 0, myGold = player && !gameOver ? player.gold : 0;
     rows.push(el("div", { className: "meta" }, canEnhance
-      ? `다음 강화 +${to}: 성공 ${isStaff() ? "100% (운영자)" : `${Math.round(RLItems.enhanceChance(to) * 100)}%`} · ${RLItems.STONE_NAMES[RLItems.stoneKey(item)]} ${RLItems.enhanceCost(to, item)}개 (보유 ${Inv.stonesFor(item)}개)${enhGold ? ` + ${enhGold.toLocaleString()}골드 (보유 ${myGold.toLocaleString()}골드)` : ""}, 실패해도 아이템은 그대로`
-      : `최대 강화(+${RLItems.ENHANCE.max})예요.`));
+      ? T("다음 강화 +{0}: 성공 {1} · {2} {3}개 (보유 {4}개)", to, isStaff() ? T("100% (운영자)") : `${Math.round(RLItems.enhanceChance(to) * 100)}%`, RLItems.STONE_NAMES[RLItems.stoneKey(item)], RLItems.enhanceCost(to, item), Inv.stonesFor(item)) + (enhGold ? T(" + {0}골드 (보유 {1}골드)", enhGold.toLocaleString(), myGold.toLocaleString()) : "") + T(", 실패해도 아이템은 그대로")
+      : T("최대 강화(+{0})예요.", RLItems.ENHANCE.max)));
     const enhanceBtn = el("button", {
       type: "button", disabled: !canEnhance || (!isStaff() && (Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold))), onclick: () => enhanceItem(item),
-    }, enhGold ? `강화 (${enhGold.toLocaleString()}골드)` : "강화");
+    }, enhGold ? T("강화 ({0}골드)", enhGold.toLocaleString()) : T("강화"));
     // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
     const AR = RLItems.ANCIENT_REROLL;
     const canAncient = RLItems.canRerollAncient(item, isStaff());
@@ -4733,39 +4746,39 @@
     const arUsed = item.ar || 0;
     const arOver = (item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient && arUsed >= AR.max && !isStaff();
     if (canAncient) rows.push(el("div", { className: "meta" },
-      `고대 굴리기: ${isStaff() ? "100%(운영자)" : `${Math.round(AR.chance * 100)}% 확률`}로 고대(모든 능력치 최대치) · ${arCost.toLocaleString()}골드 (보유 ${gold.toLocaleString()}골드) · ${isStaff() ? `운영자: 횟수 제한 없음 (${arUsed}번 굴림)` : `남은 횟수 ${AR.max - arUsed}/${AR.max}`}`));
-    else if (arOver) rows.push(el("div", { className: "meta" }, `고대 굴리기를 ${AR.max}번 모두 실패했어요. 이 아이템은 더 굴릴 수 없어요.`));
+      T("고대 굴리기: {0}로 고대(모든 능력치 최대치) · {1}골드 (보유 {2}골드) · {3}", isStaff() ? T("100%(운영자)") : T("{0}% 확률", Math.round(AR.chance * 100)), arCost.toLocaleString(), gold.toLocaleString(), isStaff() ? T("운영자: 횟수 제한 없음 ({0}번 굴림)", arUsed) : T("남은 횟수 {0}/{1}", AR.max - arUsed, AR.max))));
+    else if (arOver) rows.push(el("div", { className: "meta" }, T("고대 굴리기를 {0}번 모두 실패했어요. 이 아이템은 더 굴릴 수 없어요.", AR.max)));
     const ancientBtn = canAncient ? el("button", {
       type: "button", disabled: !canPay(arCost), onclick: () => ancientItem(item),
-    }, !canPay(arCost) ? `고대 굴리기 (${arCost.toLocaleString()}골드 · 골드 부족)` : `고대 굴리기 (${arCost.toLocaleString()}골드)`)
-      : arOver ? el("button", { type: "button", className: "ancient-done", disabled: true }, `고대 굴리기 ${AR.max}/${AR.max}번 실패`) : null;
+    }, !canPay(arCost) ? T("고대 굴리기 ({0}골드 · 골드 부족)", arCost.toLocaleString()) : T("고대 굴리기 ({0}골드)", arCost.toLocaleString()))
+      : arOver ? el("button", { type: "button", className: "ancient-done", disabled: true }, T("고대 굴리기 {0}/{0}번 실패", AR.max)) : null;
 
     const actions = el("div", { className: "row" });
     if (selected.from === "bag") {
       // 반지: 두 칸이 다 차 있으면 어느 반지와 바꿀지 고름
       const keys = RLItems.equipKeysFor(item), eqd = Inv.equipped();
-      for (const k of keys) if (eqd[k]) rows.push(el("div", { className: "meta" }, `장착 중${keys.length > 1 ? ` (${RLItems.SLOT_NAMES[k]})` : ""}: `, itemLabel(eqd[k])));
+      for (const k of keys) if (eqd[k]) rows.push(el("div", { className: "meta" }, T("장착 중") + (keys.length > 1 ? ` (${RLItems.SLOT_NAMES[k]})` : "") + ": ", itemLabel(eqd[k])));
       const both = keys.length > 1 && keys.every(k => eqd[k]);
       actions.append(
-        ...(both ? keys.map(k => el("button", { type: "button", className: "primary", onclick: () => equipItem(item, k) }, `${RLItems.SLOT_NAMES[k]} 자리에 끼기`))
-          : [el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, "장착")]),
+        ...(both ? keys.map(k => el("button", { type: "button", className: "primary", onclick: () => equipItem(item, k) }, T("{0} 자리에 끼기", RLItems.SLOT_NAMES[k])))
+          : [el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, T("장착"))]),
         enhanceBtn,
-        item.lock ? el("button", { type: "button", disabled: true }, "판매 (잠김)")
-          : el("button", { type: "button", onclick: () => sellItem(item) }, `판매 (${stonesText([item])} · 골드 +${RLItems.sellGold(item).toLocaleString()})`),
+        item.lock ? el("button", { type: "button", disabled: true }, T("판매 (잠김)"))
+          : el("button", { type: "button", onclick: () => sellItem(item) }, T("판매 ({0} · 골드 +{1})", stonesText([item]), RLItems.sellGold(item).toLocaleString())),
       );
     } else {
-      actions.append(el("button", { type: "button", onclick: () => unequipSlot(selected.slot) }, "해제"), enhanceBtn);
+      actions.append(el("button", { type: "button", onclick: () => unequipSlot(selected.slot) }, T("해제")), enhanceBtn);
     }
-    if (canLock(item)) actions.append(el("button", { type: "button", className: "lock-btn", title: "잠긴 아이템은 판매(가방 전부 판매 포함)되지 않아요",
-      onclick: () => { const on = Inv.toggleLock(item.id); invMsg = { cls: "good", text: on ? "🔒 잠갔어요. 판매되지 않아요 (가방 전부 판매에서도 남아요)." : "🔓 잠금을 풀었어요." }; renderInventory(); } },
-      item.lock ? "🔓 잠금 풀기" : "🔒 잠그기"));
+    if (canLock(item)) actions.append(el("button", { type: "button", className: "lock-btn", title: T("잠긴 아이템은 판매(가방 전부 판매 포함)되지 않아요"),
+      onclick: () => { const on = Inv.toggleLock(item.id); invMsg = { cls: "good", text: on ? T("🔒 잠갔어요. 판매되지 않아요 (가방 전부 판매에서도 남아요).") : T("🔓 잠금을 풀었어요.") }; renderInventory(); } },
+      item.lock ? T("🔓 잠금 풀기") : T("🔒 잠그기")));
     if (ancientBtn) actions.append(ancientBtn);
     if (canMakeAncient(item)) actions.append(el("button", { type: "button", className: "staff-btn", onclick: () => {
       const r = Inv.makeAncient(item.id);
-      invMsg = r.error ? { cls: "bad", text: r.error } : { cls: "good", text: `운영자: 고대로 만들었어요 (${r.n}번째 굴림)` };
+      invMsg = r.error ? { cls: "bad", text: r.error } : { cls: "good", text: T("운영자: 고대로 만들었어요 ({0}번째 굴림)", r.n) };
       saveGame(true);
       afterGearChange();
-    } }, "고대로 만들기 (운영자)"));
+    } }, T("고대로 만들기 (운영자)")));
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isDeepItem(item) ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
@@ -4781,7 +4794,7 @@
 
   function equipItem(item, at) {
     if ((inNM() || inHell()) && isLegacy(item)) {
-      invMsg = { cls: "bad", text: "나이트메어·헬에서는 예전(v3까지) 장비를 낄 수 없어요." };
+      invMsg = { cls: "bad", text: T("나이트메어·헬에서는 예전(v3까지) 장비를 낄 수 없어요.") };
       renderInventory();
       return;
     }
@@ -4789,12 +4802,12 @@
     const moved = Inv.equip(item.id, key);
     noteOldGear();
     selected = { from: "equip", slot: key };
-    invMsg = moved ? { cls: "bad", text: `장검은 보조 손에 방패만 낄 수 있어서 ${RLItems.itemName(moved)}을(를) 가방으로 옮겼어요.` } : null;
+    invMsg = moved ? { cls: "bad", text: T("장검은 보조 손에 방패만 낄 수 있어서 {0}을(를) 가방으로 옮겼어요.", RLItems.itemName(moved)) } : null;
     afterGearChange();
   }
 
   function unequipSlot(slot) {
-    if (!Inv.unequip(slot)) { invDetail.prepend(el("div", { className: "msg-bad" }, "가방이 가득 차서 해제할 수 없어요.")); return; }
+    if (!Inv.unequip(slot)) { invDetail.prepend(el("div", { className: "msg-bad" }, T("가방이 가득 차서 해제할 수 없어요."))); return; }
     selected = null;
     afterGearChange();
   }
@@ -4802,12 +4815,12 @@
   function sellItem(item) {
     const rank = RARITY_ORDER.indexOf(item.rarity);
     const gain = RLItems.sellStones(item), stone = RLItems.STONE_NAMES[RLItems.stoneKey(item)];
-    const gemNote = item.gems?.length ? ` 넣은 보석·룬 ${item.gems.length}개도 함께 사라져요.` : "";
-    if ((rank <= RARITY_ORDER.indexOf("rare") || gemNote) && !confirm(`${RLItems.itemName(item)}을(를) ${stone} ${gain}개에 판매할까요? 되돌릴 수 없어요.${gemNote}`)) return;
+    const gemNote = item.gems?.length ? T(" 넣은 보석·룬 {0}개도 함께 사라져요.", item.gems.length) : "";
+    if ((rank <= RARITY_ORDER.indexOf("rare") || gemNote) && !confirm(T("{0}을(를) {1} {2}개에 판매할까요? 되돌릴 수 없어요.", RLItems.itemName(item), stone, gain) + gemNote)) return;
     Inv.sell(item.id);
     const gold = sellGoldIn(RLItems.sellGold(item));
     selected = null;
-    invMsg = { cls: "good", text: `${RLItems.itemName(item)} 판매 → ${stone} +${gain}${gold ? ` · 골드 +${gold.toLocaleString()}` : ""}` };
+    invMsg = { cls: "good", text: T("{0} 판매 → {1} +{2}", RLItems.itemName(item), stone, gain) + (gold ? T(" · 골드 +{0}", gold.toLocaleString()) : "") };
     afterGearChange();
   }
   // 판매 골드는 지금 판의 골드로 (쓰러진 판에는 들어가지 않음). 실제로 받은 골드
@@ -4822,26 +4835,26 @@
     const before = RLItems.itemName(item);
     // +11부터는 골드도 (판의 골드)
     const gold = RLItems.enhanceGold((item.enh || 0) + 1, item);
-    if (gold && !canPay(gold)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${gold.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (gold && !canPay(gold)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", gold.toLocaleString()) }; renderInventory(); return; }
     const r = Inv.enhance(item.id);
     if (!r.error && gold) { pay(gold); saveGame(true); }
     if (r.error) invMsg = { cls: "bad", text: r.error };
-    else if (r.ok) invMsg = { cls: "good", text: `강화 성공! ${before} → +${r.to}` };
-    else invMsg = { cls: "bad", text: `강화 실패… (+${r.to} 성공 확률 ${Math.round(r.chance * 100)}%) 아이템은 그대로예요.` };
+    else if (r.ok) invMsg = { cls: "good", text: T("강화 성공! {0} → +{1}", before, r.to) };
+    else invMsg = { cls: "bad", text: T("강화 실패… (+{0} 성공 확률 {1}%) 아이템은 그대로예요.", r.to, Math.round(r.chance * 100)) };
     if (!r.error) log(invMsg.text, invMsg.cls);
     afterGearChange();
   }
 
   function ancientItem(item) {
     const cost = RLItems.ancientRerollCost(item);
-    if (!canPay(cost)) { invMsg = { cls: "bad", text: `골드가 부족해요. (필요 ${cost.toLocaleString()}골드)` }; renderInventory(); return; }
+    if (!canPay(cost)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", cost.toLocaleString()) }; renderInventory(); return; }
     const before = RLItems.itemName(item);
     const r = Inv.rerollAncient(item.id);
     if (r.error) invMsg = { cls: "bad", text: r.error };
     else {
       pay(cost);
-      invMsg = r.ok ? { cls: "good", text: `✨ 고대가 됐어요! ${before} → ${RLItems.itemName(item)} (모든 능력치 최대치)` }
-        : { cls: "bad", text: `고대 굴리기 실패… (${isStaff() ? `${r.n}번째, 운영자` : `${r.n}/${RLItems.ANCIENT_REROLL.max}번째, -${cost.toLocaleString()}골드 · 남은 골드 ${player.gold.toLocaleString()}`})` };
+      invMsg = r.ok ? { cls: "good", text: T("✨ 고대가 됐어요! {0} → {1} (모든 능력치 최대치)", before, RLItems.itemName(item)) }
+        : { cls: "bad", text: T("고대 굴리기 실패… ({0})", isStaff() ? T("{0}번째, 운영자", r.n) : T("{0}/{1}번째, -{2}골드 · 남은 골드 {3}", r.n, RLItems.ANCIENT_REROLL.max, cost.toLocaleString(), player.gold.toLocaleString())) };
       log(invMsg.text, r.ok ? "rainbow" : "bad");
       saveGame(true);
     }
@@ -4854,7 +4867,7 @@
     invTab = forge ? "detail" : "stats";
     sideOpen = false;
     forgeMode = forge;
-    document.getElementById("inv-title").textContent = forge ? "대장간" : "인벤토리";
+    document.getElementById("inv-title").textContent = forge ? T("대장간") : T("인벤토리");
     invModal.hidden = false;
     renderInventory();
     document.getElementById("inv-close").focus();
@@ -4863,7 +4876,7 @@
   function openForge() {
     if (gameOver) { openDeath(); return; }
     openInventory(true);
-    invMsg = { cls: "good", text: "⚒ 대장간이에요. 아이템을 고르면 옵션 재련(레전더리·세트)과 홈 초기화를 할 수 있어요." };
+    invMsg = { cls: "good", text: T("⚒ 대장간이에요. 아이템을 고르면 옵션 재련(레전더리·세트)과 홈 초기화를 할 수 있어요.") };
     renderDetail();
   }
   function closeInventory() { invModal.hidden = true; forgeMode = false; }
@@ -4883,8 +4896,8 @@
   const shopMsg = document.getElementById("shop-msg");
 
   const DungeonShop = {
-    title: "상점",
-    sub: () => "레어 이상 장비만 팔아요. 진열은 이 층에서만 열려 있어요.",
+    get title() { return T("상점"); },
+    sub: () => T("레어 이상 장비만 팔아요. 진열은 이 층에서만 열려 있어요."),
     stock: () => currentStock(),
     level: () => itemLevel(),
     nm: () => inNM(),
@@ -4917,9 +4930,9 @@
     }
     const write = () => store.set(key(), JSON.stringify(st));
     return {
-      title: "시간 상점",
-      sub: () => `매 시간 정각에 진열이 새로 바뀌어요 (다음 갱신까지 ${HourShop.minutesLeft()}분). ` +
-        (state().n ? `나이트메어 아이템 (나이트메어 ${state().n}층 · 아이템 레벨 ${state().lv}).` : `아이템 레벨 ${state().lv}.`),
+      get title() { return T("시간 상점"); },
+      sub: () => T("매 시간 정각에 진열이 새로 바뀌어요 (다음 갱신까지 {0}분). ", HourShop.minutesLeft()) +
+        (state().n ? T("나이트메어 아이템 (나이트메어 {0}층 · 아이템 레벨 {1}).", state().n, state().lv) : T("아이템 레벨 {0}.", state().lv)),
       stock: () => { const s = state(); return RLItems.lobbyShopStock(RLItems.ownerTag(Inv.owner()), s.h, s.lv, s.r, s.n || 0); },
       level: () => state().lv,
       nm: () => !!state().n,
@@ -4940,7 +4953,7 @@
     if (shopCtx === HourShop) shopHour = HourShop.hour();
     document.getElementById("shop-title").textContent = shopCtx.title;
     document.getElementById("shop-sub").textContent = shopCtx.sub();
-    document.getElementById("shop-gold").textContent = `보유 골드 ${player.gold}`;
+    document.getElementById("shop-gold").textContent = T("보유 골드 {0}", player.gold);
     const stock = shopCtx.stock();
     const bought = shopCtx.bought();
     const cost = shopRerollCost();
@@ -4948,9 +4961,9 @@
     const max = RLItems.SHOP.rerolls.max;
     const closed = gameOver;  // 쓰러진 판은 골드를 쓸 수 없음
     rerollBtn.textContent = cost == null
-      ? `진열 바꾸기 (이번 상점은 ${max}번 모두 사용)`
-      : isStaff() ? `진열 바꾸기 (운영자: 횟수 제한 없음 · ${shopCtx.rerolls()}번 바꿈)`
-      : `진열 바꾸기 (${cost} 골드 · 남은 횟수 ${max - shopCtx.rerolls()}/${max})`;
+      ? T("진열 바꾸기 (이번 상점은 {0}번 모두 사용)", max)
+      : isStaff() ? T("진열 바꾸기 (운영자: 횟수 제한 없음 · {0}번 바꿈)", shopCtx.rerolls())
+      : T("진열 바꾸기 ({0} 골드 · 남은 횟수 {1}/{2})", cost, max - shopCtx.rerolls(), max);
     rerollBtn.disabled = closed || cost == null || !canPay(cost);
     document.getElementById("shop-items").replaceChildren(...stock.map((item, i) => {
       const price = RLItems.shopPrice(item);
@@ -4960,10 +4973,10 @@
         el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
         el("span", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
         ...statLines(item, "span"),
-        el("span", { className: "price" }, sold ? "판매 완료" : `${price} 골드`),
+        el("span", { className: "price" }, sold ? T("판매 완료") : T("{0} 골드", price)),
         sold ? null : el("button", {
           type: "button", className: "primary", disabled: closed || !canPay(price), onclick: () => buyItem(i),
-        }, !canPay(price) ? "골드 부족" : "구매"));
+        }, !canPay(price) ? T("골드 부족") : T("구매")));
     }));
   }
 
@@ -4977,7 +4990,7 @@
   function shopStale() {
     if (shopCtx !== HourShop || HourShop.hour() === shopHour) return false;
     shopMsg.className = "msg-bad";
-    shopMsg.textContent = "정각이 지나 진열이 새로 바뀌었어요.";
+    shopMsg.textContent = T("정각이 지나 진열이 새로 바뀌었어요.");
     renderShop();
     return true;
   }
@@ -4991,20 +5004,20 @@
     if (res === "owned") {
       shopCtx.markBought(i);
       shopMsg.className = "msg-bad";
-      shopMsg.textContent = "이미 가지고 있는 아이템이에요.";
+      shopMsg.textContent = T("이미 가지고 있는 아이템이에요.");
       renderShop();
       return;
     }
     if (res === "full") {
       shopMsg.className = "msg-bad";
-      shopMsg.textContent = "가방이 가득 찼어요. 인벤토리에서 판매해 공간을 만들어 주세요.";
+      shopMsg.textContent = T("가방이 가득 찼어요. 인벤토리에서 판매해 공간을 만들어 주세요.");
       return;
     }
     pay(price);
     shopCtx.markBought(i);
     shopMsg.className = "msg-good";
-    shopMsg.textContent = `${RLItems.itemName(item)}을(를) ${price} 골드에 샀어요.`;
-    gearLog(`${shopCtx.title}에서 ${RLItems.itemName(item)}을(를) 샀다. (-${price} 골드)`, item);
+    shopMsg.textContent = T("{0}을(를) {1} 골드에 샀어요.", RLItems.itemName(item), price);
+    gearLog(T("{0}에서 {1}을(를) 샀다. (-{2} 골드)", shopCtx.title, RLItems.itemName(item), price), item);
     updateStats();
     shopCtx.save();
     renderShop();
@@ -5018,8 +5031,8 @@
     pay(cost);
     shopCtx.reroll();
     shopMsg.className = "msg-good";
-    shopMsg.textContent = `진열을 바꿨어요. (${costText(cost)})`;
-    log(`${shopCtx.title} 진열을 바꿨다. (${costText(cost)})`, "info");
+    shopMsg.textContent = T("진열을 바꿨어요. ({0})", costText(cost));
+    log(T("{0} 진열을 바꿨다. ({1})", shopCtx.title, costText(cost)), "info");
     updateStats();
     shopCtx.save();
     renderShop();
@@ -5044,7 +5057,7 @@
   // 시간 상점 창을 열어 둔 채 정각이 지나면 새 진열로 (남은 분 표시도 갱신)
   setInterval(() => {
     if (shopModal.hidden || shopCtx !== HourShop) return;
-    if (HourShop.hour() !== shopHour) { shopMsg.className = "msg-good"; shopMsg.textContent = "정각이 되어 진열이 새로 바뀌었어요."; renderShop(); }
+    if (HourShop.hour() !== shopHour) { shopMsg.className = "msg-good"; shopMsg.textContent = T("정각이 되어 진열이 새로 바뀌었어요."); renderShop(); }
     else document.getElementById("shop-sub").textContent = HourShop.sub();
   }, 15000);
 
@@ -5060,13 +5073,13 @@
         el("span", { className: "glyph" }, "?"),
         el("b", {}, "???"),
         el("span", { className: "meta" }, floors),
-        el("span", { className: "meta" }, "아직 만나지 못했어요"));
+        el("span", { className: "meta" }, T("아직 만나지 못했어요")));
     }
     return el("div", { className: `dex-card${rate ? " here" : ""}` },
       el("span", { className: "glyph", style: { color: color || m.color } }, m.ch),
-      el("b", {}, m.name, rate ? el("span", { className: "meta" }, ` · 이번 층 ${rate}`) : null),
-      el("span", {}, `HP ${m.hp} · 공격 ${m.atk} · 방어 ${m.def} · 경험치 ${m.xp}`),
-      el("span", { className: "meta" }, `${floors} · 처치 ${Dex.kills(m.id)}${extra ? ` · ${extra}` : ""}`));
+      el("b", {}, m.name, rate ? el("span", { className: "meta" }, T(" · 이번 층 {0}", rate)) : null),
+      el("span", {}, T("HP {0} · 공격 {1} · 방어 {2} · 경험치 {3}", m.hp, m.atk, m.def, m.xp)),
+      el("span", { className: "meta" }, T("{0} · 처치 {1}", floors, Dex.kills(m.id)) + (extra ? ` · ${extra}` : "")));
   }
 
   function renderDex() {
@@ -5074,11 +5087,11 @@
     const rates = new Map(M.spawnRates(depth).map(r => [r.monster.id, r.p]));
     const pct = (p) => `${Math.max(1, Math.round(p * 100))}%`;
     const total = M.MONSTERS.length + M.BOSSES.length + 1 + Object.keys(M.NAMED.bosses).length;  // 황금 고블린은 등급이 달라도 1종
-    document.getElementById("dex-count").textContent = `발견 ${Dex.count()}/${total} · 지금 ${depth}층`;
+    document.getElementById("dex-count").textContent = T("발견 {0}/{1} · 지금 {2}층", Dex.count(), total, depth);
 
     // 능력치는 지금 층의 층 보정을 적용한 값
     const normal = M.MONSTERS.map(m => dexCard({ ...m, ...M.makeMonster(m, "normal", Math.max(depth, m.from)), xp: m.xp }, {
-      floors: m.until ? `${m.from}~${m.until}층` : `${m.from}층부터`,
+      floors: m.until ? T("{0}~{1}층", m.from, m.until) : T("{0}층부터", m.from),
       rate: rates.has(m.id) ? pct(rates.get(m.id)) : null,
     }));
 
@@ -5087,47 +5100,47 @@
     const goldenCards = Object.entries(R).map(([rank, r]) => {
       const g = M.makeGolden(Math.max(depth, r.from), rank);
       return dexCard({ ...g, id: G.id }, {
-        floors: rank === "normal" ? `${G.from}층부터 층마다 ${Math.round(G.chance * 100)}%` : `${r.from}층부터 황금 고블린의 ${Math.round(r.chance * 100)}%`,
-        extra: `레어 이상 ${r.drops}개 · ${r.fleeTurns}턴 · ${r.moves[1]}턴에 ${r.moves[0]}번 이동${r.blink ? ` · 순간이동 ${Math.round(r.blink * 100)}%` : ""}`,
+        floors: rank === "normal" ? T("{0}층부터 층마다 {1}%", G.from, Math.round(G.chance * 100)) : T("{0}층부터 황금 고블린의 {1}%", r.from, Math.round(r.chance * 100)),
+        extra: T("레어 이상 {0}개 · {1}턴 · {2}턴에 {3}번 이동", r.drops, r.fleeTurns, r.moves[1], r.moves[0]) + (r.blink ? T(" · 순간이동 {0}%", Math.round(r.blink * 100)) : ""),
       });
     });
 
     const bosses = M.BOSSES.map((b, i) => dexCard({ ...b, ...M.makeBoss((i + 1) * M.BOSS_EVERY), color: M.BOSS_COLOR }, {
-      floors: i === M.BOSSES.length - 1 ? `${(i + 1) * M.BOSS_EVERY}층, 이후 ${M.BOSS_EVERY}층마다` : `${(i + 1) * M.BOSS_EVERY}층`,
+      floors: i === M.BOSSES.length - 1 ? T("{0}층, 이후 {1}층마다", (i + 1) * M.BOSS_EVERY, M.BOSS_EVERY) : T("{0}층", (i + 1) * M.BOSS_EVERY),
     }));
 
     const named = Object.keys(M.NAMED.bosses).map(Number).map(n => { const b = M.makeNamedBoss(n);
-      return dexCard(b, { floors: `헬 ${n}층 · ${b.title} · ${EL.names[b.el]}${b.pattern === "judge" ? "→얼음→번개" : ""}`, extra: namedTip(b), color: M.NAMED_COLOR }); });
+      return dexCard(b, { floors: T("헬 {0}층", n) + ` · ${b.title} · ${EL.names[b.el]}${b.pattern === "judge" ? `→${EL.names.ice}→${EL.names.bolt}` : ""}`, extra: namedTip(b), color: M.NAMED_COLOR }); });
 
     const E = M.ELITE;
     // 이번 층 기준 처치 골드 범위
     const gold = (kind) => M.GOLD.kill[kind].map(v => Math.round(v * M.goldMultiplier(depth))).join("~");
     dexBody.replaceChildren(
-      el("h3", {}, "일반 몬스터"),
-      el("div", { className: "rule" }, `강한 종류일수록 자주 나와요. 금색 테두리 카드는 지금 층에 나오는 몬스터예요. 처치 골드 ${gold("normal")} (이번 층).`),
-      el("div", { className: "rule" }, `깊은 층일수록 강해져요: ${M.FLOOR.from}층부터 한 층마다 HP +${Math.round(M.FLOOR.hp * 100)}%, 공격력 +${Math.round(M.FLOOR.atk * 100)}%, 방어력 +${M.FLOOR.def}. ` +
-        `능력치는 지금 층(아직 안 나오는 몬스터는 처음 나오는 층) 기준이에요.`),
+      el("h3", {}, T("일반 몬스터")),
+      el("div", { className: "rule" }, T("강한 종류일수록 자주 나와요. 금색 테두리 카드는 지금 층에 나오는 몬스터예요. 처치 골드 {0} (이번 층).", gold("normal"))),
+      el("div", { className: "rule" }, T("깊은 층일수록 강해져요: {0}층부터 한 층마다 HP +{1}%, 공격력 +{2}%, 방어력 +{3}. ", M.FLOOR.from, Math.round(M.FLOOR.hp * 100), Math.round(M.FLOOR.atk * 100), M.FLOOR.def) +
+        T("능력치는 지금 층(아직 안 나오는 몬스터는 처음 나오는 층) 기준이에요.")),
       el("div", { className: "dex-grid" }, normal),
-      el("h3", { style: { color: ELITE_COLOR } }, "정예"),
+      el("h3", { style: { color: ELITE_COLOR } }, T("정예")),
       el("div", { className: "rule" },
-        `${E.from}층부터 ${Math.round(E.base * 100)}%, 층마다 ${Math.round(E.perFloor * 100)}%p씩 올라 최대 ${Math.round(E.max * 100)}% (지금 층 ${Math.round(M.eliteChance(depth) * 100)}%). ` +
-        `HP ${E.hpMul}배, 공격력 ${E.atkMul}배, 방어력 +${E.defAdd}, 경험치 ${E.xpMul}배, 장비 드롭 ${Math.round(RLItems.DROPS.elite.chance * 100)}%, 처치 골드 ${gold("elite")} (이번 층).`),
-      el("h3", { style: { color: G.color } }, "황금 고블린"),
+        T("{0}층부터 {1}%, 층마다 {2}%p씩 올라 최대 {3}% (지금 층 {4}%). ", E.from, Math.round(E.base * 100), Math.round(E.perFloor * 100), Math.round(E.max * 100), Math.round(M.eliteChance(depth) * 100)) +
+        T("HP {0}배, 공격력 {1}배, 방어력 +{2}, 경험치 {3}배, 장비 드롭 {4}%, 처치 골드 {5} (이번 층).", E.hpMul, E.atkMul, E.defAdd, E.xpMul, Math.round(RLItems.DROPS.elite.chance * 100), gold("elite"))),
+      el("h3", { style: { color: G.color } }, M.GOLDEN.ranks.normal.name),
       el("div", { className: "rule" },
-        `공격하지 않고 달아나요. 처음 보인 뒤 정해진 턴 안에 잡지 못하면 도망쳐요. ` +
-        `${R.elite.from}층부터 정예(금색 테두리), ${R.king.from}층부터 왕(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 때리면 연막을 터뜨려 순간이동하기도 해요. ` +
-        `HP는 그 층에서 가장 튼튼한 몬스터의 절반부터, 방어력은 그 층 최고 방어력 +${G.defAdd}부터. 능력치는 지금 층(아직 안 나오면 처음 나오는 층) 기준이에요. ` +
-        `처치 골드 ${gold("golden")} (정예 ${R.elite.goldMul}배, 왕 ${R.king.goldMul}배).`),
+        T("공격하지 않고 달아나요. 처음 보인 뒤 정해진 턴 안에 잡지 못하면 도망쳐요. ") +
+        T("{0}층부터 정예(금색 테두리), {1}층부터 왕(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 때리면 연막을 터뜨려 순간이동하기도 해요. ", R.elite.from, R.king.from) +
+        T("HP는 그 층에서 가장 튼튼한 몬스터의 절반부터, 방어력은 그 층 최고 방어력 +{0}부터. 능력치는 지금 층(아직 안 나오면 처음 나오는 층) 기준이에요. ", G.defAdd) +
+        T("처치 골드 {0} (정예 {1}배, 왕 {2}배).", gold("golden"), R.elite.goldMul, R.king.goldMul)),
       el("div", { className: "dex-grid" }, goldenCards),
-      el("h3", { style: { color: M.BOSS_COLOR } }, "보스"),
+      el("h3", { style: { color: M.BOSS_COLOR } }, T("보스")),
       el("div", { className: "rule" },
-        `${M.BOSS_EVERY}층마다 계단을 지켜요. 쓰러뜨려야 계단이 열리고 장비를 반드시 떨어뜨려요. ` +
-        `마지막 보스는 이후 ${M.BOSS_EVERY}층마다 ${Math.round(M.BOSS_SCALE * 100)}%씩 강해져요. ` +
-        `처치 골드 ${M.GOLD.kill.boss.join("~")} × 층 배율 (지금 층이면 ${gold("boss")}).`),
+        T("{0}층마다 계단을 지켜요. 쓰러뜨려야 계단이 열리고 장비를 반드시 떨어뜨려요. ", M.BOSS_EVERY) +
+        T("마지막 보스는 이후 {0}층마다 {1}%씩 강해져요. ", M.BOSS_EVERY, Math.round(M.BOSS_SCALE * 100)) +
+        T("처치 골드 {0} × 층 배율 (지금 층이면 {1}).", M.GOLD.kill.boss.join("~"), gold("boss"))),
       el("div", { className: "dex-grid" }, bosses),
-      el("h3", { style: { color: M.NAMED_COLOR } }, "헬 네임드 보스"),
+      el("h3", { style: { color: M.NAMED_COLOR } }, T("헬 네임드 보스")),
       el("div", { className: "rule" },
-        `헬 ${Object.keys(M.NAMED.bosses).join("·")}층 보스 자리를 지켜요. 저마다 고유한 패턴이 있고, 쓰러뜨리면 룬 ${M.NAMED.runes}개를 떨어뜨려요. 능력치는 그 층 기준이에요.`),
+        T("헬 {0}층 보스 자리를 지켜요. 저마다 고유한 패턴이 있고, 쓰러뜨리면 룬 {1}개를 떨어뜨려요. 능력치는 그 층 기준이에요.", Object.keys(M.NAMED.bosses).join("·"), M.NAMED.runes)),
       el("div", { className: "dex-grid" }, named),
     );
   }
@@ -5151,29 +5164,29 @@
   const marketBody = document.getElementById("market-body");
   const marketMsg = document.getElementById("market-msg");
   const MARKET_ERRORS = {
-    login_required: "거래하려면 계정을 연결해야 해요. (거래 수수료를 캐시로 내요)",
-    bad_item: "확인할 수 없는 아이템이라 올릴 수 없어요.",
-    old_item: "예전 규칙으로 만든 아이템은 거래할 수 없어요.",
-    cash_required: "레전더리·세트 아이템은 캐시를 1개 이상 받아야 해요.",
-    bad_price: "가격을 확인해 주세요. (골드나 캐시 중 하나는 1 이상, 정수)",
-    too_many: "한 번에 올릴 수 있는 개수를 넘었어요. 내 거래에서 내리거나 팔릴 때까지 기다려 주세요.",
-    already_listed: "이미 거래소에 올린 아이템이에요.",
-    in_mail: "우편함에 같은 아이템이 있어요. 먼저 받아 주세요.",
-    not_owner: "다른 사람에게 넘어간 아이템이라 올릴 수 없어요.",
-    gone: "이미 팔렸거나 내려간 아이템이에요.",
-    own: "내가 올린 아이템은 살 수 없어요.",
-    not_enough_cash: "캐시가 부족해요. 상점에서 충전할 수 있어요.",
-    payment_failed: "캐시 결제에 실패했어요. 잠시 뒤 다시 시도해 주세요.",
-    grant_failed: "캐시를 지급하지 못했어요. 잠시 뒤 다시 받아 주세요.",
-    not_found: "이미 받았거나 없는 우편이에요.",
-    market_not_configured: "거래소 서버 설정이 아직 끝나지 않았어요.",
-    unauthorized: "로그인이 만료됐어요. 계정을 다시 연결해 주세요.",
-    token_expired: "로그인이 만료됐어요. 계정을 다시 연결해 주세요.",
-    need_ad: "오늘 무료 입장을 모두 썼어요. 광고를 보면 더 들어갈 수 있어요.",
-    ad_limit: "오늘은 이 광고 보상을 다 받았어요. 내일 다시 받을 수 있어요.",
-    bad_ticket: "광고 확인에 실패했어요. 다시 시도해 주세요.",
-    ad_too_short: "광고를 끝까지 봐 주세요.",
-    too_many_tickets: "잠시 뒤 다시 시도해 주세요.",
+    login_required: T("거래하려면 계정을 연결해야 해요. (거래 수수료를 캐시로 내요)"),
+    bad_item: T("확인할 수 없는 아이템이라 올릴 수 없어요."),
+    old_item: T("예전 규칙으로 만든 아이템은 거래할 수 없어요."),
+    cash_required: T("레전더리·세트 아이템은 캐시를 1개 이상 받아야 해요."),
+    bad_price: T("가격을 확인해 주세요. (골드나 캐시 중 하나는 1 이상, 정수)"),
+    too_many: T("한 번에 올릴 수 있는 개수를 넘었어요. 내 거래에서 내리거나 팔릴 때까지 기다려 주세요."),
+    already_listed: T("이미 거래소에 올린 아이템이에요."),
+    in_mail: T("우편함에 같은 아이템이 있어요. 먼저 받아 주세요."),
+    not_owner: T("다른 사람에게 넘어간 아이템이라 올릴 수 없어요."),
+    gone: T("이미 팔렸거나 내려간 아이템이에요."),
+    own: T("내가 올린 아이템은 살 수 없어요."),
+    not_enough_cash: T("캐시가 부족해요. 상점에서 충전할 수 있어요."),
+    payment_failed: T("캐시 결제에 실패했어요. 잠시 뒤 다시 시도해 주세요."),
+    grant_failed: T("캐시를 지급하지 못했어요. 잠시 뒤 다시 받아 주세요."),
+    not_found: T("이미 받았거나 없는 우편이에요."),
+    market_not_configured: T("거래소 서버 설정이 아직 끝나지 않았어요."),
+    unauthorized: T("로그인이 만료됐어요. 계정을 다시 연결해 주세요."),
+    token_expired: T("로그인이 만료됐어요. 계정을 다시 연결해 주세요."),
+    need_ad: T("오늘 무료 입장을 모두 썼어요. 광고를 보면 더 들어갈 수 있어요."),
+    ad_limit: T("오늘은 이 광고 보상을 다 받았어요. 내일 다시 받을 수 있어요."),
+    bad_ticket: T("광고 확인에 실패했어요. 다시 시도해 주세요."),
+    ad_too_short: T("광고를 끝까지 봐 주세요."),
+    too_many_tickets: T("잠시 뒤 다시 시도해 주세요."),
   };
   const Market = {
     tab: "buy", list: null, mine: null, cash: null, sel: null, busy: false, mailCount: 0, mailKnown: false,
@@ -5181,13 +5194,14 @@
     rules: { fee: 1, hours: 24, maxActive: 10, cashRequired: ["legendary", "set", "unique"] },
   };
 
-  const priceText = (gold, cash) => [cash ? `◆ ${cash}` : null, gold ? `${gold.toLocaleString()} 골드` : null].filter(Boolean).join(" + ") || "0";
+  const priceText = (gold, cash) => [cash ? `◆ ${cash}` : null, gold ? T("{0} 골드", gold.toLocaleString()) : null].filter(Boolean).join(" + ") || "0";
   function leftText(ms) {
-    if (ms <= 0) return "곧 내려감";
+    if (ms <= 0) return T("곧 내려감");
     const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
-    return h ? `${h}시간 ${m}분 남음` : `${m}분 남음`;
+    return h ? T("{0}시간 {1}분 남음", h, m) : T("{0}분 남음", m);
   }
-  const dateText = (ms) => ms ? new Date(ms).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const LOCALE = { ko: "ko-KR", en: "en-US", ja: "ja-JP" }[RLI18N.lang] || "ko-KR";
+  const dateText = (ms) => ms ? new Date(ms).toLocaleString(LOCALE, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   function setMarketMsg(text, cls = "") { marketMsg.textContent = text; marketMsg.className = cls ? `msg-${cls}` : ""; }
 
   // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템)
@@ -5201,18 +5215,20 @@
     if (ref.rf?.length && !RLItems.applyReforges(item, ref.rf)) return null;   // 대장간 옵션 재련
     return item;
   }
+  // 서버가 준 아이템 이름은 한국어라, 참조로 다시 만들 수 있으면 그 언어의 이름으로
+  const refName = (x) => { const it = x?.ref && itemFromRef(x.ref); return it ? RLItems.itemName(it) : (x?.item?.name ?? x?.itemName); };
 
   function setMailCount(n) {
-    if (n > Market.mailCount && Market.mailKnown) log("우편함에 새 우편이 왔다. (로비 거래소 옆 우편함)", "good");
+    if (n > Market.mailCount && Market.mailKnown) log(T("우편함에 새 우편이 왔다. (로비 거래소 옆 우편함)"), "good");
     Market.mailCount = n;
     Market.mailKnown = true;
-    const label = n ? `우편함 (${n})` : "우편함";
+    const label = n ? T("우편함 ({0})", n) : T("우편함");
     const tab = document.querySelector('#market-tabs [data-tab="mail"]');
     if (tab) tab.textContent = label;
   }
 
   async function marketCall(route, { body, params } = {}) {
-    if (!RANKING_API) throw new Error("거래소 서버가 설정되지 않았어요.");
+    if (!RANKING_API) throw new Error(T("거래소 서버가 설정되지 않았어요."));
     const headers = await serverHeaders();
     if (!headers) throw new Error(MARKET_ERRORS.unauthorized);
     let url = rankingUrl(route);
@@ -5221,7 +5237,7 @@
     const res = await fetch(url, { method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined });
     let data = null;
     try { data = await res.json(); } catch {}
-    if (!res.ok) throw Object.assign(new Error(MARKET_ERRORS[data?.error] || `요청 실패 (${res.status})`), { code: data?.error });
+    if (!res.ok) throw Object.assign(new Error(MARKET_ERRORS[data?.error] || T("요청 실패 ({0})", res.status)), { code: data?.error });
     return data;
   }
 
@@ -5261,17 +5277,17 @@
 
   function renderMarket() {
     for (const b of document.querySelectorAll("#market-tabs button")) b.classList.toggle("on", b.dataset.tab === Market.tab);
-    document.getElementById("market-title").textContent = Market.tab === "mail" ? "우편함" : "거래소";
+    document.getElementById("market-title").textContent = Market.tab === "mail" ? T("우편함") : T("거래소");
     const wallet = document.getElementById("market-wallet");
-    wallet.replaceChildren(`이번 판 골드 ${player.gold.toLocaleString()} · `,
-      Account.loggedIn() ? el("span", { className: "cash" }, `캐시 ◆ ${Market.cash ?? "…"}`) : "캐시: 계정 연결 필요");
+    wallet.replaceChildren(T("이번 판 골드 {0} · ", player.gold.toLocaleString()),
+      Account.loggedIn() ? el("span", { className: "cash" }, T("캐시 ◆ {0}", Market.cash ?? "…")) : T("캐시: 계정 연결 필요"));
     const views = { buy: viewBuy, sell: viewSell, mine: viewMine, mail: viewMail };
     marketBody.replaceChildren(...views[Market.tab]());
   }
 
   const loginNote = (text) => [
     el("p", { className: "market-note" }, text),
-    el("button", { type: "button", className: "primary", onclick: () => { closeMarket(); openLogin(); } }, "계정 연결"),
+    el("button", { type: "button", className: "primary", onclick: () => { closeMarket(); openLogin(); } }, T("계정 연결")),
   ];
   const marketEmpty = (text) => el("p", { className: "market-empty" }, text);
   const viewRow = (name, color, meta, action) => el("div", { className: "market-row" },
@@ -5283,17 +5299,17 @@
     const pick = (key, options) => el("select", { ariaLabel: key, onchange: (e) => { f[key] = e.target.value; refreshMarket(); } },
       ...options.map(([v, label]) => el("option", { value: v, selected: f[key] === v }, label)));
     const filters = el("div", { className: "market-filters" },
-      pick("slot", [["", "모든 부위"], ...RLItems.SLOTS_R7.map(s => [s, RLItems.SLOT_NAMES[s]])]),
-      pick("rarity", [["", "모든 등급"], ...RARITY_ORDER.map(r => [r, RLItems.RARITIES[r].name])]),
-      pick("sort", [["new", "최신순"], ["cash", "캐시 낮은 순"], ["gold", "골드 낮은 순"]]),
-      el("button", { type: "button", onclick: () => refreshMarket() }, "새로고침"));
+      pick("slot", [["", T("모든 부위")], ...RLItems.SLOTS_R7.map(s => [s, RLItems.SLOT_NAMES[s]])]),
+      pick("rarity", [["", T("모든 등급")], ...RARITY_ORDER.map(r => [r, RLItems.RARITIES[r].name])]),
+      pick("sort", [["new", T("최신순")], ["cash", T("캐시 낮은 순")], ["gold", T("골드 낮은 순")]]),
+      el("button", { type: "button", onclick: () => refreshMarket() }, T("새로고침")));
     const note = el("p", { className: "market-note" },
-      `모든 거래에 수수료 ◆${Market.rules.fee}이 붙어요 (사는 사람이 가격에 더해 내요). 골드는 지금 판의 골드로 내요.`,
-      Ads.status() ? ` 광고를 보면 수수료가 면제돼요 (오늘 ${Ads.status().ads.fee}/${Ads.status().adCaps.fee}회 남음).` : "",
-      Account.loggedIn() ? "" : " 사려면 계정을 연결해야 해요.");
+      T("모든 거래에 수수료 ◆{0}이 붙어요 (사는 사람이 가격에 더해 내요). 골드는 지금 판의 골드로 내요.", Market.rules.fee),
+      Ads.status() ? T(" 광고를 보면 수수료가 면제돼요 (오늘 {0}/{1}회 남음).", Ads.status().ads.fee, Ads.status().adCaps.fee) : "",
+      Account.loggedIn() ? "" : T(" 사려면 계정을 연결해야 해요."));
     const d = Market.list;
-    if (!d) return [filters, note, marketEmpty("불러오는 중…")];
-    if (!d.rows.length) return [filters, note, marketEmpty("올라온 아이템이 없어요.")];
+    if (!d) return [filters, note, marketEmpty(T("불러오는 중…"))];
+    if (!d.rows.length) return [filters, note, marketEmpty(T("올라온 아이템이 없어요."))];
     return [filters, note, el("div", { className: "shop-grid" }, ...d.rows.map(r => listingCard(r, d.now)))];
   }
 
@@ -5301,19 +5317,19 @@
     const item = itemFromRef(r.ref);
     const name = item ? RLItems.itemName(item) : r.item.name;
     const total = r.cash + r.fee;
-    let label = `구매 · ◆${total}${r.gold ? ` + ${r.gold.toLocaleString()} 골드` : ""}`;
+    let label = T("구매 · ◆{0}", total) + (r.gold ? " + " + T("{0} 골드", r.gold.toLocaleString()) : "");
     let disabled = Market.busy;
-    if (r.mine) { label = "내가 올린 아이템"; disabled = true; }
-    else if (!Account.loggedIn()) label = "계정 연결하고 사기";
-    else if (r.gold > player.gold) { label = "골드 부족"; disabled = true; }
-    else if (Market.cash != null && Market.cash < total) { label = `캐시 부족 (◆${total} 필요)`; disabled = true; }
+    if (r.mine) { label = T("내가 올린 아이템"); disabled = true; }
+    else if (!Account.loggedIn()) label = T("계정 연결하고 사기");
+    else if (r.gold > player.gold) { label = T("골드 부족"); disabled = true; }
+    else if (Market.cash != null && Market.cash < total) { label = T("캐시 부족 (◆{0} 필요)", total); disabled = true; }
     const kind = item ? RLItems.kindName(item) : r.item.slotName;
     return el("div", { className: `shop-card${r.mine ? " mine" : ""}${item?.ancient ? " ancient" : ""}` },
       el("h3", { className: item?.ancient ? "ancient-name" : "", style: { color: RLItems.RARITIES[r.item.rarity]?.color } }, name),
-      el("span", { className: "meta" }, `${r.item.rarityName} · ${kind} · Lv${r.item.lvl}`),
+      el("span", { className: "meta" }, `${RLItems.RARITIES[r.item.rarity]?.name || r.item.rarityName} · ${kind} · Lv${r.item.lvl}`),
       ...(item ? statLines(item, "span") : []),
-      el("span", { className: "who" }, `판매자 ${r.seller} · ${leftText(r.expiresAt - now)}`),
-      el("span", { className: "price" }, priceText(r.gold, r.cash), el("span", { className: "meta" }, ` + 수수료 ◆${r.fee}`)),
+      el("span", { className: "who" }, T("판매자 {0} · {1}", r.seller, leftText(r.expiresAt - now))),
+      el("span", { className: "price" }, priceText(r.gold, r.cash), el("span", { className: "meta" }, T(" + 수수료 ◆{0}", r.fee))),
       el("button", { type: "button", className: r.mine ? "" : "primary", disabled, onclick: () => buyListing(r, name) }, label),
       adBuyButton(r, name));
   }
@@ -5324,30 +5340,30 @@
     if (r.mine || !Account.loggedIn() || left <= 0) return null;
     const short = r.gold > player.gold || (Market.cash != null && Market.cash < r.cash);
     return el("button", { type: "button", className: "ad-buy", disabled: Market.busy || short, onclick: () => buyListing(r, name, true) },
-      `광고 보고 수수료 면제 · ${r.cash ? `◆${r.cash}` : "캐시 0"}${r.gold ? ` + ${r.gold.toLocaleString()} 골드` : ""}`);
+      T("광고 보고 수수료 면제 · {0}", r.cash ? `◆${r.cash}` : T("캐시 0")) + (r.gold ? " + " + T("{0} 골드", r.gold.toLocaleString()) : ""));
   }
 
   async function buyListing(r, name, byAd = false) {
     if (!Account.loggedIn()) { closeMarket(); openLogin(); return; }
     if (Market.busy) return;
-    if (r.gold && gameOver) { setMarketMsg("쓰러진 판의 골드는 쓸 수 없어요. 새로 시작하거나 부활한 뒤 사 주세요.", "bad"); return; }
+    if (r.gold && gameOver) { setMarketMsg(T("쓰러진 판의 골드는 쓸 수 없어요. 새로 시작하거나 부활한 뒤 사 주세요."), "bad"); return; }
     const total = byAd ? r.cash : r.cash + r.fee;
-    const lines = [byAd ? `광고를 보고 ${name}을(를) 수수료 없이 살까요?` : `${name}을(를) 살까요?`, "", r.gold ? `골드 ${r.gold.toLocaleString()}` : null,
-      byAd ? `캐시 ◆${r.cash} (수수료 면제)` : `캐시 ◆${r.cash} + 수수료 ◆${r.fee} = ◆${total}`];
+    const lines = [byAd ? T("광고를 보고 {0}을(를) 수수료 없이 살까요?", name) : T("{0}을(를) 살까요?", name), "", r.gold ? T("골드 {0}", r.gold.toLocaleString()) : null,
+      byAd ? T("캐시 ◆{0} (수수료 면제)", r.cash) : T("캐시 ◆{0} + 수수료 ◆{1} = ◆{2}", r.cash, r.fee, total)];
     if (!confirm(lines.filter(x => x !== null).join("\n"))) return;
     Market.busy = true;
-    setMarketMsg(byAd ? "광고를 불러오는 중…" : "구매하는 중…");
+    setMarketMsg(byAd ? T("광고를 불러오는 중…") : T("구매하는 중…"));
     renderMarket();
     try {
-      const adTicket = byAd ? await Ads.watch("fee", "거래 수수료 면제") : undefined;
-      if (byAd) setMarketMsg("구매하는 중…");
+      const adTicket = byAd ? await Ads.watch("fee", T("거래 수수료 면제")) : undefined;
+      if (byAd) setMarketMsg(T("구매하는 중…"));
       const res = await marketCall("market_buy", { body: { id: r.id, adTicket } });
       if (r.gold) { player.gold = Math.max(0, player.gold - r.gold); updateStats(); saveGame(true); }
-      log(`거래소에서 ${name}을(를) 샀다. (${priceText(r.gold, res.cash ?? total)}${byAd ? ", 광고로 수수료 면제" : ", 수수료 포함"})`, "good");
+      log(T("거래소에서 {0}을(를) 샀다. ({1}{2})", name, priceText(r.gold, res.cash ?? total), byAd ? T(", 광고로 수수료 면제") : T(", 수수료 포함")), "good");
       // 산 아이템은 우편함으로 옴 → 가방에 자리가 있으면 바로 받음
       let got = false;
       try { await loadMine(); got = await claimMail(res.mail, { quiet: true }); } catch {}
-      setMarketMsg(got ? `${name}을(를) 샀어요! 가방에 넣었어요.` : `${name}을(를) 샀어요! 우편함에 있어요. 가방을 정리한 뒤 받아 주세요.`, "good");
+      setMarketMsg(got ? T("{0}을(를) 샀어요! 가방에 넣었어요.", name) : T("{0}을(를) 샀어요! 우편함에 있어요. 가방을 정리한 뒤 받아 주세요.", name), "good");
     } catch (e) {
       setMarketMsg(e.message, "bad");
     } finally {
@@ -5358,34 +5374,34 @@
 
   // ---- 판매 등록 ----
   function viewSell() {
-    if (!Account.loggedIn()) return loginNote("아이템을 올리려면 계정을 연결해야 해요. 판매 대금(캐시)을 계정으로 받아요.");
+    if (!Account.loggedIn()) return loginNote(T("아이템을 올리려면 계정을 연결해야 해요. 판매 대금(캐시)을 계정으로 받아요."));
     const active = Market.mine?.active.length ?? 0;
     const max = Market.rules.maxActive;
     const bag = Inv.bag().slice().sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || b.lvl - a.lvl);
     const parts = [el("p", { className: "market-note" },
-      `가방의 아이템을 올릴 수 있어요 (장착 중인 아이템은 먼저 해제하세요). 지금 ${active}/${max}개 올라가 있어요. ${Market.rules.hours}시간 안에 안 팔리면 우편함으로 돌아와요.`)];
-    if (!bag.length) return [...parts, marketEmpty("가방이 비어 있어요.")];
+      T("가방의 아이템을 올릴 수 있어요 (장착 중인 아이템은 먼저 해제하세요). 지금 {0}/{1}개 올라가 있어요. {2}시간 안에 안 팔리면 우편함으로 돌아와요.", active, max, Market.rules.hours))];
+    if (!bag.length) return [...parts, marketEmpty(T("가방이 비어 있어요."))];
     parts.push(el("div", { className: "bag" }, ...bag.map(item => el("button", {
       type: "button", className: `bag-item${Market.sel === item.id ? " sel" : ""}${item.ancient ? " ancient" : ""}`,
       onclick: () => { Market.sel = item.id; setMarketMsg(""); renderMarket(); },
     }, itemLabel(item), el("small", {}, ` Lv${item.lvl}`)))));
     const item = bag.find(x => x.id === Market.sel);
-    if (!item) return [...parts, el("p", { className: "market-note" }, "올릴 아이템을 고르세요.")];
+    if (!item) return [...parts, el("p", { className: "market-note" }, T("올릴 아이템을 고르세요."))];
     const needCash = Market.rules.cashRequired.includes(item.rarity);
     const old = !item.v || item.v < 2;  // v1(예전 규칙) 아이템만 못 올림
     const gold = el("input", { type: "number", min: 0, step: 1, inputMode: "numeric", id: "sell-gold", value: "0" });
     const cash = el("input", { type: "number", min: needCash ? 1 : 0, step: 1, inputMode: "numeric", id: "sell-cash", value: needCash ? "1" : "0" });
-    const blocked = old ? "예전 규칙 아이템은 올릴 수 없어요" : item.gems?.length ? "보석·룬을 넣은 아이템은 올릴 수 없어요" : item.lock ? "잠긴 아이템이에요 (인벤토리에서 잠금을 풀어 주세요)" : active >= max ? `${max}개까지 올릴 수 있어요` : null;
+    const blocked = old ? T("예전 규칙 아이템은 올릴 수 없어요") : item.gems?.length ? T("보석·룬을 넣은 아이템은 올릴 수 없어요") : item.lock ? T("잠긴 아이템이에요 (인벤토리에서 잠금을 풀어 주세요)") : active >= max ? T("{0}개까지 올릴 수 있어요", max) : null;
     parts.push(el("div", { className: "detail" },
       el("h3", {}, itemLabel(item)), ...statLines(item),
       el("div", { className: "sell-form" },
-        el("label", {}, "골드 가격", gold),
-        el("label", {}, "캐시 가격 (◆)", cash),
+        el("label", {}, T("골드 가격"), gold),
+        el("label", {}, T("캐시 가격 (◆)"), cash),
         el("p", { className: "market-note full" },
-          needCash ? `${RLItems.RARITIES[item.rarity].name} 아이템은 캐시를 1개 이상 받아야 해요. ` : "",
-          `사는 사람은 가격에 수수료 ◆${Market.rules.fee}을 더 내요. 팔리면 대금이 우편함으로 와요.`),
+          needCash ? T("{0} 아이템은 캐시를 1개 이상 받아야 해요. ", RLItems.RARITIES[item.rarity].name) : "",
+          T("사는 사람은 가격에 수수료 ◆{0}을 더 내요. 팔리면 대금이 우편함으로 와요.", Market.rules.fee)),
         el("button", { type: "button", id: "sell-submit", className: "primary full", disabled: Market.busy || !!blocked, onclick: () => listItem(item, gold.value, cash.value) },
-          blocked || "거래소에 올리기"))));
+          blocked || T("거래소에 올리기")))));
     return parts;
   }
 
@@ -5394,17 +5410,17 @@
     if (![gold, cash].every(n => Number.isInteger(n) && n >= 0) || gold + cash <= 0) { setMarketMsg(MARKET_ERRORS.bad_price, "bad"); return; }
     if (Market.rules.cashRequired.includes(item.rarity) && cash < 1) { setMarketMsg(MARKET_ERRORS.cash_required, "bad"); return; }
     const name = RLItems.itemName(item);
-    if (!confirm(`${name}을(를) ${priceText(gold, cash)}에 올릴까요?\n${Market.rules.hours}시간 안에 안 팔리면 우편함으로 돌아와요.`)) return;
+    if (!confirm(T("{0}을(를) {1}에 올릴까요?\n{2}시간 안에 안 팔리면 우편함으로 돌아와요.", name, priceText(gold, cash), Market.rules.hours))) return;
     Market.busy = true;
-    setMarketMsg("올리는 중…");
+    setMarketMsg(T("올리는 중…"));
     renderMarket();
     try {
       const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}), ...(item.rf?.length ? { rf: item.rf } : {}) };
       const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: Math.max(bestDepth, depth || 0) } });
       Inv.remove(item.id, "list", { listing: r.listing.id, gold, cash });
       Market.sel = null;
-      log(`거래소에 ${name}을(를) ${priceText(gold, cash)}에 올렸다.`, "info");
-      setMarketMsg(`올렸어요! ${Market.rules.hours}시간 동안 거래소에 있어요.`, "good");
+      log(T("거래소에 {0}을(를) {1}에 올렸다.", name, priceText(gold, cash)), "info");
+      setMarketMsg(T("올렸어요! {0}시간 동안 거래소에 있어요.", Market.rules.hours), "good");
       Ranking.schedule();
     } catch (e) {
       setMarketMsg(e.message, "bad");
@@ -5417,34 +5433,34 @@
 
   // ---- 내 거래 ----
   function viewMine() {
-    if (!Account.loggedIn()) return loginNote("내 거래는 계정을 연결하면 볼 수 있어요.");
+    if (!Account.loggedIn()) return loginNote(T("내 거래는 계정을 연결하면 볼 수 있어요."));
     const d = Market.mine;
-    if (!d) return [marketEmpty("불러오는 중…")];
+    if (!d) return [marketEmpty(T("불러오는 중…"))];
     const color = (v) => RLItems.RARITIES[v.rarity]?.color;
-    const active = d.active.map(l => viewRow(l.item.name, color(l.item),
-      `${priceText(l.gold, l.cash)} · ${l.state === "buying" ? "거래 중" : leftText(l.expiresAt - d.now)}`,
-      l.state === "active" ? el("button", { type: "button", disabled: Market.busy, onclick: () => cancelListing(l) }, "내리기") : null));
+    const active = d.active.map(l => viewRow(refName(l), color(l.item),
+      `${priceText(l.gold, l.cash)} · ${l.state === "buying" ? T("거래 중") : leftText(l.expiresAt - d.now)}`,
+      l.state === "active" ? el("button", { type: "button", disabled: Market.busy, onclick: () => cancelListing(l) }, T("내리기")) : null));
     const histText = (h) => {
       const when = dateText(h.endedAt);
       if (h.state === "sold") return h.role === "seller"
-        ? `판매 완료 · ${priceText(h.gold, h.cash)} · 구매자 ${h.buyer} · ${when}`
-        : `구매 · ${priceText(h.gold, h.cash + (h.feeBy === "ad" ? 0 : h.fee))} (${h.feeBy === "ad" ? "광고로 수수료 면제" : "수수료 포함"}) · 판매자 ${h.seller} · ${when}`;
-      return h.state === "expired" ? `${Market.rules.hours}시간이 지나 우편함으로 · ${when}` : `내림 · ${when}`;
+        ? T("판매 완료 · {0} · 구매자 {1} · {2}", priceText(h.gold, h.cash), h.buyer, when)
+        : T("구매 · {0} ({1}) · 판매자 {2} · {3}", priceText(h.gold, h.cash + (h.feeBy === "ad" ? 0 : h.fee)), h.feeBy === "ad" ? T("광고로 수수료 면제") : T("수수료 포함"), h.seller, when);
+      return h.state === "expired" ? T("{0}시간이 지나 우편함으로 · {1}", Market.rules.hours, when) : T("내림 · {0}", when);
     };
     return [
-      el("h3", { className: "sub" }, `올린 아이템 (${d.active.length}/${Market.rules.maxActive})`),
-      d.active.length ? el("div", { className: "market-list" }, ...active) : marketEmpty("올린 아이템이 없어요."),
-      el("h3", { className: "sub" }, "지난 거래"),
-      d.history.length ? el("div", { className: "market-list" }, ...d.history.map(h => viewRow(h.item.name, color(h.item), histText(h), null))) : marketEmpty("아직 거래가 없어요."),
+      el("h3", { className: "sub" }, T("올린 아이템 ({0}/{1})", d.active.length, Market.rules.maxActive)),
+      d.active.length ? el("div", { className: "market-list" }, ...active) : marketEmpty(T("올린 아이템이 없어요.")),
+      el("h3", { className: "sub" }, T("지난 거래")),
+      d.history.length ? el("div", { className: "market-list" }, ...d.history.map(h => viewRow(refName(h), color(h.item), histText(h), null))) : marketEmpty(T("아직 거래가 없어요.")),
     ];
   }
 
   async function cancelListing(l) {
-    if (Market.busy || !confirm(`${l.item.name}을(를) 거래소에서 내릴까요? 우편함으로 돌아와요.`)) return;
+    if (Market.busy || !confirm(T("{0}을(를) 거래소에서 내릴까요? 우편함으로 돌아와요.", refName(l)))) return;
     Market.busy = true;
     try {
       await marketCall("market_cancel", { body: { id: l.id } });
-      setMarketMsg(`${l.item.name}을(를) 내렸어요. 우편함에서 받을 수 있어요.`, "good");
+      setMarketMsg(T("{0}을(를) 내렸어요. 우편함에서 받을 수 있어요.", refName(l)), "good");
     } catch (e) {
       setMarketMsg(e.message, "bad");
     } finally {
@@ -5455,24 +5471,24 @@
 
   // ---- 우편함 ----
   function viewMail() {
-    if (!Account.loggedIn()) return loginNote("우편함은 계정을 연결하면 쓸 수 있어요.");
+    if (!Account.loggedIn()) return loginNote(T("우편함은 계정을 연결하면 쓸 수 있어요."));
     const d = Market.mine;
     const head = el("p", { className: "market-note" },
-      `가방 ${Inv.bag().length}/${BAG_SIZE}칸 · 팔린 대금, 산 아이템, ${Market.rules.hours}시간이 지나거나 내린 아이템, 운영자 선물이 여기로 와요. 가방이 가득 차면 인벤토리에서 정리한 뒤 받으세요.`);
-    if (!d) return [head, marketEmpty("불러오는 중…")];
-    if (!d.mail.length) return [head, marketEmpty("우편함이 비어 있어요.")];
+      T("가방 {0}/{1}칸 · 팔린 대금, 산 아이템, {2}시간이 지나거나 내린 아이템, 운영자 선물이 여기로 와요. 가방이 가득 차면 인벤토리에서 정리한 뒤 받으세요.", Inv.bag().length, BAG_SIZE, Market.rules.hours));
+    if (!d) return [head, marketEmpty(T("불러오는 중…"))];
+    if (!d.mail.length) return [head, marketEmpty(T("우편함이 비어 있어요."))];
     const box = Market.boxPick && d.mail.find(m => m.id === Market.boxPick && m.kind === "ubox");
     if (box) return viewBoxPick(box);
-    const kinds = { sale: "판매 대금", bought: "산 아이템", returned: "돌아온 아이템", gift: "운영자 선물", ubox: "현금 구매" };
+    const kinds = { sale: T("판매 대금"), bought: T("산 아이템"), returned: T("돌아온 아이템"), gift: T("운영자 선물"), ubox: T("현금 구매") };
     const rows = d.mail.map(m => {
-      if (m.kind === "ubox") return viewRow(`🎁 ${m.itemName}`, RLItems.RARITIES.unique.color, `${kinds.ubox} · 유니크 ${Object.keys(RLItems.UNIQUE.items).length}종 중 하나를 골라 고대로 받아요 · ${dateText(m.createdAt)}`,
-        el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => { Market.boxPick = m.id; setMarketMsg(""); renderMarket(); } }, "열기"));
+      if (m.kind === "ubox") return viewRow(`🎁 ${T("고대 유니크 선택 상자")}`, RLItems.RARITIES.unique.color, T("{0} · 유니크 {1}종 중 하나를 골라 고대로 받아요 · {2}", kinds.ubox, Object.keys(RLItems.UNIQUE.items).length, dateText(m.createdAt)),
+        el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => { Market.boxPick = m.id; setMarketMsg(""); renderMarket(); } }, T("열기")));
       const money = !m.ref;  // 판매 대금·선물: 골드·캐시만
-      return viewRow(money ? priceText(m.gold, m.cash) : m.itemName, money ? "#ffcf5c" : RLItems.RARITIES[m.rarity]?.color,
-        [kinds[m.kind] || "우편", m.kind === "sale" ? m.itemName : null, m.kind === "gift" && m.note === "운영자 선물" ? null : m.note, dateText(m.createdAt)].filter(Boolean).join(" · "),
-        el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => claimOne(m.id) }, "받기"));
+      return viewRow(money ? priceText(m.gold, m.cash) : refName(m), money ? "#ffcf5c" : RLItems.RARITIES[m.rarity]?.color,
+        [kinds[m.kind] || T("우편"), m.kind === "sale" ? m.itemName : null, m.kind === "gift" && m.note === "운영자 선물" ? null : m.note, dateText(m.createdAt)].filter(Boolean).join(" · "),
+        el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => claimOne(m.id) }, T("받기")));
     });
-    return [head, el("button", { type: "button", id: "mail-all", disabled: Market.busy, onclick: claimAll, style: { marginBottom: "8px" } }, "모두 받기"),
+    return [head, el("button", { type: "button", id: "mail-all", disabled: Market.busy, onclick: claimAll, style: { marginBottom: "8px" } }, T("모두 받기")),
       el("div", { className: "market-list" }, ...rows)];
   }
 
@@ -5483,33 +5499,33 @@
       const it = RLItems.generateUnique(`buy|m${m.id}|${k}`, RLItems.boughtLevel(k));
       const stats = [...(it.main || []), ...(it.lines || [])].map(([st, v]) => RLItems.formatStat(st, v)).join(", ");
       return viewRow(RLItems.itemName(it), RLItems.RARITIES.unique.color,
-        `${RLItems.SLOT_NAMES[u.slot]} · 헬 ${u.boss}층 ${RLMonsters.namedAt(u.boss)?.name || "네임드"} · ${u.text} · ${stats}`,
-        el("button", { type: "button", className: "primary pick-uq", value: k, disabled: Market.busy, onclick: () => openBox(m.id, k, it) }, "고르기"));
+        `${RLItems.SLOT_NAMES[u.slot]} · ` + T("헬 {0}층 {1}", u.boss, RLMonsters.namedAt(u.boss)?.name || T("네임드")) + ` · ${u.text} · ${stats}`,
+        el("button", { type: "button", className: "primary pick-uq", value: k, disabled: Market.busy, onclick: () => openBox(m.id, k, it) }, T("고르기")));
     };
     return [
-      el("p", { className: "market-note" }, `🎁 ${m.itemName}: 하나만 고를 수 있고, 고른 뒤에는 바꿀 수 없어요. 모든 능력치가 최대치인 고대 유니크로 가방에 들어가요 (가방 ${Inv.bag().length}/${BAG_SIZE}칸). 랭킹에는 "구매 아이템"으로 표시돼요.`),
-      el("button", { type: "button", onclick: () => { Market.boxPick = null; renderMarket(); }, style: { marginBottom: "8px" } }, "← 우편함으로"),
-      el("h3", {}, "유니크 장비"), el("div", { className: "market-list" }, ...U.filter(([, u]) => !u.acc).map(row)),
-      el("h3", {}, "유니크 장신구"), el("div", { className: "market-list" }, ...U.filter(([, u]) => u.acc).map(row)),
+      el("p", { className: "market-note" }, T("🎁 {0}: 하나만 고를 수 있고, 고른 뒤에는 바꿀 수 없어요. 모든 능력치가 최대치인 고대 유니크로 가방에 들어가요 (가방 {1}/{2}칸). 랭킹에는 \"구매 아이템\"으로 표시돼요.", T("고대 유니크 선택 상자"), Inv.bag().length, BAG_SIZE)),
+      el("button", { type: "button", onclick: () => { Market.boxPick = null; renderMarket(); }, style: { marginBottom: "8px" } }, T("← 우편함으로")),
+      el("h3", {}, T("유니크 장비")), el("div", { className: "market-list" }, ...U.filter(([, u]) => !u.acc).map(row)),
+      el("h3", {}, T("유니크 장신구")), el("div", { className: "market-list" }, ...U.filter(([, u]) => u.acc).map(row)),
     ];
   }
 
   async function openBox(id, k, preview) {
     if (Market.busy) return;
-    if (Inv.full()) return setMarketMsg(`가방이 가득 찼어요 (${BAG_SIZE}칸). 인벤토리에서 정리한 뒤 열어 주세요.`, "bad");
-    if (!confirm(`${RLItems.itemName(preview)}을(를) 고를까요? 고른 뒤에는 바꿀 수 없어요.`)) return;
+    if (Inv.full()) return setMarketMsg(T("가방이 가득 찼어요 ({0}칸). 인벤토리에서 정리한 뒤 열어 주세요.", BAG_SIZE), "bad");
+    if (!confirm(T("{0}을(를) 고를까요? 고른 뒤에는 바꿀 수 없어요.", RLItems.itemName(preview)))) return;
     Market.busy = true;
     renderMarket();
     try {
       const res = await marketCall("mail_claim", { body: { id, pick: k } });
       const item = itemFromRef(res.mail?.ref);
-      if (!item) throw new Error("아이템을 만들 수 없어요. 게임을 새로고침해 주세요.");
+      if (!item) throw new Error(T("아이템을 만들 수 없어요. 게임을 새로고침해 주세요."));
       Inv.add(item, { from: "ubox", mail: id });
       Market.mine.mail = Market.mine.mail.filter(x => x.id !== id);
       setMailCount(Market.mine.mail.length);
       Market.boxPick = null;
-      log(`고대 유니크 선택 상자에서 ${RLItems.itemName(item)}을(를) 받았다!`, "good");
-      setMarketMsg(`${RLItems.itemName(item)}을(를) 가방에 넣었어요.`, "good");
+      log(T("고대 유니크 선택 상자에서 {0}을(를) 받았다!", RLItems.itemName(item)), "good");
+      setMarketMsg(T("{0}을(를) 가방에 넣었어요.", RLItems.itemName(item)), "good");
       saveGame(true);
       Ranking.schedule();
     } catch (e) {
@@ -5527,11 +5543,11 @@
     let item = null;
     if (m.ref) {
       item = itemFromRef(m.ref);
-      if (!item) return fail("이 아이템을 만들 수 없어요. 게임을 새로고침한 뒤 다시 받아 주세요.");
-      if (Inv.items().some(x => x.id === item.id)) return fail("가방에 같은 아이템이 이미 있어요.");
-      if (Inv.full()) return fail(`가방이 가득 찼어요 (${BAG_SIZE}칸). 인벤토리에서 정리한 뒤 받아 주세요.`);
+      if (!item) return fail(T("이 아이템을 만들 수 없어요. 게임을 새로고침한 뒤 다시 받아 주세요."));
+      if (Inv.items().some(x => x.id === item.id)) return fail(T("가방에 같은 아이템이 이미 있어요."));
+      if (Inv.full()) return fail(T("가방이 가득 찼어요 ({0}칸). 인벤토리에서 정리한 뒤 받아 주세요.", BAG_SIZE));
     }
-    if (m.gold && gameOver) return fail("쓰러진 판에는 골드를 받을 수 없어요. 새로 시작하거나 부활한 뒤 받아 주세요.");
+    if (m.gold && gameOver) return fail(T("쓰러진 판에는 골드를 받을 수 없어요. 새로 시작하거나 부활한 뒤 받아 주세요."));
     const res = await marketCall("mail_claim", { body: { id } });
     const cash = res.cashPaid ?? m.cash;  // 지난번에 캐시만 먼저 받은 우편이면 이번엔 0
     if (item) Inv.add(item, { from: "market", kind: m.kind, mail: id });
@@ -5539,9 +5555,9 @@
     if (cash) await loadCash();
     Market.mine.mail = Market.mine.mail.filter(x => x.id !== id);
     setMailCount(Market.mine.mail.length);
-    const what = [item ? RLItems.itemName(item) : null, m.gold ? `${m.gold.toLocaleString()} 골드` : null, cash ? `캐시 ◆${cash}` : null].filter(Boolean).join(", ");
-    log(`우편함에서 ${what}을(를) 받았다.`, "good");
-    if (!quiet) setMarketMsg(`${what}을(를) 받았어요.`, "good");
+    const what = [item ? RLItems.itemName(item) : null, m.gold ? T("{0} 골드", m.gold.toLocaleString()) : null, cash ? T("캐시 ◆{0}", cash) : null].filter(Boolean).join(", ");
+    log(T("우편함에서 {0}을(를) 받았다.", what), "good");
+    if (!quiet) setMarketMsg(T("{0}을(를) 받았어요.", what), "good");
     if (item) Ranking.schedule();
     return true;
   }
@@ -5563,7 +5579,7 @@
     try {
       for (const m of [...Market.mine.mail]) if (m.kind !== "ubox" && await claimMail(m.id, { quiet: true })) got++;
       const left = Market.mine.mail.filter(m => m.kind !== "ubox").length;
-      setMarketMsg(left ? `${got}개 받았어요. ${left}개는 가방이 가득 차서 남았어요. 인벤토리에서 정리한 뒤 받아 주세요.` : `${got}개 모두 받았어요.`, left ? "bad" : "good");
+      setMarketMsg(left ? T("{0}개 받았어요. {1}개는 가방이 가득 차서 남았어요. 인벤토리에서 정리한 뒤 받아 주세요.", got, left) : T("{0}개 모두 받았어요.", got), left ? "bad" : "good");
     } catch (e) {
       setMarketMsg(e.message, "bad");
     }
@@ -5600,9 +5616,9 @@
       const info = document.getElementById("entry-info");
       info.hidden = !status;
       if (!status) return;
-      info.replaceChildren(status.unlimited ? "오늘 1층 입장: 개발자 계정이라 제한 없음"
-        : el("span", {}, "오늘 1층 무료 입장 ", el("b", {}, `${status.left}/${status.free}`), "회 남음",
-          status.left ? "" : el("span", { className: "ad" }, " · 광고를 보면 더 들어갈 수 있어요")));
+      info.replaceChildren(status.unlimited ? T("오늘 1층 입장: 개발자 계정이라 제한 없음")
+        : el("span", {}, T("오늘 1층 무료 입장 "), el("b", {}, `${status.left}/${status.free}`), T("회 남음"),
+          status.left ? "" : el("span", { className: "ad" }, T(" · 광고를 보면 더 들어갈 수 있어요"))));
     }
 
     // 구글 H5 게임 광고 (ads-config.js에서 provider: "h5"일 때)
@@ -5640,9 +5656,9 @@
     function showTest(title, seconds) {
       return new Promise((resolve) => {
         const claim = document.getElementById("ad-claim"), close = document.getElementById("ad-close"), count = document.getElementById("ad-count");
-        document.getElementById("ad-sub").textContent = `${title} · 끝까지 보면 보상을 받아요`;
+        document.getElementById("ad-sub").textContent = T("{0} · 끝까지 보면 보상을 받아요", title);
         let left = Math.max(1, seconds);
-        const tick = () => { count.textContent = left > 0 ? `${left}초 남음` : "다 봤어요!"; claim.disabled = left > 0; };
+        const tick = () => { count.textContent = left > 0 ? T("{0}초 남음", left) : T("다 봤어요!"); claim.disabled = left > 0; };
         tick();
         const timer = setInterval(() => { left--; tick(); if (left <= 0) clearInterval(timer); }, 1000);
         const done = (r) => { clearInterval(timer); modalEl.hidden = true; claim.onclick = close.onclick = null; resolve(r); };
@@ -5658,7 +5674,7 @@
       const t = await marketCall("ad_start", { body: { kind } });
       const started = Date.now();
       const r = cfg.provider === "h5" ? await showH5(kind) : await showTest(title, t.minSeconds);
-      if (r !== "viewed") throw new Error(r === "skipped" ? "광고를 끝까지 보지 않아서 보상이 없어요." : "지금은 광고를 불러올 수 없어요. 잠시 뒤 다시 시도해 주세요.");
+      if (r !== "viewed") throw new Error(r === "skipped" ? T("광고를 끝까지 보지 않아서 보상이 없어요.") : T("지금은 광고를 불러올 수 없어요. 잠시 뒤 다시 시도해 주세요."));
       // 서버는 광고를 시작하고 최소 시간이 지나야 티켓을 받아 줌
       const wait = t.minSeconds * 1000 - (Date.now() - started) + 200;
       if (wait > 0) await new Promise(res => setTimeout(res, wait));
@@ -5673,18 +5689,18 @@
     try {
       const r = await marketCall("entry", { body: {} });
       Ads.setStatus(r);
-      if (!r.unlimited) log(`오늘 1층 무료 입장 ${r.left}/${r.free}회 남음.`, "info");
+      if (!r.unlimited) log(T("오늘 1층 무료 입장 {0}/{1}회 남음.", r.left, r.free), "info");
       return true;
     } catch (e) {
       if (e.code !== "need_ad") return true;  // 서버 오류: 게임은 계속
     }
     const free = Ads.status()?.free ?? 5;
-    if (!confirm(`오늘 1층 무료 입장 ${free}회를 모두 썼어요.\n광고를 보고 입장할까요?`)) return false;
+    if (!confirm(T("오늘 1층 무료 입장 {0}회를 모두 썼어요.\n광고를 보고 입장할까요?", free))) return false;
     try {
-      const ticket = await Ads.watch("entry", "던전 입장");
+      const ticket = await Ads.watch("entry", T("던전 입장"));
       const r = await marketCall("entry", { body: { adTicket: ticket } });
       Ads.setStatus(r);
-      log("광고를 보고 던전에 입장했다.", "info");
+      log(T("광고를 보고 던전에 입장했다."), "info");
       return true;
     } catch (e) {
       log(e.message, "bad");
@@ -5735,14 +5751,14 @@
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (path.startsWith("/user") || path.startsWith("/payment")) {
       const t = await Account.token();
-      if (!t) throw Object.assign(new Error("로그인이 만료됐어요. 계정을 다시 연결해 주세요."), { status: 401 });
+      if (!t) throw Object.assign(new Error(T("로그인이 만료됐어요. 계정을 다시 연결해 주세요.")), { status: 401 });
       headers.Authorization = `Bearer ${t}`;
     }
     const res = await fetch(STORE_API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch {}
-    if (!res.ok) throw Object.assign(new Error(data?.errorMessage || `요청 실패 (${res.status})`), { status: res.status, code: data?.errorCode });
+    if (!res.ok) throw Object.assign(new Error(data?.errorMessage || T("요청 실패 ({0})", res.status)), { status: res.status, code: data?.errorCode });
     return data;
   }
 
@@ -5832,16 +5848,16 @@
 
   async function openDeath() {
     deathModal.hidden = false;
-    document.getElementById("death-sub").textContent = `${floorName()}에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.`;
+    document.getElementById("death-sub").textContent = T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.", floorName());
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
     // 운영자 기기: 되살아나 쓰러진 층으로 바로 (테스트용)
     if (isStaff()) {
-      deathRevive.replaceChildren(el("button", { type: "button", className: "primary staff-revive", textContent: "운영자: 쓰러진 층으로 바로 (골드·레벨 그대로)", onclick: () => enterStaffDoor() }));
+      deathRevive.replaceChildren(el("button", { type: "button", className: "primary staff-revive", textContent: T("운영자: 쓰러진 층으로 바로 (골드·레벨 그대로)"), onclick: () => enterStaffDoor() }));
       return;
     }
     if (player.revived) {
-      deathRevive.replaceChildren(el("p", { className: "note", textContent: "이번 판에서는 이미 부활했어요. (한 판에 한 번)" }));
+      deathRevive.replaceChildren(el("p", { className: "note", textContent: T("이번 판에서는 이미 부활했어요. (한 판에 한 번)") }));
       document.getElementById("death-restart").focus();
       return;
     }
@@ -5851,18 +5867,18 @@
       if (deathModal.hidden || !gameOver || player.revived || !st) return;
       const left = st.ads?.revive ?? 0;
       adSlot.replaceChildren(left > 0
-        ? el("button", { type: "button", className: "ad-revive", id: "revive-ad-btn", textContent: `광고 보고 부활 (오늘 ${left}회 남음)`, onclick: reviveByAd })
-        : el("p", { className: "note", textContent: "광고 부활은 오늘 다 썼어요. (하루 1회)" }));
+        ? el("button", { type: "button", className: "ad-revive", id: "revive-ad-btn", textContent: T("광고 보고 부활 (오늘 {0}회 남음)", left), onclick: reviveByAd })
+        : el("p", { className: "note", textContent: T("광고 부활은 오늘 다 썼어요. (하루 1회)") }));
     });
     const adButton = () => adSlot;
     if (!Account.configured() || !Account.loggedIn()) {
       deathRevive.replaceChildren(
         adButton(),
-        el("p", { className: "note", textContent: `계정을 연결하면 캐시 ${revivePrice}개로도 부활할 수 있어요.` }),
-        el("button", { type: "button", textContent: "계정 연결", onclick: () => { closeDeath(); openLogin(); } }));
+        el("p", { className: "note", textContent: T("계정을 연결하면 캐시 {0}개로도 부활할 수 있어요.", revivePrice) }),
+        el("button", { type: "button", textContent: T("계정 연결"), onclick: () => { closeDeath(); openLogin(); } }));
       return;
     }
-    deathRevive.replaceChildren(el("p", { className: "note", textContent: "부활 정보를 불러오는 중…" }));
+    deathRevive.replaceChildren(el("p", { className: "note", textContent: T("부활 정보를 불러오는 중…") }));
     let owned = 0, balance = null;
     await loadRevivePrice();
     try {
@@ -5875,11 +5891,11 @@
     if (deathModal.hidden || !gameOver) return;
     const short = !owned && balance != null && balance < revivePrice;
     const btn = el("button", { type: "button", className: "primary", id: "revive-btn", disabled: short, onclick: () => revive(owned > 0) },
-      owned ? `부활권 사용 (보유 ${owned}개)` : short ? `캐시 부족 (필요 ◆ ${revivePrice})` : `캐시 ${revivePrice}개로 부활`);
+      owned ? T("부활권 사용 (보유 {0}개)", owned) : short ? T("캐시 부족 (필요 ◆ {0})", revivePrice) : T("캐시 {0}개로 부활", revivePrice));
     const parts = [btn, adButton(),
-      el("p", { className: "note" }, "이 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 몬스터도 새로 나와요. 한 판에 한 번만 쓸 수 있어요.")];
-    if (balance != null) parts.push(el("p", { className: "note" }, "보유 캐시 ", el("span", { className: "cash", textContent: `◆ ${balance}` })));
-    if (short) parts.push(el("a", { className: "btn", href: "shop.html", textContent: "상점에서 캐시 충전하기 (충전 후 돌아오면 부활할 수 있어요)" }));
+      el("p", { className: "note" }, T("이 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 몬스터도 새로 나와요. 한 판에 한 번만 쓸 수 있어요."))];
+    if (balance != null) parts.push(el("p", { className: "note" }, T("보유 캐시 "), el("span", { className: "cash", textContent: `◆ ${balance}` })));
+    if (short) parts.push(el("a", { className: "btn", href: "shop.html", textContent: T("상점에서 캐시 충전하기 (충전 후 돌아오면 부활할 수 있어요)") }));
     deathRevive.replaceChildren(...parts);
     btn.focus();
   }
@@ -5891,7 +5907,7 @@
     reviving = true;
     const btn = document.getElementById("revive-btn");
     if (btn) btn.disabled = true;
-    setDeathMsg(owned ? "부활권을 사용하는 중…" : `캐시 ${revivePrice}개로 부활권을 사는 중…`);
+    setDeathMsg(owned ? T("부활권을 사용하는 중…") : T("캐시 {0}개로 부활권을 사는 중…", revivePrice));
     try {
       if (!owned) await storeCall(`/payment/item/${REVIVE.sku}/virtual/${REVIVE.cash}`, { method: "POST", body: {} });
       // 산 직후에는 인벤토리 반영이 늦을 수 있어 몇 번 다시 시도
@@ -5900,10 +5916,10 @@
         try { await storeCall("/user/inventory/item/consume", { method: "POST", body: { sku: REVIVE.sku, quantity: 1, instance_id: null } }); lastErr = null; break; }
         catch (e) { lastErr = e; await sleepMs(800 * (i + 1)); }
       }
-      if (lastErr) throw Object.assign(new Error("부활권은 샀지만 사용하지 못했어요. 부활권은 계정에 남아 있으니 다시 눌러 주세요."), { keep: true });
+      if (lastErr) throw Object.assign(new Error(T("부활권은 샀지만 사용하지 못했어요. 부활권은 계정에 남아 있으니 다시 눌러 주세요.")), { keep: true });
       doRevive();
     } catch (e) {
-      const text = e.code === 5006 ? "캐시가 부족해요. 상점에서 충전한 뒤 돌아오면 부활할 수 있어요." : e.message;
+      const text = e.code === 5006 ? T("캐시가 부족해요. 상점에서 충전한 뒤 돌아오면 부활할 수 있어요.") : e.message;
       setDeathMsg(text, "bad");
       if (e.keep || e.code !== 5006) openDeath().then(() => setDeathMsg(text, "bad"));
       else if (btn) btn.disabled = false;
@@ -5916,12 +5932,12 @@
   async function reviveByAd() {
     if (reviving || !gameOver || player.revived) return;
     reviving = true;
-    setDeathMsg("광고를 불러오는 중…");
+    setDeathMsg(T("광고를 불러오는 중…"));
     try {
-      const ticket = await Ads.watch("revive", "부활");
+      const ticket = await Ads.watch("revive", T("부활"));
       Ads.setStatus(await marketCall("revive_ad", { body: { adTicket: ticket } }));
       doRevive();
-      log("광고를 보고 부활했다.", "good");
+      log(T("광고를 보고 부활했다."), "good");
     } catch (e) {
       setDeathMsg(e.message, "bad");
     } finally {
@@ -5935,7 +5951,7 @@
     player.hp = stats().maxHp;
     closeDeath();
     if (scene !== "dungeon") setScene("dungeon");  // 로비 입구에서 부활한 경우
-    log(`부활했다! ${depth}층을 처음부터 다시 시작한다. (이번 판 부활 사용)`, "good");
+    log(T("부활했다! {0}층을 처음부터 다시 시작한다. (이번 판 부활 사용)", depth), "good");
     const rooms = generateDungeon();
     newLevel(rooms);
     render();

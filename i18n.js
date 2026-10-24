@@ -45,6 +45,26 @@
     const use = v !== undefined ? v : ko;
     return typeof use === "function" ? use(...args) : use;
   }
+  // 화면 문구: 한국어 원문이 키 (gettext처럼). {0} {1} …은 값. 번역은 i18n/<언어>.js의 ui
+  // 번역이 빠진 문구는 missing에 모아 둠 (미리 보기에서 RLI18N.missing으로 확인)
+  const missing = new Set();
+  function t(ko, ...args) {
+    const p = pack();
+    let v = p ? p.ui[ko] : undefined;
+    if (p && v === undefined) missing.add(ko);
+    if (typeof v === "function") return v(...args);
+    if (v == null) v = ko;
+    return args.length ? String(v).replace(/\{(\d+)\}/g, (m, i) => (args[i] !== undefined ? args[i] : m)) : v;
+  }
+  // HTML에 박힌 문구: data-t가 붙은 요소의 내용(공백은 한 칸으로)과 data-t-aria의 aria-label을 바꿈
+  const norm = (h) => h.trim().replace(/\s+/g, " ");
+  function translateDom(rootEl) {
+    if (lang === "ko" || !hasDom) return;
+    const r = rootEl || document;
+    for (const n of r.querySelectorAll("[data-t]")) { const k = norm(n.innerHTML), v = t(k); if (v !== k) n.innerHTML = v; }
+    for (const n of r.querySelectorAll("[data-t-aria]")) n.setAttribute("aria-label", t(n.getAttribute("aria-label")));
+  }
+
   // 번역 함수가 있으면 그것 (이름 짓기처럼 언어마다 순서가 다른 것), 없으면 null
   const fmt = (name) => { const p = pack(); return (p && p.fmt && p.fmt[name]) || null; };
 
@@ -73,6 +93,7 @@
         for (const [slot, n] of Object.entries(v.pieces || {})) if (slot in S.pieces) S.pieces[slot] = n;
       }
       for (const [k, v] of Object.entries(d.gem || {})) put(I.GEMS[k], "name", v);
+      (d.gemGrade || []).forEach((v, i) => { if (i < I.GEM_GRADES.length) I.GEM_GRADES[i] = v; });
       for (const w of I.RUNEWORDS) if (d.runeword && d.runeword[w.name]) w.label = d.runeword[w.name];
       for (const [k, v] of Object.entries(d.unique || {})) {
         const U = I.UNIQUE.items[k];
@@ -114,7 +135,12 @@
     LANGS, LANG_NAMES, READY,
     get lang() { return lang; },
     get preview() { return start.preview; },
-    add(code, p) { packs[code] = { data: p.data || {}, text: p.text || {}, fmt: p.fmt || {} }; },
+    add(code, p) {
+      const old = packs[code] || { data: {}, text: {}, fmt: {}, ui: {} };
+      packs[code] = { data: { ...old.data, ...(p.data || {}) }, text: { ...old.text, ...(p.text || {}) }, fmt: { ...old.fmt, ...(p.fmt || {}) }, ui: { ...old.ui, ...(p.ui || {}) } };
+    },
+    t, translateDom, missing,
+    uiDump: () => ({ ...((pack() || {}).ui || {}) }),   // 도구(번역 표 만들기)용
     has: (code) => code === "ko" || !!packs[code],
     tx, fmt, apply, setLang,
   };
