@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하루에 PR 열 개, 게임다운 게임으로 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="로그인, 장비, 몬스터 20종, 경제, 모바일 조작, 랭킹, 상점까지 하루 만에 붙였어요. 작은 로그라이크가 진짜 게임의 모양을 갖춘 날이에요.">
+<link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-15.html">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="하루에 PR 열 개, 게임다운 게임으로 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="로그인, 장비, 몬스터 20종, 경제, 모바일 조작, 랭킹, 상점까지 하루 만에 붙였어요. 작은 로그라이크가 진짜 게임의 모양을 갖춘 날이에요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-15.html">
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
+<article>
+<h1>하루에 PR 열 개, 게임다운 게임으로</h1>
+<p class="meta">2026년 10월 15일 (목) · 개발일기 · Xsolla · 장비 · 랭킹 · 모바일</p>
+<p>어제 만든 작은 로그라이크에 오늘은 PR을 열 개나 머지했어요. 오후 3시부터 밤 10시까지 로그인, 장비, 몬스터, 경제, 모바일 조작, 랭킹, 상점을 차례로 붙이면서 &quot;게임다운 게임&quot;이 됐어요.</p>
+<h2>로그인과 이어하기</h2>
+<ul><li>기본은 <strong>게스트 플레이</strong>예요. 가입 없이 바로 시작할 수 있어요</li><li>원하면 이메일이나 문자 인증 코드로 계정을 연결해요 (Xsolla Login)</li><li>진행 상황을 계정에 저장해서, <strong>다른 기기에서 로그인해도 이어서</strong> 해요</li></ul>
+<h2>장비 시스템</h2>
+<ul><li>장비 6부위: 머리, 갑옷, 팔, 바지, 신발, 무기</li><li>무기 3종: 단검, 지팡이, 도끼</li><li>등급 6단계와 <strong>세트 효과</strong></li></ul>
+<p>재미있는 결정이 하나 있었어요. 아이템을 <strong>시드로 만들기로</strong> 한 거예요.</p>
+<blockquote>같은 시드면 언제 다시 만들어도 똑같은 아이템이 나와요.</blockquote>
+<p>덕분에 나중에 서버가 &quot;이 아이템이 진짜 게임에서 나온 게 맞나?&quot;를 직접 확인할 수 있게 됐어요. 이 결정은 다음 날 랭킹 위조 검증에서 큰 역할을 해요.</p>
+<h2>몬스터 20종과 도감</h2>
+<ul><li>몬스터에 <strong>방어력</strong>이 생기고, <strong>정예 몬스터</strong>와 <strong>5층마다 보스</strong>가 나와요</li><li>몬스터가 <strong>20종</strong>으로 늘었어요</li><li>새 얼굴 <strong>황금 고블린</strong>: 공격하지 않고 도망만 다니다가 30턴 뒤에 사라져요. 잡으면 좋은 아이템이 <strong>2개</strong>!</li><li>포션 자리에서 가끔 장비가 나와요</li><li>도감(B)에서 몬스터 정보와 처치 수를 볼 수 있어요</li></ul>
+<h2>경제: 팔기, 강화, 상점</h2>
+<ul><li>아이템을 버리는 대신 <strong>팔면 강화석</strong>을 받아요</li><li><strong>강화</strong>는 +1부터 +10까지. +5부터는 실패할 수 있지만, 실패해도 아이템은 사라지지 않아요</li><li>5층마다 <strong>상점</strong>이 열려요. 진열은 3번까지 바꿀 수 있고, 비용은 층마다 올라가요</li><li>몬스터를 잡으면 골드를 주고, 깊은 층일수록 많이 줘요</li></ul>
+<p>해 보니 골드가 너무 잘 모여서 <strong>골드 수입을 절반으로</strong> 줄였어요. 경제 규칙은 따로 문서로 정리하기 시작했어요.</p>
+<h2>휴대폰에서도 손에 맞게</h2>
+<p>모바일 조작은 두 번에 걸쳐 다듬었어요.</p>
+<ul><li>방향키, 포션, 가방, 도감, 재시작 <strong>터치 버튼</strong>을 넣었어요</li><li>방향키를 화면 <strong>양쪽으로 나눠서</strong> 양손 엄지로 누르게 했어요</li><li>위·아래 버튼을 살짝 엇갈리게 놓아 헷갈리지 않게 했어요</li><li>진행 중에 재시작(R)을 누르면 한 번 더 물어봐요</li><li>한 번에 <strong>다 팔기</strong> 버튼도 생겼어요</li></ul>
+<p>작은 안전장치도 하나 넣었어요. <strong>주변 4칸 안에 몬스터가 있으면 계단을 못 내려가요.</strong> 실수로 도망치듯 내려가 버리는 일을 막으려고요.</p>
+<h2>랭킹과 개인정보 원칙</h2>
+<ul><li><strong>최고 층 랭킹</strong>과 <strong>최강 아이템 랭킹</strong>을 만들었어요</li><li>랭킹을 만들면서 개인정보 원칙도 정했어요<ul><li>이메일 원본은 저장하지 않고, <strong>가린 형태</strong>로만 보여요</li><li>개인정보는 암호화하거나 가린 값만 저장해요</li></ul></li></ul>
+<p>공개 랭킹이 생기는 만큼 &quot;무엇을 저장하지 않을지&quot;를 먼저 정한 게 좋은 출발이었어요.</p>
+<h2>상점과 결제</h2>
+<ul><li>별도 상점 페이지에서 <strong>캐시 묶음</strong>과 <strong>장비 상자</strong>를 팔아요</li><li>Xsolla Headless Checkout으로 카드 결제 화면을 직접 만들었어요</li><li>원화와 엔화 가격도 넣었어요</li><li>아직은 <strong>샌드박스(테스트) 결제</strong>예요. 실제로 결제를 해 보면서 흐름을 다듬었어요</li></ul>
+<h2>다음에는</h2>
+<p>기능을 하나씩 PR로 나눠서 붙이다 보니 하루에 열 개가 됐어요. 다음 날에는 밸런스를 크게 손보고, 드디어 <strong>실제 결제</strong>와 <strong>나만의 랭킹 서버</strong>가 생겨요. 지금 모습은 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 확인해 보세요.</p>
+</article>
+<nav class="pager"><span><a href="2026-10-14.html">← 첫 삽, HTML 파일 하나로 만든 로그라이크</a></span><span><a href="2026-10-16.html">라이브 결제와 나만의 랭킹 서버 →</a></span></nav>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>

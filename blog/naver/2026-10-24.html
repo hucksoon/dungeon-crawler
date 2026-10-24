@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 던전 크롤러, 영어와 일본어를 배우다</title>
+<meta name="description" content="게임 전체를 영어·일본어로 옮기고 접속한 나라에 맞춰 언어를 고르게 했어요. 장비 상자는 이제 결제 웹훅을 받은 서버가 열어서 우편함으로 보내 줘요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-10-24.html">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 던전 크롤러, 영어와 일본어를 배우다">
+<meta property="og:description" content="게임 전체를 영어·일본어로 옮기고 접속한 나라에 맞춰 언어를 고르게 했어요. 장비 상자는 이제 결제 웹훅을 받은 서버가 열어서 우편함으로 보내 줘요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-24.html">
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-10-24.html">블로그 글 보기</a></nav>
+<h1 id="title-text">던전 크롤러, 영어와 일본어를 배우다</h1>
+<p class="meta">2026년 10월 24일 (토) · 태그: 개발일기, 다국어, Claude Code, 결제, 테스트</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<div id="paper">
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">지금까지 던전 크롤러는 한국어로만 즐길 수 있었어요. 오늘은 Claude Code와 함께 게임 전체를 <strong>영어와 일본어</strong>로 옮기는 데 하루를 거의 다 썼고, 남은 시간에는 장비 상자를 <strong>서버가 직접 열어 주는</strong> 결제 흐름을 만들었어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">번역: 용어집부터 차근차근</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">상점은 이미 영어·일본어를 지원했는데 정작 게임은 한국어뿐이었어요. 번역할 문장을 세어 보니 게임 화면, 아이템, 몬스터, 최고 조합, 랭킹 페이지를 합쳐 <strong>약 1,300개</strong>였어요. 그중 약 400개는 &quot;○○을(를) 받았다&quot;처럼 중간에 값이 끼어드는 문장이라, 언어마다 문장 전체를 따로 만들어야 했어요.</p>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">그래서 바로 번역에 뛰어들지 않고 <strong>용어집</strong>부터 만들었어요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>등급·부위·능력치·세트·보석·룬·룬워드·유니크·몬스터·장소·경제 용어를 한곳에 모았어요</li><li>일반 몬스터는 영어·일본어 게임에서 흔히 쓰는 이름으로 번역해요</li><li>네임드 보스는 영어에서는 <strong>소리대로</strong>, 일본어에서는 <strong>일본에서 익숙한 이름</strong>으로 정했어요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>예: 구미호는 <code style="background:#f2f2f2;padding:1px 4px;">Gumiho</code> / <code style="background:#f2f2f2;padding:1px 4px;">九尾の狐</code>, 염라대왕은 일본어로 <code style="background:#f2f2f2;padding:1px 4px;">閻魔大王</code></li></ul></li><li>룬은 번역하지 않는 고유 명사라 어느 언어에서든 한글(<code style="background:#f2f2f2;padding:1px 4px;">가</code>, <code style="background:#f2f2f2;padding:1px 4px;">나</code> …) 그대로예요</li><li>흡혈은 <code style="background:#f2f2f2;padding:1px 4px;">Lifesteal</code> / <code style="background:#f2f2f2;padding:1px 4px;">吸血</code>, 아이템 발견은 <code style="background:#f2f2f2;padding:1px 4px;">Magic Find</code> / <code style="background:#f2f2f2;padding:1px 4px;">マジックファインド</code>로 정했어요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">아이템 이름도 고민거리였어요. 한국어 이름은 &quot;고대 +10 지옥의 얼음 레전더리 투구&quot;처럼 조각을 이어 붙여 만들거든요. 영어는 영어식 순서를 따르기로 해서 <code style="background:#f2f2f2;padding:1px 4px;">+10 Ancient Legendary Hell Helm of Frost</code> 같은 이름이 나와요.</p>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">번역 틀 만들기</h3>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">다음은 번역을 담을 틀이에요. 코드 안의 <strong>한국어 원문을 그대로 열쇠로</strong> 쓰고, 영어·일본어 표에 &quot;원문 → 번역&quot;을 적는 방식이에요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>코드를 읽을 때 무슨 문장인지 바로 보여서 편해요</li><li>번역이 빠진 문장은 한국어 원문을 그대로 보여 줘요</li><li>빠진 번역과 쓰지 않는 문구를 찾아 주는 검사 도구도 같이 만들었어요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">처음 전체 테스트를 돌렸을 때 8개 테스트가 실패했어요. &quot;번역 없음&quot;일 때 한국어 원문 대신 빈 값이 나와서 보석·룬 이름이 사라진 거였어요. 고친 뒤에는 모두 통과했고, 번역 틀을 거쳐도 <strong>한국어 문구 1,661줄이 예전과 똑같다</strong>는 것도 확인했어요.</p>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">화면 하나하나</h3>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">번역은 단계를 나눠 진행했어요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>인벤토리, 아이템 상세, 대장간, 상점, 몬스터 도감, 거래소, 우편함, 쓰러짐·부활 화면</li><li>전투 기록, 네임드 보스 패턴, 로비 건물 이름, 추천 탭, 업데이트 안내</li><li>최고 조합 페이지와 랭킹 페이지</li><li>서버가 보내 주는 문구: 랭킹의 장비 보기, 우편 메모, 게스트 이름(<code style="background:#f2f2f2;padding:1px 4px;">Guest #…</code> / <code style="background:#f2f2f2;padding:1px 4px;">ゲスト #…</code>)</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">큰 숫자 표기도 언어마다 달라서 한국어의 &quot;만&quot;이 영어에서는 <code style="background:#f2f2f2;padding:1px 4px;">k</code>, 일본어에서는 <code style="background:#f2f2f2;padding:1px 4px;">万</code>으로 바뀌어요. 번역 문구는 518개에서 시작해 마지막에는 <strong>1,012개</strong>가 됐고, 영어·일본어 모두 빠진 것이 없어요.</p>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">손이 많이 간 부분도 있었어요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>예전 랭킹 기록에는 한국어 아이템 이름만 남아 있어서, 이름을 조각으로 나눈 뒤 그 언어 순서로 다시 조립해요. 아이템 12,026개로 확인했더니 모두 게임이 만든 이름과 같았어요</li><li>언어를 바꾸기 전에 만들어진 층의 몬스터 이름도 지금 언어로 다시 지어요</li><li>선물 우편의 메모도 언어별로 따로 쓸 수 있게 했어요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">다 마친 뒤 게임 다국어를 켰어요. 이제 화면 위쪽에서 <strong>🌐 자동 · 한국어 · English · 日本語</strong> 중에 고를 수 있어요. 주소 뒤에 <code style="background:#f2f2f2;padding:1px 4px;">?lang=en</code>을 붙여 <a href="https://game.apacimtest.com/?lang=en">영어로 미리 보기</a>도 할 수 있어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">언어 자동 설정: 접속한 나라에 맞춰</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">처음에는 상점에서 고른 언어를 게임도 따라가게 했는데, 개발자의 요청으로 방향을 바꿨어요. 게임 언어는 이제 이 순서로 정해져요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>게임에서 직접 고른 언어</strong>가 있으면 그 언어</li><li>없으면 <strong>접속한 나라</strong>: 한국은 한국어, 일본은 일본어, 그 밖은 영어</li><li>나라를 모르면 <strong>브라우저 언어</strong></li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">서버는 나라 코드만 알려 주고, IP는 저장하지도 기록하지도 않아요. 게임은 나라를 하루에 한 번만 물어보고, 언어 고르기의 <strong>🌐 자동</strong>을 누르면 직접 고른 언어를 지우고 다시 나라에 맞춰요.</p>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">그런데 막상 켜 보니 서버가 나라를 알아낼 방법이 없어서 늘 &quot;모름&quot;이 나왔어요. 그래서 무료 나라 데이터베이스인 <strong>DB-IP의 IP to Country Lite</strong>와 그걸 읽는 코드를 저장소에 넣었어요. 데이터베이스는 매달 새로 받는데, 받은 파일이 제대로 동작하는지 확인한 뒤에만 바꿔 넣어요. 개인정보처리방침에도 이 내용과 DB-IP 출처를 적었어요. 브라우저에서 확인해 보니 한국으로 잘 나왔어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">테스트 정리</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">그동안 회귀 테스트는 작업 환경에만 있었어요. 오늘 <strong>64개 테스트를 저장소로</strong> 옮겼어요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>게임 화면 테스트, 서버 API 테스트, 번역 검사가 모두 들어 있어요</li><li>테스트 안의 키는 모두 가짜예요</li><li>실행 결과(로그·화면 캡처)는 <strong>최근 3번만</strong> 남기고, 저장소에는 올리지 않아요. 한 번에 20 MB 안팎이라서, 올리면 나중에 지워도 기록에 계속 남기 때문이에요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">오래 실패한 채 남아 있던 테스트도 정리했어요. 지금은 쓰지 않는 예전 서버를 검사하던 테스트는 지금 서버에 맞게 다시 썼고, 장신구가 생기기 전 규칙으로 검사하던 테스트도 고쳤어요.</p>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">가끔만 실패하던 테스트</h3>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">혼자 돌리면 통과하는데 전체를 돌릴 때만 가끔 실패하는 테스트가 있었어요. 원인은 게임이 아니라 테스트 쪽이었어요. 새로고침 뒤 1.5초만 기다리고 바로 움직여서, 컴퓨터가 느릴 때는 게임이 서버와 맞추기를 끝내기 전에 확인을 해 버린 거예요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>서버 응답을 일부러 늦춰서 실패를 그대로 재현했어요</li><li>응답을 실제로 받을 때까지 기다리도록 테스트를 고쳤어요</li><li>저장 내용이 우연히 그대로라 확인이 어긋나던 남은 원인도 찾아 고쳤어요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">이제 전체 실행에서 실패가 0개예요. 하루 마지막에는 테스트가 <strong>68개 파일</strong>까지 늘었어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">결제 웹훅과 상자 지급</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">게임 상점에서는 캐시로 <strong>장비 상자</strong>를 살 수 있어요. 지금까지는 결제가 끝나면 <strong>브라우저</strong>가 상자를 열어 아이템을 만들었어요.</p>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">왜 서버가 열어야 할까요</h3>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">브라우저는 플레이어의 컴퓨터에서 돌아가요. 마음먹으면 그 안의 코드나 데이터를 건드릴 수 있다는 뜻이에요. 게다가 서버에는 상자를 연 기록이 없어서, 그 아이템이 정말 산 상자에서 나온 건지 확인하기 어려웠어요.</p>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">그래서 이렇게 바꿨어요. 결제가 끝나면 Xsolla가 게임 서버에 <strong>웹훅</strong>(결제 결과를 알려 주는 서버끼리의 연락)을 보내요. 서버가 이걸 받아 상자를 열고, 아이템을 그 사람의 <strong>게임 우편함</strong>으로 보내요. 브라우저는 결과를 보여 주기만 해요.</p>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">단계별로 쌓아 올린 과정</h3>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li><strong>1단계, 기록만</strong>: 웹훅이 진짜 Xsolla에서 왔는지 서명을 확인해요. 같은 웹훅이 여러 번 와도 한 번만 기록하고, 이메일 같은 개인정보는 원본 대신 암호화한 값만 저장해요</li><li><strong>사용자 확인</strong>: 게임에 한 번도 로그인한 적 없는 사용자라면 Xsolla에 &quot;없는 사용자&quot;라고 답해요. Xsolla의 웹훅 테스트를 모두 통과했고, sandbox(시험 결제)로 실제 흐름도 확인했어요</li><li><strong>2단계, 서버가 상자 열기</strong>: 상자를 사면 서버가 열어 아이템마다 우편 한 통씩 보내요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>기록과 지급을 한 번에 처리해서, 같은 웹훅이 다시 와도 두 번 지급되지 않아요</li><li>중간에 실패하면 서버가 오류로 답하고, Xsolla가 다시 보내 줘요</li><li>상점은 서버 결과를 최대 20초 기다렸다가 아이템 목록을 보여 줘요. 늦어지면 &quot;곧 게임 우편함에 도착해요&quot;라고 안내해요</li></ul></li><li><strong>환불</strong>: 아직 받지 않은 상자 우편은 우편함에서 사라지고, 이미 받은 아이템은 랭킹·거래소에서 인정하지 않아요</li></ul>
+<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">서버가 아는 아이템만 인정</h3>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">마지막으로 상자 아이템은 <strong>서버가 지급했거나 기록해 둔 것만</strong> 인정하도록 좁혔어요. 그냥 좁히면 예전에 산 상자 아이템이 갑자기 인정되지 않을 수 있어서, 서버에 남은 예전 상자 아이템을 먼저 찾아 등록한 다음에 바꿨어요. 확인해 보니 예전 상자 아이템은 시험 구매로 생긴 1개뿐이었어요. 혹시 문제가 생기면 예전 규칙으로 되돌릴 수도 있어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">개발 블로그를 열었어요</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">지금 읽고 계신 이 블로그도 오늘 만들었어요. 그동안 날짜별로 써 온 개발 일지를 읽기 좋게 다시 써서, 첫 삽을 뜬 10월 14일부터 하루 한 편씩 올렸어요.</p>
+<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>일지를 쓸 때마다 같은 날 블로그 글도 함께 고치고, 게임과 같이 배포돼요</li><li>공개하면 안 되는 서버 정보나 개인정보가 글에 들어가면 블로그를 만들지 않고 멈추게 했어요</li><li><a href="https://game.apacimtest.com/blog/feed.xml">RSS</a>로 새 글을 받아 볼 수 있어요</li></ul>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">이 밖에 서버 점검도 했어요.</p>
+<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">다음에는</h2>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">번역과 결제의 큰 줄기가 잡혔으니, 다음에는 눈에 보이는 쪽을 손볼 차례예요. <strong>2D 픽셀 그래픽</strong>을 입혀 볼 계획이에요. 그 전에 영어나 일본어로 바뀐 던전이 궁금하다면 <a href="https://game.apacimtest.com/">게임</a>에 들어가 언어를 바꿔 보세요.</p>
+<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-24.html">https://game.apacimtest.com/blog/2026-10-24.html</a><br>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>
