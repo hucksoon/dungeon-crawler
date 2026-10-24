@@ -4,6 +4,7 @@
 
 - **게임**: https://game.apacimtest.com/
 - **랭킹**: https://game.apacimtest.com/ranking.html
+- **개발 블로그**: https://game.apacimtest.com/blog/ (일지를 공개용으로 다시 쓴 글, `blog/posts/` → `node tools/blog-build.mjs`. 작업 규칙은 [CLAUDE.md](CLAUDE.md))
 - **개발 일기**: [docs/devlog.md](docs/devlog.md)
 - **규칙 문서**: [아이템](docs/items.md) · [몬스터](docs/monsters.md) · [경제](docs/economy.md)
 - **용어집 (한국어·English·日本語)**: [docs/i18n-glossary.md](docs/i18n-glossary.md)
