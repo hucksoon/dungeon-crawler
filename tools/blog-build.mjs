@@ -8,12 +8,13 @@
 //   blog/naver/index.html      네이버 블로그에 옮길 글 목록 (검색 제외)
 //   blog/naver/YYYY-MM-DD.html 제목·본문 복사 버튼 (네이버 에디터에 붙여 넣기, 한국어만)
 // 글 형식: 맨 위 --- title / date / summary / tags --- 다음 Markdown (## ### 문단, - 목록(한 단계 들여쓰기), **굵게**, `코드`, [링크](https://…), > 인용)
+//   이미지: 한 줄에 ![설명](images/파일.png) — blog/images/에 있어야 함 (게임 화면은 node tools/blog-shots.mjs로 찍음). 설명은 그림 아래 글
 import fs from "node:fs";
 import path from "node:path";
 
 // BLOG_ROOT: 다른 폴더에서 만들기 (테스트용)
 const ROOT = process.env.BLOG_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const POSTS = path.join(ROOT, "blog/posts"), OUT = path.join(ROOT, "blog");
+const POSTS = path.join(ROOT, "blog/posts"), OUT = path.join(ROOT, "blog"), IMAGES = path.join(ROOT, "blog/images");
 const SITE = "https://game.apacimtest.com";
 const BLOG_URL = `${SITE}/blog/`;
 const BLOG_TITLE = "던전 크롤러 개발 블로그";
@@ -61,7 +62,8 @@ function inline(s, st) {
   return rest.replace(/\u0000(\d+)\u0000/g, (_, i) => out[i]);
 }
 // st: 태그별 추가 속성 (네이버용은 인라인 style, 블로그는 없음)
-function markdown(md, st) {
+// imgBase: 이미지 주소 앞 (블로그는 상대 주소, 네이버는 전체 주소)
+function markdown(md, st, imgBase = "") {
   const lines = md.split("\n"), html = [];
   let para = [], list = null;   // list: [{ text, sub: [] }]
   const flushPara = () => { if (para.length) html.push(`<p${st.p}>${inline(para.join(" "), st)}</p>`); para = []; };
@@ -76,6 +78,13 @@ function markdown(md, st) {
     if (!line.trim()) { flushPara(); flushList(); continue; }
     if ((m = /^(#{2,3})\s+(.*)$/.exec(line))) { flushPara(); flushList(); const tag = m[1].length === 2 ? "h2" : "h3"; html.push(`<${tag}${st[tag]}>${inline(m[2], st)}</${tag}>`); continue; }
     if (/^#\s/.test(line)) throw new Error(`# 제목은 쓰지 않아요 (title이 제목): ${line}`);
+    if ((m = /^!\[([^\]]*)\]\(images\/([\w.-]+\.(?:png|jpg|jpeg|webp|gif))\)$/.exec(line.trim()))) {
+      flushPara(); flushList();
+      if (!fs.existsSync(path.join(IMAGES, m[2]))) throw new Error(`이미지가 없어요: blog/images/${m[2]}`);
+      html.push(`<figure${st.fig}><img src="${imgBase}images/${m[2]}" alt="${esc(m[1])}" loading="lazy"${st.img}>${m[1] ? `<figcaption${st.cap}>${inline(m[1], st)}</figcaption>` : ""}</figure>`);
+      continue;
+    }
+    if (/^!\[/.test(line.trim())) throw new Error(`이미지는 한 줄에 ![설명](images/파일.png) 형식으로: ${line.slice(0, 60)}`);
     if ((m = /^>\s?(.*)$/.exec(line))) { flushPara(); flushList(); html.push(`<blockquote${st.q}>${inline(m[1], st)}</blockquote>`); continue; }
     if ((m = /^ {2,4}[-*]\s+(.*)$/.exec(line)) && list) { list[list.length - 1].sub.push(m[1]); continue; }
     if ((m = /^[-*]\s+(.*)$/.exec(line))) { flushPara(); (list ||= []).push({ text: m[1], sub: [] }); continue; }
@@ -92,7 +101,9 @@ const NAVER_STYLE = {
   p: ' style="font-size:16px;line-height:1.8;margin:0 0 16px;"', h2: ' style="font-size:22px;font-weight:bold;margin:32px 0 12px;"', h3: ' style="font-size:18px;font-weight:bold;margin:24px 0 8px;"',
   ul: ' style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"', li: "", b: "", code: ' style="background:#f2f2f2;padding:1px 4px;"',
   a: "", q: ' style="border-left:4px solid #ccc;margin:0 0 16px;padding:4px 12px;color:#555;font-size:16px;"',
+  fig: ' style="margin:0 0 20px;text-align:center;"', img: ' style="max-width:100%;height:auto;"', cap: ' style="font-size:14px;color:#777;margin-top:6px;"',
 };
+const images = (md) => [...md.matchAll(/^!\[([^\]]*)\]\(images\/([\w.-]+)\)\s*$/gm)].map(m => ({ alt: m[1], file: m[2] }));
 
 function checkPrivate(post) {
   const text = `${post.title}\n${post.summary}\n${post.tags.join(",")}\n${post.body}`;
@@ -122,10 +133,13 @@ const CSS = `
   .post:hover { border-color: var(--accent); }
   .post b { color: var(--accent); font-size: 16px; }
   .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
 `;
-const page = ({ title, desc, url, body, noindex = false, extraHead = "" }) => `<!DOCTYPE html>
+const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -138,6 +152,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
+${image ? `<meta property="og:image" content="${BLOG_URL}images/${image}">\n` : ""}
 <style>${CSS}${extraHead}</style>
 </head>
 <body>
@@ -152,7 +167,7 @@ const tagList = (tags) => tags.length ? `<ul class="tags">${tags.map(t => `<li>$
 
 function postPage(p, prev, next) {
   return page({
-    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`,
+    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`, image: images(p.body)[0]?.file,
     body: `<nav class="nav"><a href="./">← 글 목록</a><a href="${SITE}/">게임 하기</a></nav>
 <article>
 <h1>${esc(p.title)}</h1>
@@ -225,9 +240,40 @@ const NAVER_JS = `
   document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
   document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
 </script>`;
+// 네이버 스마트에디터는 붙여 넣은 HTML의 여백(margin)·목록(ul/li)·제목 태그를 버려서 줄이 붙어 버림.
+// 그래서 네이버용은 모두 한 줄짜리 문단(<p>)으로 만들고, 빈 줄은 빈 문단(<p><br></p>)으로, 목록은 • 글머리로, 제목은 굵고 큰 글씨로
+const N_BLANK = "<p><br></p>";
+function naverBody(md) {
+  const out = [];
+  const P = (html, style = "") => out.push(`<p${style ? ` style="${style}"` : ""}>${html}</p>`);
+  const blank = () => { if (out.length && out[out.length - 1] !== N_BLANK) out.push(N_BLANK); };
+  let para = [], inList = false;
+  const flushPara = () => { if (para.length) { P(inline(para.join(" "), NAVER_STYLE)); blank(); } para = []; };
+  const endList = () => { if (inList) blank(); inList = false; };
+  for (const raw of md.split("\n")) {
+    const line = raw.replace(/\s+$/, "");
+    let m;
+    if (!line.trim()) { flushPara(); endList(); continue; }
+    if ((m = /^(#{2,3})\s+(.*)$/.exec(line))) { flushPara(); endList(); blank(); P(`<b><span style="font-size:${m[1].length === 2 ? 24 : 19}px;">${inline(m[2], NAVER_STYLE)}</span></b>`); continue; }
+    if ((m = /^!\[([^\]]*)\]\(images\/([\w.-]+)\)$/.exec(line.trim()))) {
+      flushPara(); endList();
+      P(`<img src="${BLOG_URL}images/${m[2]}" alt="${esc(m[1])}" style="max-width:100%;height:auto;">`, "text-align:center;");
+      if (m[1]) P(`<span style="font-size:13px;color:#888888;">${inline(m[1], NAVER_STYLE)}</span>`, "text-align:center;");
+      blank(); continue;
+    }
+    if ((m = /^>\s?(.*)$/.exec(line))) { flushPara(); endList(); P(`<span style="color:#666666;">❝ ${inline(m[1], NAVER_STYLE)} ❞</span>`); blank(); continue; }
+    if ((m = /^ {2,4}[-*]\s+(.*)$/.exec(line)) && inList) { P(`&nbsp;&nbsp;&nbsp;&nbsp;◦ ${inline(m[1], NAVER_STYLE)}`); continue; }
+    if ((m = /^[-*]\s+(.*)$/.exec(line))) { flushPara(); inList = true; P(`• ${inline(m[1], NAVER_STYLE)}`); continue; }
+    if (inList && /^ {2,}\S/.test(line)) { out[out.length - 1] = out[out.length - 1].replace(/<\/p>$/, ` ${inline(line.trim(), NAVER_STYLE)}</p>`); continue; }
+    endList(); para.push(line.trim());
+  }
+  flushPara(); endList();
+  return out.join("\n");
+}
 function naverPage(p) {
   const url = `${BLOG_URL}${p.slug}.html`;
-  const body = markdown(p.body, NAVER_STYLE) + `\n<p${NAVER_STYLE.p}>📝 원문과 지난 개발 이야기: <a href="${url}">${url}</a><br>🎮 게임 하기: <a href="${SITE}/">${SITE}/</a></p>`;
+  const imgs = images(p.body);
+  const body = naverBody(p.body) + `\n${N_BLANK}\n<p>📝 원문과 지난 개발 이야기: <a href="${url}">${url}</a></p>\n<p>🎮 게임 하기: <a href="${SITE}/">${SITE}/</a></p>`;
   return page({
     title: `[네이버 옮기기] ${p.title}`, desc: p.summary, url: `${BLOG_URL}naver/${p.slug}.html`, noindex: true, extraHead: NAVER_CSS,
     body: `<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../${p.slug}.html">블로그 글 보기</a></nav>
@@ -236,6 +282,7 @@ function naverPage(p) {
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
+${imgs.length ? `<p class="steps">이미지 ${imgs.length}장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: ${imgs.map((im, i) => `<a href="../images/${im.file}" download="${p.slug}-${i + 1}-${im.file}">${i + 1}. ${esc(im.alt || im.file)}</a>`).join(" · ")}</p>` : ""}
 <div id="paper">
 ${body}
 </div>${NAVER_JS}`,

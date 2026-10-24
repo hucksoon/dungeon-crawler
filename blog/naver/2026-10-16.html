@@ -12,6 +12,7 @@
 <meta property="og:title" content="[네이버 옮기기] 라이브 결제와 나만의 랭킹 서버">
 <meta property="og:description" content="직접 플레이하며 느낀 밸런스 문제를 고치고, 실제 결제를 켜고, 아이템을 시드로 다시 만들어 위조를 걸러내는 랭킹 서버를 세웠어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-16.html">
+
 <style>
   :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
   * { box-sizing: border-box; }
@@ -32,6 +33,9 @@
   .post:hover { border-color: var(--accent); }
   .post b { color: var(--accent); font-size: 16px; }
   .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
 
@@ -55,35 +59,76 @@
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
+<p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/ranking.png" download="2026-10-16-1-ranking.png">1. 랭킹 페이지 (예시 화면, 이름은 게스트 번호로 가렸어요)</a></p>
 <div id="paper">
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">오늘은 새벽부터 직접 플레이하며 느낀 문제를 고치는 걸로 시작했어요. 그리고 결제를 실제 결제로 바꾸고, 우리만의 랭킹 서버까지 세웠어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">아이템과 몬스터 밸런스 개편</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">플레이해 보니 아쉬운 점이 꽤 보였어요. 한꺼번에 손봤어요.</p>
-<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">강화가 더 의미 있게</h3>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>예전엔 강화하면 기본 능력치만 올랐어요</li><li>이제 <strong>+4, +6, +8, +10</strong>마다 추가 능력치 한 줄도 같이 올라요</li></ul>
-<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">아이템 능력치 정리</h3>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>세트 효과를 <strong>%로 오르는 좋은 능력치</strong>로 바꿨어요</li><li>주 능력치 개수: 일반·고급 1~2개, 레어 이상 3~4개</li><li>능력치마다 <strong>최소~최대 범위</strong>를 보여 줘요</li><li>각 능력치가 최대치로 붙을 확률은 <strong>20%</strong></li><li>모든 수치가 최대인 아이템은 이름 앞에 <strong>&quot;고대&quot;</strong> 가 붙어요</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">아이템 규칙은 따로 문서로 정리해서, 앞으로 규칙을 바꿀 때 기준으로 삼기로 했어요.</p>
-<h3 style="font-size:18px;font-weight:bold;margin:24px 0 8px;">전투가 더 손맛 있게</h3>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>공격하면 <strong>데미지 숫자</strong>가 떠요. 치명타는 굵고 크게!</li><li>층마다 몬스터가 더 강해지게 해서 <strong>포션을 쓸 일</strong>이 생겼어요</li><li>포션은 최대 HP의 <strong>30%</strong> 를 회복해요</li><li>몬스터 방어력 공식을 <strong>비율 방식</strong>으로 바꿨어요. 빼기 방식은 방어력이 너무 셌거든요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">드디어 실제 결제</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">어제 샌드박스에서 결제를 충분히 해 봤는데 문제가 없었어요. 그래서 오전 10시에 <strong>실제 결제</strong>로 바꿨어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">층 유지와 부활</h2>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>랭킹이나 상점을 보고 돌아오면 층이 처음부터 다시 만들어지던 문제를 고쳤어요. 이제 <strong>지도, 몬스터, 위치가 그대로</strong> 남아요</li><li><strong>부활</strong>이 생겼어요<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>죽었을 때 <strong>50캐시</strong>로 한 판에 한 번</li><li>그 층 처음부터 다시 시작해요 (몬스터도 다시 나와요)</li></ul></li><li>Xsolla 카탈로그에 부활 아이템을 추가했어요</li></ul>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">나만의 랭킹 서버</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">처음엔 다른 서버리스 서비스로 만들려 했는데 가입이 막혀서, 방향을 바꿔 이미 운영 중이던 서버에 <strong>PHP로 랭킹 서버</strong>를 올렸어요. 올리면서 자잘한 문제를 하나씩 풀었고, 게임과 랭킹 페이지가 이 서버를 쓰도록 연결했어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">랭킹에서 장비 보기, 그리고 위조 검증</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">랭킹에서 이름을 누르면 그 사람이 <strong>최고 층을 세운 순간</strong>의 모습이 보여요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>능력치</li><li>장비 6칸</li><li>세트 효과</li><li>최강 아이템</li></ul>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">여기서 어제 정한 <strong>&quot;아이템은 시드로 만든다&quot;</strong> 가 빛을 발했어요.</p>
-<ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>서버가 아이템을 시드로 <strong>직접 다시 만들어서</strong> 확인해요</li><li>게임이 보낸 능력치나 이름은 믿지 않아요</li><li>시드가 실제 게임에서 나올 수 있는 곳(몬스터, 포션 자리, 상점, 장비 상자)의 형식인지도 확인해요</li><li>통과하지 못한 장비는 저장하지 않아요</li></ul>
-<blockquote style="border-left:4px solid #ccc;margin:0 0 16px;padding:4px 12px;color:#555;font-size:16px;">화면에 보이는 숫자가 아니라, 다시 만들어 본 결과를 믿어요.</blockquote>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">배포 직후엔 이름이 안 눌려서 잠깐 당황했는데, 브라우저가 예전 랭킹 화면을 기억하고 있던 거였어요. 강력 새로고침 한 번으로 해결됐어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">개발 일기 시작</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">이날부터 날짜별로 한 일을 개발 일기에 정리하기 시작했어요. 지금 읽고 계신 이 글도 그 일기에서 나왔어요.</p>
-<h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">다음에는</h2>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">다음 날엔 혼자 하던 던전에 <strong>사람들이 모이는 로비</strong>와 <strong>거래소</strong>가 생기고, 첫 상위 랭커의 피드백으로 게임이 크게 바뀌어요. 그 사이 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 한 층 내려가 보세요.</p>
-<p style="font-size:16px;line-height:1.8;margin:0 0 16px;">📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-16.html">https://game.apacimtest.com/blog/2026-10-16.html</a><br>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+<p>오늘은 새벽부터 직접 플레이하며 느낀 문제를 고치는 걸로 시작했어요. 그리고 결제를 실제 결제로 바꾸고, 우리만의 랭킹 서버까지 세웠어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">아이템과 몬스터 밸런스 개편</span></b></p>
+<p>플레이해 보니 아쉬운 점이 꽤 보였어요. 한꺼번에 손봤어요.</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">강화가 더 의미 있게</span></b></p>
+<p>• 예전엔 강화하면 기본 능력치만 올랐어요</p>
+<p>• 이제 <strong>+4, +6, +8, +10</strong>마다 추가 능력치 한 줄도 같이 올라요</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">아이템 능력치 정리</span></b></p>
+<p>• 세트 효과를 <strong>%로 오르는 좋은 능력치</strong>로 바꿨어요</p>
+<p>• 주 능력치 개수: 일반·고급 1~2개, 레어 이상 3~4개</p>
+<p>• 능력치마다 <strong>최소~최대 범위</strong>를 보여 줘요</p>
+<p>• 각 능력치가 최대치로 붙을 확률은 <strong>20%</strong></p>
+<p>• 모든 수치가 최대인 아이템은 이름 앞에 <strong>&quot;고대&quot;</strong> 가 붙어요</p>
+<p><br></p>
+<p>아이템 규칙은 따로 문서로 정리해서, 앞으로 규칙을 바꿀 때 기준으로 삼기로 했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">전투가 더 손맛 있게</span></b></p>
+<p>• 공격하면 <strong>데미지 숫자</strong>가 떠요. 치명타는 굵고 크게!</p>
+<p>• 층마다 몬스터가 더 강해지게 해서 <strong>포션을 쓸 일</strong>이 생겼어요</p>
+<p>• 포션은 최대 HP의 <strong>30%</strong> 를 회복해요</p>
+<p>• 몬스터 방어력 공식을 <strong>비율 방식</strong>으로 바꿨어요. 빼기 방식은 방어력이 너무 셌거든요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">드디어 실제 결제</span></b></p>
+<p>어제 샌드박스에서 결제를 충분히 해 봤는데 문제가 없었어요. 그래서 오전 10시에 <strong>실제 결제</strong>로 바꿨어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">층 유지와 부활</span></b></p>
+<p>• 랭킹이나 상점을 보고 돌아오면 층이 처음부터 다시 만들어지던 문제를 고쳤어요. 이제 <strong>지도, 몬스터, 위치가 그대로</strong> 남아요</p>
+<p>• <strong>부활</strong>이 생겼어요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 죽었을 때 <strong>50캐시</strong>로 한 판에 한 번</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 그 층 처음부터 다시 시작해요 (몬스터도 다시 나와요)</p>
+<p>• Xsolla 카탈로그에 부활 아이템을 추가했어요</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">나만의 랭킹 서버</span></b></p>
+<p>처음엔 다른 서버리스 서비스로 만들려 했는데 가입이 막혀서, 방향을 바꿔 이미 운영 중이던 서버에 <strong>PHP로 랭킹 서버</strong>를 올렸어요. 올리면서 자잘한 문제를 하나씩 풀었고, 게임과 랭킹 페이지가 이 서버를 쓰도록 연결했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">랭킹에서 장비 보기, 그리고 위조 검증</span></b></p>
+<p>랭킹에서 이름을 누르면 그 사람이 <strong>최고 층을 세운 순간</strong>의 모습이 보여요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/ranking.png" alt="랭킹 페이지 (예시 화면, 이름은 게스트 번호로 가렸어요)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">랭킹 페이지 (예시 화면, 이름은 게스트 번호로 가렸어요)</span></p>
+<p><br></p>
+<p>• 능력치</p>
+<p>• 장비 6칸</p>
+<p>• 세트 효과</p>
+<p>• 최강 아이템</p>
+<p><br></p>
+<p>여기서 어제 정한 <strong>&quot;아이템은 시드로 만든다&quot;</strong> 가 빛을 발했어요.</p>
+<p><br></p>
+<p>• 서버가 아이템을 시드로 <strong>직접 다시 만들어서</strong> 확인해요</p>
+<p>• 게임이 보낸 능력치나 이름은 믿지 않아요</p>
+<p>• 시드가 실제 게임에서 나올 수 있는 곳(몬스터, 포션 자리, 상점, 장비 상자)의 형식인지도 확인해요</p>
+<p>• 통과하지 못한 장비는 저장하지 않아요</p>
+<p><br></p>
+<p><span style="color:#666666;">❝ 화면에 보이는 숫자가 아니라, 다시 만들어 본 결과를 믿어요. ❞</span></p>
+<p><br></p>
+<p>배포 직후엔 이름이 안 눌려서 잠깐 당황했는데, 브라우저가 예전 랭킹 화면을 기억하고 있던 거였어요. 강력 새로고침 한 번으로 해결됐어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">개발 일기 시작</span></b></p>
+<p>이날부터 날짜별로 한 일을 개발 일기에 정리하기 시작했어요. 지금 읽고 계신 이 글도 그 일기에서 나왔어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">다음에는</span></b></p>
+<p>다음 날엔 혼자 하던 던전에 <strong>사람들이 모이는 로비</strong>와 <strong>거래소</strong>가 생기고, 첫 상위 랭커의 피드백으로 게임이 크게 바뀌어요. 그 사이 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 한 층 내려가 보세요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-16.html">https://game.apacimtest.com/blog/2026-10-16.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
 </div>
 <script>
   async function copy(html, text) {
