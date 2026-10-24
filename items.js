@@ -1263,6 +1263,41 @@
     return `${plus}${RARITIES[item.rarity].name} ${kindName(item)}`;
   }
 
+  // 서버에 아이템 참조 없이 한국어 이름만 남은 예전 기록(랭킹 등)을 그 언어 이름으로: 이름을 조각으로 나눠 다시 조립
+  //   "고대 +10 지옥의 얼음 레전더리 팔보호구" → 고대·강화·헬·얼음·레전더리·팔(방어구) → "+10 Ancient Legendary Hell Bracers of Frost"
+  //   한국어 조각은 페이지를 열 때(번역 전에) 미리 적어 둠. 알아볼 수 없으면 원래 이름 그대로
+  const KO_NAMES = (() => {
+    const kinds = [];
+    for (const [t, w] of Object.entries(WEAPONS)) { kinds.push([w.name, { slot: "weapon", type: t }]); kinds.push([`${OFFHAND.weaponPrefix} ${w.name}`, { slot: "offhand", type: t }]); }
+    kinds.push([OFFHAND.shieldName, { slot: "offhand", type: "shield" }]);
+    for (const [slot, a] of Object.entries(ARMOR)) kinds.push([a.name, { slot, type: null }]);
+    for (const [slot, n] of Object.entries(ACCESSORY.names)) kinds.push([n, { slot, type: null }]);
+    const pieces = [];
+    for (const [id, S] of Object.entries(SETS)) for (const [slot, n] of Object.entries(S.pieces)) pieces.push([n, { set: id, slot }]);
+    return {
+      rarity: Object.entries(RARITIES).map(([k, r]) => [r.name, k]), kinds, pieces,
+      special: [...RUNEWORDS.map(w => [w.name, () => w.label || w.name]), ...Object.entries(UNIQUE.items).map(([k, U]) => [U.name, () => UNIQUE.items[k].label || UNIQUE.items[k].name])],
+      el: Object.entries(ELEMENT_LINES.names),
+    };
+  })();
+  function nameFromKo(name) {
+    const f = fmtOf("itemName");
+    if (!f || typeof name !== "string") return name;
+    let s = name, ancient = false, enh = 0, zone = null, el = null, m;
+    if (s.startsWith("고대 ")) { ancient = true; s = s.slice(3); }
+    if ((m = s.match(/^\+(\d+) /))) { enh = +m[1]; s = s.slice(m[0].length); }
+    const sp = KO_NAMES.special.find(([n]) => n === s);
+    if (sp) return f({ ancient, enh, zone: null, el: null, special: sp[1](), set: null, rarity: null, kind: null });
+    if (s.startsWith("지옥의 ")) { zone = "hell"; s = s.slice(4); } else if (s.startsWith("악몽의 ")) { zone = "nm"; s = s.slice(4); }
+    if (zone) { const e = KO_NAMES.el.find(([, n]) => s.startsWith(n + " ")); if (e) { el = e[0]; s = s.slice(e[1].length + 1); } }
+    const pc = KO_NAMES.pieces.find(([n]) => n === s);
+    if (pc) return f({ ancient, enh, zone, el, special: null, set: SETS[pc[1].set].pieces[pc[1].slot], rarity: null, kind: null });
+    const r = KO_NAMES.rarity.find(([n]) => s.startsWith(n + " "));
+    const k = r && KO_NAMES.kinds.find(([n]) => n === s.slice(r[0].length + 1));
+    if (!k) return name;
+    return f({ ancient, enh, zone, el, special: null, set: null, rarity: RARITIES[r[1]].name, kind: kindName({ ...k[1], rarity: r[1] }) });
+  }
+
   function formatStat(stat, value) {
     if (stat === "socket") return tx("stat.socket", (n) => `홈 ${n}개`, value);
     const s = STATS[stat];
@@ -1340,7 +1375,7 @@
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, fromRef, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, fromRef, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };

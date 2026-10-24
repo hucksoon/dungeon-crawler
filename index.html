@@ -5214,7 +5214,6 @@
 
   // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템)
   const itemFromRef = (ref) => RLItems.fromRef(ref);
-  // 서버가 준 아이템 이름은 한국어라, 참조로 다시 만들 수 있으면 그 언어의 이름으로
   // 서버가 정한 문구(한국어): 게스트 이름 "게스트 #ab12cd"와 우편 메모를 그 언어로 (모르는 메모는 그대로, 운영자가 쓴 선물 메모 등)
   const NOTES = [
     [/^(\d+)시간이 지나 돌아온 아이템$/, (m) => T("{0}시간이 지나 돌아온 아이템", m[1])],
@@ -5225,7 +5224,8 @@
     [/^운영자 선물$/, () => T("운영자 선물")],
   ];
   const noteText = (n) => { if (!n) return n; for (const [re, f] of NOTES) { const m = String(n).match(re); if (m) return f(m); } return n; };
-  const refName = (x) => { const it = x?.ref && itemFromRef(x.ref); return it ? RLItems.itemName(it) : (x?.item?.name ?? x?.itemName); };
+  // 서버가 준 아이템 이름은 한국어라, 참조로 다시 만들 수 있으면 그 언어의 이름으로 (참조가 없으면 한국어 이름을 나눠 다시 조립)
+  const refName = (x) => { const it = x?.ref && itemFromRef(x.ref); return it ? RLItems.itemName(it) : RLItems.nameFromKo(x?.item?.name ?? x?.itemName); };
 
   function setMailCount(n) {
     if (n > Market.mailCount && Market.mailKnown) log(T("우편함에 새 우편이 왔다. (로비 거래소 옆 우편함)"), "good");
