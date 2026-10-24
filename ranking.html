@@ -227,7 +227,8 @@
   const SLOT_ORDER = [["head", T("머리")], ["chest", T("가슴")], ["arms", T("팔")], ["pants", T("바지")], ["boots", T("장화")], ["weapon", T("무기")], ["offhand", T("보조")]];
   // 서버가 주는 아이템 이름·능력치 문구는 한국어라, 다른 언어면 아이템 참조(ref)·능력치 키(k·v)로 다시 만듦 (없으면 서버 문구)
   const I = window.RLItems, TR = RLI18N.lang !== "ko";
-  const nameOf = (v) => { if (TR && v?.ref) { try { const x = I.fromRef(v.ref, { gems: true }); if (x) return I.itemName(x); } catch {} } return v?.name; };
+  // 참조가 없는 예전 기록은 한국어 이름을 조각으로 나눠 그 언어로 (I.nameFromKo, 모르면 그대로)
+  const nameOf = (v) => { if (TR && v?.ref) { try { const x = I.fromRef(v.ref, { gems: true }); if (x) return I.itemName(x); } catch {} } return TR ? I.nameFromKo(v?.name) : v?.name; };
   const lineText = (l) => (TR && l.k ? I.formatStat(l.k, l.v) : l.text);
   const setName = (id, ko) => (TR && I.SETS[id] ? I.SETS[id].name : ko);
   const bonusText = (id, b) => (TR && I.SETS[id] ? I.SETS[id].bonuses.find(x => x.count === b.count)?.text ?? b.text : b.text);
