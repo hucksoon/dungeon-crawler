@@ -6,6 +6,7 @@
 - **랭킹**: https://game.apacimtest.com/ranking.html
 - **개발 일기**: [docs/devlog.md](docs/devlog.md)
 - **규칙 문서**: [아이템](docs/items.md) · [몬스터](docs/monsters.md) · [경제](docs/economy.md)
+- **용어집 (한국어·English·日本語)**: [docs/i18n-glossary.md](docs/i18n-glossary.md)
 
 ## 무엇이 있나요
 
