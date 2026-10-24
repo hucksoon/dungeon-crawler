@@ -12,6 +12,7 @@
 ## 무엇이 있나요
 
 - 자동 생성 던전, 시야와 안개, 5층마다 보스, 보스 전 층에 상점
+- 32×32 픽셀 그림 (지역마다 다른 바닥·벽, 몬스터 모두 그림). `글자로 보기` 버튼으로 예전 글자 화면도 골라요
 - 장비(등급·세트·고대), 강화, 도감
 - 로비: 같이 접속한 사람 보기, 던전 입구(1층부터 / 포탈 층으로), 거래소와 우편함
 - Xsolla 로그인(이메일·문자 인증)과 결제, 캐시로 부활·거래 수수료, 광고 보상
@@ -23,6 +24,7 @@
 | --- | --- |
 | `index.html` | 게임 (HTML 파일 하나) |
 | `items.js`, `monsters.js` | 아이템·몬스터 규칙 (게임과 서버 검증이 같이 씀) |
+| `img/sprites.png`, `sprites.js` | 픽셀 그림 모음과 칸 위치. `node tools/sprites-build.mjs`로 만듦 (CC0 타일 + 직접 그린 그림, 출처는 [CREDITS.md](CREDITS.md)) |
 | `shop.html`, `ranking.html`, `privacy.html` | 상점, 랭킹, 개인정보처리방침 |
 | `i18n.js`, `i18n/` | 다국어 틀과 영어·일본어 문구 ([용어집](docs/i18n-glossary.md)). 화면 문구는 한국어 원문이 키(`T("…")`), 빠진 번역은 `node tools/i18n-check.mjs` (안 쓰는 문구는 `--unused`). 게임 언어는 직접 고른 언어 → IP 나라(서버 `r=geo`) → 브라우저 언어, `?lang=en` / `?lang=ja` / `?lang=ko`로 그 탭만 미리 보기 |
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |
@@ -30,7 +32,7 @@
 | `ranking/` | 랭킹 서버 Cloudflare Workers 버전 (예전) |
 | `test/` | 회귀 테스트 (게임 화면·PHP 서버·아이템 규칙). `bash test/run.sh`, 결과는 `test/results/`에 최근 3번만 ([test/README.md](test/README.md)) |
 | `site/` | apacimtest.com 첫 화면 (게임 소개, AdSense 신청용) → [README](site/README.md) |
-| `tools/` | 문서 생성, Xsolla 카탈로그 관리 |
+| `tools/` | 문서 생성, 블로그, 픽셀 그림 모음 만들기, Xsolla 카탈로그 관리 |
 | `vendor/` | Xsolla Headless Checkout SDK |
 
 ## 배포

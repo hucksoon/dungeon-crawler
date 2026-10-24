@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const OUT = path.join(REPO, "blog/images");
+const OUT = process.env.SHOTS_OUT || path.join(REPO, "blog/images");   // SHOTS_OUT: 다른 곳에 찍어 보기
 const require = createRequire((process.env.NODE_PATH || "/usr/lib/node_modules") + "/");
 const { chromium } = require("playwright");
 const local = createRequire(import.meta.url);
@@ -37,9 +37,10 @@ function rankingRows() {
 const json = (r, o, status = 200) => r.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" }, body: JSON.stringify(o) });
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false }) {
+// dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1 }) {
   const dev = "blogshot-device-1";
-  const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf });
   const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message)); page.on("dialog", d => d.accept());
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
@@ -77,7 +78,9 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
   await o.page.keyboard.press(" "); await sleep(300);   // 한 턴 쉬면 층이 저장됨
   await o.page.evaluate(([add, reveal]) => {
     const L = JSON.parse(localStorage.getItem("rl_level"));
-    if (reveal) L.seen = "1".repeat(L.seen.length);
+    // 다 둘러본 것처럼: 바닥과 바닥 옆 벽만 (돌 속까지 벽으로 다 보이지 않게)
+    const W = 32, open = (x, y) => x >= 0 && x < W && y >= 0 && y * W < L.map.length && L.map[y * W + x] !== "0";
+    if (reveal) L.seen = Array.from(L.map, (_, i) => { const x = i % W, y = (i / W) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (open(x + dx, y + dy)) return "1"; return "0"; }).join("");
     if (add) for (const e of add) L.enemies.push({ ...e, x: L.px + e.dx, y: L.py + e.dy });
     localStorage.setItem("rl_level", JSON.stringify(L));
   }, [add, reveal]);
@@ -110,6 +113,11 @@ const SCENES = [
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
   ["lang-en", "영어로 바뀐 로비", async () => open({ scene: "lobby", lang: "en", seed: { rl_save: save(40, "blog-en"), "rl_inv:g:DEV": inv(g40) } })],
   ["lang-ja", "일본어로 바뀐 인벤토리", async () => { const o = await open({ lang: "ja", seed: { rl_save: save(30, "blog-ja"), "rl_inv:g:DEV": inv(g40) } }); await press(o.page, ["i"]); return o; }],
+  // 픽셀 그림: 게임 화면(캔버스)만 실제 픽셀로. 같은 층을 글자로 보기로도 한 장 더
+  ["pixel-dungeon", "픽셀 그림으로 바뀐 던전", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(7, "blog-px7", { hp: 180, mh: 230, a: 26, g: 410, l: 10 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 7) }, { dx: -1, dy: 1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 7) }] }),
+    shot: "#game", more: [["pixel-text", "같은 층을 예전 글자 화면으로 (글자로 보기)", (page) => page.click("#gfx-btn")]] })],
+  ["pixel-hell", "헬 던전도 픽셀 그림으로: 네임드 보스 불가사리", async () => { const o = await explored({ dsf: 1.6, seed: { rl_save: save(10, "blog-pxhell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [" ", " "], 150); return { ...o, shot: "#game" }; }],
+  ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -117,10 +125,13 @@ const done = [];
 try {
   for (const [name, caption, shoot] of SCENES) {
     if (only.length && !only.some(s => name.includes(s))) continue;
-    const { ctx, page, errors } = await shoot();
+    const { ctx, page, errors, shot, more = [] } = await shoot();
+    // shot: 그 부분만 찍기, more: 이어서 [이름, 설명, 할 일]로 더 찍기
+    const snap = (n) => (shot ? page.locator(shot).screenshot({ path: path.join(OUT, `${n}.png`) }) : page.screenshot({ path: path.join(OUT, `${n}.png`) }));
     await sleep(500);
-    await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+    await snap(name);
     done.push(`${name}.png — ${caption}${errors.length ? ` (페이지 오류 ${errors.length}: ${errors[0].slice(0, 80)})` : ""}`);
+    for (const [n, c, act] of more) { await act(page); await sleep(400); await snap(n); done.push(`${n}.png — ${c}`); }
     await ctx.close();
   }
 } finally { await browser.close(); }

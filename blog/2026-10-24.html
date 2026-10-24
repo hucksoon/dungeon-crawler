@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>던전 크롤러, 영어와 일본어를 배우다 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="게임 전체를 영어·일본어로 옮기고 접속한 나라에 맞춰 언어를 고르게 했어요. 장비 상자는 이제 결제 웹훅을 받은 서버가 열어서 우편함으로 보내 줘요.">
+<meta name="description" content="게임 전체를 영어·일본어로 옮기고, 장비 상자는 결제 웹훅을 받은 서버가 열어 우편함으로 보내요. 하루 끝에는 글자뿐이던 던전에 픽셀 그림을 입혔어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-24.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
@@ -12,7 +12,7 @@
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="던전 크롤러, 영어와 일본어를 배우다 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="게임 전체를 영어·일본어로 옮기고 접속한 나라에 맞춰 언어를 고르게 했어요. 장비 상자는 이제 결제 웹훅을 받은 서버가 열어서 우편함으로 보내 줘요.">
+<meta property="og:description" content="게임 전체를 영어·일본어로 옮기고, 장비 상자는 결제 웹훅을 받은 서버가 열어 우편함으로 보내요. 하루 끝에는 글자뿐이던 던전에 픽셀 그림을 입혔어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-24.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/lang-en.png">
 
@@ -49,7 +49,7 @@
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
 <h1>던전 크롤러, 영어와 일본어를 배우다</h1>
-<p class="meta">2026년 10월 24일 (토) · 개발일기 · 다국어 · Claude Code · 결제 · 테스트</p>
+<p class="meta">2026년 10월 24일 (토) · 개발일기 · 다국어 · 픽셀 그래픽 · Claude Code · 결제</p>
 <p>지금까지 던전 크롤러는 한국어로만 즐길 수 있었어요. 오늘은 Claude Code와 함께 게임 전체를 <strong>영어와 일본어</strong>로 옮기는 데 하루를 거의 다 썼고, 남은 시간에는 장비 상자를 <strong>서버가 직접 열어 주는</strong> 결제 흐름을 만들었어요.</p>
 <h2>번역: 용어집부터 차근차근</h2>
 <p>상점은 이미 영어·일본어를 지원했는데 정작 게임은 한국어뿐이었어요. 번역할 문장을 세어 보니 게임 화면, 아이템, 몬스터, 최고 조합, 랭킹 페이지를 합쳐 <strong>약 1,300개</strong>였어요. 그중 약 400개는 &quot;○○을(를) 받았다&quot;처럼 중간에 값이 끼어드는 문장이라, 언어마다 문장 전체를 따로 만들어야 했어요.</p>
@@ -99,8 +99,22 @@
 <p>하루의 마지막 선물은 <strong>게임 로고</strong>예요. 불타는 횃불과 검, 해골이 박힌 &quot;DUNGEON CRAWLER&quot; 로고를 받아서 게임 맨 위의 글자 제목 자리에 넣었어요. 해골과 두 자루 검이 그려진 아이콘은 브라우저 탭과 휴대폰 홈 화면 아이콘이 됐어요.</p>
 <figure><img src="images/lobby.png" alt="게임 맨 위에 들어간 새 로고" loading="lazy"><figcaption>게임 맨 위에 들어간 새 로고</figcaption></figure>
 <p>이 밖에 서버 점검도 했어요.</p>
+<h2>글자에서 픽셀 그림으로</h2>
+<p>로그라이크는 원래 <code>@</code>와 알파벳으로 그리는 장르라서 지금까지 던전 크롤러도 글자로만 그렸어요. 이제 게임이 거의 다 만들어져서 <strong>2D 픽셀 그림</strong>을 입혔어요. 무료 그림 모음과 직접 그린 그림을 섞는 방법으로요.</p>
+<figure><img src="images/pixel-dungeon.png" alt="픽셀 그림으로 바뀐 던전" loading="lazy"><figcaption>픽셀 그림으로 바뀐 던전</figcaption></figure>
+<h3>무료 그림 + 직접 그린 그림</h3>
+<ul><li>바탕은 오래된 로그라이크 Dungeon Crawl Stone Soup의 타일이에요. 그중 저작권자가 <strong>CC0(퍼블릭 도메인)</strong>으로 공개한 것만 모은 모음을 썼어요. 바닥·벽, 무기·방어구, 몬스터 대부분이 여기서 왔어요</li><li>플레이어 기사는 몸·다리·장화·갑옷·투구·검·방패 7장을 겹쳐서 만들었어요</li><li>모음에 없는 것은 Claude Code가 코드로 한 점씩 찍어서 그렸어요. 계단, 던전 상점, 보물상자, 보석 5가지, 바지가 그래요</li><li>헬의 네임드 보스 다섯은 한국 전설 속 존재라 딱 맞는 그림이 없었어요. 비슷한 그림의 색을 바꾸고 장식을 그려 얹었어요. 구미호는 흰 여우에 <strong>아홉 꼬리</strong>, 저승사자는 검은 사신에 <strong>갓</strong>, 염라대왕은 붉은 도포에 <strong>면류관</strong>을 씌웠어요</li><li>그림 107개를 한 장으로 모으는 과정도 도구로 만들어서, 그림을 바꾸면 명령 한 번으로 다시 만들어요</li></ul>
+<figure><img src="images/pixel-hell.png" alt="헬 던전도 픽셀 그림으로: 네임드 보스 불가사리" loading="lazy"><figcaption>헬 던전도 픽셀 그림으로: 네임드 보스 불가사리</figcaption></figure>
+<h3>지역마다 다른 던전</h3>
+<p>일반 던전은 회색 돌, 나이트메어는 남색 대리석에 보라 벽, 헬은 검붉은 화산 바닥과 용암 벽, 골드 던전은 사암으로 칠했어요. 지금 보이지 않는 칸은 어둡게, 장비는 등급 색으로 은은하게 빛나게 했어요. 정예·보스 테두리나 화상·느려짐 표시는 그림 위에 그대로 남겼어요.</p>
+<h3>화면 크기는 그대로, 그림은 선명하게</h3>
+<p>지도 전체가 한 화면에 보이는 지금 크기를 지키고 싶었어요. 그래서 한 칸의 크기는 그대로 두고, 캔버스 속 픽셀만 1.6배로 늘려서 32픽셀 그림이 그대로 들어가게 했어요. 도감에도 만난 몬스터의 그림이 나와요.</p>
+<figure><img src="images/pixel-dex.png" alt="도감에도 몬스터 그림" loading="lazy"><figcaption>도감에도 몬스터 그림</figcaption></figure>
+<h3>예전 글자 화면도 그대로</h3>
+<p>글자 화면을 좋아하는 분을 위해 <strong>글자로 보기</strong> 버튼을 넣었어요. 누르면 예전 화면으로 돌아가고, 기기에 기억돼요. 그림을 받지 못하는 환경에서도 저절로 글자로 그려요.</p>
+<figure><img src="images/pixel-text.png" alt="같은 층을 예전 글자 화면으로 (글자로 보기)" loading="lazy"><figcaption>같은 층을 예전 글자 화면으로 (글자로 보기)</figcaption></figure>
 <h2>다음에는</h2>
-<p>번역과 결제의 큰 줄기가 잡혔으니, 다음에는 눈에 보이는 쪽을 손볼 차례예요. <strong>2D 픽셀 그래픽</strong>을 입혀 볼 계획이에요. 그 전에 영어나 일본어로 바뀐 던전이 궁금하다면 <a href="https://game.apacimtest.com/">게임</a>에 들어가 언어를 바꿔 보세요.</p>
+<p>픽셀 그림의 첫 판이 들어갔으니, 실제로 해 보면서 어두운 칸의 밝기나 몬스터 그림을 다듬을 거예요. 바뀐 던전이 궁금하다면 <a href="https://game.apacimtest.com/">게임</a>에 들어가 보세요. 영어나 일본어로도 바꿔 볼 수 있어요.</p>
 </article>
 <nav class="pager"><span><a href="2026-10-23.html">← 최고 조합 페이지, 파밍 룬워드, 그리고 첫 한정 판매</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
