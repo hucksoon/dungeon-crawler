@@ -82,6 +82,7 @@ function market_tables(PDO $pdo): void {
     )');
     // 장비 상자 (캐시로 산 상자를 웹훅 order_paid로 서버가 열어 우편함에 넣은 아이템). 시드 box|o주문 번호|순번
     // state: granted | revoked (환불 order_canceled → 그 시드는 랭킹·거래소에서 인정하지 않음)
+    //        | legacy (웹훅 전에 상점이 브라우저에서 연 상자. admin.php boxes legacy --apply로 서버에 있던 것을 등록)
     $pdo->exec('CREATE TABLE IF NOT EXISTS box_items (
         seed        VARCHAR(64) PRIMARY KEY,
         order_id    VARCHAR(32) NOT NULL,
@@ -91,6 +92,12 @@ function market_tables(PDO $pdo): void {
         sku         VARCHAR(64) NOT NULL,
         state       VARCHAR(12) NOT NULL,
         created_at  BIGINT NOT NULL
+    )');
+    // 서버 설정 값 (admin.php로 바꿈). box_strict = 1: 서버 기록(box_items)이 있는 상자 시드만 인정
+    $pdo->exec('CREATE TABLE IF NOT EXISTS server_flags (
+        name        VARCHAR(32) PRIMARY KEY,
+        value       VARCHAR(64) NOT NULL,
+        updated_at  BIGINT NOT NULL
     )');
     $pdo->exec('CREATE TABLE IF NOT EXISTS item_owner (
         item_id     VARCHAR(32) PRIMARY KEY,
@@ -590,6 +597,61 @@ function box_revoke(PDO $pdo, string $orderId): int {
 
 function box_seed_revoked(string $seed): bool {
     return q_val("SELECT 1 FROM box_items WHERE seed = ? AND state = 'revoked'", [$seed]) !== false;
+}
+
+// 좁힌 뒤(box_strict): 서버가 지급했거나(granted) 예전 것으로 등록한(legacy) 상자 시드만 인정.
+// 좁히기 전: 환불된 것만 빼고 인정 (예전에 브라우저에서 연 상자는 서버 기록이 없어서)
+function box_seed_ok(string $seed): bool {
+    if (!box_strict()) return !box_seed_revoked($seed);
+    return q_val("SELECT 1 FROM box_items WHERE seed = ? AND state IN ('granted', 'legacy')", [$seed]) !== false;
+}
+function box_strict(): bool {
+    return q_val("SELECT value FROM server_flags WHERE name = 'box_strict'") === '1';
+}
+function set_flag(string $name, string $value): void {
+    $up = db()->prepare('UPDATE server_flags SET value = ?, updated_at = ? WHERE name = ?');
+    $up->execute([$value, now_ms(), $name]);
+    if ($up->rowCount() === 0) db()->prepare('INSERT INTO server_flags (name, value, updated_at) VALUES (?, ?, ?)')->execute([$name, $value, now_ms()]);
+}
+
+// 서버에 남아 있는 예전 상자 아이템 찾기: 계정 저장본(가방·장착·상자 보관함), 랭킹 장비, 거래소 등록, 우편.
+// 결과 [시드 => [주인 키, 아이템 ID, 어디서]]. 같은 시드는 처음 찾은 것만
+const BOX_SEED_RE = '/^box\|o([0-9A-Za-z]{1,48})\|\d{1,2}$/';
+function box_legacy_scan(): array {
+    $found = [];
+    $walk = function ($v, string $owner, string $where) use (&$walk, &$found) {
+        if (!is_array($v)) return;
+        if (is_string($v['seed'] ?? null) && ($v['src'] ?? '') === 'box' && preg_match(BOX_SEED_RE, $v['seed']) && !isset($found[$v['seed']])) {
+            $found[$v['seed']] = [$owner, is_string($v['id'] ?? null) ? $v['id'] : '', $where];
+        }
+        foreach ($v as $x) if (is_array($x)) $walk($x, $owner, $where);
+    };
+    $each = function (string $sql, string $where, array $cols) use ($walk) {
+        $st = db()->query($sql);
+        while ($r = $st->fetch()) foreach ($cols as $c) if ($r[$c] !== null) $walk(json_decode((string)$r[$c], true), (string)$r['owner'], $where);
+        $st->closeCursor();
+    };
+    $each('SELECT pkey AS owner, data FROM profiles', 'profile', ['data']);
+    foreach (SEASONS as $s) $each("SELECT pkey AS owner, stage_gear, item_json FROM {$s['table']}", 'ranking', ['stage_gear', 'item_json']);
+    $each('SELECT seller_key AS owner, item_ref FROM listings', 'market', ['item_ref']);
+    $each("SELECT owner_key AS owner, item_ref FROM mail WHERE kind <> 'box'", 'mail', ['item_ref']);
+    return $found;
+}
+
+// 찾은 예전 상자 시드를 box_items에 legacy로 (이미 있는 시드는 그대로). 넣은 수
+function box_legacy_register(array $found): int {
+    $now = now_ms();
+    return tx(function (PDO $pdo) use ($found, $now) {
+        $n = 0;
+        foreach ($found as $seed => [$owner, $itemId, $where]) {
+            if (q_val('SELECT 1 FROM box_items WHERE seed = ?', [$seed])) continue;
+            preg_match(BOX_SEED_RE, $seed, $m);
+            $pdo->prepare('INSERT INTO box_items (seed, order_id, owner_key, mail_id, item_id, sku, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$seed, mb_substr($m[1], 0, 32), $owner, '', mb_substr($itemId, 0, 32), "legacy:{$where}", 'legacy', $now]);
+            $n++;
+        }
+        return $n;
+    });
 }
 
 // 상점: 방금 산 상자의 결과. 웹훅이 아직 안 왔으면 ready=false (상점이 잠시 뒤 다시 물음)

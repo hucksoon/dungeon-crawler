@@ -168,6 +168,28 @@ try {
   check("box_order after refund → revoked", (await api(BUYER, "box_order&order=8001")).body.revoked === true);
   await hook({ ...boxPaid(8007, [{ sku: "box_equipment_1", quantity: 1 }]), notification_type: "order_canceled" });
   check("cancel arrives before payment → later order_paid grants nothing", (await hook(boxPaid(8007, [{ sku: "box_equipment_1", quantity: 1 }]))).status === 204 && !sql("SELECT 1 FROM box_items WHERE order_id = '8007'").length && sql("SELECT state FROM xsolla_events WHERE event_key = 'order_paid:8007'")[0].state === "canceled");
+  // ---- 예전 상자 시드 좁히기: 서버에 있는 예전 상자 아이템을 등록한 뒤, 서버 기록이 있는 시드만 ----
+  const admin = (...a) => execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), ...a], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString();
+  const seedOk = (seed, lvl = 10) => phpEval(`echo seed_origin_ok(4, '${seed}', 'box', ${lvl}, 8) ? 'ok' : 'no';`) === "ok";
+  const OLD = "f6a7b8c9-0000-4000-8000-0000000000ff";
+  const oldBag = I.generate("box|o5551|0", "box", 10), oldEq = I.generate("box|o5551|1", "box", 10), oldBoxMail = I.generate("box|orec77x0|0", "box", 10), oldGift = I.generate("box|o5552|3", "box", 10);
+  await game(OLD, "POST", JSON.stringify({ rev: 0, data: { v: 1, save: { v: 1, best: 10, run: null, dead: null }, inv: { bag: [oldBag], equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: oldEq }, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [{ item: oldBoxMail, from: "box" }] } }));
+  sql("SELECT 1");   // DB 준비
+  { const d = new DatabaseSync(DB); try { d.prepare("INSERT INTO mail (id, owner_key, kind, item_id, item_ref, item_name, rarity, gold, cash, state, created_at) VALUES ('legacygift000001', ?, 'gift', ?, ?, 'x', 'common', 0, 0, 'new', 1)").run(userKey(OLD), oldGift.id, JSON.stringify({ seed: oldGift.seed, src: "box", lvl: 10, v: 4, r: 8, id: oldGift.id })); } finally { d.close(); } }
+  check("boxes: not narrowed yet, forged box seed still accepted", admin("boxes").includes("좁히기 전") && seedOk("box|o999999|0"));
+  const dry = admin("boxes", "legacy");
+  check("boxes legacy (dry run): finds old box items in saves and mail, changes nothing", /예전 상자 아이템 4개 .*계정 저장본 3 · 랭킹 0 · 거래소 0 · 우편 1/.test(dry) && dry.includes("확인만 했어요") && admin("boxes").includes("좁히기 전"), dry);
+  const applied = admin("boxes", "legacy", "--apply");
+  check("--apply: registers them as legacy and narrows", applied.includes("4개를 등록하고 좁혔어요") && admin("boxes").includes("좁힘") && sql("SELECT COUNT(*) n FROM box_items WHERE state = 'legacy'")[0].n === 4, applied);
+  check("narrowed: registered old box items still accepted", [oldBag, oldEq, oldBoxMail, oldGift].every(it => seedOk(it.seed)));
+  check("narrowed: forged / unknown box seed rejected", !seedOk("box|o999999|0") && !seedOk("box|o5551|7"));
+  check("narrowed: server-granted seeds accepted, refunded still rejected", seedOk("box|o8002|0", 40) && !seedOk("box|o8001|0", 40));
+  check("apply again → nothing new", admin("boxes", "legacy", "--apply").includes("0개를 등록"));
+  const ref = await api(OLD, "market_list", { method: "POST", body: { item: { seed: "box|o999999|0", src: "box", lvl: 10, v: 4, r: 8, enh: 0, id: I.generate("box|o999999|0", "box", 10).id }, gold: 100, cash: 0, stage: 10 } });
+  const okList = await api(OLD, "market_list", { method: "POST", body: { item: { seed: oldBag.seed, src: "box", lvl: 10, v: 4, r: 8, enh: 0, id: oldBag.id }, gold: 100, cash: 0, stage: 10 } });
+  check("narrowed: market refuses a forged box item but lists a registered old one", ref.status === 400 && okList.status === 200, JSON.stringify([ref, okList]));
+  check("strict off → back to the old rule (escape hatch)", admin("boxes", "strict", "off").includes("껐어요") && seedOk("box|o999999|0") && admin("boxes").includes("좁히기 전"));
+  admin("boxes", "legacy", "--apply");
   const adm = execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), "webhooks", "50"], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString();
   check("admin.php webhooks: [캐시] for cash orders, granted / revoked / no user", adm.includes("[캐시]") && adm.includes("→ 우편함 지급") && adm.includes("→ 회수") && adm.includes("→ 사용자 없음"), adm);
 } finally { php.kill(); php0.kill(); }

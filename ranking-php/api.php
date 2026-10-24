@@ -485,7 +485,7 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         return $n >= 1 && $n <= NM_FLOORS && $lvl === NM_ITEM_BASE + $n;
     }
     if (preg_match('/^box\|o[0-9A-Za-z]{1,48}\|(\d{1,2})$/', $seed, $m)) {                   // 장비 상자 (최대 50회)
-        return $src === 'box' && (int)$m[1] < 50 && !box_seed_revoked($seed);   // 환불된 상자(webhook order_canceled)는 제외
+        return $src === 'box' && (int)$m[1] < 50 && box_seed_ok($seed);   // 환불 제외, 좁힌 뒤엔 서버 기록이 있는 것만 (market.php)
     }
     if (preg_match(R_BUY_SEED, $seed, $m)) {   // 고대 유니크 선택 상자 (현금): 서버가 결제를 확인하고 우편함에서 고를 때 기록한 시드만
         return $src === 'unique' && $v === 4 && $rev >= 8 && $lvl === r_bought_level($m[2]) && bought_seed_ok($seed);

@@ -193,6 +193,9 @@ Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주�
   - 결과는 주문 번호로 정해져요 (시드 `box|o주문 번호|순번`, 예전에 상점이 브라우저에서 열던 것과 같은 아이템). 레벨은 계정 저장본의 최고 층
   - 상점은 `api.php?r=box_order&order=…`로 결과를 받아 보여줘요 (최대 20초 기다리고, 그래도 안 오면 "곧 우편함에 도착" 안내)
   - 환불(`order_canceled`)이 오면 아직 받지 않은 상자 우편은 회수하고, 이미 받은 아이템은 랭킹·거래소에서 인정하지 않아요 (`box_items.state = revoked`)
+  - **예전 상자 시드 좁히기**: 웹훅 전에는 상점이 브라우저에서 상자를 열어서 서버 기록이 없음 → 처음엔 환불된 것만 빼고 모든 상자 시드를 인정.
+    `admin.php boxes legacy`로 서버에 남은 예전 상자 아이템(계정 저장본·랭킹 장비·거래소·우편)을 세어 보고, `--apply`로 등록하면서 좁히기를 켜요.
+    그 뒤로는 서버가 지급했거나 등록된 상자 시드만 인정 (지어낸 주문 번호의 상자 아이템은 랭킹·거래소에서 거절). 되돌리기: `admin.php boxes strict off`
   - 캐시(가상 화폐)·고대 유니크 선택 상자(현금)는 지금처럼: 캐시는 Xsolla가 직접 넣고, 선택 상자는 우편함을 열 때 서버가 Xsolla 인벤토리에서 꺼내요
 - 기록
   - `user_validation` → 게임에 로그인한 적 있는 사용자면 204, 아니면 `400 INVALID_USER` (Xsolla 테스터의 "없는 사용자" 확인). 게임은 로그인하면 맨 먼저 계정 저장본을 불러오는데, 그때 사용자 HMAC 키를 `known_users`에 남겨요. 상점 로그인도 게임을 거치므로 사기 전에 남아요
@@ -230,6 +233,9 @@ Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주�
 sudo -u www-data php admin.php list [개수] [시즌]      # 층 랭킹: 순위, 이름, 최고 층, 공개 ID (시즌 v4 기본, nm 나이트메어, v3)
 sudo -u www-data php admin.php remove <공개ID> [시즌]  # 그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로)
 sudo -u www-data php admin.php webhooks [개수]         # Xsolla 웹훅 기록 최근 순 (종류, 주문·거래 번호, sandbox 여부, SKU×수량, 금액)
+sudo -u www-data php admin.php boxes                   # 장비 상자 시드: 좁혔는지, 서버 기록 수 (지급·환불·예전 등록)
+sudo -u www-data php admin.php boxes legacy [--apply]  # 예전 상자 아이템 세기 / 등록하고 좁히기
+sudo -u www-data php admin.php boxes strict off        # 좁히기 끄기 (되돌리기)
 ```
 
 ## 업데이트
