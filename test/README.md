@@ -10,6 +10,7 @@ bash test/run.sh market     # 이름에 market이 들어간 것만
 - 결과는 `test/results/<시각>/`에 테스트마다 로그·화면 캡처·`summary.txt`. **최근 3번만 남기고**(`KEEP=3`) 저장소에는 올리지 않아요 (`.gitignore`)
 - 필요한 것: node 22+, php 8 (`pdo_sqlite`), 전역 설치한 `playwright`(`NODE_PATH`), Chromium (경로가 다르면 `CHROMIUM_PATH`)
 - 브라우저 기본 언어는 한국어(`ko-default.cjs`). 영어·일본어 화면은 테스트가 언어를 직접 정함
+- 타이밍: 고정 시간만 기다리지 말고 응답·상태가 바뀔 때까지 기다리기. `profile-e2e`는 `PROFILE_SLOW=2000`으로 계정 저장 응답을 늦춰서 느린 환경을 흉내낼 수 있음
 
 | 파일 | 내용 |
 |---|---|

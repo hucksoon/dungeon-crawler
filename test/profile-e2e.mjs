@@ -19,6 +19,8 @@ const API = "http://127.0.0.1:8094/api.php";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// PROFILE_SLOW=ms: 계정 저장 응답을 늦춰서 느린 환경(전체 테스트 실행 중)을 흉내
+const SLOW = Number(process.env.PROFILE_SLOW || 0);
 const waitFor = async (fn, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(150); } return false; };
 
 const php = spawn("php", ["-S", "127.0.0.1:8094", "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, PHP_CLI_SERVER_WORKERS: "4", RANKING_CONFIG: path.join(DIR, "config.profile-e2e.php"), TEST_JWT_SECRET: SECRET }, stdio: ["ignore", "ignore", "pipe"] });
@@ -46,13 +48,15 @@ async function open(storage, { attrs = {}, loginAs = null, opts = { viewport: { 
     if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: `window.RANKING_API = ${JSON.stringify(API)};` });
     const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
-  const state = { down: false, profileCalls: [] };
+  const state = { down: false, profileCalls: [], profileDone: [] };  // profileDone: 응답까지 받은 요청
   await ctx.route(API + "**", async r => {
     const req = r.request();
     if (req.url().includes("r=profile")) state.profileCalls.push(req.method());
     if (state.down) return r.fulfill({ status: 503, contentType: "application/json", body: '{"error":"down"}' });
     const res = await fetch(req.url(), { method: req.method(), headers: req.headers(), body: ["GET", "OPTIONS"].includes(req.method()) ? undefined : req.postData() });
-    r.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
+    if (SLOW && req.url().includes("r=profile")) await sleep(SLOW);
+    await r.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
+    if (req.url().includes("r=profile")) state.profileDone.push(req.method());
   });
   await ctx.route("https://login.xsolla.com/**", r => {
     const req = r.request(), u = new URL(req.url()), p = u.pathname.replace("/api", "");
@@ -184,10 +188,15 @@ try {
   const F = await open({ rl_device_id: "f-dev", rl_auth: authOf(SUB3, "mv@example.com"), rl_save: save(300, 3, "move-run"), [`rl_inv:u:${SUB3}`]: inv([]), [`rl_dex:u:${SUB3}`]: JSON.stringify({ seen: allSeen, kills: {} }) });
   const posts = () => F.state.profileCalls.filter(m => m === "POST").length;
   const fRow = () => db().prepare("SELECT rev, data FROM profiles").all().map(r => ({ rev: r.rev, data: JSON.parse(r.data) })).find(r => r.data.save?.run?.rid === "move-run");
-  check("F: first upload", await waitFor(() => fRow()?.rev === 1));
+  // 서버에 저장된 것뿐 아니라 게임이 응답까지 받아야(rev 1, 저장 완료) 새로고침해도 다시 올리지 않음
+  check("F: first upload", await waitFor(async () => fRow()?.rev === 1 && (await meta(F.page, SUB3))?.rev === 1 && !(await meta(F.page, SUB3)).dirty));
   await F.page.evaluate(() => sessionStorage.setItem("rl_scene", "dungeon"));
+  const gets = () => F.state.profileDone.filter(m => m === "GET").length, g0 = gets();
   await F.page.reload();
-  await sleep(1500);
+  // 새로고침 뒤 서버와 맞추기(GET)가 끝나야 이동을 "1분 뒤 저장"으로 미룸. 그 전에 움직이면 맞춘 직후 바로 올림
+  // 고정 시간만 기다리면 느린 환경에서 이동 중에 맞추기가 끝나 업로드가 생김 → 응답을 받을 때까지 기다림
+  check("F: synced with server after reload", await waitFor(() => gets() > g0, 15000));
+  await sleep(800);
   const p0 = posts();
   check("F: reload with nothing changed → no upload", p0 === 1, String(p0));
   for (const k of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", " ", "ArrowLeft", "ArrowRight"]) { await F.page.keyboard.press(k); await sleep(120); }
@@ -197,8 +206,7 @@ try {
   await F.page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); document.dispatchEvent(new Event("visibilitychange")); });
   check("F: hiding the tab uploads right away", await waitFor(() => posts() === p0 + 1 && fRow().rev === 2, 4000), String(posts()));
   await F.page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); });
-  await sleep(500);
-  check("F: synced after hide", (await meta(F.page, SUB3)).dirty === false);
+  check("F: synced after hide", await waitFor(async () => (await meta(F.page, SUB3))?.dirty === false, 6000));
   await F.page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); document.dispatchEvent(new Event("visibilitychange")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); });
   await sleep(1000);
   check("F: hiding again with no changes → no upload", posts() === p0 + 1, String(posts()));
