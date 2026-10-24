@@ -2366,6 +2366,7 @@
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
       px: player.x, py: player.y, shop, enemies, items,
       ps: { burn: player.burn || null, slow: player.slow || 0, immune: player.immune || 0 },  // 플레이어의 화상·느려짐
+      lang: RLI18N.lang,   // 몬스터 이름의 언어 (다른 언어로 불러오면 이름을 다시 지음)
     }));
   }
   // 저장된 층이 지금 판·층과 같으면 복원하고 true
@@ -2394,6 +2395,7 @@
       player.immune = Math.max(0, Math.min(EL.ice.immune, L.ps.immune | 0));
     }
     if (!onFloor(player)) Object.assign(player, anyFreeFloor([]) || { x: 1, y: 1 });
+    const relang = (L.lang || "ko") !== RLI18N.lang;
     for (const e of Array.isArray(L.enemies) ? L.enemies : []) {
       if (!e || typeof e !== "object") continue;
       const taken = (p) => (p.x === player.x && p.y === player.y) || enemies.some(o => o.x === p.x && o.y === p.y);
@@ -2402,6 +2404,8 @@
         if (!spot) continue;
         e.x = spot.x; e.y = spot.y;
       }
+      // 다른 언어로 저장된 층이면 이름을 지금 언어로 다시 (언어 표시가 없는 예전 층은 한국어). 구미호 분신은 "○○의 분신"
+      if (relang && typeof e.name === "string") e.name = e.clone ? T("{0}의 분신", RLMonsters.nameOf(e)) : RLMonsters.nameOf(e);
       enemies.push(e);
     }
     for (const it of Array.isArray(L.items) ? L.items : []) {
