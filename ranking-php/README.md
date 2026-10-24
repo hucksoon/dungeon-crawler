@@ -53,6 +53,18 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 | `POST api.php?r=revive_ad` `{ adTicket }` | 광고 보고 부활 |
 | `GET api.php?r=profile` | 내 계정 저장 (가방·진행 상황) (로그인) |
 | `POST api.php?r=profile` `{ rev, data }` | 계정 저장 올리기. 저장 번호가 다르면 서버 내용을 돌려줌 |
+| `GET api.php?r=geo` | 접속한 IP의 나라 코드 `{ country: "KR" }` (모르면 `null`). 게임 언어 자동 설정용, IP는 저장하지 않음 |
+
+## 게임 언어 자동 설정 (나라 찾기)
+
+게임은 **직접 고른 언어 → 접속한 IP의 나라 → 브라우저 언어** 순으로 언어를 정해요 (한국 한국어 · 일본 일본어 · 나머지 영어). 나라는 `r=geo`가 아래 순서로 찾아요:
+
+1. CDN 헤더 `CF-IPCountry` (Cloudflare를 거칠 때)
+2. 웹 서버 GeoIP 모듈 환경변수 (`GEOIP_COUNTRY_CODE` · `MM_COUNTRY_CODE` · `GEOIP2_COUNTRY_CODE`)
+3. PHP `geoip` 확장 (`geoip_country_code_by_name`)
+4. MaxMind GeoLite2-Country `.mmdb` (`config.php`의 `geo_mmdb` 경로 + `maxmind-db/reader`)
+
+아무것도 없으면 `null`이고 게임은 브라우저 언어를 써요. 서버에서 무엇이 되는지는 브라우저로 `api.php?r=geo`를 열어 보면 돼요.
 
 ## 로비 (지금 접속 중인 사람)
 

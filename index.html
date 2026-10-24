@@ -3875,11 +3875,15 @@
 
   // ---- 계정 UI ----
   const accountStatus = document.getElementById("account-status");
-  // 언어 고르기: 게임 번역이 끝나기 전에는 미리 보기(?lang=en)일 때만 보임
+  // 언어: 처음엔 접속한 IP의 나라로 자동 (한국 한국어 · 일본 일본어 · 나머지 영어), 고르기로 바꾸면 그 언어로 고정
+  // 게임 번역이 끝나기 전에는 미리 보기(?lang=en)일 때만 보임
   (function langSelect() {
     const sel = document.getElementById("lang-select");
-    if (!RLI18N.preview && !RLI18N.READY) return;
-    for (const code of RLI18N.LANGS) sel.append(el("option", { value: code, selected: code === RLI18N.lang }, RLI18N.LANG_NAMES[code]));
+    if (!RLI18N.preview && !RLI18N.ready) return;
+    RLI18N.detectGeo(RANKING_API ? rankingUrl("geo") : null);
+    const auto = !RLI18N.preview;   // "자동": 고른 언어를 지우고 IP 나라로
+    if (auto) sel.append(el("option", { value: "auto", selected: !RLI18N.chosen }, T("🌐 자동 ({0})", RLI18N.chosen ? "IP" : RLI18N.LANG_NAMES[RLI18N.lang])));
+    for (const code of RLI18N.LANGS) sel.append(el("option", { value: code, selected: code === RLI18N.lang && (!auto || RLI18N.chosen === code) }, RLI18N.LANG_NAMES[code]));
     sel.hidden = false;
     sel.addEventListener("change", () => RLI18N.setLang(sel.value));
   })();

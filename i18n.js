@@ -2,7 +2,9 @@
 // 브라우저(window.RLI18N)와 Node(require) 양쪽에서 씀. 언어별 문구는 i18n/en.js · i18n/ja.js가 RLI18N.add로 넣음
 //
 // - 원문은 코드 안의 한국어. 번역이 없으면 한국어를 그대로 보여 줌 (빠진 문구가 있어도 깨지지 않게)
-// - 언어는 상점과 같은 localStorage "rl_lang". 게임 번역이 끝나기 전(READY = false)에는 게임이 항상 한국어이고,
+// - 언어: 게임에서 직접 고른 언어(localStorage "rl_game_lang") → 접속한 IP의 나라(서버 r=geo, "rl_geo"에 하루 보관)
+//   → 브라우저 언어 순. 한국 ko · 일본 ja · 나머지 en. 상점(rl_lang)과는 따로
+// - 게임 번역이 끝나기 전(READY = false)에는 게임이 항상 한국어이고,
 //   주소에 ?lang=en / ?lang=ja를 붙이면 그 탭에서만 미리 보기 (?lang=ko로 끔)
 // - 언어를 바꾸면 페이지를 다시 읽음 (아이템·몬스터 이름은 페이지를 열 때 한 번 바꿔 둠: apply)
 (function (root) {
@@ -10,7 +12,8 @@
 
   const LANGS = ["ko", "en", "ja"];
   const LANG_NAMES = { ko: "한국어", en: "English", ja: "日本語" };
-  const READY = false;   // 게임 화면 번역이 끝나면 true (그때부터 상점에서 고른 언어를 게임도 따름)
+  const READY = false;   // 게임 화면 번역이 끝나면 true (그때부터 IP·고른 언어를 따름)
+  const GEO_MS = 24 * 3600 * 1000;   // 나라 확인은 하루에 한 번
   const packs = {};      // { en: { data, text }, ja: … }
 
   const store = {
@@ -29,11 +32,22 @@
       preview = store.get(sessionStorage, "rl_lang_preview");
     } catch {}
     if (preview && LANGS.includes(preview)) return { lang: preview, preview: true };
-    if (!READY) return { lang: "ko", preview: false };
-    const saved = store.get(localStorage, "rl_lang");
-    if (LANGS.includes(saved)) return { lang: saved, preview: false };
-    const nav = String(navigator.language || "ko").slice(0, 2);
-    return { lang: LANGS.includes(nav) ? nav : "ko", preview: false };
+    if (!ready()) return { lang: "ko", preview: false };
+    return { lang: autoLang(), preview: false };
+  }
+  // 테스트에서만: READY 전에도 자동 언어를 켜 봄 (window.RL_I18N_READY = true)
+  function ready() { return READY || (hasDom && window.RL_I18N_READY === true); }
+  // 나라 코드 → 언어
+  const langOf = (country) => (country === "KR" ? "ko" : country === "JP" ? "ja" : country ? "en" : null);
+  const geoCache = () => { try { return JSON.parse(store.get(localStorage, "rl_geo")) || null; } catch { return null; } };
+  // 직접 고른 언어 → IP의 나라 → 브라우저 언어 (ko·ja 말고는 en)
+  function autoLang() {
+    const chosen = store.get(localStorage, "rl_game_lang");
+    if (LANGS.includes(chosen)) return chosen;
+    const geo = langOf(geoCache()?.c);
+    if (geo) return geo;
+    const nav = String(navigator.language || "en").slice(0, 2);
+    return LANGS.includes(nav) ? nav : "en";
   }
   const start = detect();
   let lang = start.lang;
@@ -131,18 +145,41 @@
   }
 
   // 언어 바꾸기: 저장하고 다시 읽음. 미리 보기 중이면 미리 보기 언어만 바꿈
+  // next가 "auto"면 직접 고른 언어를 지우고 IP·브라우저 언어로 돌아감
   function setLang(next, { reload = true } = {}) {
-    if (!LANGS.includes(next)) return;
-    if (!hasDom) { lang = next; return; }   // Node(테스트): 바로 바꿈 (그다음 apply)
-    if (start.preview || !READY) store.set(sessionStorage, "rl_lang_preview", next === "ko" ? null : next);
-    else store.set(localStorage, "rl_lang", next);
+    if (!LANGS.includes(next) && next !== "auto") return;
+    if (!hasDom) { if (next !== "auto") lang = next; return; }   // Node(테스트): 바로 바꿈 (그다음 apply)
+    if (start.preview || !ready()) store.set(sessionStorage, "rl_lang_preview", next === "ko" || next === "auto" ? null : next);
+    else store.set(localStorage, "rl_game_lang", next === "auto" ? null : next);
     if (reload) location.reload();
+  }
+  // 접속한 IP의 나라를 서버에 물어 "rl_geo"에 보관 (url: 서버의 geo 경로). IP는 서버가 저장하지 않음
+  // 처음 방문(보관된 나라 없음)이고 직접 고른 언어도 없는데 나라로 정한 언어가 지금과 다르면 한 번만 다시 읽음
+  async function detectGeo(url) {
+    if (!hasDom || !url || start.preview || !ready()) return null;
+    if (LANGS.includes(store.get(localStorage, "rl_game_lang"))) return null;
+    const old = geoCache();
+    if (old && Date.now() - old.t < GEO_MS) return old.c;
+    let c = null;
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) c = (await res.json()).country || null;
+    } catch {}
+    if (c !== null && !/^[A-Z]{2}$/.test(c)) c = null;
+    store.set(localStorage, "rl_geo", JSON.stringify({ c, t: Date.now() }));
+    if (!old && autoLang() !== lang && !store.get(sessionStorage, "rl_geo_reload")) {
+      store.set(sessionStorage, "rl_geo_reload", "1");
+      location.reload();
+    }
+    return c;
   }
 
   const api = {
     LANGS, LANG_NAMES, READY,
     get lang() { return lang; },
     get preview() { return start.preview; },
+    get ready() { return ready(); },
+    get chosen() { const c = hasDom ? store.get(localStorage, "rl_game_lang") : null; return LANGS.includes(c) ? c : null; },
     add(code, p) {
       const old = packs[code] || { data: {}, text: {}, fmt: {}, ui: {} };
       packs[code] = { data: { ...old.data, ...(p.data || {}) }, text: { ...old.text, ...(p.text || {}) }, fmt: { ...old.fmt, ...(p.fmt || {}) }, ui: { ...old.ui, ...(p.ui || {}) } };
@@ -150,7 +187,7 @@
     t, translateDom, missing,
     uiDump: () => ({ ...((pack() || {}).ui || {}) }),   // 도구(번역 표 만들기)용
     has: (code) => code === "ko" || !!packs[code],
-    tx, fmt, apply, setLang,
+    tx, fmt, apply, setLang, detectGeo, langOf,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   root.RLI18N = api;

@@ -1012,5 +1012,6 @@
     "번개 저항 최대치 + 아이템 발견 +15% (두 개면 +30%). 싸울 때는 여우불·명부의 반지가 낫고, 파밍할 때 써요": "Max Lightning Resistance + Magic Find +15% (+30% with two). In fights Foxfire and Underworld rings are better; use it for farming",
     "로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}": "You entered the lobby. The left gate of the dungeon entrance starts from floor 1, the right gate from floor {0}.{1}",
     "로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}": "You entered the lobby. The left gate of the dungeon entrance starts from floor 1, the right gate from your best floor − 10 (opens once you reach floor 12).{0}",
+    "🌐 자동 ({0})": "🌐 Auto ({0})",
   } });
 })(typeof self !== "undefined" ? self : this);

@@ -38,4 +38,8 @@ return [
 
     // 광고 보상: 광고를 시작하고 최소 몇 초가 지나야 보상을 줄지 (광고를 안 보고 바로 보상을 받는 걸 막음)
     'ad_min_seconds' => 5,
+
+    // (선택) 게임 언어 자동 설정용 나라 찾기: MaxMind GeoLite2-Country .mmdb 파일 경로 (maxmind-db/reader가 있을 때)
+    //   Cloudflare를 거치거나 웹 서버/PHP에 GeoIP 모듈이 있으면 비워 둬도 돼요. 없으면 게임은 브라우저 언어로
+    'geo_mmdb' => '',
 ];
