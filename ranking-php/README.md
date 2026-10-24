@@ -185,6 +185,31 @@ sudo -u www-data php gift.php --resume <이메일>
 캐시는 이미 받은 것으로 표시하고, 다음 "받기"에서 골드·아이템만 들어가요 (캐시를 다시 지급하지 않아요).
 지금 버전은 캐시를 지급하거나 받은 순간을 바로 기록해서, 중간에 오류가 나도 다음 "받기"나 1분 뒤 자동으로 마무리돼요.
 
+## Xsolla 웹훅 (webhook.php)
+
+Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주소예요. 예: `https://apacimtest.com/ranking/webhook.php`
+
+- **1단계 (지금)**: 기록만 해요. 아이템·캐시는 지금처럼 상점 화면이 Xsolla 인벤토리에서 받아 가고, 여기서는 지급하지 않아요
+  - `user_validation` → 204 / `order_paid`·`order_canceled` → 주문 번호로 한 번만 기록 / `payment`·`refund`(예전 방식 프로젝트) → 거래 번호로 한 번만 기록 / 그 밖 → 204
+  - 같은 웹훅이 다시 와도(Xsolla 재전송) 204만 돌려주고 두 번 기록하지 않아요
+  - 다른 프로젝트 번호가 적힌 웹훅은 400으로 거절해요
+- **서명**: `Authorization: Signature <sha1(받은 본문 + 비밀 키)>`. 틀리면 `400 INVALID_SIGNATURE`. 비밀 키가 설정되지 않았으면 `500 NOT_CONFIGURED`
+- **개인정보**: 이메일·IP·사용자 ID 원본은 저장하지 않아요. 사용자는 게임과 같은 HMAC 키로만, 주문은 SKU·수량·금액·sandbox 여부만 (`xsolla_events` 표)
+
+### 켜는 순서 (웹훅이 오류를 내면 결제가 막힐 수 있어서 이 순서로)
+
+1. `webhook.php`를 서버에 올리기 (아래 "업데이트")
+2. Publisher Account → 프로젝트 → 프로젝트 설정 → 웹훅의 **비밀 키**를 `config.php`에 넣기: `'webhook_secret' => '...'` (저장소·채팅에 올리지 않기)
+3. 서버에서 서명이 맞는 가짜 웹훅으로 확인 (204가 나와야 함, 키는 화면에 나오지 않음)
+   ```bash
+   cd /var/www/html/ranking
+   B='{"notification_type":"user_validation","settings":{"project_id":317991},"user":{"id":"selftest"}}'
+   S=$(sudo php -r '$c = require "config.php"; echo sha1($argv[1] . $c["webhook_secret"]);' "$B")
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST -H "Authorization: Signature $S" -H 'Content-Type: application/json' --data "$B" https://apacimtest.com/ranking/webhook.php
+   ```
+4. Publisher Account에서 이 프로젝트의 웹훅 주소만 `https://apacimtest.com/ranking/webhook.php`로 바꾸고 "테스트" 보내기 → sandbox 결제 한 번
+5. 받은 기록 보기: `sudo -u www-data php admin.php webhooks [개수]`
+
 ## 랭킹 관리 (admin.php)
 
 지금 시즌(v4 베타) 기록을 보거나, 규칙에 맞지 않는 기록(예: 예전 장비를 끼고 올라간 기록)을 지울 때 써요. 서버에서 명령으로만 실행돼요.
@@ -192,6 +217,7 @@ sudo -u www-data php gift.php --resume <이메일>
 ```bash
 sudo -u www-data php admin.php list [개수] [시즌]      # 층 랭킹: 순위, 이름, 최고 층, 공개 ID (시즌 v4 기본, nm 나이트메어, v3)
 sudo -u www-data php admin.php remove <공개ID> [시즌]  # 그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로)
+sudo -u www-data php admin.php webhooks [개수]         # Xsolla 웹훅 기록 최근 순 (종류, 주문·거래 번호, sandbox 여부, SKU×수량, 금액)
 ```
 
 ## 업데이트
@@ -200,7 +226,7 @@ sudo -u www-data php admin.php remove <공개ID> [시즌]  # 그 사람의 그 �
 
 ```bash
 cd /tmp && rm -rf dungeon && git clone --depth 1 https://github.com/hucksoon/dungeon-crawler.git dungeon
-sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /var/www/html/ranking/
+sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /tmp/dungeon/ranking-php/webhook.php /var/www/html/ranking/
 ```
 
 DB 표는 다음 요청 때 새 칸이 자동으로 추가돼요.
