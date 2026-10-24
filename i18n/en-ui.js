@@ -8,6 +8,8 @@
     "⚔ 던전 크롤러 ⚔": "⚔ Dungeon Crawler ⚔",
     "인벤토리 (I)": "Inventory (I)",
     "도감 (B)": "Codex (B)",
+    "그림으로 보기": "Pixel view",
+    "글자로 보기": "Text view",
     "상점": "Shop",
     "랭킹": "Ranking",
     "포탈 (P)": "Portal (P)",

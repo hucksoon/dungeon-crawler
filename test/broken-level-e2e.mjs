@@ -1,4 +1,5 @@
 // 예전 버전이 저장한 깨진 층(좌표 없는 보스) → 불러와도 플레이어가 보이고 보스는 빈 칸으로 옮겨짐
+// 플레이어 @를 흰 픽셀로 찾으므로 글자 모드(rl_gfx=text)로. 캔버스는 화면 좌표의 k배 (1.6)
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
 const require = createRequire(process.env.NODE_PATH + "/");
@@ -30,11 +31,11 @@ try {
       r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
     await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
     await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
+      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_gfx", "text"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
     await page.goto(ORIGIN); await page.waitForTimeout(500);
     check(`${name}: no page errors when loading the broken floor`, errors.length === 0, errors.join("; "));
     check(`${name}: HUD shows floor ${D} and HP (not --)`, (await page.locator("#depth").innerText()) === String(D) && !(await page.locator("#stats").innerText()).includes("--"), await page.locator("#stats").innerText());
-    const white = await page.evaluate(([x, y]) => { const c = document.querySelector("canvas"), g = c.getContext("2d"); const d = g.getImageData(x * 20, y * 20, 20, 20).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240) n++; return n; }, [5, 5]);
+    const white = await page.evaluate(([x, y]) => { const c = document.querySelector("canvas"), g = c.getContext("2d"); const k = c.width / 640, d = g.getImageData(x * 20 * k, y * 20 * k, 20 * k, 20 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240) n++; return n; }, [5, 5]);
     check(`${name}: player @ drawn at its saved spot`, white > 10, String(white));
     await page.keyboard.press(" "); await page.waitForTimeout(200);
     const L = await page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));

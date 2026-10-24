@@ -130,7 +130,8 @@
     border-radius: 8px;
     background: #000;
     box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-    image-rendering: pixelated;
+    width: 640px;
+    height: auto;
     max-width: 100%;
   }
   #log {
@@ -414,6 +415,7 @@
     border-radius: 6px;
   }
   .dex-card .glyph { grid-row: span 3; font-size: 22px; font-weight: bold; text-align: center; }
+  .pix { display: inline-block; width: 32px; height: 32px; vertical-align: middle; background: url(img/sprites.png) no-repeat; image-rendering: pixelated; }
   .dex-card .meta { opacity: 0.6; font-size: 11px; }
   .dex-card.unknown { opacity: 0.45; }
   .dex-card.here { border-color: var(--accent); }
@@ -495,6 +497,7 @@
     <button id="account-btn" type="button"></button>
     <button id="inv-btn" type="button" data-t>인벤토리 (I)</button>
     <button id="dex-btn" type="button" data-t>도감 (B)</button>
+    <button id="gfx-btn" type="button" hidden></button>
     <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
     <select id="lang-select" aria-label="Language" hidden></select>
@@ -694,6 +697,7 @@
 <script src="i18n/ja-ui.js"></script>
 <script src="items.js"></script>
 <script src="monsters.js"></script>
+<script src="sprites.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -711,13 +715,15 @@
   // ---- 설정 ----
   const TILE = 20;                 // 타일 픽셀 크기
   const MAP_W = 32, MAP_H = 24;    // 맵 크기(타일 단위)
+  const VIEW_W = MAP_W * TILE, VIEW_H = MAP_H * TILE;   // 화면 크기 (그리는 좌표)
+  const PX = 1.6;                  // 캔버스 실제 픽셀 = 그리는 좌표 × 1.6 (픽셀 그림 32px = TILE 20 × 1.6)
   const canvas = document.getElementById("game");
   const popups = document.getElementById("popups");
 
   // 피해 숫자: 맞은 칸 위에 떠올랐다 사라짐. 치명타는 굵고 크게
   // color: 속성 피해(화상·번개 튕김)는 그 속성 색
   function showDamage(target, dmg, crit, color) {
-    const scale = canvas.clientWidth / canvas.width;
+    const scale = canvas.clientWidth / VIEW_W;
     const d = document.createElement("div");
     d.className = typeof dmg === "string" ? "dmg parry" : crit ? "dmg crit" : "dmg";
     d.textContent = dmg;
@@ -729,8 +735,10 @@
     setTimeout(() => d.remove(), 2000);  // 애니메이션이 꺼진 환경 대비
   }
   const ctx = canvas.getContext("2d");
-  canvas.width = MAP_W * TILE;
-  canvas.height = MAP_H * TILE;
+  canvas.width = VIEW_W * PX;
+  canvas.height = VIEW_H * PX;
+  ctx.setTransform(PX, 0, 0, PX, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 
   // 타일 종류
   const WALL = 0, FLOOR = 1, STAIRS = 2;
@@ -3618,7 +3626,7 @@
     // 층 랭킹 1~3위는 이름 왼쪽에 금·은·동 왕관
     const person = (x, y, name, color, portal, crown, staff) => {
       const cx = x * TILE + TILE / 2, by = y * TILE - 2;
-      drawGlyph("@", x * TILE, y * TILE, color);
+      drawArt("player", "@", x * TILE, y * TILE, color);
       drawLabel(name, cx, by, staff ? STAFF_COLOR : color, 11);
       ctx.font = `bold 11px "Courier New", monospace`;
       const left = cx - ctx.measureText(name).width / 2;
@@ -3698,18 +3706,91 @@
   }
 
   // ---- 렌더링 ----
+  // ---- 픽셀 그림 (img/sprites.png, 만들기: tools/sprites-build.mjs) ----
+  // 그림을 아직 못 받았거나 못 받으면, 또는 글자 모드를 고르면 예전처럼 글자로 그림
+  const GFX_KEY = "rl_gfx";
+  const Sprites = (() => {
+    const S = window.RLSprites, sheet = new Image();
+    let ready = false, text = store.get(GFX_KEY) === "text";
+    const btn = document.getElementById("gfx-btn");
+    const label = () => { btn.textContent = text ? T("그림으로 보기") : T("글자로 보기"); };
+    if (S) {
+      sheet.onload = () => { ready = true; btn.hidden = false; label(); try { render(); } catch {} };
+      sheet.src = S.src;
+      btn.addEventListener("click", () => {
+        text = !text;
+        if (text) store.set(GFX_KEY, "text"); else store.del(GFX_KEY);
+        label();
+        render();
+        btn.blur();   // 방향키·단축키가 버튼으로 가지 않게
+      });
+    }
+    return {
+      get on() { return ready && !text; },
+      has: (name) => !!S?.map[name],
+      // 화면 글(도감 등)에 넣을 그림 칸: 그림 모드가 아니거나 없으면 null
+      icon(name) {
+        const c = this.on && S.map[name];
+        return c ? el("span", { className: "pix", style: { backgroundPosition: `-${c[0] * S.size}px -${c[1] * S.size}px` } }) : null;
+      },
+      // (px, py) 칸에 그림 하나. 없는 이름이면 false (그러면 글자로)
+      draw(name, px, py) {
+        const c = S?.map[name];
+        if (!c) return false;
+        ctx.drawImage(sheet, c[0] * S.size, c[1] * S.size, S.size, S.size, px, py, TILE, TILE);
+        return true;
+      },
+    };
+  })();
+  // 지역마다 다른 바닥·벽 (골드 던전 악몽도 골드)
+  const zoneArt = () => (inHell() ? "hell" : inNM() ? "nm" : inGold() ? "gold" : "normal");
+  // 칸마다 무늬 4가지 중 하나 (같은 칸은 늘 같은 무늬)
+  const tileVar = (x, y) => ((x * 7349 + y * 2797 + ((x * y) >> 2)) >>> 0) % 4;
+  // 바닥 아이템 그림 이름
+  function itemArt(it) {
+    if (it.type === "treasure") return "item_treasure";
+    if (it.type === "potion") return "item_potion";
+    if (it.type === "gem") return `gem_${it.gem}`;
+    if (it.type === "rune") return "rune";
+    if (it.type === "gold") return it.amount >= 50 ? "gold_l" : "gold_s";
+    const g = it.item;
+    if (RLItems.isWeaponLike(g)) return `item_${g.type}`;
+    return g.type === "shield" ? "item_shield" : `item_${g.slot}`;
+  }
+  // 그림 모드면 그림, 아니면 글자 (아이템·포탈처럼 빛을 두르는 것도 같은 ctx 설정을 그대로 씀)
+  function drawArt(name, ch, px, py, color) {
+    if (!(Sprites.on && Sprites.draw(name, px, py))) drawGlyph(ch, px, py, color);
+  }
+  // 등급 색의 은은한 빛 (그림 모드에서 아이템 아래)
+  function drawAura(px, py, color) {
+    if (!Sprites.on) return;
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px + TILE / 2, py + TILE / 2 + 1, TILE * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function render() {
     ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     if (scene === "lobby") { renderLobby(); return; }
 
+    const art = Sprites.on, zone = zoneArt();
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         if (!seen[y][x]) continue;
         const lit = visible[y][x];
         const px = x * TILE, py = y * TILE;
         const t = map[y][x];
-        if (t === WALL) {
+        if (art) {
+          Sprites.draw(`${t === WALL ? "wall" : "floor"}_${zone}_${tileVar(x, y)}`, px, py);
+          if (t === STAIRS) Sprites.draw("stairs", px, py);
+          // 지금 안 보이는 (기억만 하는) 칸은 어둡게
+          if (!lit) { ctx.fillStyle = "rgba(0, 0, 0, 0.55)"; ctx.fillRect(px, py, TILE, TILE); }
+        } else if (t === WALL) {
           ctx.fillStyle = lit ? "#3a3f52" : "#1c1f2b";
           ctx.fillRect(px, py, TILE, TILE);
         } else {
@@ -3724,21 +3805,26 @@
     }
 
     // 상점
-    if (shop && seen[shop.y][shop.x]) drawGlyph("&", shop.x * TILE, shop.y * TILE, visible[shop.y][shop.x] ? SHOP_COLOR : "#2c6f7a");
+    if (shop && seen[shop.y][shop.x]) {
+      drawArt("shop", "&", shop.x * TILE, shop.y * TILE, visible[shop.y][shop.x] ? SHOP_COLOR : "#2c6f7a");
+      if (Sprites.on && !visible[shop.y][shop.x]) { ctx.fillStyle = "rgba(0, 0, 0, 0.55)"; ctx.fillRect(shop.x * TILE, shop.y * TILE, TILE, TILE); }
+    }
 
     // 아이템
     for (const it of items) {
       if (!visible[it.y]?.[it.x]) continue;  // 좌표가 이상한 것 하나 때문에 화면 전체가 멈추지 않게
       const px = it.x * TILE, py = it.y * TILE;
-      if (it.type === "treasure" || it.type === "potion") drawGlyph("!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
+      const name = itemArt(it);
+      if (it.type === "treasure" || it.type === "potion") drawArt(name, "!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
       else if (it.type === "gear") {
+        drawAura(px, py, isUnique(it.item) ? RLItems.RARITIES.unique.color : isRainbow(it.item) && !reduceMotion ? rainbowColor(it.x + it.y) : rarityColor(it.item));
         const glyph = RLItems.isWeaponLike(it.item) ? ")" : it.item.type === "shield" ? "]" : it.item.slot === "neck" ? "\"" : it.item.slot === "ring" ? "=" : "[";   // 목걸이 " · 반지 =
         if (isUnique(it.item)) {
           // 유니크: 금빛으로 강하게 빛남 (깜빡이듯 밝기가 바뀜)
           ctx.save();
           ctx.shadowColor = "#ffd76a";
           ctx.shadowBlur = reduceMotion ? 12 : 10 + 8 * Math.abs(Math.sin(performance.now() / 300));
-          drawGlyph(glyph, px, py, RLItems.RARITIES.unique.color);
+          drawArt(name, glyph, px, py, RLItems.RARITIES.unique.color);
           ctx.restore();
         } else if (isRainbow(it.item) && !reduceMotion) {
           // 레전더리·세트: 무지개색으로 계속 바뀌고 은은하게 빛남
@@ -3746,38 +3832,42 @@
           ctx.save();
           ctx.shadowColor = color;
           ctx.shadowBlur = 10;
-          drawGlyph(glyph, px, py, color);
+          drawArt(name, glyph, px, py, color);
           ctx.restore();
-        } else drawGlyph(glyph, px, py, rarityColor(it.item));
+        } else drawArt(name, glyph, px, py, rarityColor(it.item));
       }
-      else if (it.type === "gem") drawGlyph("♦", px, py, RLItems.GEMS[it.gem]?.color || "#fff");
+      else if (it.type === "gem") drawArt(name, "♦", px, py, RLItems.GEMS[it.gem]?.color || "#fff");
       else if (it.type === "rune") {
         // 룬: 보석과 같은 ♦인데 레전더리처럼 무지개색으로 계속 바뀌고 빛남
-        if (reduceMotion) { drawGlyph("♦", px, py, "#ff6bd3"); continue; }
+        if (reduceMotion) { drawArt(name, "♦", px, py, "#ff6bd3"); continue; }
         const color = rainbowColor(it.x + it.y);
         ctx.save();
         ctx.shadowColor = color;
         ctx.shadowBlur = 10;
-        drawGlyph("♦", px, py, color);
+        drawArt(name, "♦", px, py, color);
         ctx.restore();
       }
-      else drawGlyph("$", px, py, "#ffcf5c");
+      else drawArt(name, "$", px, py, "#ffcf5c");
     }
 
     // 적
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
       const px = e.x * TILE, py = e.y * TILE;
+      // 그림 모드: 몬스터 그림을 먼저, 테두리·상태·속성 점은 그 위에
+      const pic = Sprites.on && Sprites.has(`mon_${e.id}`);
       if (e.kind === "golden") {
         // 황금 고블린은 금빛 칸으로 표시. 정예는 금색, 왕은 빨간 테두리를 더함
         ctx.fillStyle = "rgba(255, 215, 0, 0.3)";
         ctx.fillRect(px, py, TILE, TILE);
+        if (pic) Sprites.draw(`mon_${e.id}`, px, py);
         if (e.rank === "elite" || e.rank === "king") {
           ctx.strokeStyle = e.rank === "king" ? BOSS_COLOR : ELITE_COLOR;
           ctx.lineWidth = 2;
           ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         }
-      } else if (e.kind !== "normal") {
+      } else if (pic) Sprites.draw(`mon_${e.id}`, px, py);
+      if (e.kind !== "normal" && e.kind !== "golden") {
         // 정예는 금색, 보스는 빨간 테두리로 구분
         // 헬 네임드 보스는 분홍 테두리 두 겹 (분신은 분홍 한 겹)
         ctx.strokeStyle = e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : ELITE_COLOR;
@@ -3786,7 +3876,7 @@
         if (e.named) ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
       }
       drawStatus(e, px, py);
-      drawGlyph(e.ch, px, py, e.color);
+      if (!pic) drawGlyph(e.ch, px, py, e.color);
       // 속성 몬스터: 오른쪽 위에 속성 색 점
       if (e.el) {
         ctx.fillStyle = EL.colors[e.el];
@@ -3796,7 +3886,7 @@
 
     // 플레이어
     drawStatus(player, player.x * TILE, player.y * TILE);
-    drawGlyph("@", player.x * TILE, player.y * TILE, "#ffffff");
+    drawArt("player", "@", player.x * TILE, player.y * TILE, "#ffffff");
 
     // 세트 스킬 칸 (잠깐 번쩍임)
     const now = performance.now();
@@ -3829,7 +3919,7 @@
     ctx.fillRect(px, py, TILE, TILE);
     ctx.save();
     if (!reduceMotion) { ctx.shadowColor = PORTAL_COLOR; ctx.shadowBlur = 8 + 6 * glow; }
-    drawGlyph("*", px, py, PORTAL_COLOR);
+    drawArt("portal", "*", px, py, PORTAL_COLOR);
     ctx.restore();
   }
 
@@ -5102,7 +5192,7 @@
         el("span", { className: "meta" }, T("아직 만나지 못했어요")));
     }
     return el("div", { className: `dex-card${rate ? " here" : ""}` },
-      el("span", { className: "glyph", style: { color: color || m.color } }, m.ch),
+      el("span", { className: "glyph", style: { color: color || m.color } }, Sprites.icon(`mon_${m.id}`) || m.ch),
       el("b", {}, m.name, rate ? el("span", { className: "meta" }, T(" · 이번 층 {0}", rate)) : null),
       el("span", {}, T("HP {0} · 공격 {1} · 방어 {2} · 경험치 {3}", m.hp, m.atk, m.def, m.xp)),
       el("span", { className: "meta" }, T("{0} · 처치 {1}", floors, Dex.kills(m.id)) + (extra ? ` · ${extra}` : "")));
