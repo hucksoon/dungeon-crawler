@@ -36,6 +36,10 @@ return [
     'xsolla_api_key' => '',
     'cash_sku' => 'cash',
 
+    // Xsolla 웹훅(webhook.php) 비밀 키: Publisher Account → 프로젝트(xsolla_project_id) → 웹훅의 비밀 키.
+    //   비어 있으면 webhook.php는 500(설정 안 됨)만 돌려줌. 웹훅 주소를 바꾸기 전에 먼저 넣기
+    'webhook_secret' => '',
+
     // 광고 보상: 광고를 시작하고 최소 몇 초가 지나야 보상을 줄지 (광고를 안 보고 바로 보상을 받는 걸 막음)
     'ad_min_seconds' => 5,
 

@@ -15,6 +15,9 @@
 //   sudo -u www-data php admin.php geo [IP] [DB 파일]
 //     게임 언어 자동 설정용 나라 DB 확인: 파일 위치·종류·만든 날짜와 그 IP(기본 8.8.8.8)의 나라. geo-update.sh가 새 DB를 쓰기 전에도 씀
 //
+//   sudo -u www-data php admin.php webhooks [개수]
+//     Xsolla 웹훅(webhook.php)으로 받은 주문 기록 최근 순: 시각, 종류, 주문·거래 번호, sandbox 여부, SKU×수량, 금액, 사용자(HMAC 앞 8자리)
+//
 //   sudo -u www-data php admin.php remove <공개ID> [시즌]
 //     그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로). 공개 ID는 list나 랭킹 화면 장비 보기 주소에서 확인
 //     예전 장비를 끼고 올라간 기록처럼 규칙에 맞지 않는 기록을 정리할 때 씀. 그 사람이 규칙대로 다시 하면 다시 올라감
@@ -41,6 +44,22 @@ if ($cmd === 'geo') {
     $c = geo_lookup($ip, $path);
     echo "{$ip} → " . ($c ?? '(모름)') . "\n";
     exit($c === null ? 2 : 0);
+}
+
+if ($cmd === 'webhooks') {
+    define('WEBHOOK_NO_ROUTE', true);
+    require __DIR__ . '/webhook.php';
+    webhook_tables(db());
+    $limit = max(1, min(200, (int)($argv[2] ?? 20)));
+    $rows = db()->query("SELECT * FROM xsolla_events ORDER BY created_at DESC LIMIT {$limit}")->fetchAll();
+    $total = (int)q_val('SELECT COUNT(*) FROM xsolla_events');
+    echo "웹훅 기록 {$total}건 (최근 " . count($rows) . "건)\n";
+    foreach ($rows as $r) {
+        $items = implode(', ', array_map(function ($i) { return "{$i['sku']}×{$i['quantity']}"; }, json_decode((string)$r['items'], true) ?: []));
+        printf("%s  %-14s 주문 %-12s 거래 %-12s %s %s %s  %s  사용자 %s\n", date('Y-m-d H:i:s', intdiv((int)$r['created_at'], 1000)), $r['type'], $r['order_id'] ?? '-', $r['tx_id'] ?? '-',
+            $r['sandbox'] ? '[sandbox]' : '[실결제]', $r['amount'] ?? '', $r['currency'] ?? '', $items !== '' ? $items : '-', $r['user_key'] ? substr($r['user_key'], 0, 8) : '-');
+    }
+    exit(0);
 }
 
 if ($cmd === 'devices') {
@@ -102,4 +121,4 @@ if ($cmd === 'remove') {
     exit(0);
 }
 
-fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  시즌: v4(기본), nm(나이트메어), v3");
+fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  시즌: v4(기본), nm(나이트메어), v3");
