@@ -12,6 +12,7 @@
 <meta property="og:title" content="[네이버 옮기기] 장검에서 헬 던전까지, 가장 길었던 하루">
 <meta property="og:description" content="장검, 홈과 보석, 대장간, 룬과 룬워드에 이어 마지막 던전인 헬 던전과 네임드 보스, 유니크 아이템까지 만든 날의 기록이에요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-21.html">
+
 <style>
   :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
   * { box-sizing: border-box; }
@@ -32,6 +33,9 @@
   .post:hover { border-color: var(--accent); }
   .post b { color: var(--accent); font-size: 16px; }
   .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
 
@@ -55,6 +59,7 @@
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
+<p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/hell-named.png" download="2026-10-21-1-hell-named.png">1. 헬 10층 네임드 보스 불가사리: 갑옷을 갉아먹어 방어력을 깎아요</a></p>
 <div id="paper">
 <p style="font-size:16px;line-height:1.8;margin:0 0 16px;">오늘은 정말 긴 하루였어요. 방패가 왜 약한지 재는 것에서 시작해서 새 무기, 소켓, 대장간, 룬과 룬워드를 거쳐 마지막 던전인 <strong>헬 던전</strong>까지 만들었어요. 거의 모든 결정을 Claude와 함께 시뮬레이션으로 먼저 재 보고 정했는데, 그 과정도 같이 소개할게요.</p>
 <h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">방패는 왜 약할까: 장검의 탄생</h2>
@@ -95,6 +100,7 @@
 <p style="font-size:16px;line-height:1.8;margin:0 0 16px;">처음 시뮬레이션에서는 커먼 재료라 대부분 고대 레전더리보다 약했어요. 그래서 룬워드가 완성되면 <strong>주 능력치를 레전더리 수준으로</strong> 올리고, 약한 룬워드는 수치를 보완했어요.</p>
 <h2 style="font-size:22px;font-weight:bold;margin:32px 0 12px;">마지막 던전, 헬 던전</h2>
 <p style="font-size:16px;line-height:1.8;margin:0 0 16px;">로비 <strong>맨 위</strong>에 화려한 헬 던전 건물이 생겼어요. 용암처럼 일렁이는 벽돌 줄눈, 지붕 위 불꽃, 양쪽 화로까지 있어요. 나이트메어를 완료해야 들어갈 수 있어요.</p>
+<figure style="margin:0 0 20px;text-align:center;"><img src="https://game.apacimtest.com/blog/images/hell-named.png" alt="헬 10층 네임드 보스 불가사리: 갑옷을 갉아먹어 방어력을 깎아요" loading="lazy" style="max-width:100%;height:auto;"><figcaption style="font-size:14px;color:#777;margin-top:6px;">헬 10층 네임드 보스 불가사리: 갑옷을 갉아먹어 방어력을 깎아요</figcaption></figure>
 <ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>50층, 모든 몬스터에게 <strong>속성 저항</strong>이 있고 헬에서는 내 저항이 −10%예요</li><li>&quot;지옥의&quot; 아이템과 지옥 강화석이 따로 나오고, 헬 랭킹도 따로예요</li><li>완료한 10~50층은 오른쪽 문에서 골라 들어갈 수 있어요</li></ul>
 <p style="font-size:16px;line-height:1.8;margin:0 0 16px;">10층마다 이름 있는 <strong>네임드 보스</strong>가 기다려요. 우리 옛이야기에서 가져왔어요.</p>
 <ul style="font-size:16px;line-height:1.8;margin:0 0 16px;padding-left:24px;"><li>10층 <strong>불가사리</strong>: 공격이 들어갈 때마다 내 방어력을 갉아요</li><li>20층 <strong>구미호</strong>: HP가 절반 아래면 분신 2마리를 불러요</li><li>30층 <strong>이무기</strong>: 3턴마다 꼬리 휩쓸기, 한 턴 전에 예고해요</li><li>40층 <strong>저승사자</strong>: 눈이 마주치면 포탈을 쓸 수 없고 흡혈이 절반이 돼요</li><li>50층 <strong>염라대왕</strong>: 3턴마다 속성이 바뀌고, HP 30% 아래면 분노해요</li></ul>

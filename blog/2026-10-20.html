@@ -11,6 +11,8 @@
 <meta property="og:title" content="파이어볼, 프로스트 노바, 체인 라이트닝 — 던전 크롤러 개발 블로그">
 <meta property="og:description" content="나이트메어에서 버는 골드를 늘리고, 스킬이 생기는 속성 세트 세 가지와 레전더리를 위한 전설의 힘을 만들었어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-20.html">
+<meta property="og:image" content="https://game.apacimtest.com/blog/images/fireset.png">
+
 <style>
   :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
   * { box-sizing: border-box; }
@@ -31,6 +33,9 @@
   .post:hover { border-color: var(--accent); }
   .post b { color: var(--accent); font-size: 16px; }
   .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
 </style>
@@ -53,6 +58,7 @@
 <ul><li>1층에서 약 9,000골드</li><li>5층까지 누적 약 <strong>49,000골드</strong>. 4층 상점에서 레전더리를 사고 진열을 바꾸고도 고대 굴리기를 10번쯤 할 수 있어요</li><li>1~50층 한 번이면 약 <strong>74만 골드</strong></li></ul>
 <h2>속성 세트: 세트를 맞추면 스킬이 생겨요</h2>
 <p>아이디어는 &quot;속성마다 방어구 5세트를 만들고, 세트 효과로 스킬이 생기게 하자&quot;였어요. 나이트메어 전용이고, 나이트메어에서 얻은 세트 방어구는 시험·화염·서리·뇌전 세트가 1/4씩 나와요. 2세트부터 스킬이 <strong>2턴마다 자동으로</strong> 나가요.</p>
+<figure><img src="images/fireset.png" alt="화염의 세트 5개를 모두 입었을 때: 파이어볼과 세트 효과" loading="lazy"><figcaption>화염의 세트 5개를 모두 입었을 때: 파이어볼과 세트 효과</figcaption></figure>
 <ul><li><strong>🔥 화염의 세트 (무리 사냥)</strong>: 2세트 <strong>파이어볼</strong>. 3칸 안 가장 가까운 적을 중심으로 3×3 폭발, 공격력의 80%. 4세트는 피해 +50%·최대 HP +15%, 5세트는 맞은 적 모두 화상</li><li><strong>❄ 서리의 세트 (생존)</strong>: 2세트 <strong>프로스트 노바</strong>. 내 주변 8칸의 적 모두에게 공격력의 70%. 4세트는 피해 +50%·방어력 +10%, 5세트는 맞은 적 모두 느려짐</li><li><strong>⚡ 뇌전의 세트 (보스)</strong>: 2세트 <strong>체인 라이트닝</strong>. 가장 가까운 적부터 2번 튕기며 한 번에 40%. 5세트는 4번 튕기고, 다른 적이 없으면 같은 적이 다시 맞아요. 거기에 <strong>감전</strong>(3턴 동안 받는 피해 +20%)까지</li></ul>
 <p>이 게임은 캐릭터가 바라보는 방향이 없어서, 파이어볼은 &quot;앞으로 쏘기&quot; 대신 가장 가까운 적을 중심으로 터지게 했어요. 쏠 적이 없으면 준비된 채로 기다려요.</p>
 <h3>시뮬레이션으로 역할 나누기</h3>

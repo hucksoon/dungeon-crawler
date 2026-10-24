@@ -21,9 +21,11 @@ for (const [what, body] of [["IP address", "서버 10.0.0.12에 올렸어요"], 
   const r = bad(body);
   check(`privacy guard blocks ${what}`, r.status === 1 && r.stderr.includes("공개하면 안 되는 내용") && !fs.existsSync(path.join(tmp, "blog/2026-01-01.html")), r.stderr);
 }
-const good = bad("## 오늘\n\n- **굵게** 와 `코드`, [게임](https://game.apacimtest.com/)\n  - 들여쓴 줄\n\n> 인용");
+fs.mkdirSync(path.join(tmp, "blog/images"), { recursive: true }); fs.copyFileSync(path.join(REPO, "blog/images/dungeon.png"), path.join(tmp, "blog/images/a.png"));
+check("missing image file stops the build", bad("![없는 그림](images/none.png)").stderr.includes("이미지가 없어요"));
+const good = bad("## 오늘\n\n- **굵게** 와 `코드`, [게임](https://game.apacimtest.com/)\n  - 들여쓴 줄\n\n> 인용\n\n![던전 화면](images/a.png)");
 const html = fs.existsSync(path.join(tmp, "blog/2026-01-01.html")) ? fs.readFileSync(path.join(tmp, "blog/2026-01-01.html"), "utf8") : "";
-check("clean post builds: headings, nested list, bold, code, link, quote", good.status === 0 && html.includes("<h2>오늘</h2>") && html.includes("<strong>굵게</strong>") && html.includes("<code>코드</code>") && html.includes('<a href="https://game.apacimtest.com/">게임</a>') && /<li>.*<ul><li>들여쓴 줄<\/li><\/ul><\/li>/.test(html) && html.includes("<blockquote>인용</blockquote>"), good.stderr);
+check("clean post builds: headings, nested list, bold, code, link, quote", good.status === 0 && html.includes("<h2>오늘</h2>") && html.includes("<strong>굵게</strong>") && html.includes("<code>코드</code>") && html.includes('<a href="https://game.apacimtest.com/">게임</a>') && /<li>.*<ul><li>들여쓴 줄<\/li><\/ul><\/li>/.test(html) && html.includes("<blockquote>인용</blockquote>") && html.includes('<figure><img src="images/a.png" alt="던전 화면" loading="lazy"><figcaption>던전 화면</figcaption></figure>'), good.stderr);
 check("HTML in a post is escaped, not injected", bad("<script>alert(1)</script> 글").status === 1 || !fs.readFileSync(path.join(tmp, "blog/2026-01-01.html"), "utf8").includes("<script>alert"));
 fs.rmSync(tmp, { recursive: true, force: true });
 
@@ -49,6 +51,15 @@ try {
     if (!(t.length > 300 && (await page.locator("article h2").count()) >= 2)) { check(`post ${slug} has content`, false, t.slice(0, 120)); break; }
   }
   check("every post has a body and sections", results.at(-1) !== false);
+  let broken = [];
+  for (const slug of posts) {
+    await page.goto(`https://game.apacimtest.com/blog/${slug}.html`);
+    const imgs = await page.evaluate(async () => { const list = [...document.querySelectorAll("article figure img")]; list.forEach(i => { i.loading = "eager"; }); await Promise.all(list.map(i => i.decode().catch(() => {}))); return list.map(i => ({ src: i.getAttribute("src"), ok: i.naturalWidth > 0, cap: i.closest("figure").querySelector("figcaption")?.textContent || "" })); });
+    if (!imgs.length) broken.push(`${slug}: 이미지 없음`);
+    for (const im of imgs) if (!im.ok || !im.cap) broken.push(`${slug}: ${im.src}`);
+  }
+  check("every post has at least one image, all load and have captions", broken.length === 0, broken.join(", "));
+  check("post pages share their first image (og:image)", fs.readFileSync(path.join(REPO, `blog/${posts.at(-1)}.html`), "utf8").includes('property="og:image" content="https://game.apacimtest.com/blog/images/'));
   const rss = fs.readFileSync(path.join(REPO, "blog/feed.xml"), "utf8");
   check("RSS lists every post with links", posts.every(s => rss.includes(`https://game.apacimtest.com/blog/${s}.html`)) && rss.startsWith("<?xml"));
   check("Naver pages are hidden from search (noindex)", fs.readFileSync(path.join(REPO, "blog/naver/index.html"), "utf8").includes('content="noindex"') && posts.every(s => fs.readFileSync(path.join(REPO, `blog/naver/${s}.html`), "utf8").includes('content="noindex"')));
@@ -64,6 +75,9 @@ try {
   await page.waitForFunction(() => document.getElementById("status").textContent.includes("본문"));   // 복사가 끝난 뒤 읽기
   const clip = await page.evaluate(async () => { const [it] = await navigator.clipboard.read(); return { types: it.types, html: it.types.includes("text/html") ? await (await it.getType("text/html")).text() : "" }; });
   check("② copies the body as rich HTML with inline styles and the original link", clip.types.includes("text/html") && /<h2 style="font-size:22px/.test(clip.html) && clip.html.includes(`https://game.apacimtest.com/blog/${slug}.html`) && (await page.locator("#status").innerText()).includes("본문을 복사했어요"), JSON.stringify(clip).slice(0, 200));
+  check("copied body has images with full addresses (Naver can fetch them)", /<img src="https:\/\/game\.apacimtest\.com\/blog\/images\/[\w.-]+\.png"/.test(clip.html));
+  const dl = page.locator('a[download]');
+  check("each image also has a save link (if Naver drops pasted images)", (await dl.count()) === (await page.locator("#paper img").count()) && (await dl.count()) > 0);
   await page.screenshot({ path: path.join(SHOTS, "blog-naver.png") });
   check("no page errors", errors.length === 0, errors.join("; "));
 } finally { await browser.close(); }
