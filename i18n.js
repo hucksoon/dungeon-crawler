@@ -4,15 +4,15 @@
 // - 원문은 코드 안의 한국어. 번역이 없으면 한국어를 그대로 보여 줌 (빠진 문구가 있어도 깨지지 않게)
 // - 언어: 게임에서 직접 고른 언어(localStorage "rl_game_lang") → 접속한 IP의 나라(서버 r=geo, "rl_geo"에 하루 보관)
 //   → 브라우저 언어 순. 한국 ko · 일본 ja · 나머지 en. 상점(rl_lang)과는 따로
-// - 게임 번역이 끝나기 전(READY = false)에는 게임이 항상 한국어이고,
-//   주소에 ?lang=en / ?lang=ja를 붙이면 그 탭에서만 미리 보기 (?lang=ko로 끔)
+// - 주소에 ?lang=en / ?lang=ja / ?lang=ko를 붙이면 그 탭에서만 그 언어로 미리 보기 (?lang=ko는 미리 보기를 끔)
+// - READY = false로 두면 게임은 항상 한국어 (미리 보기만 됨)
 // - 언어를 바꾸면 페이지를 다시 읽음 (아이템·몬스터 이름은 페이지를 열 때 한 번 바꿔 둠: apply)
 (function (root) {
   "use strict";
 
   const LANGS = ["ko", "en", "ja"];
   const LANG_NAMES = { ko: "한국어", en: "English", ja: "日本語" };
-  const READY = false;   // 게임 화면 번역이 끝나면 true (그때부터 IP·고른 언어를 따름)
+  const READY = true;    // 게임 화면 번역 끝 (dc#62): 고른 언어 → IP 나라 → 브라우저 언어
   const GEO_MS = 24 * 3600 * 1000;   // 나라 확인은 하루에 한 번
   const packs = {};      // { en: { data, text }, ja: … }
 
@@ -35,8 +35,7 @@
     if (!ready()) return { lang: "ko", preview: false };
     return { lang: autoLang(), preview: false };
   }
-  // 테스트에서만: READY 전에도 자동 언어를 켜 봄 (window.RL_I18N_READY = true)
-  function ready() { return READY || (hasDom && window.RL_I18N_READY === true); }
+  const ready = () => READY;
   // 나라 코드 → 언어
   const langOf = (country) => (country === "KR" ? "ko" : country === "JP" ? "ja" : country ? "en" : null);
   const geoCache = () => { try { return JSON.parse(store.get(localStorage, "rl_geo")) || null; } catch { return null; } };
@@ -163,8 +162,9 @@
     let c = null;
     try {
       const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) c = (await res.json()).country || null;
-    } catch {}
+      if (!res.ok) return null;   // 서버가 아직 모르는 경로(404) 등: 보관하지 않고 다음에 다시
+      c = (await res.json()).country || null;
+    } catch { return null; }
     if (c !== null && !/^[A-Z]{2}$/.test(c)) c = null;
     store.set(localStorage, "rl_geo", JSON.stringify({ c, t: Date.now() }));
     if (!old && autoLang() !== lang && !store.get(sessionStorage, "rl_geo_reload")) {

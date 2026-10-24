@@ -1229,6 +1229,19 @@
 
   // ---- 표시 ----
   // 나이트메어 아이템은 "악몽의 (속성)"이 붙음: 고대 +3 악몽의 불 레전더리 단검, 악몽의 레어 바지 (속성 피해 줄이 없으면 속성 이름 없이)
+  // 서버가 준 아이템 참조로 아이템을 다시 만듦 (시드가 같으면 같은 아이템). gems: 홈에 넣은 보석·룬(g)도 넣을지
+  // { seed, src, lvl, v, enh, id, r?, tries?, ar?, rf?, g? } → 아이템 (id가 안 맞으면 null)
+  function fromRef(ref, { gems = false } = {}) {
+    if (!ref || !(ref.v >= 2 && ref.v <= RULES_VERSION)) return null;
+    const item = generate(ref.seed, ref.src, ref.lvl, ref.v, ref.r || 0);
+    if (item.id !== ref.id) return null;
+    item.enh = ref.enh || 0;
+    if (ref.tries) item.tries = ref.tries;
+    if (ref.ar) applyAncientRerolls(item, ref.ar);
+    if (ref.rf?.length && !applyReforges(item, ref.rf)) return null;   // 대장간 옵션 재련
+    if (gems && Array.isArray(ref.g) && ref.g.length) item.gems = ref.g.slice(0, socketCount(item));
+    return item;
+  }
   function itemName(item) {
     const rw = runewordOf(item), U = uniqueOf(item);
     // 다른 언어: 이름 조각을 넘겨서 그 언어의 순서로 (영어: +10 Ancient Legendary Hell Helm of Frost)
@@ -1327,7 +1340,7 @@
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, fromRef, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
