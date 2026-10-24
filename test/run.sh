@@ -25,11 +25,12 @@ for f in "$T"/*-e2e.mjs "$T"/*-test.mjs "$T"/parity.mjs; do
   row "$st $n: pass $p fail $x $(grep -m3 '^FAIL' "$RUN/$n.log" | cut -c1-150 | tr '\n' '|')"
 done
 
-# 번역: 빠진 문구 / 한국어 문구가 번역 틀 없이와 같은지 / 예전 기록 이름 다시 조립
+# 번역: 빠진 문구 / 한국어 문구가 번역 틀 없이와 같은지 / 예전 기록 이름 다시 조립 / 저장된 층의 몬스터 이름
 if [ -z "$FILTER" ] || [[ "i18n" == *"$FILTER"* ]]; then
   node "$REPO/tools/i18n-check.mjs" > "$RUN/i18n-check.log" 2>&1 && row "ok i18n-check" || row "FAIL i18n-check: $(head -2 "$RUN/i18n-check.log" | tr '\n' ' ')"
   node "$T/i18n-ko-same.cjs" "$REPO" 0 > "$RUN/ko0.txt" && node "$T/i18n-ko-same.cjs" "$REPO" 1 > "$RUN/ko1.txt" && cmp -s "$RUN/ko0.txt" "$RUN/ko1.txt" && row "ok i18n-ko-same ($(wc -l < "$RUN/ko0.txt") lines)" || row "FAIL i18n-ko-same"
   for l in en ja; do node "$T/namefromko.cjs" "$REPO" $l > "$RUN/namefromko-$l.log" 2>&1 && row "ok namefromko $l" || row "FAIL namefromko $l: $(head -3 "$RUN/namefromko-$l.log" | tr '\n' ' ')"; done
+  for l in en ja; do node "$T/monster-names.cjs" "$REPO" $l > "$RUN/monster-names-$l.log" 2>&1 && row "ok monster-names $l" || row "FAIL monster-names $l: $(grep FAIL "$RUN/monster-names-$l.log" | head -3 | tr '\n' ' ')"; done
 fi
 
 echo "결과: $RUN  (실패 $(grep -c -E '^(FAIL|ERROR)' "$SUM")개)"

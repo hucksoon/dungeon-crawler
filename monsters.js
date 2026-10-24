@@ -374,9 +374,24 @@
     };
   }
 
+  // 저장된 층의 몬스터 이름을 지금 언어로 다시 지음 (층을 만들 때의 언어로 남지 않게). 저장된 종류(id)·등급·던전·속성으로
+  // 네임드 → 네임드 이름, 황금 고블린 → 등급 이름, 그 밖 → (정예) 원래 이름에 나이트메어·헬이면 "악몽의/지옥의 (속성)". 모르는 몬스터면 원래 이름
+  function nameOf(e) {
+    if (!e || typeof e !== "object") return e?.name;
+    const N = Object.values(NAMED.bosses).find(b => b.id === e.id);
+    if (N) return N.name;
+    if (e.kind === "golden") return GOLDEN.ranks[e.rank]?.name ?? GOLDEN.name;
+    const t = MONSTERS.find(m => m.id === e.id) || BOSSES.find(b => b.id === e.id);
+    if (!t) return e.name;
+    const base = e.kind === "elite" ? tx("mon.elite", (n) => `정예 ${n}`, t.name) : t.name;
+    if (e.hell) return zoneName("hell", e.el || null, base);
+    if (e.nm) return zoneName("nm", e.el || null, base);
+    return base;
+  }
+
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
-    NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
