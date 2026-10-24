@@ -149,6 +149,9 @@ const page = ({ title, desc, url, body, noindex = false, extraHead = "", image =
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical" href="${url}">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="${esc(BLOG_TITLE)}" href="${BLOG_URL}feed.xml">
 <meta property="og:type" content="${url === BLOG_URL ? "website" : "article"}">
 <meta property="og:title" content="${esc(title)}">
