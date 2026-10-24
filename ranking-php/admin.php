@@ -19,6 +19,14 @@
 //     Xsolla 웹훅(webhook.php)으로 받은 주문 기록 최근 순: 시각, 종류, 주문·거래 번호, [sandbox]·[실결제]·[캐시], 금액, SKU×수량,
 //     사용자(HMAC 앞 8자리), 장비 상자를 우편함에 지급했는지·환불로 회수했는지
 //
+//   sudo -u www-data php admin.php boxes
+//     장비 상자 시드 상태: 좁혔는지(서버 기록이 있는 시드만 인정), 서버 기록 수(지급·환불·예전 등록)
+//   sudo -u www-data php admin.php boxes legacy [--apply]
+//     웹훅 전에 상점이 브라우저에서 연 상자 아이템을 서버(계정 저장본·랭킹 장비·거래소·우편)에서 찾아 개수만 보여줌.
+//     --apply: 찾은 시드를 예전 것(legacy)으로 등록하고 좁히기를 켬 → 그 뒤로는 서버 기록이 있는 상자 시드만 인정
+//   sudo -u www-data php admin.php boxes strict off
+//     좁히기를 끔 (문제가 생겼을 때 예전처럼 되돌리기)
+//
 //   sudo -u www-data php admin.php remove <공개ID> [시즌]
 //     그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로). 공개 ID는 list나 랭킹 화면 장비 보기 주소에서 확인
 //     예전 장비를 끼고 올라간 기록처럼 규칙에 맞지 않는 기록을 정리할 때 씀. 그 사람이 규칙대로 다시 하면 다시 올라감
@@ -61,6 +69,38 @@ if ($cmd === 'webhooks') {
             preg_match('/^[A-Z]{3}$/', (string)$r['currency']) ? ($r['sandbox'] ? '[sandbox]' : '[실결제]') : '[캐시]', $r['amount'] ?? '', $r['currency'] ?? '', $items !== '' ? $items : '-', $r['user_key'] ? substr($r['user_key'], 0, 8) : '-', ['granted' => '→ 우편함 지급', 'revoked' => '→ 회수', 'no_user' => '→ 사용자 없음(지급 못 함)', 'canceled' => '→ 이미 취소된 주문(지급 안 함)'][$r['state']] ?? '');
     }
     exit(0);
+}
+
+if ($cmd === 'boxes') {
+    $sub = $argv[2] ?? '';
+    $counts = function (): string {
+        $rows = db()->query('SELECT state, COUNT(*) AS n FROM box_items GROUP BY state')->fetchAll();
+        $by = array_column($rows, 'n', 'state');
+        return sprintf('서버 기록: 지급 %d · 환불 %d · 예전 등록 %d', $by['granted'] ?? 0, $by['revoked'] ?? 0, $by['legacy'] ?? 0);
+    };
+    if ($sub === '') {
+        echo '장비 상자 시드: ' . (box_strict() ? '좁힘 (서버 기록이 있는 것만 인정)' : '좁히기 전 (환불된 것만 빼고 인정)') . "\n" . $counts() . "\n";
+        exit(0);
+    }
+    if ($sub === 'legacy') {
+        $found = box_legacy_scan();
+        $new = array_filter($found, function ($seed) { return !q_val('SELECT 1 FROM box_items WHERE seed = ?', [$seed]); }, ARRAY_FILTER_USE_KEY);
+        $where = array_count_values(array_column($new, 2));
+        $owners = count(array_unique(array_column($new, 0)));
+        printf("예전 상자 아이템 %d개 (이미 등록 %d개 제외, %d명) · 계정 저장본 %d · 랭킹 %d · 거래소 %d · 우편 %d\n", count($new), count($found) - count($new), $owners,
+            $where['profile'] ?? 0, $where['ranking'] ?? 0, $where['market'] ?? 0, $where['mail'] ?? 0);
+        if (($argv[3] ?? '') !== '--apply') { echo "확인만 했어요. 등록하고 좁히려면: php admin.php boxes legacy --apply\n"; exit(0); }
+        $n = box_legacy_register($new);
+        set_flag('box_strict', '1');
+        echo "예전 상자 시드 {$n}개를 등록하고 좁혔어요. 이제 서버 기록이 있는 상자 시드만 인정해요.\n" . $counts() . "\n";
+        exit(0);
+    }
+    if ($sub === 'strict' && ($argv[3] ?? '') === 'off') {
+        set_flag('box_strict', '0');
+        echo "좁히기를 껐어요. 환불된 것만 빼고 상자 시드를 인정해요 (등록한 기록은 그대로).\n";
+        exit(0);
+    }
+    fail("사용법:\n  php admin.php boxes\n  php admin.php boxes legacy [--apply]\n  php admin.php boxes strict off");
 }
 
 if ($cmd === 'devices') {
@@ -122,4 +162,4 @@ if ($cmd === 'remove') {
     exit(0);
 }
 
-fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  시즌: v4(기본), nm(나이트메어), v3");
+fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  php admin.php boxes [legacy [--apply] | strict off]\n  시즌: v4(기본), nm(나이트메어), v3");
