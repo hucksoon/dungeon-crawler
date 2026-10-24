@@ -129,8 +129,9 @@
 <script src="i18n/ja.js"></script>
 <script src="i18n/en-ui.js"></script>
 <script src="i18n/ja-ui.js"></script>
+<script src="items.js"></script>
 <script src="monsters.js"></script>
-<script>RLI18N.apply(null, window.RLMonsters); document.documentElement.lang = RLI18N.lang; RLI18N.translateDom(); document.title = RLI18N.t("던전 크롤러 — 랭킹");</script>
+<script>RLI18N.apply(window.RLItems, window.RLMonsters); document.documentElement.lang = RLI18N.lang; RLI18N.translateDom(); document.title = RLI18N.t("던전 크롤러 — 랭킹");</script>
 <script>
 (() => {
   const API = String(window.RANKING_API || "").replace(/\/+$/, "");
@@ -217,25 +218,33 @@
         onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPlayer(r.id); } } } : {}),
     },
       el("span", { className: `rank r${r.rank}`, textContent: medal(r.rank) }),
-      el("span", { className: "who" }, r.name, r.guest ? el("small", { textContent: T("게스트") }) : null, r.rank === myRank ? el("small", { textContent: T("← 나") }) : null),
+      el("span", { className: "who" }, who(r.name), r.guest ? el("small", { textContent: T("게스트") }) : null, r.rank === myRank ? el("small", { textContent: T("← 나") }) : null),
       value(r),
     )));
   }
 
   // ---- 장비 보기: 최고 층을 세운 순간의 장비와 능력치 (서버가 시드로 검증하고 계산한 값) ----
   const SLOT_ORDER = [["head", T("머리")], ["chest", T("가슴")], ["arms", T("팔")], ["pants", T("바지")], ["boots", T("장화")], ["weapon", T("무기")], ["offhand", T("보조")]];
+  // 서버가 주는 아이템 이름·능력치 문구는 한국어라, 다른 언어면 아이템 참조(ref)·능력치 키(k·v)로 다시 만듦 (없으면 서버 문구)
+  const I = window.RLItems, TR = RLI18N.lang !== "ko";
+  const nameOf = (v) => { if (TR && v?.ref) { try { const x = I.fromRef(v.ref, { gems: true }); if (x) return I.itemName(x); } catch {} } return v?.name; };
+  const lineText = (l) => (TR && l.k ? I.formatStat(l.k, l.v) : l.text);
+  const setName = (id, ko) => (TR && I.SETS[id] ? I.SETS[id].name : ko);
+  const bonusText = (id, b) => (TR && I.SETS[id] ? I.SETS[id].bonuses.find(x => x.count === b.count)?.text ?? b.text : b.text);
+  // 게스트 이름(서버: "게스트 #ab12cd")
+  const who = (n) => String(n ?? "").replace(/^게스트 #/, `${T("게스트")} #`);
   const fmtTime = (ms) => new Date(ms).toLocaleString(LOCALE, { dateStyle: "medium", timeStyle: "short" });
 
   function itemCard(it, slotName) {
     if (!it) return el("div", { className: "pitem empty" }, el("div", { className: "slot", textContent: slotName }), T("비어 있음"));
     const color = (RARITY[it.rarity] || RARITY.common).color;
     const line = (mark, l, colorize) => el("div", { className: l.max ? "mx" : "", style: colorize ? `color:${color}` : "" },
-      `${mark} ${l.text}`, l.range ? el("span", { className: "rg", textContent: ` [${l.range}]${l.max ? " ▲" : ""}` }) : null,
+      `${mark} ${lineText(l)}`, l.range ? el("span", { className: "rg", textContent: ` [${l.range}]${l.max ? " ▲" : ""}` }) : null,
       l.plus ? el("span", { className: "plus", textContent: T(" (강화 +{0})", l.plus) }) : null,
       l.eff ? el("span", { className: "plus", textContent: T(" (적용 {0})", l.eff) }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
-      el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
-      el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),
+      el("div", { className: "slot", textContent: `${TR ? I.SLOT_NAMES[it.slot] ?? it.slotName : it.slotName} · ${TR ? (RARITY[it.rarity] || {}).name ?? it.rarityName : it.rarityName} · Lv.${it.lvl}${it.set ? " · " + setName(it.setId, it.set) : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
+      el("div", { className: "nm", textContent: nameOf(it), style: `color:${color}` }),
       ...it.main.map(l => line("★", l, false)),
       ...it.lines.map(l => line("◆", l, true)));
   }
@@ -250,7 +259,7 @@
     let p;
     try { p = await get(`/api/player?id=${encodeURIComponent(id)}&season=${season.id}`); }
     catch { $("player-title").textContent = T("정보를 불러오지 못했어요"); return; }
-    $("player-title").textContent = `${p.name}${p.guest ? T(" (게스트)") : ""} · ${season.name}`;
+    $("player-title").textContent = `${who(p.name)}${p.guest ? T(" (게스트)") : ""} · ${season.name}`;
     $("player-meta").textContent = T("최고 {0}{1}", stageText(p.stage), p.stageAt ? T(" · {0} 달성", fmtTime(p.stageAt)) : "");
     const body = [];
     const g = p.gear;
@@ -269,8 +278,8 @@
       const bySlot = Object.fromEntries((g.items || []).map(it => [it.slot, it]));
       body.push(el("h4", { textContent: T("장착 장비") }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
       for (const set of g.sets || []) {
-        body.push(el("h4", { textContent: `${set.name} (${Math.min(set.count, set.full || 5)}/${set.full || 5})`, style: `color:${RARITY.set.color}` }),
-          el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: T("{0} {1}세트: {2}", b.on ? "✔" : "·", b.count, b.text) }))));
+        body.push(el("h4", { textContent: `${setName(set.id, set.name)} (${Math.min(set.count, set.full || 5)}/${set.full || 5})`, style: `color:${RARITY.set.color}` }),
+          el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: T("{0} {1}세트: {2}", b.on ? "✔" : "·", b.count, bonusText(set.id, b)) }))));
       }
       if (g.rejected) body.push(el("p", { className: "pnote", textContent: T("확인되지 않은 장비 {0}개는 제외했어요.", g.rejected) }));
     }
@@ -290,7 +299,7 @@
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
     return el("span", { className: "val" },
-      el("span", { className: "item", textContent: r.item.name, style: `color:${rar.color}` }),
+      el("span", { className: "item", textContent: nameOf(r.item), style: `color:${rar.color}` }),
       el("small", { textContent: `${rar.name} · +${r.item.enh} · Lv.${r.item.lvl}`, style: "color:var(--muted)" }),
       r.itemBought ? boughtTag() : null);
   }
@@ -301,9 +310,9 @@
     if (!me) { box.hidden = true; return; }
     box.hidden = false;
     if (me.developer) { box.textContent = me.staffDevice ? T("운영자 기기라 랭킹에서 빠져 있어요.") : T("개발자 계정이라 랭킹에서 빠져 있어요."); return; }
-    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), season.current ? T(" · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요.") : T(" · {0}에는 기록이 없어요.", season.name)); return; }
+    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: who(me.name) }), season.current ? T(" · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요.") : T(" · {0}에는 기록이 없어요.", season.name)); return; }
     box.replaceChildren(
-      el("b", { textContent: me.name }), ` · ${season.name}`,
+      el("b", { textContent: who(me.name) }), ` · ${season.name}`,
       T(" · 최고 층 {0}", me.stageRank ? T("{0}위 ({1})", me.stageRank, stageText(me.stage)) : "-"),
       T(" · 최강 아이템 {0}", me.itemRank ? T("{0}위", me.itemRank) : "-"),
     );

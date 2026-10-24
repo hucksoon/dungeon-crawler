@@ -1013,5 +1013,9 @@
     "로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}": "You entered the lobby. The left gate of the dungeon entrance starts from floor 1, the right gate from floor {0}.{1}",
     "로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}": "You entered the lobby. The left gate of the dungeon entrance starts from floor 1, the right gate from your best floor − 10 (opens once you reach floor 12).{0}",
     "🌐 자동 ({0})": "🌐 Auto ({0})",
+    "{0}시간이 지나 돌아온 아이템": "Returned after {0} hours",
+    "등록을 취소한 아이템": "Listing canceled",
+    "{0}에게서 산 아이템": "Bought from {0}",
+    "{0}에게 판매": "Sold to {0}",
   } });
 })(typeof self !== "undefined" ? self : this);

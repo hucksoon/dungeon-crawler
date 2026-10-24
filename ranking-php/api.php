@@ -525,6 +525,16 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     return $item;
 }
 
+// 아이템을 다시 만들 수 있는 참조 (시드·출처·레벨·버전·강화·id, 고대 굴림·옵션 재련·홈)
+function item_ref(array $it): array {
+    $ref = ['seed' => $it['seed'], 'src' => $it['src'], 'lvl' => $it['lvl'], 'v' => $it['v'] ?? 1, 'enh' => $it['enh'] ?? 0, 'id' => $it['id']];
+    if (!empty($it['r'])) $ref['r'] = $it['r'];
+    if (!empty($it['ar'])) $ref['ar'] = $it['ar'];
+    if (!empty($it['rf'])) $ref['rf'] = array_values($it['rf']);
+    if (!empty($it['gems'])) $ref['g'] = $it['gems'];
+    return $ref;
+}
+
 // 화면에 보여줄 아이템 정보 (서버가 계산한 값만)
 function item_view(array $it): array {
     $fmt = function (string $k, int $v): string { return $k === 'socket' ? "홈 {$v}개" : R_STAT_NAMES[$k][0] . ' +' . $v . (R_STAT_NAMES[$k][1] ? '%' : ''); };
@@ -545,30 +555,33 @@ function item_view(array $it): array {
         $m = r_nm_power($it, $k);
         $v *= $m;
         if ($range) $range = [$range[0] * $m, $range[1] * $m];
-        $main[] = ['text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $max, 'plus' => $eb[$k] - $v, 'eff' => $eff($k, $eb[$k], $efb[$k])];
+        $main[] = ['k' => $k, 'v' => $eb[$k], 'text' => $fmt($k, $eb[$k]), 'range' => $rng($k, $range), 'max' => $max, 'plus' => $eb[$k] - $v, 'eff' => $eff($k, $eb[$k], $efb[$k])];
     }
     $lines = [];
     $efl = isset($it['main']) ? r_effective_lines($it) : null;
     foreach (r_enhanced_lines($it) as $i => [$k, $v, $plus]) {
         $range = r_line_range_of($k, $it);
-        $lines[] = ['text' => $fmt($k, $v), 'range' => $rng($k, $range), 'max' => $v - $plus === $range[1], 'plus' => $plus, 'eff' => $efl ? $eff($k, $v, $efl[$i][1]) : null];
+        $lines[] = ['k' => $k, 'v' => $v, 'text' => $fmt($k, $v), 'range' => $rng($k, $range), 'max' => $v - $plus === $range[1], 'plus' => $plus, 'eff' => $efl ? $eff($k, $v, $efl[$i][1]) : null];
     }
     // 방패의 패링 확률 (강화로 오르지 않음)
     if (isset($it['parry'])) {
         $pr = R_PARRY['ranges'][$it['rarity']];
-        $main[] = ['text' => $fmt('parry', $it['parry']), 'range' => $rng('parry', $pr), 'max' => $it['parry'] === $pr[1], 'plus' => 0];
+        $main[] = ['k' => 'parry', 'v' => $it['parry'], 'text' => $fmt('parry', $it['parry']), 'range' => $rng('parry', $pr), 'max' => $it['parry'] === $pr[1], 'plus' => 0];
     }
     return [
         'name' => r_item_name($it), 'rarity' => $it['rarity'], 'rarityName' => R_RARITIES[$it['rarity']]['name'],
         'slot' => $it['slot'], 'slotName' => SLOT_NAMES[$it['slot']], 'lvl' => $it['lvl'], 'enh' => $it['enh'],
         'ancient' => !empty($it['ancient']), 'bought' => preg_match(R_BUY_SEED, (string)$it['seed']) === 1, 'set' => $it['set'] ? R_SETS[$it['set']]['name'] : null,
+        'setId' => $it['set'] ?: null,
+        // 아이템 참조: 게임·랭킹 화면이 같은 아이템을 다시 만들어 그 언어의 이름으로 보여줌 (text·name은 한국어)
+        'ref' => item_ref($it),
         'main' => $main, 'lines' => $lines,
         'runeword' => ($w = r_runeword_of($it)) ? $w['name'] : null,   // 완성된 룬워드 이름
         // 홈에 넣은 보석·룬: [이름, 효과, 룬인지]
         'gems' => array_map(function ($g) use ($it) {
             $fx = [];
             foreach (r_socketed_effect($g, $it) as $k => $v) $fx[] = R_STAT_NAMES[$k][0] . ' +' . $v . (R_STAT_NAMES[$k][1] ? '%' : '');
-            return ['name' => r_socketed_name($g), 'text' => implode(', ', $fx), 'rune' => r_is_rune($g)];
+            return ['g' => $g, 'name' => r_socketed_name($g), 'text' => implode(', ', $fx), 'rune' => r_is_rune($g)];
         }, $it['gems'] ?? []),
     ];
 }
@@ -623,7 +636,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'stage' => $stage,
         'stats' => r_player_stats($plvl, $totals),
         'items' => array_map('item_view', $ordered),
-        'sets' => array_map(function ($s) { return ['name' => $s['name'], 'count' => $s['count'], 'full' => $s['full'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
+        'sets' => array_map(function ($s) { return ['id' => $s['id'], 'name' => $s['name'], 'count' => $s['count'], 'full' => $s['full'], 'bonuses' => $s['bonuses']]; }, $totals['sets']),
         'rejected' => $rejected,
         'bal' => SNAPSHOT_BAL,
     ];
@@ -720,6 +733,41 @@ const BOARDS = [
 // 랭킹 기록에 현금으로 산 아이템(고대 유니크 선택 상자)이 있는지: 저장된 장비·아이템 화면 정보의 bought 표시
 function has_bought(?string $json): bool { return $json !== null && strpos($json, '"bought":true') !== false; }
 
+// 장비 기록 전체에 view_keys (아이템마다, 세트에는 id)
+function gear_keys(?array $gear): ?array {
+    if (!$gear) return $gear;
+    $gear['items'] = array_map('view_keys', $gear['items'] ?? []);
+    foreach ($gear['sets'] ?? [] as $i => $set) {
+        if (!empty($set['id'])) continue;
+        foreach (R_SETS as $id => $def) if ($def['name'] === ($set['name'] ?? '')) $gear['sets'][$i]['id'] = $id;
+    }
+    return $gear;
+}
+
+// 저장된 아이템 화면 정보(JSON)의 참조 (예전 기록에는 없음)
+function view_ref(?string $json): ?array {
+    if (!$json) return null;
+    $v = json_decode($json, true);
+    return is_array($v['ref'] ?? null) ? $v['ref'] : null;
+}
+
+// 예전 기록의 아이템 화면 정보에 능력치 키(k·v)와 세트 id를 채움 (언어별로 다시 쓰려고). 한국어 text는 그대로
+function view_keys(?array $v): ?array {
+    static $byName = null;
+    if ($byName === null) {
+        $byName = [];
+        foreach (R_STAT_NAMES as $k => $n) if (!isset($byName[$n[0] . ($n[1] ? '%' : '')])) $byName[$n[0] . ($n[1] ? '%' : '')] = $k;
+    }
+    if (!$v) return $v;
+    foreach (['main', 'lines'] as $part) foreach ($v[$part] ?? [] as $i => $l) {
+        if (isset($l['k']) || !is_string($l['text'] ?? null)) continue;
+        if (preg_match('/^홈 (\d+)개$/u', $l['text'], $m)) { $v[$part][$i] += ['k' => 'socket', 'v' => (int)$m[1]]; continue; }
+        if (preg_match('/^(.+) \+(\d+)(%?)$/u', $l['text'], $m) && isset($byName[$m[1] . $m[3]])) $v[$part][$i] += ['k' => $byName[$m[1] . $m[3]], 'v' => (int)$m[2]];
+    }
+    if (!empty($v['set']) && empty($v['setId'])) foreach (R_SETS as $id => $def) if ($def['name'] === $v['set']) $v['setId'] = $id;
+    return $v;
+}
+
 function row_out(array $r, ?int $rank): array {
     return [
         'bought' => has_bought($r['stage_gear'] ?? null),          // 최고 층 기록의 장비에 구매 아이템
@@ -730,7 +778,7 @@ function row_out(array $r, ?int $rank): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'item' => (int)$r['item_score'] >= 0
-            ? ['rarity' => $r['item_rarity'], 'enh' => (int)$r['item_enh'], 'lvl' => (int)$r['item_lvl'], 'name' => $r['item_name']]
+            ? ['rarity' => $r['item_rarity'], 'enh' => (int)$r['item_enh'], 'lvl' => (int)$r['item_lvl'], 'name' => $r['item_name'], 'ref' => view_ref($r['item_json'] ?? null)]
             : null,
     ];
 }
@@ -802,8 +850,8 @@ function get_player(): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'stageAt' => $r['stage_at'] !== null ? (int)$r['stage_at'] : null,
-        'gear' => snapshot_now($gear),
-        'bestItem' => $r['item_json'] ? json_decode($r['item_json'], true) : null,
+        'gear' => gear_keys(snapshot_now($gear)),
+        'bestItem' => view_keys($r['item_json'] ? json_decode($r['item_json'], true) : null),
     ];
 }
 
