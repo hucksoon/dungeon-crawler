@@ -23,6 +23,7 @@
 | `index.html` | 게임 (HTML 파일 하나) |
 | `items.js`, `monsters.js` | 아이템·몬스터 규칙 (게임과 서버 검증이 같이 씀) |
 | `shop.html`, `ranking.html`, `privacy.html` | 상점, 랭킹, 개인정보처리방침 |
+| `i18n.js`, `i18n/` | 다국어 틀과 영어·일본어 문구 ([용어집](docs/i18n-glossary.md)). 게임 번역이 끝나기 전에는 `?lang=en` / `?lang=ja` 미리 보기로만 |
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |
 | `ranking-php/` | 게임 서버 (PHP): 랭킹, 로비, 거래소, 하루 입장·광고, 계정 저장 → [README](ranking-php/README.md) |
 | `ranking/` | 랭킹 서버 Cloudflare Workers 버전 (예전) |
