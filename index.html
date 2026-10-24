@@ -5228,6 +5228,12 @@
     [/^운영자 선물$/, () => T("운영자 선물")],
   ];
   const noteText = (n) => { if (!n) return n; for (const [re, f] of NOTES) { const m = String(n).match(re); if (m) return f(m); } return n; };
+  // 우편 메모: 운영자가 그 언어로 쓴 메모(notes)가 있으면 그것, 없으면 한국어 메모를 알아보고 바꿈. 기본 선물 메모("운영자 선물")는 종류와 겹쳐서 숨김
+  const mailNote = (m) => {
+    const own = m.notes && typeof m.notes[RLI18N.lang] === "string" ? m.notes[RLI18N.lang] : null;
+    if (own) return own;
+    return m.kind === "gift" && m.note === "운영자 선물" ? null : noteText(m.note);
+  };
   // 서버가 준 아이템 이름은 한국어라, 참조로 다시 만들 수 있으면 그 언어의 이름으로 (참조가 없으면 한국어 이름을 나눠 다시 조립)
   const refName = (x) => { const it = x?.ref && itemFromRef(x.ref); return it ? RLItems.itemName(it) : RLItems.nameFromKo(x?.item?.name ?? x?.itemName); };
 
@@ -5498,7 +5504,7 @@
         el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => { Market.boxPick = m.id; setMarketMsg(""); renderMarket(); } }, T("열기")));
       const money = !m.ref;  // 판매 대금·선물: 골드·캐시만
       return viewRow(money ? priceText(m.gold, m.cash) : refName(m), money ? "#ffcf5c" : RLItems.RARITIES[m.rarity]?.color,
-        [kinds[m.kind] || T("우편"), m.kind === "sale" ? refName(m) : null, m.kind === "gift" && m.note === "운영자 선물" ? null : noteText(m.note), dateText(m.createdAt)].filter(Boolean).join(" · "),
+        [kinds[m.kind] || T("우편"), m.kind === "sale" ? refName(m) : null, mailNote(m), dateText(m.createdAt)].filter(Boolean).join(" · "),
         el("button", { type: "button", className: "primary", disabled: Market.busy, onclick: () => claimOne(m.id) }, T("받기")));
     });
     return [head, el("button", { type: "button", id: "mail-all", disabled: Market.busy, onclick: claimAll, style: { marginBottom: "8px" } }, T("모두 받기")),

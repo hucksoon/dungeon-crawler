@@ -1,8 +1,10 @@
 <?php
 // 운영자 선물: 이메일로 찾은 사용자의 우편함에 골드·캐시를 넣음. 서버에서 명령으로만 실행 (웹으로는 열리지 않음)
 //
-//   sudo -u www-data php gift.php <이메일> <골드> <캐시> [메모]
+//   sudo -u www-data php gift.php <이메일> <골드> <캐시> [메모] [--en "English note"] [--ja "日本語メモ"]
 //   예) sudo -u www-data php gift.php tester@example.com 99999 99999 "테스터 지급"
+//       sudo -u www-data php gift.php player@example.com 5000 0 "이벤트 보상" --en "Event reward" --ja "イベント報酬"
+//   메모는 한국어, --en·--ja는 영어·일본어 화면에서 보일 메모 (없으면 한국어 메모가 보임). 메모를 빼면 "운영자 선물"(게임이 언어별로 보여줌)
 //
 //   sudo -u www-data php gift.php --resume <이메일>
 //     "받기" 도중 서버 오류로 멈춘 우편을 다시 받을 수 있게 함. 캐시가 든 우편은 "캐시는 이미 받았다"로 표시해서
@@ -58,17 +60,26 @@ if (($argv[1] ?? '') === '--resume') {
     exit(0);
 }
 
-[$self, $email, $gold, $cash] = array_pad($argv, 4, null);
-$note = $argv[4] ?? '운영자 선물';
-if (!$email || !preg_match('/^[^@\s]+@[^@\s]+$/', $email) || !ctype_digit((string)$gold) || !ctype_digit((string)$cash)) {
-    fail("사용법: php gift.php <이메일> <골드> <캐시> [메모]");
+// --en·--ja 메모 (어느 자리에 있어도 됨), 나머지는 순서대로 이메일·골드·캐시·메모
+$args = []; $notes = [];
+for ($i = 1; $i < count($argv); $i++) {
+    if (in_array($argv[$i], ['--en', '--ja'], true)) {
+        $text = trim((string)($argv[++$i] ?? ''));
+        if ($text === '') fail("{$argv[$i - 1]} 다음에 메모를 적어 주세요");
+        $notes[substr($argv[$i - 1], 2)] = mb_substr($text, 0, 100);
+    } else $args[] = $argv[$i];
+}
+[$email, $gold, $cash] = array_pad($args, 3, null);
+$note = $args[3] ?? '운영자 선물';
+if (!$email || !preg_match('/^[^@\s]+@[^@\s]+$/', $email) || !ctype_digit((string)$gold) || !ctype_digit((string)$cash) || count($args) > 4) {
+    fail("사용법: php gift.php <이메일> <골드> <캐시> [메모] [--en \"English note\"] [--ja \"日本語メモ\"]");
 }
 $gold = (int)$gold;
 $cash = (int)$cash;
 if ($gold + $cash <= 0 || $gold > MARKET_MAX_GOLD || $cash > MARKET_MAX_CASH) fail('골드·캐시는 0 이상, 하나는 1 이상이어야 해요 (최대 골드 ' . MARKET_MAX_GOLD . ', 캐시 ' . MARKET_MAX_CASH . ')');
 
 foreach (players_by_email($email) as $r) {
-    $id = add_mail($r['pkey'], 'gift', ['gold' => $gold, 'cash' => $cash, 'note' => mb_substr($note, 0, 100)], now_ms());
-    echo "{$r['display']} 우편함에 선물을 넣었어요: 골드 {$gold}, 캐시 {$cash} (우편 {$id})\n";
+    $id = add_mail($r['pkey'], 'gift', ['gold' => $gold, 'cash' => $cash, 'note' => mb_substr($note, 0, 100), 'notes' => $notes], now_ms());
+    echo "{$r['display']} 우편함에 선물을 넣었어요: 골드 {$gold}, 캐시 {$cash} (우편 {$id})" . ($notes ? ' · 메모 ' . implode('·', array_keys($notes)) . ' 있음' : '') . "\n";
 }
 echo "받는 사람이 로비의 우편함에서 \"받기\"를 누르면 들어가요.\n";

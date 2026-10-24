@@ -85,8 +85,8 @@ function market_tables(PDO $pdo): void {
         updated_at  BIGINT NOT NULL
     )');
     // 나중에 추가된 칸: 캐시를 지급한 시각(우편), 캐시를 받은 시각(구매). 다음 단계가 실패해도 다시 지급·결제하지 않게
-    // fee_by: 수수료를 무엇으로 냈는지 (cash | ad)
-    foreach ([['mail', 'granted_at BIGINT'], ['listings', 'paid_at BIGINT'], ['listings', 'fee_by VARCHAR(8)']] as [$table, $col]) {
+    // fee_by: 수수료를 무엇으로 냈는지 (cash | ad), notes: 운영자 선물 메모의 다른 언어 {"en": "...", "ja": "..."} (JSON)
+    foreach ([['mail', 'granted_at BIGINT'], ['listings', 'paid_at BIGINT'], ['listings', 'fee_by VARCHAR(8)'], ['mail', 'notes TEXT']] as [$table, $col]) {
         try { $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
     }
     foreach ([
@@ -132,10 +132,10 @@ function set_owner(string $itemId, string $key, int $now): void {
 
 function add_mail(string $owner, string $kind, array $f, int $now): string {
     $id = new_id();
-    db()->prepare('INSERT INTO mail (id, owner_key, kind, listing_id, item_id, item_ref, item_name, rarity, gold, cash, note, state, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
+    db()->prepare('INSERT INTO mail (id, owner_key, kind, listing_id, item_id, item_ref, item_name, rarity, gold, cash, note, notes, state, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
         $id, $owner, $kind, $f['listing_id'] ?? null, $f['item_id'] ?? null, $f['item_ref'] ?? null, $f['item_name'] ?? null, $f['rarity'] ?? null,
-        $f['gold'] ?? 0, $f['cash'] ?? 0, $f['note'] ?? null, 'new', $now,
+        $f['gold'] ?? 0, $f['cash'] ?? 0, $f['note'] ?? null, !empty($f['notes']) ? json_encode($f['notes'], JSON_UNESCAPED_UNICODE) : null, 'new', $now,
     ]);
     return $id;
 }
@@ -194,6 +194,8 @@ function mail_out(array $m): array {
         'id' => $m['id'], 'kind' => $m['kind'], 'itemName' => $m['item_name'], 'rarity' => $m['rarity'],
         'ref' => $m['item_ref'] ? json_decode($m['item_ref'], true) : null,
         'gold' => (int)$m['gold'], 'cash' => (int)$m['cash'], 'note' => $m['note'], 'createdAt' => (int)$m['created_at'],
+        // 메모의 다른 언어 (운영자 선물): 게임이 고른 언어로 보여주고, 없으면 note(한국어)
+        'notes' => !empty($m['notes']) && is_array($n = json_decode($m['notes'], true)) ? $n : null,
     ];
 }
 
