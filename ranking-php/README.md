@@ -61,7 +61,7 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 
 - 아이템 화면 정보에 `ref`(아이템 참조: 시드·출처·레벨·버전·강화·id·고대 굴림·옵션 재련·홈), 능력치 줄마다 `k`·`v`(능력치 키와 값), `setId`, 세트에 `id`를 같이 줌 → 게임·랭킹 화면이 아이템을 다시 만들어 그 언어의 이름과 줄로
 - 예전 기록(이 필드가 생기기 전)은 `r=player`가 보여줄 때 한국어 줄에서 `k`·`v`와 세트 id를 채우고, 아이템 이름은 화면이 한국어 이름을 조각(고대·강화·지옥의/악몽의·속성·등급·종류·세트·유니크·룬워드)으로 나눠 그 언어로 다시 조립 (`RLItems.nameFromKo`)
-- 우편 메모("24시간이 지나 돌아온 아이템" 등)와 "게스트 #…"는 화면이 알아보고 바꿈. 운영자가 `gift.php`로 쓴 메모는 쓴 그대로
+- 우편 메모("24시간이 지나 돌아온 아이템" 등)와 "게스트 #…"는 화면이 알아보고 바꿈. 운영자가 `gift.php`로 쓴 메모는 `--en`·`--ja`로 그 언어 메모를 같이 주면 그 언어로(우편 `notes`), 없으면 쓴 그대로
 
 ## 게임 언어 자동 설정 (나라 찾기)
 
@@ -163,8 +163,10 @@ sudo -u www-data php admin.php geo 8.8.8.8   # 확인: DB 종류·만든 날짜�
 
 ```bash
 cd /var/www/html/ranking
-sudo -u www-data php gift.php <이메일> <골드> <캐시> "메모"
+sudo -u www-data php gift.php <이메일> <골드> <캐시> "메모" [--en "English note"] [--ja "日本語メモ"]
 # 예) sudo -u www-data php gift.php tester@example.com 99999 99999 "테스터 지급"
+#     sudo -u www-data php gift.php player@example.com 5000 0 "이벤트 보상" --en "Event reward" --ja "イベント報酬"
+# --en·--ja: 영어·일본어 화면에서 보일 메모 (없으면 한국어 메모가 그대로 보임). 메모를 빼면 "운영자 선물"(게임이 언어별로 보여줌)
 ```
 
 - 이메일 원본은 저장하지 않아요. 랭킹 기록의 이메일 HMAC으로 사람을 찾아서, **그 계정으로 로그인해 한 번이라도 플레이한 사용자**만 찾을 수 있어요 (개발자 계정은 랭킹에 저장되지 않아서 못 찾아요)

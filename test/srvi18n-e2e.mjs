@@ -1,6 +1,6 @@
 // 6단계: 서버가 보내는 문구 — 랭킹 장비 보기·우편 메모·게스트 이름이 고른 언어로 (서버는 한국어 + 키·참조)
 import { createRequire } from "node:module";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import http from "node:http";
 import crypto from "node:crypto";
@@ -176,13 +176,24 @@ try {
   ins.run(hex(), pkey, "bought", epic.id, JSON.stringify({ seed: epic.seed, src: epic.src, lvl: epic.lvl, v: epic.v, enh: 2, id: epic.id, r: epic.r || 0 }), RL.itemName(epic), epic.rarity, 0, 0, "게스트 #ab12cd에게서 산 아이템", now - 2);
   ins.run(hex(), pkey, "sale", legend.id, legRef, RL.itemName(legend), legend.rarity, 0, 3, "b***@example.com에게 판매", now - 3);
   ins.run(hex(), pkey, "gift", null, null, null, null, 100, 0, "이벤트 보상", now - 4);
+  // 운영자가 언어별 메모를 같이 준 선물 (gift.php --en --ja)
+  db().prepare("INSERT INTO mail (id, owner_key, kind, gold, cash, note, notes, state, created_at) VALUES (?, ?, 'gift', 50, 0, ?, ?, 'new', ?)").run(hex(), pkey, "핼러윈 보상", JSON.stringify({ en: "Halloween reward", ja: "ハロウィン報酬" }), now - 5);
   await walkOpen(A.page, "ma***@example.com", "mail");
   await sleep(800);
   const mailT = await A.page.locator("#market-body").innerText();
   await A.page.screenshot({ path: `${SHOTS}/srvi18n-mail-en.png` });
   check("mail notes translated (returned · canceled · bought from guest · sold)", ["Returned after 24 hours", "Listing canceled", "Bought from Guest #ab12cd", "Sold to b***@example.com"].every(t => mailT.includes(t)), mailT);
   check("mail item names in English (sale mail too)", mailT.includes(RL.itemName(legend)) === false && koLines(mailT).every(l => l.includes("이벤트 보상")), JSON.stringify(koLines(mailT)));
+  // gift.php: --en·--ja는 어느 자리든, 메모가 빠지면 안내, 기록 없는 이메일은 안내
+  const gift = (...a) => spawnSync("php", [path.join(REPO, "ranking-php/gift.php"), ...a], { env: { ...process.env, RANKING_CONFIG: path.join(DIR, "config.srvi18n.php"), TEST_JWT_SECRET: SECRET }, encoding: "utf8" });
+  const g1 = gift("--en", "Hi", "nobody@example.com", "10", "0", "메모", "--ja", "やあ");
+  check("gift.php: flags anywhere → parsed, unknown email → 'no record' message", g1.status === 1 && g1.stderr.includes("플레이한 기록이 없어요"), g1.stderr + g1.stdout);
+  const g2 = gift("nobody@example.com", "10", "0", "--en");
+  check("gift.php: --en without text → asks for the note", g2.status === 1 && g2.stderr.includes("--en 다음에 메모"), g2.stderr);
+  const g3 = gift("nobody@example.com", "10", "0", "a", "b");
+  check("gift.php: extra words → usage", g3.status === 1 && g3.stderr.includes("사용법"), g3.stderr);
   check("unknown staff note kept as written", mailT.includes("이벤트 보상"));
+  check("gift with --en note shows the English note", mailT.includes("Halloween reward") && !mailT.includes("핼러윈 보상"), mailT);
   check("no page errors (mail)", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
 } finally { await browser.close(); php.kill(); mock.close(); }
