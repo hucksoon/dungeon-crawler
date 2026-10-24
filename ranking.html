@@ -84,29 +84,29 @@
 <body>
 <main>
   <header>
-    <h1>🏆 던전 크롤러 랭킹<span class="ver" id="ver">v4 베타</span></h1>
-    <div class="status"><span id="dot" class="dot"></span><span id="updated">불러오는 중…</span></div>
-    <a class="btn" href="./">게임으로 돌아가기</a>
+    <h1><span data-t>🏆 던전 크롤러 랭킹</span><span class="ver" id="ver" data-t>v4 베타</span></h1>
+    <div class="status"><span id="dot" class="dot"></span><span id="updated" data-t>불러오는 중…</span></div>
+    <a class="btn" href="./" data-t>게임으로 돌아가기</a>
   </header>
 
-  <div class="seasons" role="tablist" aria-label="랭킹 버전" id="seasons"></div>
+  <div class="seasons" role="tablist" aria-label="랭킹 버전" id="seasons" data-t-aria></div>
   <div id="notice" hidden></div>
   <div id="me" hidden></div>
 
   <div class="boards">
     <section>
-      <h2>최고 층 랭킹</h2>
-      <p class="sub" id="sub-stage">가장 깊이 내려간 순서 · 같으면 먼저 도달한 사람이 위</p>
+      <h2 data-t>최고 층 랭킹</h2>
+      <p class="sub" id="sub-stage" data-t>가장 깊이 내려간 순서 · 같으면 먼저 도달한 사람이 위</p>
       <ol id="board-stage"></ol>
     </section>
     <section>
-      <h2>최강 아이템 랭킹</h2>
-      <p class="sub" id="sub-item">가진 적 있는 최고 아이템 · 등급 → 강화 → 아이템 레벨 순</p>
+      <h2 data-t>최강 아이템 랭킹</h2>
+      <p class="sub" id="sub-item" data-t>가진 적 있는 최고 아이템 · 등급 → 강화 → 아이템 레벨 순</p>
       <ol id="board-item"></ol>
     </section>
   </div>
 
-  <footer>
+  <footer data-t>
     10초마다 자동으로 새로고침해요. 이메일은 가려서 보여주고, 게스트는 게스트 번호로 표시돼요. 이름을 누르면 장비를 볼 수 있어요.<br>
     개발자 계정은 랭킹에서 빠져요.<br>
     <a href="privacy.html" style="color: inherit">개인정보처리방침</a>
@@ -117,7 +117,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="player-title">
     <div class="modal-head">
       <div><h3 id="player-title"></h3><div class="meta" id="player-meta"></div></div>
-      <button type="button" id="player-close">닫기</button>
+      <button type="button" id="player-close" data-t>닫기</button>
     </div>
     <div id="player-body"></div>
   </div>
@@ -127,37 +127,40 @@
 <script src="i18n.js"></script>
 <script src="i18n/en.js"></script>
 <script src="i18n/ja.js"></script>
+<script src="i18n/en-ui.js"></script>
+<script src="i18n/ja-ui.js"></script>
 <script src="monsters.js"></script>
-<script>RLI18N.apply(null, window.RLMonsters); document.documentElement.lang = RLI18N.lang;</script>
+<script>RLI18N.apply(null, window.RLMonsters); document.documentElement.lang = RLI18N.lang; RLI18N.translateDom(); document.title = RLI18N.t("던전 크롤러 — 랭킹");</script>
 <script>
 (() => {
   const API = String(window.RANKING_API || "").replace(/\/+$/, "");
   const REFRESH_MS = 10000;
+  const T = RLI18N.t, LOCALE = { ko: "ko-KR", en: "en-US", ja: "ja-JP" }[RLI18N.lang] || "ko-KR";
   const RARITY = {
-    common: { name: "커먼", color: "#cfd3da" },
-    uncommon: { name: "언커먼", color: "#6bd36b" },
-    rare: { name: "레어", color: "#5aa9ff" },
-    epic: { name: "에픽", color: "#b77bff" },
-    legendary: { name: "레전더리", color: "#ff9f2e" },
-    set: { name: "세트", color: "#2fd6b5" },
-    unique: { name: "유니크", color: "#e0b44c" },
+    common: { name: T("커먼"), color: "#cfd3da" },
+    uncommon: { name: T("언커먼"), color: "#6bd36b" },
+    rare: { name: T("레어"), color: "#5aa9ff" },
+    epic: { name: T("에픽"), color: "#b77bff" },
+    legendary: { name: T("레전더리"), color: "#ff9f2e" },
+    set: { name: T("세트"), color: "#2fd6b5" },
+    unique: { name: T("유니크"), color: "#e0b44c" },
   };
   const $ = (id) => document.getElementById(id);
 
   // 랭킹 버전(시즌). 지금 시즌에만 기록이 올라가고, 예전 시즌은 최종 기록으로 그대로 보여줌
   const SEASONS = [
-    { id: "v4", name: "v4 베타", note: "진행 중", current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
-      stageSub: `가장 깊이 내려간 순서 · ${RLMonsters.MAX_FLOOR}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
-      itemSub: "가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
-    { id: "nm", name: "나이트메어", note: "진행 중", current: true, clear: RLMonsters.NIGHTMARE.clearStage, max: RLMonsters.NIGHTMARE.floors,
-      stageSub: `나이트메어 던전에서 가장 깊이 내려간 순서 · ${RLMonsters.NIGHTMARE.floors}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
-      itemSub: "나이트메어에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
-    { id: "hell", name: "헬", note: "최종 목적지", current: true, clear: RLMonsters.HELL.clearStage, max: RLMonsters.HELL.floors,
-      stageSub: `헬 던전에서 가장 깊이 내려간 순서 · ${RLMonsters.HELL.floors}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위`,
-      itemSub: "헬에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순" },
-    { id: "v3", name: "v3 베타", note: "최종 기록", current: false,
-      stageSub: "v3 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)",
-      itemSub: "v3 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)" },
+    { id: "v4", name: T("v4 베타"), note: T("진행 중"), current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
+      stageSub: T("가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.MAX_FLOOR),
+      itemSub: T("가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
+    { id: "nm", name: T("나이트메어"), note: T("진행 중"), current: true, clear: RLMonsters.NIGHTMARE.clearStage, max: RLMonsters.NIGHTMARE.floors,
+      stageSub: T("나이트메어 던전에서 가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.NIGHTMARE.floors),
+      itemSub: T("나이트메어에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
+    { id: "hell", name: T("헬"), note: T("최종 목적지"), current: true, clear: RLMonsters.HELL.clearStage, max: RLMonsters.HELL.floors,
+      stageSub: T("헬 던전에서 가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.HELL.floors),
+      itemSub: T("헬에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
+    { id: "v3", name: T("v3 베타"), note: T("최종 기록"), current: false,
+      stageSub: T("v3 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)"),
+      itemSub: T("v3 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)") },
   ];
   let season = SEASONS.find(s => location.hash === `#${s.id}`) || SEASONS[0];
   function renderSeasons() {
@@ -207,31 +210,31 @@
   const medal = (rank) => ["🥇", "🥈", "🥉"][rank - 1] || String(rank);
 
   function renderBoard(ol, data, myRank, value) {
-    if (!data.rows.length) { ol.replaceChildren(el("div", { className: "empty", textContent: season.current ? "아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!" : "이 버전에는 기록이 없어요." })); return; }
+    if (!data.rows.length) { ol.replaceChildren(el("div", { className: "empty", textContent: season.current ? T("아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!") : T("이 버전에는 기록이 없어요.") })); return; }
     ol.replaceChildren(...data.rows.map(r => el("li", {
       className: r.rank === myRank ? "me" : "",
-      ...(r.id ? { dataset: { id: r.id }, tabIndex: 0, title: "장비 보기", onclick: () => openPlayer(r.id),
+      ...(r.id ? { dataset: { id: r.id }, tabIndex: 0, title: T("장비 보기"), onclick: () => openPlayer(r.id),
         onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPlayer(r.id); } } } : {}),
     },
       el("span", { className: `rank r${r.rank}`, textContent: medal(r.rank) }),
-      el("span", { className: "who" }, r.name, r.guest ? el("small", { textContent: "게스트" }) : null, r.rank === myRank ? el("small", { textContent: "← 나" }) : null),
+      el("span", { className: "who" }, r.name, r.guest ? el("small", { textContent: T("게스트") }) : null, r.rank === myRank ? el("small", { textContent: T("← 나") }) : null),
       value(r),
     )));
   }
 
   // ---- 장비 보기: 최고 층을 세운 순간의 장비와 능력치 (서버가 시드로 검증하고 계산한 값) ----
-  const SLOT_ORDER = [["head", "머리"], ["chest", "가슴"], ["arms", "팔"], ["pants", "바지"], ["boots", "장화"], ["weapon", "무기"], ["offhand", "보조"]];
-  const fmtTime = (ms) => new Date(ms).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+  const SLOT_ORDER = [["head", T("머리")], ["chest", T("가슴")], ["arms", T("팔")], ["pants", T("바지")], ["boots", T("장화")], ["weapon", T("무기")], ["offhand", T("보조")]];
+  const fmtTime = (ms) => new Date(ms).toLocaleString(LOCALE, { dateStyle: "medium", timeStyle: "short" });
 
   function itemCard(it, slotName) {
-    if (!it) return el("div", { className: "pitem empty" }, el("div", { className: "slot", textContent: slotName }), "비어 있음");
+    if (!it) return el("div", { className: "pitem empty" }, el("div", { className: "slot", textContent: slotName }), T("비어 있음"));
     const color = (RARITY[it.rarity] || RARITY.common).color;
     const line = (mark, l, colorize) => el("div", { className: l.max ? "mx" : "", style: colorize ? `color:${color}` : "" },
       `${mark} ${l.text}`, l.range ? el("span", { className: "rg", textContent: ` [${l.range}]${l.max ? " ▲" : ""}` }) : null,
-      l.plus ? el("span", { className: "plus", textContent: ` (강화 +${l.plus})` }) : null,
-      l.eff ? el("span", { className: "plus", textContent: ` (적용 ${l.eff})` }) : null);
+      l.plus ? el("span", { className: "plus", textContent: T(" (강화 +{0})", l.plus) }) : null,
+      l.eff ? el("span", { className: "plus", textContent: T(" (적용 {0})", l.eff) }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
-      el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}${it.bought ? " · 💰 구매" : ""}` }),
+      el("div", { className: "slot", textContent: `${it.slotName} · ${it.rarityName} · Lv.${it.lvl}${it.set ? " · " + it.set : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
       el("div", { className: "nm", textContent: it.name, style: `color:${color}` }),
       ...it.main.map(l => line("★", l, false)),
       ...it.lines.map(l => line("◆", l, true)));
@@ -239,40 +242,40 @@
 
   async function openPlayer(id) {
     const modal = $("player-modal");
-    $("player-title").textContent = "불러오는 중…";
+    $("player-title").textContent = T("불러오는 중…");
     $("player-meta").textContent = "";
     $("player-body").replaceChildren();
     modal.hidden = false;
     $("player-close").focus();
     let p;
     try { p = await get(`/api/player?id=${encodeURIComponent(id)}&season=${season.id}`); }
-    catch { $("player-title").textContent = "정보를 불러오지 못했어요"; return; }
-    $("player-title").textContent = `${p.name}${p.guest ? " (게스트)" : ""} · ${season.name}`;
-    $("player-meta").textContent = `최고 ${stageText(p.stage)}${p.stageAt ? ` · ${fmtTime(p.stageAt)} 달성` : ""}`;
+    catch { $("player-title").textContent = T("정보를 불러오지 못했어요"); return; }
+    $("player-title").textContent = `${p.name}${p.guest ? T(" (게스트)") : ""} · ${season.name}`;
+    $("player-meta").textContent = T("최고 {0}{1}", stageText(p.stage), p.stageAt ? T(" · {0} 달성", fmtTime(p.stageAt)) : "");
     const body = [];
     const g = p.gear;
     if (!g) {
-      body.push(el("p", { className: "pnote", textContent: "아직 장비 기록이 없어요. 이 기능이 생긴 뒤 최고 층을 새로 세우면(또는 같은 층에 다시 도달하면) 저장돼요." }));
+      body.push(el("p", { className: "pnote", textContent: T("아직 장비 기록이 없어요. 이 기능이 생긴 뒤 최고 층을 새로 세우면(또는 같은 층에 다시 도달하면) 저장돼요.") }));
     } else {
       const s = g.stats;
-      body.push(el("h4", { textContent: `최고 기록(${stageText(g.stage)}) 순간의 능력치 · Lv ${s.level}` }),
+      body.push(el("h4", { textContent: T("최고 기록({0}) 순간의 능력치 · Lv {1}", stageText(g.stage), s.level) }),
         el("div", { className: "pstats" }, ...[
-          ["공격력", s.atk], ["방어력", s.def], ["최대 HP", s.maxHp], ["치명타", `${s.crit}% (×${Number(s.critMul).toFixed(1)})`],
-          ["흡혈", `${s.lifesteal}%`], ["처치 시 회복", s.killHeal ? `HP +${s.killHeal}` : "-"], ["골드 획득", `+${s.gold}%`], ["경험치 획득", `+${s.xp}%`],
-          ...(s.parry ? [["패링", `${s.parry}%`]] : []), ...(s.dmgReduce ? [["받는 피해", `−${s.dmgReduce}%`]] : []), ...(s.dual ? [["두 손 무기", "한 턴 2번 공격"]] : []), ...(s.splash ? [["광란", "주변 1칸 피해"]] : []),
-          ...(s.elem && (s.elem.fire || s.elem.ice || s.elem.bolt) ? [["속성 피해", `불 +${s.elem.fire}% · 얼음 +${s.elem.ice}% · 번개 +${s.elem.bolt}%`]] : []),
-          ...(s.res && (s.res.fire || s.res.ice || s.res.bolt) ? [["속성 저항", `불 ${s.res.fire}% · 얼음 ${s.res.ice}% · 번개 ${s.res.bolt}%`]] : []),
+          [T("공격력"), s.atk], [T("방어력"), s.def], [T("최대 HP"), s.maxHp], [T("치명타"), `${s.crit}% (×${Number(s.critMul).toFixed(1)})`],
+          [T("흡혈"), `${s.lifesteal}%`], [T("처치 시 회복"), s.killHeal ? `HP +${s.killHeal}` : "-"], [T("골드 획득"), `+${s.gold}%`], [T("경험치 획득"), `+${s.xp}%`],
+          ...(s.parry ? [[T("패링"), `${s.parry}%`]] : []), ...(s.dmgReduce ? [[T("받는 피해"), `−${s.dmgReduce}%`]] : []), ...(s.dual ? [[T("두 손 무기"), T("한 턴 2번 공격")]] : []), ...(s.splash ? [[T("광란"), T("주변 1칸 피해")]] : []),
+          ...(s.elem && (s.elem.fire || s.elem.ice || s.elem.bolt) ? [[T("속성 피해"), T("불 +{0}% · 얼음 +{1}% · 번개 +{2}%", s.elem.fire, s.elem.ice, s.elem.bolt)]] : []),
+          ...(s.res && (s.res.fire || s.res.ice || s.res.bolt) ? [[T("속성 저항"), T("불 {0}% · 얼음 {1}% · 번개 {2}%", s.res.fire, s.res.ice, s.res.bolt)]] : []),
         ].map(([k, v]) => el("div", {}, k, el("b", { textContent: String(v) })))));
       const bySlot = Object.fromEntries((g.items || []).map(it => [it.slot, it]));
-      body.push(el("h4", { textContent: "장착 장비" }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
+      body.push(el("h4", { textContent: T("장착 장비") }), el("div", { className: "pitems" }, ...SLOT_ORDER.map(([slot, name]) => itemCard(bySlot[slot], name))));
       for (const set of g.sets || []) {
         body.push(el("h4", { textContent: `${set.name} (${Math.min(set.count, set.full || 5)}/${set.full || 5})`, style: `color:${RARITY.set.color}` }),
-          el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: `${b.on ? "✔" : "·"} ${b.count}세트: ${b.text}` }))));
+          el("div", { className: "pset" }, ...set.bonuses.map(b => el("div", { className: b.on ? "on" : "", textContent: T("{0} {1}세트: {2}", b.on ? "✔" : "·", b.count, b.text) }))));
       }
-      if (g.rejected) body.push(el("p", { className: "pnote", textContent: `확인되지 않은 장비 ${g.rejected}개는 제외했어요.` }));
+      if (g.rejected) body.push(el("p", { className: "pnote", textContent: T("확인되지 않은 장비 {0}개는 제외했어요.", g.rejected) }));
     }
-    if (p.bestItem) body.push(el("h4", { textContent: "가진 적 있는 최강 아이템" }), el("div", { className: "pitems" }, itemCard(p.bestItem, p.bestItem.slotName)));
-    body.push(el("p", { className: "pnote", textContent: "장비와 능력치는 서버가 아이템 시드로 다시 만들어 확인한 값이에요. ★ 주 능력치 · ◆ 추가 능력치 · [최소~최대] ▲ 최대치" }));
+    if (p.bestItem) body.push(el("h4", { textContent: T("가진 적 있는 최강 아이템") }), el("div", { className: "pitems" }, itemCard(p.bestItem, p.bestItem.slotName)));
+    body.push(el("p", { className: "pnote", textContent: T("장비와 능력치는 서버가 아이템 시드로 다시 만들어 확인한 값이에요. ★ 주 능력치 · ◆ 추가 능력치 · [최소~최대] ▲ 최대치") }));
     $("player-body").replaceChildren(...body);
   }
   $("player-close").addEventListener("click", () => { $("player-modal").hidden = true; });
@@ -280,9 +283,9 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
   // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
-  const stageText = (n) => season.clear && n >= season.clear ? `${season.max}층 완료 ✓` : `${n}층`;
+  const stageText = (n) => season.clear && n >= season.clear ? T("{0}층 완료 ✓", season.max) : T("{0}층", n);
   // 현금으로 산 아이템(고대 유니크 선택 상자)을 쓴 기록 표시: 층 = 그 층을 세울 때 낀 장비, 아이템 = 최고 아이템
-  const boughtTag = () => el("small", { className: "bought", textContent: "💰 구매 아이템", title: "현금으로 산 고대 유니크 선택 상자의 아이템을 썼어요" });
+  const boughtTag = () => el("small", { className: "bought", textContent: T("💰 구매 아이템"), title: T("현금으로 산 고대 유니크 선택 상자의 아이템을 썼어요") });
   const stageValue = (r) => el("span", { className: "val" }, stageText(r.stage), r.bought ? boughtTag() : null);
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
@@ -294,15 +297,15 @@
 
   function renderMe(me) {
     const box = $("me");
-    if (me === "expired") { box.hidden = false; box.textContent = "로그인이 만료됐어요. 게임을 한 번 열면 내 순위가 보여요."; return; }
+    if (me === "expired") { box.hidden = false; box.textContent = T("로그인이 만료됐어요. 게임을 한 번 열면 내 순위가 보여요."); return; }
     if (!me) { box.hidden = true; return; }
     box.hidden = false;
-    if (me.developer) { box.textContent = me.staffDevice ? "운영자 기기라 랭킹에서 빠져 있어요." : "개발자 계정이라 랭킹에서 빠져 있어요."; return; }
-    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), season.current ? " · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요." : ` · ${season.name}에는 기록이 없어요.`); return; }
+    if (me.developer) { box.textContent = me.staffDevice ? T("운영자 기기라 랭킹에서 빠져 있어요.") : T("개발자 계정이라 랭킹에서 빠져 있어요."); return; }
+    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: me.name }), season.current ? T(" · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요.") : T(" · {0}에는 기록이 없어요.", season.name)); return; }
     box.replaceChildren(
       el("b", { textContent: me.name }), ` · ${season.name}`,
-      ` · 최고 층 ${me.stageRank ? `${me.stageRank}위 (${stageText(me.stage)})` : "-"}`,
-      ` · 최강 아이템 ${me.itemRank ? `${me.itemRank}위` : "-"}`,
+      T(" · 최고 층 {0}", me.stageRank ? T("{0}위 ({1})", me.stageRank, stageText(me.stage)) : "-"),
+      T(" · 최강 아이템 {0}", me.itemRank ? T("{0}위", me.itemRank) : "-"),
     );
   }
 
@@ -324,18 +327,18 @@
       renderBoard($("board-item"), item, my.item, itemValue);
       renderMe(me);
       $("dot").className = "dot";
-      $("updated").textContent = asked.current ? `실시간 · ${new Date().toLocaleTimeString("ko-KR")} 기준 · ${stage.total}명` : `${asked.name} 최종 기록 · ${stage.total}명`;
+      $("updated").textContent = asked.current ? T("실시간 · {0} 기준 · {1}명", new Date().toLocaleTimeString(LOCALE), stage.total) : T("{0} 최종 기록 · {1}명", asked.name, stage.total);
     } catch {
       $("dot").className = "dot off";
-      $("updated").textContent = "랭킹 서버에 연결하지 못했어요. 잠시 후 다시 시도해요.";
+      $("updated").textContent = T("랭킹 서버에 연결하지 못했어요. 잠시 후 다시 시도해요.");
     }
   }
 
   if (!API) {
     $("dot").className = "dot off";
-    $("updated").textContent = "준비 중";
+    $("updated").textContent = T("준비 중");
     $("notice").hidden = false;
-    $("notice").textContent = "랭킹 서버를 준비하고 있어요. 곧 열릴 예정이에요!";
+    $("notice").textContent = T("랭킹 서버를 준비하고 있어요. 곧 열릴 예정이에요!");
     for (const id of ["board-stage", "board-item"]) $(id).replaceChildren(el("div", { className: "empty", textContent: "—" }));
     return;
   }

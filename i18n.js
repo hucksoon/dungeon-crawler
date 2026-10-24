@@ -91,6 +91,7 @@
         if (!S) continue;
         put(S, "name", v.name);
         for (const [slot, n] of Object.entries(v.pieces || {})) if (slot in S.pieces) S.pieces[slot] = n;
+        (v.bonuses || []).forEach((t, i) => { if (S.bonuses[i]) S.bonuses[i].text = t; });
       }
       for (const [k, v] of Object.entries(d.gem || {})) put(I.GEMS[k], "name", v);
       (d.gemGrade || []).forEach((v, i) => { if (i < I.GEM_GRADES.length) I.GEM_GRADES[i] = v; });
@@ -103,6 +104,13 @@
       for (const [k, v] of Object.entries((d.element && d.element.names) || {})) if (k in I.ELEMENT_LINES.names) I.ELEMENT_LINES.names[k] = v;
       for (const [k, v] of Object.entries(d.stone || {})) if (k in I.STONE_NAMES) I.STONE_NAMES[k] = v;
       for (const [k, v] of Object.entries(d.base || {})) if (k in I.BASE_NAMES) I.BASE_NAMES[k] = v;
+      // 추천 탭: 단계 이름·목표·장신구 안내와 무기 종류 안내
+      const R = d.recommend;
+      if (R && I.RECOMMEND) for (const tier of I.RECOMMEND.tiers) {
+        const rec = I.RECOMMEND[tier], v = R[tier] || {};
+        put(rec, "name", v.name); put(rec, "goal", v.goal); put(rec, "acc", v.acc);
+        for (const slot of ["weapon", "offhand"]) if (rec.slots[slot] && R.kind) put(rec.slots[slot], "kind", R.kind[slot]);
+      }
     }
     if (M) {
       for (const m of M.MONSTERS) if (d.monster && d.monster[m.id]) m.name = d.monster[m.id];

@@ -814,7 +814,7 @@
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch {}
       if (!res.ok) {
-        const err = new Error(data?.error?.description || data?.error_description || `요청 실패 (${res.status})`);
+        const err = new Error(data?.error?.description || data?.error_description || T("요청 실패 ({0})", res.status));
         err.status = res.status;
         err.code = data?.error?.code;
         throw err;
@@ -850,7 +850,7 @@
         json: { ...identity(kind, value), code, operation_id: operationId },
       });
       const url = new URL(data.login_url);
-      if (url.searchParams.get("state") !== state) throw new Error("인증 응답이 올바르지 않습니다. 다시 시도해 주세요.");
+      if (url.searchParams.get("state") !== state) throw new Error(T("인증 응답이 올바르지 않습니다. 다시 시도해 주세요."));
       await issueToken({
         grant_type: "authorization_code",
         client_id: XSOLLA.clientId,
@@ -1418,8 +1418,8 @@
   // 상점에서 연 상자의 장비: 보관함 → 가방 (가방이 차면 자리가 날 때까지 보관함에서 기다림)
   function collectMail(announceLeft = false) {
     const r = Inv.collectMail();
-    if (r.moved) { log(`상점 상자에서 나온 장비 ${r.moved}개를 가방에 넣었다.`, "good"); Ranking.schedule(); }
-    if (r.left && (r.moved || announceLeft)) log(`가방이 가득 차서 ${r.left}개는 보관함에서 기다린다. 가방을 비우면 들어온다.`, "info");
+    if (r.moved) { log(T("상점 상자에서 나온 장비 {0}개를 가방에 넣었다.", r.moved), "good"); Ranking.schedule(); }
+    if (r.left && (r.moved || announceLeft)) log(T("가방이 가득 차서 {0}개는 보관함에서 기다린다. 가방을 비우면 들어온다.", r.left), "info");
   }
 
   // ---- 게임 상태 ----
@@ -1477,7 +1477,7 @@
 
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과
   function stats() {
-    const T = Inv.totals(), g = T.stats;
+    const TT = Inv.totals(), g = TT.stats;
     const pct = (v, p) => Math.round(v * (1 + p / 100));
     const maxHp = pct(player.maxHp + g.hp, g.hpPct);
     return {
@@ -1506,9 +1506,9 @@
       res: Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), resZone())])),
       resRaw: Object.fromEntries(EL.list.map(k => [k, g[`${k}Res`] + g.allRes])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·skillFast·fireball·whirl·blast·counter
-      rw: T.runewords.special,
+      rw: TT.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
-      uq: T.uniques.special,
+      uq: TT.uniques.special,
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
       mf: RLItems.findPct(g.mf),   // 아이템 발견 % (최대 FIND.max): 보너스 아이템·유니크 확률
     };
@@ -1621,7 +1621,7 @@
     if (!inGold() && RLItems.isShopFloor(depth)) {
       const spots = DIRS.map(([dx, dy]) => ({ x: far.cx + dx, y: far.cy + dy })).filter(p => map[p.y][p.x] === FLOOR);
       shop = spots[rnd(spots.length)] || null;
-      if (shop && !quiet) log("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자.", null, SHOP_COLOR);
+      if (shop && !quiet) log(T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
     }
 
     enemies = [];
@@ -1637,8 +1637,8 @@
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (quiet) {}
-        else if (boss.named) log(`✦ 네임드 보스 ${boss.name} (${boss.title})이(가) 계단을 지키고 있다! ${namedTip(boss)} 쓰러뜨리면 룬 ${RLMonsters.NAMED.runes}개!`, null, RLMonsters.NAMED_COLOR);
-        else log(`강한 기운이 느껴진다… ${boss.name}이(가) 계단을 지키고 있다!`, null, BOSS_COLOR);
+        else if (boss.named) log(T("✦ 네임드 보스 {0} ({1})이(가) 계단을 지키고 있다! {2} 쓰러뜨리면 룬 {3}개!", boss.name, boss.title, namedTip(boss), RLMonsters.NAMED.runes), null, RLMonsters.NAMED_COLOR);
+        else log(T("강한 기운이 느껴진다… {0}이(가) 계단을 지키고 있다!", boss.name), null, BOSS_COLOR);
       }
     }
 
@@ -1750,8 +1750,8 @@
       if (map[ny][nx] === STAIRS) {
         // 싸우다가 실수로 내려가지 않도록, 근처에 몬스터가 있으면 막음
         const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
-        if (bossAlive()) log("보스가 살아 있는 동안 계단이 열리지 않는다.", "bad");
-        else if (near) log(`주변 ${RLMonsters.STAIRS_BLOCK_RADIUS}칸 안에 몬스터가 ${near}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.`, "bad");
+        if (bossAlive()) log(T("보스가 살아 있는 동안 계단이 열리지 않는다."), "bad");
+        else if (near) log(T("주변 {0}칸 안에 몬스터가 {1}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.", RLMonsters.STAIRS_BLOCK_RADIUS, near), "bad");
         else if (inGold() || depth >= maxFloor()) { completeFloor(); return; }
         else { descend(); return; }
       }
@@ -1780,35 +1780,35 @@
         // 광란 세트: 대상 주변 1칸(대각선 포함)의 다른 적도 피해의 50%를 맞음 (각자 방어력만큼 줄어듦)
         const around = s.splash ? enemies.filter(e => e !== target && near8(e, target) === 1) : [];
         const sm = RLItems.SPLASH.mul;
-        hitEnemy(target, raw, crit, s, i ? "왼손 " : "", elem);
-        for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw * sm, crit, s, "광란 ", elem * sm);
+        hitEnemy(target, raw, crit, s, i ? T("왼손 ") : "", elem);
+        for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw * sm, crit, s, T("광란 "), elem * sm);
         playerElements(target, s);
       });
     } else {
       const s = stats();
       // 구미호의 비녀: 확률로 공격을 피함
       if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
-        showDamage(target, "피함", false, RLItems.RARITIES.unique.color);
-        log(`${attacker.name}의 공격을 피했다! (홀림)`, "good");
+        showDamage(target, T("피함"), false, RLItems.RARITIES.unique.color);
+        log(T("{0}의 공격을 피했다! (홀림)", attacker.name), "good");
         return;
       }
       // 방패: 확률로 공격을 막아냄 (피해 없음)
       if (s.parry && Math.random() * 100 < s.parry) {
-        showDamage(target, "막음", false);
-        log(`${attacker.name}의 공격을 방패로 막아냈다! (패링)`, "good");
+        showDamage(target, T("막음"), false);
+        log(T("{0}의 공격을 방패로 막아냈다! (패링)", attacker.name), "good");
         // 업경대: 막아도 받을 피해의 %를 되돌림
         if (s.uq.reflect && attacker.hp > 0) {
           const would = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - RLMonsters.crowdCut(adjacentFoes()))));
           const back = Math.max(1, Math.round(would * s.uq.reflect / 100));
           attacker.hp -= back;
           showDamage(attacker, back, false, RLItems.RARITIES.unique.color);
-          log(`업보: 막은 ${attacker.name}에게 ${back} 피해를 되돌렸다!`, null, RLItems.RARITIES.unique.color);
+          log(T("업보: 막은 {0}에게 {1} 피해를 되돌렸다!", attacker.name, back), null, RLItems.RARITIES.unique.color);
           if (attacker.hp <= 0) { killEnemy(attacker); return; }
         }
         // 도원결의 반격: 막은 몬스터에게 공격력의 counter% (물리, 흡혈 그대로)
         if (s.rw.counter && attacker.hp > 0 && enemies.includes(attacker)) {
           const crit = Math.random() * 100 < s.crit;
-          hitEnemy(attacker, (s.atk + rnd(2)) * s.rw.counter / 100 * (crit ? s.critMul : 1), crit, s, "🛡 반격: ");
+          hitEnemy(attacker, (s.atk + rnd(2)) * s.rw.counter / 100 * (crit ? s.critMul : 1), crit, s, T("🛡 반격: "));
         }
         return;
       }
@@ -1816,7 +1816,7 @@
       const crowd = RLMonsters.crowdCut(adjacentFoes());
       const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
       const took = hurtPlayer(dmg);
-      log(`${attacker.name}에게 ${dmg} 피해를 입음.${took < dmg ? ` (보호막이 ${dmg - took} 막음)` : ""}`, "bad");
+      log(T("{0}에게 {1} 피해를 입음.{2}", attacker.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
       if (target.hp <= 0) { death(); return; }
       // 쇠비늘 갑옷: 맞을 때마다 방어력 +% (이 층에서, 최대치까지)
       if (s.uq.ironHide && (player.iron || 0) < UQ_FX.ironHide.max) player.iron = Math.min(UQ_FX.ironHide.max, (player.iron || 0) + s.uq.ironHide);
@@ -1825,13 +1825,13 @@
         const back = Math.max(1, Math.round(dmg * s.uq.reflect / 100));
         attacker.hp -= back;
         showDamage(attacker, back, false, RLItems.RARITIES.unique.color);
-        log(`업보: ${attacker.name}에게 ${back} 피해를 되돌렸다!`, null, RLItems.RARITIES.unique.color);
+        log(T("업보: {0}에게 {1} 피해를 되돌렸다!", attacker.name, back), null, RLItems.RARITIES.unique.color);
         if (attacker.hp <= 0) { killEnemy(attacker); return; }
       }
       // 불가사리: 공격이 들어갈 때마다 방어력을 갉아먹음 (이 층을 떠나거나 쓰러뜨리면 풀림)
       if (attacker.pattern === "shred" && (player.shred || 0) < attacker.shred.max) {
         player.shred = Math.min(attacker.shred.max, (player.shred || 0) + attacker.shred.per);
-        log(`${attacker.name}이(가) 갑옷을 갉아먹었다! 방어력 −${player.shred}%`, null, RLMonsters.NAMED_COLOR);
+        log(T("{0}이(가) 갑옷을 갉아먹었다! 방어력 −{1}%", attacker.name, player.shred), null, RLMonsters.NAMED_COLOR);
       }
       if (attacker.el) monsterElement(attacker, s, dmg);
     }
@@ -1884,9 +1884,9 @@
       if (el !== e.el) {
         e.el = el;
         e.res = RLMonsters.hellRes(e.named, el, true);
-        if (visible[e.y]?.[e.x]) log(`${e.name}의 심판: 이제 ${EL.names[el]} 속성이다! (${EL.names[el]} 저항 ${e.res[el]}%)`, null, EL.colors[el]);
+        if (visible[e.y]?.[e.x]) log(T("{0}의 심판: 이제 {1} 속성이다! ({1} 저항 {2}%)", e.name, EL.names[el], e.res[el]), null, EL.colors[el]);
       }
-      if (enrageOn(e) && !e.enraged) { e.enraged = true; log(`${e.name}이(가) 분노했다! 공격력 ×${e.judge.enrageMul}`, null, RLMonsters.NAMED_COLOR); }
+      if (enrageOn(e) && !e.enraged) { e.enraged = true; log(T("{0}이(가) 분노했다! 공격력 ×{1}", e.name, e.judge.enrageMul), null, RLMonsters.NAMED_COLOR); }
     }
     if (e.pattern === "clones" && !e.split && e.hp > 0 && e.hp <= e.maxHp * e.clones.at) {
       e.split = true;
@@ -1897,22 +1897,22 @@
           .find(p => map[p.y]?.[p.x] === FLOOR && !isShop(p.x, p.y) && !(p.x === player.x && p.y === player.y) && !enemies.some(o => o.x === p.x && o.y === p.y));
         if (!spot) break;
         const hp = Math.round(e.maxHp * C.hp);
-        enemies.push({ ...spot, id: e.id, ch: e.ch.toLowerCase(), name: `${e.name}의 분신`, color: e.color, kind: "elite", clone: true, el: e.el, res: e.res, hell: 1,
+        enemies.push({ ...spot, id: e.id, ch: e.ch.toLowerCase(), name: T("{0}의 분신", e.name), color: e.color, kind: "elite", clone: true, el: e.el, res: e.res, hell: 1,
           hp, maxHp: hp, atk: Math.round(e.atk * C.atk), def: e.def, xp: 0 });
         made++;
       }
-      if (made) log(`${e.name}이(가) 꼬리를 흔들자 분신 ${made}마리가 나타났다!`, null, RLMonsters.NAMED_COLOR);
+      if (made) log(T("{0}이(가) 꼬리를 흔들자 분신 {1}마리가 나타났다!", e.name, made), null, RLMonsters.NAMED_COLOR);
     }
   }
   // 패턴 설명 (입장 로그·도감)
   function namedTip(b) {
     const pct = (v) => `${Math.round(v * 100)}%`;
     switch (b.pattern) {
-      case "shred": return `공격이 들어갈 때마다 방어력 −${b.shred.per}% (최대 −${b.shred.max}%, 쓰러뜨리거나 층을 떠나면 풀림).`;
-      case "clones": return `HP가 ${pct(b.clones.at)} 이하로 내려가면 분신 ${b.clones.count}마리를 부름 (분신은 경험치·골드·장비 없음).`;
-      case "sweep": return `${b.sweep.every}턴마다 꼬리 휩쓸기: ${b.sweep.radius}칸 안이면 공격력 ×${b.sweep.mul}, 방패로 막을 수 없음.`;
-      case "reaper": return `눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 흡혈이 ${pct(b.reaper.lifesteal)}로 줄어듦.`;
-      case "judge": return `${b.judge.every}턴마다 속성이 불 → 얼음 → 번개로 바뀌고, HP ${pct(b.judge.enrageAt)} 이하면 분노해 공격력 ×${b.judge.enrageMul}.`;
+      case "shred": return T("공격이 들어갈 때마다 방어력 −{0}% (최대 −{1}%, 쓰러뜨리거나 층을 떠나면 풀림).", b.shred.per, b.shred.max);
+      case "clones": return T("HP가 {0} 이하로 내려가면 분신 {1}마리를 부름 (분신은 경험치·골드·장비 없음).", pct(b.clones.at), b.clones.count);
+      case "sweep": return T("{0}턴마다 꼬리 휩쓸기: {1}칸 안이면 공격력 ×{2}, 방패로 막을 수 없음.", b.sweep.every, b.sweep.radius, b.sweep.mul);
+      case "reaper": return T("눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 흡혈이 {0}로 줄어듦.", pct(b.reaper.lifesteal));
+      case "judge": return T("{0}턴마다 속성이 불 → 얼음 → 번개로 바뀌고, HP {1} 이하면 분노해 공격력 ×{2}.", b.judge.every, pct(b.judge.enrageAt), b.judge.enrageMul);
     }
     return "";
   }
@@ -1922,11 +1922,11 @@
     const cells = [];
     for (let dy = -W.radius; dy <= W.radius; dy++) for (let dx = -W.radius; dx <= W.radius; dx++) if (dx || dy) cells.push({ x: e.x + dx, y: e.y + dy });
     flash(cells, "rgba(255, 79, 216, 0.35)");
-    if (near8(e, player) > W.radius) { log(`${e.name}의 꼬리 휩쓸기를 피했다!`, "good"); return false; }
+    if (near8(e, player) > W.radius) { log(T("{0}의 꼬리 휩쓸기를 피했다!", e.name), "good"); return false; }
     const crowd = RLMonsters.crowdCut(adjacentFoes());
     const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * W.mul + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
     const took = hurtPlayer(dmg);
-    log(`${e.name}의 꼬리 휩쓸기! ${dmg} 피해를 입음.${took < dmg ? ` (보호막이 ${dmg - took} 막음)` : ""}`, "bad");
+    log(T("{0}의 꼬리 휩쓸기! {1} 피해를 입음.{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
     if (player.hp <= 0) { death(); return true; }
     if (e.el) monsterElement(e, s, dmg);
     return true;
@@ -1936,7 +1936,7 @@
   function playerElements(target, s) {
     const alive = target.hp > 0 && enemies.includes(target);
     if (alive && s.elem.fire > 0) burnOn(target, Math.round(s.atk * EL.burn.mul));
-    if (alive && s.elem.ice > 0 && chill(target, EL.ice.chance * elemMul(target, "ice"))) log(`${target.name}이(가) 얼어붙어 느려졌다! (${EL.ice.turns}턴)`, null, EL.colors.ice);
+    if (alive && s.elem.ice > 0 && chill(target, EL.ice.chance * elemMul(target, "ice"))) log(T("{0}이(가) 얼어붙어 느려졌다! ({1}턴)", target.name, EL.ice.turns), null, EL.colors.ice);
     if (s.elem.bolt > 0) boltChain(target, s);
   }
   // 번개: 맞은 몬스터에서 가까운 몬스터(3칸 안)에게 차례로 2번 튕김. 한 마리에 한 번, 방어력 무시
@@ -1952,7 +1952,7 @@
       const d = Math.round(dmg * shockMul(next) * elemMul(next, "bolt"));
       next.hp -= d;
       showDamage(next, d, false, EL.colors.bolt);
-      log(`번개가 ${next.name}에게 튕겨 ${d} 피해!`, null, EL.colors.bolt);
+      log(T("번개가 {0}에게 튕겨 {1} 피해!", next.name, d), null, EL.colors.bolt);
       if (next.hp <= 0) killEnemy(next);
       at = next;
     }
@@ -1962,12 +1962,12 @@
     const cut = (k) => 1 - s.res[k] / 100;
     if (m.el === "fire") burnOn(player, Math.round(dealt * EL.burn.mul * cut("fire")));
     else if (m.el === "ice") {
-      if (chill(player, EL.ice.chance * cut("ice"))) log(`몸이 얼어붙었다! ${EL.ice.turns}턴 동안 느려진다 (2턴에 한 번만 움직임).`, "bad");
+      if (chill(player, EL.ice.chance * cut("ice"))) log(T("몸이 얼어붙었다! {0}턴 동안 느려진다 (2턴에 한 번만 움직임).", EL.ice.turns), "bad");
     } else if (m.el === "bolt") {
       const dmg = Math.max(1, Math.round(dealt * EL.bolt.mul * cut("bolt")));
       hurtPlayer(dmg);
       showDamage(player, dmg, false, EL.colors.bolt);
-      log(`번개가 튕겨 한 번 더 ${dmg} 피해!`, "bad");
+      log(T("번개가 튕겨 한 번 더 {0} 피해!", dmg), "bad");
       if (player.hp <= 0) death();
     }
   }
@@ -1979,10 +1979,10 @@
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
-    let left = target.kind !== "normal" ? ` (남은 HP ${Math.max(0, target.hp)}/${target.maxHp}` : "";
-    if (target.kind === "golden" && target.fleeAt != null) left += `, 도망까지 ${Math.max(0, target.fleeAt - turn)}턴`;
+    let left = target.kind !== "normal" ? T(" (남은 HP {0}/{1}", Math.max(0, target.hp), target.maxHp) : "";
+    if (target.kind === "golden" && target.fleeAt != null) left += T(", 도망까지 {0}턴", Math.max(0, target.fleeAt - turn));
     if (left) left += ")";
-    log(`${tag}${target.name}에게 ${dmg} 피해!${crit ? " (치명타)" : ""}${left}`, "hit");
+    log(T("{0}{1}에게 {2} 피해!{3}{4}", tag, target.name, dmg, crit ? T(" (치명타)") : "", left), "hit");
     const drain = Math.floor(taken * s.lifesteal / 100 * lsMul());
     if (drain > 0) heal(drain);
     if (target.hp > 0 && s.uq.bite) { target.biteUntil = turn + UQ_FX.bite.turns + 1; target.bitePct = s.uq.bite; }   // 송곳니: 다음 공격부터
@@ -1993,21 +1993,21 @@
   function killEnemy(e) {
     enemies = enemies.filter(x => x !== e);
     // 구미호의 분신: 경험치·골드·장비 없음
-    if (e.clone) { log(`${e.name}이(가) 연기처럼 사라졌다.`, null, RLMonsters.NAMED_COLOR); return; }
+    if (e.clone) { log(T("{0}이(가) 연기처럼 사라졌다.", e.name), null, RLMonsters.NAMED_COLOR); return; }
     Dex.kill(e.id);
     if (e.named) {
       player.shred = 0;
-      log(`네임드 보스 ${e.name}을(를) 쓰러뜨렸다!`, "rainbow");
-      for (const c of enemies.filter(x => x.clone)) { enemies = enemies.filter(x => x !== c); log(`${c.name}이(가) 연기처럼 사라졌다.`, null, RLMonsters.NAMED_COLOR); }
+      log(T("네임드 보스 {0}을(를) 쓰러뜨렸다!", e.name), "rainbow");
+      for (const c of enemies.filter(x => x.clone)) { enemies = enemies.filter(x => x !== c); log(T("{0}이(가) 연기처럼 사라졌다.", c.name), null, RLMonsters.NAMED_COLOR); }
     }
     const s = stats();
     const xp = Math.round(e.xp * (1 + s.xp / 100));
     // 처치 골드: 정예·보스·황금 고블린일수록 많고, 층이 깊을수록 많음. 나이트메어 몬스터는 ×3 (NIGHTMARE.gold)
     const gold = Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (inHell() ? HELL.gold.kill : nmMobs() ? NM.gold.kill : 1));
     player.gold += gold;
-    log(`${e.name} 처치! (+${xp} XP, +${gold} 골드)`, "good");
-    if (e.kind === "boss") log("보스를 쓰러뜨렸다! 계단이 열렸다.", null, BOSS_COLOR);
-    if (e.kind === "golden") log(`${e.name}을(를) 잡았다! 보물이 쏟아진다!`, null, RLMonsters.GOLDEN.color);
+    log(T("{0} 처치! (+{1} XP, +{2} 골드)", e.name, xp, gold), "good");
+    if (e.kind === "boss") log(T("보스를 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR);
+    if (e.kind === "golden") log(T("{0}을(를) 잡았다! 보물이 쏟아진다!", e.name), null, RLMonsters.GOLDEN.color);
     if (s.killHeal) heal(s.killHeal);
     if (s.uq.reap && (player.reap || 0) < UQ_FX.reap.max) player.reap = Math.min(UQ_FX.reap.max, (player.reap || 0) + s.uq.reap);   // 사자의 낫
     dropLoot(e);
@@ -2023,7 +2023,7 @@
     const cells = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ x: e.x + dx, y: e.y + dy });
     flash(cells, "rgba(255, 140, 90, 0.35)");
-    log(`💥 처치 폭발! ${e.name}이(가) 터져 ${near.length}마리에게 ${d} 피해`, null, "#ff8c5a");
+    log(T("💥 처치 폭발! {0}이(가) 터져 {1}마리에게 {2} 피해", e.name, near.length, d), null, "#ff8c5a");
     for (const x of near) {
       if (x.hp <= 0 || !enemies.includes(x)) continue;
       const taken = Math.min(d, x.hp);
@@ -2069,7 +2069,7 @@
       if (!item) continue;
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
-      gearLog(`${e.name}이(가) ${RLItems.itemName(item)}을(를) 떨어뜨렸다!${isRainbow(item) ? " ✨" : ""}`, item);
+      gearLog(T("{0}이(가) {1}을(를) 떨어뜨렸다!{2}", e.name, RLItems.itemName(item), isRainbow(item) ? " ✨" : ""), item);
     }
     // 아이템 발견: 보너스 아이템 (보물 표, 시드 |f처치 순번 → 서버가 같은 굴림으로 검증)
     const mf = stats().mf;
@@ -2078,7 +2078,7 @@
       if (bonus) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: bonus, from: "find" });
-        gearLog(`🔍 아이템 발견: ${e.name}이(가) ${RLItems.itemName(bonus)}을(를) 하나 더 떨어뜨렸다!${isRainbow(bonus) ? " ✨" : ""}`, bonus);
+        gearLog(T("🔍 아이템 발견: {0}이(가) {1}을(를) 하나 더 떨어뜨렸다!{2}", e.name, RLItems.itemName(bonus), isRainbow(bonus) ? " ✨" : ""), bonus);
       }
     }
     // 보석: 장비와 따로 굴림 (반드시 떨어지지는 않음). 나이트메어는 높은 등급이 잘 나옴
@@ -2086,14 +2086,14 @@
     if (gem) {
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gem", gem: gem[0], grade: gem[1] });
-      log(`${e.name}이(가) ${RLItems.gemName(gem[0], gem[1])}을(를) 떨어뜨렸다.`, null, RLItems.GEMS[gem[0]].color);
+      log(T("{0}이(가) {1}을(를) 떨어뜨렸다.", e.name, RLItems.gemName(gem[0], gem[1])), null, RLItems.GEMS[gem[0]].color);
     }
     // 룬: 나이트메어 50층 보스와 헬 네임드 보스, 2개 확정
     if ((inNM() && depth === RLItems.RUNE_DROP.floor && e.kind === "boss") || (inHell() && e.named)) {
       for (const k of RLItems.rollRunes(`${player.rid}|${floorTag()}${depth}|r${player.kills}`)) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "rune", rune: k });
-        log(`${e.name}이(가) ${RLItems.runeName(k)}을(를) 떨어뜨렸다! ✨`, "rainbow");
+        log(T("{0}이(가) {1}을(를) 떨어뜨렸다! ✨", e.name, RLItems.runeName(k)), "rainbow");
       }
     }
     // 유니크: 헬 네임드 보스만, UNIQUE.chance 확률로 그 보스의 유니크 2개 중 하나 (시드 |u처치 순번 → 서버가 똑같이 검증)
@@ -2102,14 +2102,14 @@
       if (u) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: u, from: "boss" });
-        log(`✦✦ ${e.name}이(가) 유니크 ${RLItems.itemName(u)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
+        log(T("✦✦ {0}이(가) 유니크 {1}을(를) 떨어뜨렸다! ✦✦", e.name, RLItems.itemName(u)), null, RLItems.RARITIES.unique.color);
       }
       // 유니크 장신구: 따로 굴림 (시드 |a처치 순번)
       const ua = RLItems.rollUniqueAcc(`${player.rid}|${floorTag()}${depth}|a${player.kills}`, itemLevel(), mf);
       if (ua) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "gear", item: ua, from: "boss" });
-        log(`✦✦ ${e.name}이(가) 유니크 장신구 ${RLItems.itemName(ua)}을(를) 떨어뜨렸다! ✦✦`, null, RLItems.RARITIES.unique.color);
+        log(T("✦✦ {0}이(가) 유니크 장신구 {1}을(를) 떨어뜨렸다! ✦✦", e.name, RLItems.itemName(ua)), null, RLItems.RARITIES.unique.color);
       }
     }
   }
@@ -2119,7 +2119,7 @@
   function treasureLoot() {
     const seed = `${player.rid}|${floorTag()}${depth}|p${player.potionPicks++}`;
     const item = RLItems.generate(seed, "golden", itemLevel());
-    gearLog(`보물을 발견했다! ${RLItems.itemName(item)}${isRainbow(item) ? " ✨" : ""}`, item);
+    gearLog(T("보물을 발견했다! {0}{1}", RLItems.itemName(item), isRainbow(item) ? " ✨" : ""), item);
     const gear = { x: player.x, y: player.y, type: "gear", item, from: "treasure" };
     if (!takeGear(gear)) items.push(gear);  // 가방이 가득 차면 바닥에 남김
   }
@@ -2127,10 +2127,10 @@
   // 가방에 넣으면 true, 가방이 가득 차서 못 넣으면 false
   function takeGear(gear) {
     const result = Inv.add(gear.item, { depth, from: gear.from });
-    if (result === "full") { log("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요.", "bad"); return false; }
-    if (result === "ok") gearLog(`${RLItems.itemName(gear.item)}을(를) 주웠다.`, gear.item);
+    if (result === "full") { log(T("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요."), "bad"); return false; }
+    if (result === "ok") gearLog(T("{0}을(를) 주웠다.", RLItems.itemName(gear.item)), gear.item);
     const rw = RLItems.runewordsFor(gear.item);
-    if (result === "ok" && RLItems.runewordHighlight(gear.item)) log(`✦ 룬워드 재료! 홈 ${RLItems.socketCount(gear.item)}개 커먼 — ${rw.map(w => w.name).join(", ")}을(를) 만들 수 있다. (인벤토리에서 확인)`, "rainbow");
+    if (result === "ok" && RLItems.runewordHighlight(gear.item)) log(T("✦ 룬워드 재료! 홈 {0}개 커먼 — {1}을(를) 만들 수 있다. (인벤토리에서 확인)", RLItems.socketCount(gear.item), rw.map(w => w.label).join(", ")), "rainbow");
     return true;
   }
 
@@ -2143,7 +2143,7 @@
       player.maxHp += 4;
       player.atk += 1;
       player.hp = stats().maxHp;
-      log(`레벨 업! Lv ${player.plvl} — 최대 HP/공격력 증가, HP 회복!`, "good");
+      log(T("레벨 업! Lv {0} — 최대 HP/공격력 증가, HP 회복!", player.plvl), "good");
     }
   }
 
@@ -2156,15 +2156,15 @@
       } else if (it.type === "gem") {
         if (!RLItems.GEMS[it.gem]) continue;
         Inv.addGem(it.gem, it.grade);
-        log(`${RLItems.gemName(it.gem, it.grade)}을(를) 주웠다. (보석은 인벤토리에서 홈에 넣어요)`, null, RLItems.GEMS[it.gem].color);
+        log(T("{0}을(를) 주웠다. (보석은 인벤토리에서 홈에 넣어요)", RLItems.gemName(it.gem, it.grade)), null, RLItems.GEMS[it.gem].color);
       } else if (it.type === "rune") {
         if (!RLItems.RUNES[it.rune]) continue;
         Inv.addRune(it.rune);
-        log(`${RLItems.runeName(it.rune)}을(를) 주웠다! (룬은 인벤토리에서 홈에 넣어요. 아래 룬 3개 = 위 룬 1개)`, "rainbow");
+        log(T("{0}을(를) 주웠다! (룬은 인벤토리에서 홈에 넣어요. 아래 룬 3개 = 위 룬 1개)", RLItems.runeName(it.rune)), "rainbow");
       } else if (it.type === "gold") {
         const amount = Math.round(it.amount * (1 + stats().gold / 100));
         player.gold += amount;
-        log(`골드 +${amount}`, "info");
+        log(T("골드 +{0}", amount), "info");
       }
       items = items.filter(x => x !== it);
     }
@@ -2174,13 +2174,13 @@
   const POTION = { heal: 0.3, min: 8, cooldown: 10 };
   function usePotion() {
     if (gameOver || scene === "lobby") return;
-    if (player.potCd > 0) { log(`포션은 ${player.potCd}턴 뒤에 다시 마실 수 있다.`, "bad"); return; }
+    if (player.potCd > 0) { log(T("포션은 {0}턴 뒤에 다시 마실 수 있다.", player.potCd), "bad"); return; }
     // 개수 제한 없이 10턴마다 한 번. 최대 HP의 30% (최소 8) 회복: 깊은 층에서도 쓸모 있게
     player.potCd = POTION.cooldown;
     const amount = Math.max(POTION.min, Math.round(stats().maxHp * POTION.heal));
     const before = player.hp;
     heal(amount);
-    log(`포션 사용. HP +${player.hp - before}`, "good");
+    log(T("포션 사용. HP +{0}", player.hp - before), "good");
     endTurn();
   }
 
@@ -2191,7 +2191,7 @@
   function nmFloorReward() {
     const g = inHell() ? hellFloorGold(depth) : nmFloorGold(depth);
     player.gold += g;
-    log(`${floorName()} 돌파! 층 보상 골드 +${g.toLocaleString()}`, null, "#ffcf5c");
+    log(T("{0} 돌파! 층 보상 골드 +{1}", floorName(), g.toLocaleString()), null, "#ffcf5c");
   }
 
   function descend() {
@@ -2203,8 +2203,8 @@
     if (inNM()) nmBest = Math.max(nmBest, depth);
     else if (inHell()) hellBest = Math.max(hellBest, depth);
     else if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
-    log(`${floorName()}으로 내려간다...`, "info");
-    if (depth === maxFloor() && !(inNM() ? nmCleared : inHell() ? hellCleared : cleared)) log(`마지막 층이다! ${floorName()} 보스를 쓰러뜨리고 계단을 밟으면 ${inNM() ? "나이트메어" : inHell() ? "헬" : "일반 던전"} 완료.`, "good");
+    log(T("{0}으로 내려간다...", floorName()), "info");
+    if (depth === maxFloor() && !(inNM() ? nmCleared : inHell() ? hellCleared : cleared)) log(T("마지막 층이다! {0} 보스를 쓰러뜨리고 계단을 밟으면 {1} 완료.", floorName(), inNM() ? T("나이트메어") : inHell() ? T("헬") : T("일반 던전")), "good");
     const rooms = generateDungeon();
     newLevel(rooms);
     render();
@@ -2227,20 +2227,20 @@
     }
     shopBought = [];
     shopRerolls = 0;
-    if (first) log(`🎉 ${depth}층 보스를 쓰러뜨렸다! 일반 던전 완료!`, "rainbow");
+    if (first) log(T("🎉 {0}층 보스를 쓰러뜨렸다! 일반 던전 완료!", depth), "rainbow");
     newLevel(generateDungeon(), { quiet: true });  // 다음에 들어갈 새 구역 (포탈 문으로 들어가면 여기서 시작)
     saveGame(true);
     enterLobby({ from: "clear" });
     updateStats();
-    if (first) showNotice("일반 던전 완료!", [
-      `${depth}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 "완료"로 기록돼요.`,
-      `${depth}층이 마지막 층이에요. 로비의 파란 포탈(*)로 들어가면 ${depth}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 던전 입구 오른쪽 문으로는 ${skipFloor()}층부터 다시 내려갈 수 있어요.`,
-      "골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요.",
+    if (first) showNotice(T("일반 던전 완료!"), [
+      T("{0}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 \"완료\"로 기록돼요.", depth),
+      T("{0}층이 마지막 층이에요. 로비의 파란 포탈(*)로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 던전 입구 오른쪽 문으로는 {1}층부터 다시 내려갈 수 있어요.", depth, skipFloor()),
+      T("골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요."),
     ]);
-    else showNotice(`${depth}층 클리어!`, [
-      `${depth}층 보스를 ${counts ? "또 " : ""}쓰러뜨리고 로비로 돌아왔어요.`,
-      ...(counts ? [] : ["이번 판은 예전(v3까지) 장비를 써서 v4 베타 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요."]),
-      `로비의 파란 포탈(*)로 ${depth}층의 새 구역에 다시 들어갈 수 있어요.`,
+    else showNotice(T("{0}층 클리어!", depth), [
+      T("{0}층 보스를 {1}쓰러뜨리고 로비로 돌아왔어요.", depth, counts ? T("또 ") : ""),
+      ...(counts ? [] : [T("이번 판은 예전(v3까지) 장비를 써서 v4 베타 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요.")]),
+      T("로비의 파란 포탈(*)로 {0}층의 새 구역에 다시 들어갈 수 있어요.", depth),
     ]);
   }
 
@@ -2248,16 +2248,16 @@
   function completeGold() {
     const reward = goldReward();
     player.gold += reward;
-    log(`💰 ${floorName()} 완료! 보상 골드 +${reward.toLocaleString()}`, "rainbow");
+    log(T("💰 {0} 완료! 보상 골드 +{1}", floorName(), reward.toLocaleString()), "rainbow");
     newLevel(generateDungeon(), { quiet: true });
     saveGame(true);
     enterLobby({ from: "clear" });
     updateStats();
-    showNotice("골드 던전 완료!", [
+    showNotice(T("골드 던전 완료!"), [
       goldNM()
-        ? `보상으로 골드 ${reward.toLocaleString()}을 받았어요. (${itemLevel()}레벨 레전더리 하나를 고대 굴리기 ${GD.rewardRolls}번 할 수 있는 골드 × ${RLItems.NM_SHOP.priceMul}, 나이트메어 난이도)`
-        : `보상으로 골드 ${reward.toLocaleString()}을 받았어요. (${GD.floor}레벨 레전더리 하나를 고대 굴리기 ${GD.rewardRolls}번 할 수 있는 골드)`,
-      "로비의 파란 포탈(*)이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요.",
+        ? T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드 × {3}, 나이트메어 난이도)", reward.toLocaleString(), itemLevel(), GD.rewardRolls, RLItems.NM_SHOP.priceMul)
+        : T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드)", reward.toLocaleString(), GD.floor, GD.rewardRolls),
+      T("로비의 파란 포탈(*)이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요."),
     ]);
   }
 
@@ -2269,15 +2269,15 @@
     nmBest = Math.max(nmBest, depth);
     shopBought = [];
     shopRerolls = 0;
-    if (first) log(`🎉 ${floorName()} 보스를 쓰러뜨렸다! 나이트메어 완료!`, "rainbow");
+    if (first) log(T("🎉 {0} 보스를 쓰러뜨렸다! 나이트메어 완료!", floorName()), "rainbow");
     newLevel(generateDungeon(), { quiet: true });
     saveGame(true);
     enterLobby({ from: "clear" });
     updateStats();
-    showNotice(first ? "나이트메어 완료!" : `${floorName()} 클리어!`, first ? [
-      `${floorName()} 보스를 쓰러뜨려 나이트메어를 완료했어요. 나이트메어 랭킹에 "완료"로 기록돼요.`,
-      `로비의 파란 포탈(*)로 들어가면 ${floorName()}의 새 구역에서 계속 파밍할 수 있어요.`,
-    ] : [`${floorName()} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈(*)로 다시 들어갈 수 있어요.`]);
+    showNotice(first ? T("나이트메어 완료!") : T("{0} 클리어!", floorName()), first ? [
+      T("{0} 보스를 쓰러뜨려 나이트메어를 완료했어요. 나이트메어 랭킹에 \"완료\"로 기록돼요.", floorName()),
+      T("로비의 파란 포탈(*)로 들어가면 {0}의 새 구역에서 계속 파밍할 수 있어요.", floorName()),
+    ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈(*)로 다시 들어갈 수 있어요.", floorName())]);
   }
 
   // 헬 50층 보스를 쓰러뜨리고 계단을 밟음: 헬 완료 (최종 목적지) → 로비로, 포탈 문으로 50층 새 구역
@@ -2288,15 +2288,15 @@
     hellBest = Math.max(hellBest, depth);
     shopBought = [];
     shopRerolls = 0;
-    if (first) log(`🔥 ${floorName()} 보스를 쓰러뜨렸다! 헬 완료! 모든 던전을 정복했다!`, "rainbow");
+    if (first) log(T("🔥 {0} 보스를 쓰러뜨렸다! 헬 완료! 모든 던전을 정복했다!", floorName()), "rainbow");
     newLevel(generateDungeon(), { quiet: true });
     saveGame(true);
     enterLobby({ from: "clear" });
     updateStats();
-    showNotice(first ? "헬 완료!" : `${floorName()} 클리어!`, first ? [
-      `${floorName()} 보스를 쓰러뜨려 헬 던전을 완료했어요. 이 게임의 마지막 던전이에요! 헬 랭킹에 "완료"로 기록돼요.`,
-      `로비의 파란 포탈(*)이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요.`,
-    ] : [`${floorName()} 보스를 또 쓰러뜨리고 로비로 돌아왔어요.`]);
+    showNotice(first ? T("헬 완료!") : T("{0} 클리어!", floorName()), first ? [
+      T("{0} 보스를 쓰러뜨려 헬 던전을 완료했어요. 이 게임의 마지막 던전이에요! 헬 랭킹에 \"완료\"로 기록돼요.", floorName()),
+      T("로비의 파란 포탈(*)이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요."),
+    ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요.", floorName())]);
   }
 
   // 천하무적 불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번, 이 판의 이 층)
@@ -2306,20 +2306,20 @@
     const ls = stats().uq.lastStand;
     if (ls && Math.random() * 100 < ls) {
       player.hp = 1;
-      showDamage(player, "버팀", true, RLItems.RARITIES.unique.color);
-      log(`✦ 염라의 관복: 쓰러질 피해를 버텨냈다! HP 1`, null, RLItems.RARITIES.unique.color);
+      showDamage(player, T("버팀"), true, RLItems.RARITIES.unique.color);
+      log(T("✦ 염라의 관복: 쓰러질 피해를 버텨냈다! HP 1"), null, RLItems.RARITIES.unique.color);
       return;
     }
     if (stats().rw.undying && player.ud !== floorKey()) {
       player.ud = floorKey();
       player.hp = 1;
-      showDamage(player, "불사", true, "#ffd27f");
-      log("✦ 천하무적: 쓰러질 피해를 버텨냈다! HP 1 (이 층에서는 한 번만)", "rainbow");
+      showDamage(player, T("불사"), true, "#ffd27f");
+      log(T("✦ 천하무적: 쓰러질 피해를 버텨냈다! HP 1 (이 층에서는 한 번만)"), "rainbow");
       return;
     }
     gameOver = true;
     markLastSpot();
-    log(`당신은 ${floorName()}에서 쓰러졌다. ${player.revived ? "" : "부활하거나 "}R을 눌러 로비에서 새로 시작.`, "bad");
+    log(T("당신은 {0}에서 쓰러졌다. {1}R을 눌러 로비에서 새로 시작.", floorName(), player.revived ? "" : T("부활하거나 ")), "bad");
     saveGame(true);
     openDeath();
   }
@@ -2446,7 +2446,7 @@
     try {
       await Account.saveAttr(SAVE_ATTR, store.get(SAVE_KEY), keepalive);
     } catch (e) {
-      log(`계정에 저장하지 못했다: ${e.message}`, "bad");
+      log(T("계정에 저장하지 못했다: {0}", e.message), "bad");
     }
   }
 
@@ -2474,7 +2474,7 @@
     updateStats();
     // 로비에 있으면 던전 입구로 들어갈 때 쓰러진 화면을 보여줌
     if (scene !== "dungeon") return;
-    log(`${floorName()}에서 쓰러진 상태다. 부활하거나 R을 눌러 로비에서 새로 시작.`, "bad");
+    log(T("{0}에서 쓰러진 상태다. 부활하거나 R을 눌러 로비에서 새로 시작.", floorName()), "bad");
     openDeath();
   }
 
@@ -2503,9 +2503,9 @@
     logEl.innerHTML = "";
     const say = (msg) => { if (scene === "dungeon") log(msg, "info"); };
     if (restore && restoreLevel()) {
-      say(`${floorName()}에서 이어서 시작한다. (떠났던 그 자리)`);
+      say(T("{0}에서 이어서 시작한다. (떠났던 그 자리)", floorName()));
     } else {
-      say(`${floorName()}에서 이어서 시작한다.`);
+      say(T("{0}에서 이어서 시작한다.", floorName()));
       const rooms = generateDungeon();
       newLevel(rooms);
     }
@@ -2525,7 +2525,7 @@
         Ranking.schedule();
         legacyNotice();
       } catch (e) {
-        log(`계정 저장 데이터를 불러오지 못했다: ${e.message} (잠시 뒤 다시 시도)`, "bad");
+        log(T("계정 저장 데이터를 불러오지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
         setTimeout(() => { if (Account.loggedIn() && !cloudReady) syncAfterLogin(guestOwner); }, 15000);
       } finally {
         renderAccount();
@@ -2540,16 +2540,16 @@
       if (cloud) {
         store.set(SAVE_KEY, JSON.stringify(cloud));
         startFromSave(cloud);
-        log("계정에 저장된 진행 상황을 불러왔다.", "good");
+        log(T("계정에 저장된 진행 상황을 불러왔다."), "good");
       } else {
         await Account.saveAttr(SAVE_ATTR, JSON.stringify(makeSave()));
-        log("지금 진행 상황을 계정에 저장했다.", "good");
+        log(T("지금 진행 상황을 계정에 저장했다."), "good");
       }
       cloudReady = true;
       collectMail(true);
       Ranking.schedule();
     } catch (e) {
-      log(`계정 저장 데이터를 불러오지 못했다: ${e.message}`, "bad");
+      log(T("계정 저장 데이터를 불러오지 못했다: {0}", e.message), "bad");
     } finally {
       renderAccount();
     }
@@ -2558,7 +2558,7 @@
   function mergeGuest(guestOwner) {
     Dex.mergeFrom(guestOwner);
     const moved = Inv.mergeFrom(guestOwner);
-    if (moved) log(`게스트 장비 ${moved}개를 계정으로 옮겼다.`, "good");
+    if (moved) log(T("게스트 장비 {0}개를 계정으로 옮겼다.", moved), "good");
   }
 
   // 예전 주소에서 받아 둔 장비·도감·상자 보관함(rl_old:…)을 지금 가방에 합침. 같은 아이템은 한 번만.
@@ -2578,7 +2578,7 @@
       if (Array.isArray(mail)) moved += Inv.addMail(mail);
       store.del(k);
     }
-    if (moved) log(`예전 주소에 있던 장비 ${moved}개를 가방에 합쳤다. (가방이 차면 상자 보관함에서 기다린다)`, "good");
+    if (moved) log(T("예전 주소에 있던 장비 {0}개를 가방에 합쳤다. (가방이 차면 상자 보관함에서 기다린다)", moved), "good");
   }
 
   // ---- 계정 저장 (게임 서버) ---- 로그인하면 가방·장착 장비·강화석·도감·진행 중인 판·상자 보관함을 서버에 저장
@@ -2605,11 +2605,11 @@
 
     async function call(method, body, keepalive = false) {
       const headers = await serverHeaders();
-      if (!headers?.Authorization) throw new Error("로그인이 필요해요.");
+      if (!headers?.Authorization) throw new Error(T("로그인이 필요해요."));
       const res = await fetch(rankingUrl("profile"), { method, headers, body, keepalive });
       let out = null;
       try { out = await res.json(); } catch {}
-      if (!res.ok) throw new Error(out?.error ? `서버 오류 (${out.error})` : `서버 오류 (${res.status})`);
+      if (!res.ok) throw new Error(out?.error ? T("서버 오류 ({0})", out.error) : T("서버 오류 ({0})", res.status));
       return out;
     }
 
@@ -2643,12 +2643,12 @@
           // 다른 기기에서 저장한 게 더 새로움, 이 기기는 처음, 또는 방금 로그인함(게스트 판 대신 계정 판) → 서버 기준
           const local = { inv: Inv.snapshot(), dex: Dex.snapshot() };
           apply(srv.data, srv.rev);
-          log("계정에 저장된 진행 상황을 불러왔다.", "good");
+          log(T("계정에 저장된 진행 상황을 불러왔다."), "good");
           // 이 기기에서 처음 맞추면, 예전에 이 기기에만 저장돼 있던 장비·도감을 합침
           if (!m) {
             const moved = Inv.absorb(local.inv, "device");
             Dex.absorb(local.dex);
-            if (moved) log(`이 기기에 있던 장비 ${moved}개를 계정에 합쳤다.`, "good");
+            if (moved) log(T("이 기기에 있던 장비 {0}개를 계정에 합쳤다.", moved), "good");
           }
         }
         // 저장 번호가 같으면 이 기기가 최신: 못 올린 변경만 올림
@@ -2658,7 +2658,7 @@
         try { old = parseSave(await Account.loadAttr(SAVE_ATTR)); } catch {}
         if (old) { store.set(SAVE_KEY, JSON.stringify(old)); quietly(() => startFromSave(old)); }
         setMeta({ rev: 0, dirty: true });
-        log("지금 진행 상황과 가방을 계정에 저장한다.", "good");
+        log(T("지금 진행 상황과 가방을 계정에 저장한다."), "good");
       }
       lastSent = srv.data ? JSON.stringify(srv.data) : null;
       // 게스트로 모은 장비·도감을 계정으로 (방금 로그인했거나, 지난번 로그인 때 서버가 안 돼서 못 옮긴 것)
@@ -2710,11 +2710,11 @@
           else if (res.conflict && res.data) {
             apply(res.data, res.rev);
             lastSent = JSON.stringify(res.data);
-            log("다른 기기에서 저장한 진행 상황으로 바꿨다.", "info");
+            log(T("다른 기기에서 저장한 진행 상황으로 바꿨다."), "info");
             if (scene === "lobby") renderLobby();
           } else if (res.conflict) setMeta({ rev: res.rev, dirty: true });
         } catch (e) {
-          if (!warned) log(`계정에 저장하지 못했다: ${e.message} (잠시 뒤 다시 시도)`, "bad");
+          if (!warned) log(T("계정에 저장하지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
           warned = true;
           schedule(15000);
           return;
@@ -2802,8 +2802,8 @@
         const cells = [];
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
         flash(cells, "rgba(255, 210, 127, 0.35)");
-        log(`🌀 회전 베기! ${hit.length}마리${crit ? " (치명타)" : ""}`, null, RLItems.RUNEWORD_COLOR);
-        for (const e of hit) if (e.hp > 0 && enemies.includes(e)) hitEnemy(e, raw, crit, s, "회전 베기: ");
+        log(T("🌀 회전 베기! {0}마리{1}", hit.length, crit ? T(" (치명타)") : ""), null, RLItems.RUNEWORD_COLOR);
+        for (const e of hit) if (e.hp > 0 && enemies.includes(e)) hitEnemy(e, raw, crit, s, T("회전 베기: "));
       }
     }
     // 파이어볼 (화염의 세트, 또는 룬워드 나무의 약한 파이어볼)
@@ -2820,7 +2820,7 @@
         const cells = [];
         for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
         flash(cells, "rgba(255, 122, 61, 0.38)");
-        log(`🔥 파이어볼! ${hit.length}마리에게 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${s.fireballBurn ? " · 화상" : ""}`, null, EL.colors.fire);
+        log(T("🔥 파이어볼! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", s.fireballBurn ? T(" · 화상") : ""), null, EL.colors.fire);
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.fire, s) && s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
       }
     }
@@ -2835,7 +2835,7 @@
         flash(cells, "rgba(111, 211, 255, 0.4)");
         let slowed = 0;
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice, s) && s.novaSlow && chill(e, 1)) slowed++;
-        log(`❄ 프로스트 노바! ${hit.length}마리에게 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${slowed ? ` · ${slowed}마리 느려짐` : ""}`, null, EL.colors.ice);
+        log(T("❄ 프로스트 노바! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", slowed ? T(" · {0}마리 느려짐", slowed) : ""), null, EL.colors.ice);
       }
     }
     // 체인 라이트닝 (뇌전의 세트)
@@ -2859,7 +2859,7 @@
           at = next || ((s.chainMax || s.uq.chainPlus) && stillAlive ? at : null);   // 여의주 검도 다른 적이 없으면 같은 적
         }
         flash(cells, "rgba(255, 225, 77, 0.45)");
-        log(`⚡ 체인 라이트닝! ${n}번 튕겨 한 번에 ${Math.round(dmg)} 피해${crit ? " (치명타)" : ""}${s.chainMax ? " · 감전" : ""}`, null, EL.colors.bolt);
+        log(T("⚡ 체인 라이트닝! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
       }
     }
   }
@@ -2870,18 +2870,18 @@
   function skillHud() {
     const s = stats(), out = [];
     const cut = RLMonsters.crowdCut(adjacentFoes());
-    if (cut) out.push(`🛡 둘러싸임 −${Math.round(cut * 100)}%`);
-    if (player.shred > 0) out.push(`🦷 방어력 −${player.shred}%`);
-    if (reaperOn()) out.push(`☠ 포탈 봉인 · 흡혈 ${Math.round(lsMul() * 100)}%`);
-    const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? `${icon} ${name} ${cd}턴` : `${icon} ${name} 준비됨`); };
-    one(s.fireball || s.rw.fireball, "🔥", "파이어볼", player.fbCd);
-    one(s.rw.whirl, "🌀", "회전 베기", player.whirlCd);
-    if (s.rw.shield || s.uq.shield) out.push(`🛡 보호막 ${player.shield || 0}`);
-    if (player.iron > 0) out.push(`🐉 쇠비늘 방어력 +${player.iron}%`);
-    if (player.reap > 0) out.push(`💀 영혼 수확 공격력 +${player.reap}%`);
-    if (s.rw.undying) out.push(player.ud === floorKey() ? "✦ 불사 사용함" : "✦ 불사 준비됨");
-    one(s.nova, "❄", "노바", player.novaCd);
-    one(s.chain, "⚡", "체인", player.chainCd);
+    if (cut) out.push(T("🛡 둘러싸임 −{0}%", Math.round(cut * 100)));
+    if (player.shred > 0) out.push(T("🦷 방어력 −{0}%", player.shred));
+    if (reaperOn()) out.push(T("☠ 포탈 봉인 · 흡혈 {0}%", Math.round(lsMul() * 100)));
+    const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? T("{0} {1} {2}턴", icon, name, cd) : T("{0} {1} 준비됨", icon, name)); };
+    one(s.fireball || s.rw.fireball, "🔥", T("파이어볼"), player.fbCd);
+    one(s.rw.whirl, "🌀", T("회전 베기"), player.whirlCd);
+    if (s.rw.shield || s.uq.shield) out.push(T("🛡 보호막 {0}", player.shield || 0));
+    if (player.iron > 0) out.push(T("🐉 쇠비늘 방어력 +{0}%", player.iron));
+    if (player.reap > 0) out.push(T("💀 영혼 수확 공격력 +{0}%", player.reap));
+    if (s.rw.undying) out.push(player.ud === floorKey() ? T("✦ 불사 사용함") : T("✦ 불사 준비됨"));
+    one(s.nova, "❄", T("노바"), player.novaCd);
+    one(s.chain, "⚡", T("체인"), player.chainCd);
     return out;
   }
 
@@ -2890,7 +2890,7 @@
     worldTurn();
     // 얼어서 느려진 동안은 2턴에 한 번만 움직임: 쉬는 턴은 몬스터만 한 번 더 움직임
     if (!gameOver && scene === "dungeon" && player.slow > 0 && (turn + 1) % 2 === 1) {
-      log("몸이 얼어 이번 턴은 움직이지 못했다.", "bad");
+      log(T("몸이 얼어 이번 턴은 움직이지 못했다."), "bad");
       worldTurn();
     }
     if (!gameOver) { computeFOV(); noteSeen(); }
@@ -2914,13 +2914,13 @@
       const b = Math.round(b0 * shockMul(e) * elemMul(e, "fire"));
       e.hp -= b;
       showDamage(e, b, false, EL.colors.fire);
-      if (e.hp <= 0) { log(`${e.name}이(가) 불타 쓰러졌다!`, null, EL.colors.fire); killEnemy(e); }
+      if (e.hp <= 0) { log(T("{0}이(가) 불타 쓰러졌다!", e.name), null, EL.colors.fire); killEnemy(e); }
     }
     const pb = burnTick(player);
     if (pb) {
       hurtPlayer(pb);
       showDamage(player, pb, false, EL.colors.fire);
-      log(`화상으로 ${pb} 피해를 입음.`, "bad");
+      log(T("화상으로 {0} 피해를 입음.", pb), "bad");
       if (player.hp <= 0) { death(); if (gameOver) return; }
     }
     // 적 이동/공격
@@ -2948,7 +2948,7 @@
     }
     for (const u of [player, ...enemies]) statusTurn(u);
     for (const e of enemies) if (sweepSoon(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2)
-      log(`${e.name}이(가) 꼬리를 치켜든다! 다음 턴에 ${e.sweep.radius}칸 안을 휩쓴다.`, null, RLMonsters.NAMED_COLOR);
+      log(T("{0}이(가) 꼬리를 치켜든다! 다음 턴에 {1}칸 안을 휩쓴다.", e.name, e.sweep.radius), null, RLMonsters.NAMED_COLOR);
   }
 
   // 플레이어 시야에 들어온 몬스터를 도감에 기록. 황금 고블린은 처음 보인 순간부터 도망 시간을 잼
@@ -2959,13 +2959,13 @@
       Dex.see(e.id);
       if (e.pattern === "reaper" && !e.engaged) {
         e.engaged = true;
-        log(`${e.name}와(과) 눈이 마주쳤다! 쓰러뜨리기 전에는 포탈을 열 수 없고, 흡혈이 ${Math.round(e.reaper.lifesteal * 100)}%로 줄어든다.`, null, RLMonsters.NAMED_COLOR);
+        log(T("{0}와(과) 눈이 마주쳤다! 쓰러뜨리기 전에는 포탈을 열 수 없고, 흡혈이 {1}%로 줄어든다.", e.name, Math.round(e.reaper.lifesteal * 100)), null, RLMonsters.NAMED_COLOR);
       }
       if (e.kind === "golden" && e.fleeAt == null) {
         const flee = e.fleeTurns || G.ranks.normal.fleeTurns;
         e.fleeAt = turn + flee;
-        const tip = e.blink ? " 때리면 연막을 터뜨리고 순간이동하기도 한다!" : "";
-        log(`${e.name}이(가) 나타났다! ${flee}턴 안에 잡지 못하면 도망친다!${tip}`, null, G.color);
+        const tip = e.blink ? T(" 때리면 연막을 터뜨리고 순간이동하기도 한다!") : "";
+        log(T("{0}이(가) 나타났다! {1}턴 안에 잡지 못하면 도망친다!{2}", e.name, flee, tip), null, G.color);
       }
     }
   }
@@ -2977,10 +2977,10 @@
       const left = e.fleeAt - turn;
       if (left <= 0) {
         enemies = enemies.filter(x => x !== e);
-        log(`${e.name}이(가) 보물을 들고 도망쳤다…`, null, G.color);
+        log(T("{0}이(가) 보물을 들고 도망쳤다…", e.name), null, G.color);
         return;
       }
-      if (left === 10) log(`${e.name}이(가) 도망칠 준비를 한다! (${left}턴 남음)`, null, G.color);
+      if (left === 10) log(T("{0}이(가) 도망칠 준비를 한다! ({1}턴 남음)", e.name, left), null, G.color);
     }
     // m턴에 n번 움직임 (보통·정예 2턴에 1번, 왕 3턴에 2번)
     const [n, m] = e.moves || G.ranks.normal.moves;
@@ -2998,7 +2998,7 @@
       const d = dist({ x, y }, player);
       if (d < lo || d > hi + 2 || enemies.some(o => o.x === x && o.y === y)) continue;
       e.x = x; e.y = y;
-      log(`${e.name}이(가) 연막을 터뜨리고 순간이동했다!`, null, RLMonsters.GOLDEN.color);
+      log(T("{0}이(가) 연막을 터뜨리고 순간이동했다!", e.name), null, RLMonsters.GOLDEN.color);
       return true;
     }
     return false;
@@ -3065,20 +3065,20 @@
     // 왼쪽 거래소(건물)와 바로 옆 작은 우편함(상자 한 칸), 그 옆 시간 상점(매 시간 정각에 진열이 바뀜): 걸어 들어가면 창이 열림
     // 오른쪽은 골드 던전과 나이트메어 입구 (일반 던전을 완료하면 열림)
     const shops = [
-      { kind: "market", label: "거래소", x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
-      { kind: "mailbox", label: "우편함", door: { x: 8, y: gate.y }, tab: "mail" },
-      { kind: "hourshop", label: "시간 상점", x0: 10, x1: 12, door: { x: 11, y: gate.y }, glyph: "&", tab: null },
+      { kind: "market", label: T("거래소"), x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
+      { kind: "mailbox", label: T("우편함"), door: { x: 8, y: gate.y }, tab: "mail" },
+      { kind: "hourshop", label: T("시간 상점"), x0: 10, x1: 12, door: { x: 11, y: gate.y }, glyph: "&", tab: null },
       // 골드 던전: 왼쪽 문 75층 난이도, 오른쪽 문 나이트메어 최고 층 난이도
-      { kind: "golddungeon", label: "골드 던전", x0: 20, x1: 22, door: { x: 20, y: gate.y }, glyph: "▼", tab: null },
+      { kind: "golddungeon", label: T("골드 던전"), x0: 20, x1: 22, door: { x: 20, y: gate.y }, glyph: "▼", tab: null },
       { kind: "golddungeonNM", door: { x: 22, y: gate.y }, glyph: "▼", tab: null },
-      { kind: "nightmare", label: "나이트메어", x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
+      { kind: "nightmare", label: T("나이트메어"), x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
       // 나이트메어 오른쪽 문: 완료한 사람만 50층(룬이 나오는 보스 층)에 바로
       { kind: "nightmare50", door: { x: 28, y: gate.y }, glyph: "▼", tab: null },
       // 맨 위 헬 던전 (최종 목적지, 나이트메어를 완료하면 열림): 왼쪽 문 1층부터, 오른쪽 문 완료한 10·20·30·40·50층 골라서
-      { kind: "hell", label: "헬 던전", x0: 10, x1: 22, y0: 1, y1: 3, door: { x: 14, y: 3 }, glyph: "▼", tab: null },
+      { kind: "hell", label: T("헬 던전"), x0: 10, x1: 22, y0: 1, y1: 3, door: { x: 14, y: 3 }, glyph: "▼", tab: null },
       { kind: "hellPick", door: { x: 18, y: 3 }, glyph: "▼", tab: null },
       // 아래쪽 가운데 대장간 (문이 위쪽): 옵션 재련·홈 초기화 — 인벤토리를 대장간 모드로 엶
-      { kind: "forge", label: "대장간", x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
+      { kind: "forge", label: T("대장간"), x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
     ];
     for (const s of shops) if (s.x0 != null) for (let y = s.y0 ?? gate.y - 2; y <= (s.y1 ?? gate.y); y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
     for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
@@ -3115,11 +3115,13 @@
       updateStats();
     }
     setScene("lobby");
+    const backTo = () => (resumeFloor() ? T(" 파란 포탈(*)로 {0}에 돌아갈 수 있다.", floorName()) : "");
     const msg = {
-      portal: [`포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 ${player.gold.toLocaleString()} · Lv ${player.plvl})${resumeFloor() ? ` 바로 아래 파란 포탈(*)로 ${floorName()}의 떠난 자리에 다시 들어갈 수 있다.` : ""}`, "good"],
-      clear: [`${floorName()}을 완료하고 로비로 돌아왔다. 바로 아래 파란 포탈(*)로 ${floorName()}의 새 구역에 들어가 계속 파밍할 수 있다.`, "good"],
-      death: ["로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다.", "info"],
-      start: [`로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 ${skipFloor() >= 2 ? `${skipFloor()}층부터` : "최고 층 − 10층부터(12층까지 내려가면 열림)"} 들어간다.${resumeFloor() ? ` 파란 포탈(*)로 ${floorName()}에 돌아갈 수 있다.` : ""}`, "info"],
+      portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 아래 파란 포탈(*)로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
+      clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 아래 파란 포탈(*)로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
+      death: [T("로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다."), "info"],
+      start: [(skipFloor() >= 2 ? T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}", skipFloor(), backTo())
+        : T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}", backTo())), "info"],
     }[from];
     log(msg[0], msg[1]);
     render();
@@ -3134,12 +3136,12 @@
     if (which === "resume") {
       if (!resumeFloor()) return;
       setScene("dungeon");
-      log(`포탈을 타고 ${floorName()}의 떠난 자리로 돌아왔다.`, "info");
+      log(T("포탈을 타고 {0}의 떠난 자리로 돌아왔다.", floorName()), "info");
       saveGame(true);
     } else {
       const from = which === "skip" ? skipFloor() : 1;
-      if (which === "skip" && from < 2) { log("오른쪽 문은 일반 던전 12층까지 내려가면 열린다 (최고 층 − 10층부터).", "bad"); return; }
-      if (resumeFloor() && !confirm(`${from}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+      if (which === "skip" && from < 2) { log(T("오른쪽 문은 일반 던전 12층까지 내려가면 열린다 (최고 층 − 10층부터)."), "bad"); return; }
+      if (resumeFloor() && !confirm(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
       entering = true;
       let ok = false;
       try { ok = await allowEntry(); } finally { entering = false; }
@@ -3153,7 +3155,7 @@
       shopBought = [];
       shopRerolls = 0;
       setScene("dungeon");
-      log(depth === 1 ? "던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라." : `던전 ${depth}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 ${Math.min(bestDepth, RLMonsters.MAX_FLOOR)}${cleared ? " 완료" : ""})`, "info");
+      log(depth === 1 ? T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.") : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
       newLevel(generateDungeon());
       saveGame(true);
     }
@@ -3170,7 +3172,7 @@
     if (lastDeath) to = { ...lastDeath, d: Math.min(lastDeath.d, lastDeath.z === "nm" ? NM.floors : lastDeath.z === "hell" ? HELL.floors : RLMonsters.MAX_FLOOR) };
     else {
       const top = Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), nmTop = Math.min(NM.floors, nmBest);
-      const nm = cleared && nmTop >= 1 && confirm(`운영자 입구: 나이트메어 ${nmTop}층으로 갈까요?\n취소하면 일반 던전 ${top}층으로 가요.`);
+      const nm = cleared && nmTop >= 1 && confirm(T("운영자 입구: 나이트메어 {0}층으로 갈까요?\n취소하면 일반 던전 {1}층으로 가요.", nmTop, top));
       to = { d: nm ? nmTop : top, z: nm ? "nm" : "normal" };
     }
     if (gameOver) { gameOver = false; closeDeath(); }
@@ -3185,7 +3187,7 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    log(`운영자 입구: ${floorName()}을(를) 새로 만들어 들어왔다. (마지막으로 쓰러지거나 포탈을 탄 층 · 테스트용, 랭킹에는 기록되지 않음)`, null, STAFF_COLOR);
+    log(T("운영자 입구: {0}을(를) 새로 만들어 들어왔다. (마지막으로 쓰러지거나 포탈을 탄 층 · 테스트용, 랭킹에는 기록되지 않음)", floorName()), null, STAFF_COLOR);
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3197,11 +3199,11 @@
   async function enterNightmare(from = 1) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
-    if (!cleared) { log(`나이트메어는 일반 던전 ${RLMonsters.MAX_FLOOR}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
-    if (from > 1 && !nmCleared) { log(`나이트메어 ${NM.floors}층 문은 나이트메어를 완료하면 열린다 (${NM.floors}층 보스가 룬을 떨어뜨림).`, "bad"); return; }
+    if (!cleared) { log(T("나이트메어는 일반 던전 {0}층을 완료해야 들어갈 수 있다.", RLMonsters.MAX_FLOOR), "bad"); return; }
+    if (from > 1 && !nmCleared) { log(T("나이트메어 {0}층 문은 나이트메어를 완료하면 열린다 ({0}층 보스가 룬을 떨어뜨림).", NM.floors), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
-    if (old) { log(`예전(v3까지) 장비 ${old}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.`, "bad"); return; }
-    if (resumeFloor() && !confirm(`나이트메어 ${from}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+    if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
+    if (resumeFloor() && !confirm(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3214,9 +3216,9 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    if (from > 1) log(`나이트메어 ${from}층에 바로 들어왔다. ${from}층 보스를 쓰러뜨리면 룬 ${RLItems.RUNE_DROP.count}개를 떨어뜨린다!`, "rainbow");
-    else log(`나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! ${NM.floors}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 ${NM.itemBase + 1}~${NM.itemBase + NM.floors}. 내 속성 저항은 장비 합에서 ${EL.zonePenalty.nightmare}% 낮아진다.`, "bad");
-    log("몬스터마다 속성이 있다: 불꽃(화상), 서리(느려짐), 번개(한 번 더 맞음). 여기서 얻는 장비에는 속성 피해·저항이 붙는다.", "info");
+    if (from > 1) log(T("나이트메어 {0}층에 바로 들어왔다. {0}층 보스를 쓰러뜨리면 룬 {1}개를 떨어뜨린다!", from, RLItems.RUNE_DROP.count), "rainbow");
+    else log(T("나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! {0}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 {1}~{2}. 내 속성 저항은 장비 합에서 {3}% 낮아진다.", NM.floors, NM.itemBase + 1, NM.itemBase + NM.floors, EL.zonePenalty.nightmare), "bad");
+    log(T("몬스터마다 속성이 있다: 불꽃(화상), 서리(느려짐), 번개(한 번 더 맞음). 여기서 얻는 장비에는 속성 피해·저항이 붙는다."), "info");
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3227,11 +3229,11 @@
   async function enterHell(from = 1) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
-    if (!nmCleared) { log(`헬 던전은 나이트메어 ${NM.floors}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
-    if (from > 1 && !hellMilestones().includes(from)) { log(`헬 ${from}층은 그 층을 완료해야 골라서 들어갈 수 있다.`, "bad"); return; }
+    if (!nmCleared) { log(T("헬 던전은 나이트메어 {0}층을 완료해야 들어갈 수 있다.", NM.floors), "bad"); return; }
+    if (from > 1 && !hellMilestones().includes(from)) { log(T("헬 {0}층은 그 층을 완료해야 골라서 들어갈 수 있다.", from), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
-    if (old) { log(`예전(v3까지) 장비 ${old}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.`, "bad"); return; }
-    if (resumeFloor() && !confirm(`헬 ${from}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+    if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
+    if (resumeFloor() && !confirm(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3244,8 +3246,8 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    log(`🔥 ${floorName()}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 장비 합에서 ${EL.zonePenalty.hell}% 낮아진다 (${EL.resCap}%가 되려면 ${EL.resCap + EL.zonePenalty.hell}%).`, "bad");
-    log(`아이템 레벨 ${HELL.itemBase + 1}~${HELL.itemBase + HELL.floors} "지옥의" 아이템이 나온다. ${HELL.milestones.join("·")}층은 네임드 보스(${HELL.milestones.map(m => RLMonsters.namedAt(m).name).join("·")})가 지키고, 쓰러뜨리면 룬 ${RLMonsters.NAMED.runes}개와 함께 그 층을 골라서 다시 들어올 수 있다.`, "info");
+    log(T("🔥 {0}에 발을 들였다. 이곳이 마지막 던전이다! 몬스터마다 속성 저항이 있고, 내 속성 저항은 장비 합에서 {1}% 낮아진다 ({2}%가 되려면 {3}%).", floorName(), EL.zonePenalty.hell, EL.resCap, EL.resCap + EL.zonePenalty.hell), "bad");
+    log(T("아이템 레벨 {0}~{1} \"지옥의\" 아이템이 나온다. {2}층은 네임드 보스({3})가 지키고, 쓰러뜨리면 룬 {4}개와 함께 그 층을 골라서 다시 들어올 수 있다.", HELL.itemBase + 1, HELL.itemBase + HELL.floors, HELL.milestones.join("·"), HELL.milestones.map(m => RLMonsters.namedAt(m).name).join("·"), RLMonsters.NAMED.runes), "info");
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3254,11 +3256,11 @@
   // 헬 오른쪽 문: 완료한 층을 골라서
   const hellPickModal = document.getElementById("hellpick-modal");
   function openHellPick() {
-    if (!nmCleared) { log(`헬 던전은 나이트메어 ${NM.floors}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
+    if (!nmCleared) { log(T("헬 던전은 나이트메어 {0}층을 완료해야 들어갈 수 있다.", NM.floors), "bad"); return; }
     const done = hellMilestones();
-    if (!done.length) { log(`헬 오른쪽 문은 ${HELL.milestones[0]}층을 완료하면 열린다 (10·20·30·40·50층 중 완료한 층을 골라 들어감).`, "bad"); return; }
+    if (!done.length) { log(T("헬 오른쪽 문은 {0}층을 완료하면 열린다 (10·20·30·40·50층 중 완료한 층을 골라 들어감).", HELL.milestones[0]), "bad"); return; }
     document.getElementById("hellpick-list").replaceChildren(...HELL.milestones.map(m => Object.assign(document.createElement("button"), {
-      type: "button", textContent: `${m}층 · ${RLMonsters.namedAt(m).name}${done.includes(m) ? "" : " (미완료)"}`, disabled: !done.includes(m),
+      type: "button", textContent: T("{0}층 · {1}{2}", m, RLMonsters.namedAt(m).name, done.includes(m) ? "" : T(" (미완료)")), disabled: !done.includes(m),
       onclick: () => { closeHellPick(); enterHell(m); },
     })));
     hellPickModal.hidden = false;
@@ -3272,9 +3274,9 @@
   async function enterGoldDungeon(nm = false) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
-    if (!cleared) { log(`골드 던전은 일반 던전 ${RLMonsters.MAX_FLOOR}층을 완료해야 들어갈 수 있다.`, "bad"); return; }
-    if (nm && nmBest < 1) { log("골드 던전 오른쪽 문은 나이트메어에 들어가 본 뒤에 열린다 (나이트메어 최고 층 난이도).", "bad"); return; }
-    if (resumeFloor() && !confirm(`새 골드 던전에 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층(${floorName()})은 사라져요. 골드·레벨·장비는 그대로예요.`)) return;
+    if (!cleared) { log(T("골드 던전은 일반 던전 {0}층을 완료해야 들어갈 수 있다.", RLMonsters.MAX_FLOOR), "bad"); return; }
+    if (nm && nmBest < 1) { log(T("골드 던전 오른쪽 문은 나이트메어에 들어가 본 뒤에 열린다 (나이트메어 최고 층 난이도)."), "bad"); return; }
+    if (resumeFloor() && !confirm(T("새 골드 던전에 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라져요. 골드·레벨·장비는 그대로예요.", floorName()))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3287,9 +3289,9 @@
     shopRerolls = 0;
     setScene("dungeon");
     log(goldNM()
-      ? `${floorName()}에 발을 들였다. 나이트메어 ${player.gn}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 ${goldReward().toLocaleString()}!`
-      : `골드 던전에 발을 들였다. ${GD.floor}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 ${goldReward().toLocaleString()}!`, null, "#ffcf5c");
-    log("골드 던전에서는 장비가 떨어지지 않는다. 몬스터 골드와 완료 보상만.", "info");
+      ? T("{0}에 발을 들였다. 나이트메어 {1}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 {2}!", floorName(), player.gn, goldReward().toLocaleString())
+      : T("골드 던전에 발을 들였다. {0}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 {1}!", GD.floor, goldReward().toLocaleString()), null, "#ffcf5c");
+    log(T("골드 던전에서는 장비가 떨어지지 않는다. 몬스터 골드와 완료 보상만."), "info");
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -3303,7 +3305,7 @@
     if (scene !== "dungeon") return;
     if (gameOver) { openDeath(); return; }
     const reaper = reaperOn();
-    if (reaper) { log(`${reaper.name}이(가) 길을 막고 있다… 쓰러뜨리기 전에는 포탈을 열 수 없다!`, "bad"); render(); return; }
+    if (reaper) { log(T("{0}이(가) 길을 막고 있다… 쓰러뜨리기 전에는 포탈을 열 수 없다!", reaper.name), "bad"); render(); return; }
     markLastSpot();   // 운영자 입구가 이 층을 새로 만들어 다시 들어감
     saveGame(true);
     enterLobby({ from: "portal" });
@@ -3386,18 +3388,18 @@
 
     function renderList() {
       const inLobby = others.filter(p => p.scene === "lobby").length;
-      countEl.textContent = failed ? "" : `${others.length + 1}명 접속 중 · 로비 ${inLobby + (scene === "lobby" ? 1 : 0)}명`;
+      countEl.textContent = failed ? "" : T("{0}명 접속 중 · 로비 {1}명", others.length + 1, inLobby + (scene === "lobby" ? 1 : 0));
       const row = (name, where, color, mine, crown, staff) => el("li", { className: mine ? "me" : "" },
         el("span", { className: "dot", style: { background: color } }),
-        staff ? el("span", { className: "crown-wrap", innerHTML: staffSvg(), title: "운영자" })
-          : crown ? el("span", { className: "crown-wrap", innerHTML: crownSvg(crown), title: `층 랭킹 ${crown}위` }) : null,
+        staff ? el("span", { className: "crown-wrap", innerHTML: staffSvg(), title: T("운영자") })
+          : crown ? el("span", { className: "crown-wrap", innerHTML: crownSvg(crown), title: T("층 랭킹 {0}위", crown) }) : null,
         el("span", { className: "name", style: staff ? { color: STAFF_COLOR } : {} }, name), el("span", { className: "where" }, where));
-      const atLobby = (portal) => portal ? `로비 · 포탈 ${presenceLabel(portal)}` : "로비";
-      const whereOf = (p) => p.scene === "lobby" ? atLobby(p.portal) : p.depth ? `${presenceLabel(p.depth)} 탐험 중` : "던전";
-      const rows = [row(me ? `${me.name} (나)` : "나", scene === "lobby" ? atLobby(presenceFloor(resumeFloor(), inNM())) : `${floorName()} 탐험 중`, "#ffffff", true, me?.crown, me?.staff)];
+      const atLobby = (portal) => portal ? T("로비 · 포탈 {0}", presenceLabel(portal)) : T("로비");
+      const whereOf = (p) => p.scene === "lobby" ? atLobby(p.portal) : p.depth ? T("{0} 탐험 중", presenceLabel(p.depth)) : T("던전");
+      const rows = [row(me ? T("{0} (나)", me.name) : T("나"), scene === "lobby" ? atLobby(presenceFloor(resumeFloor(), inNM())) : T("{0} 탐험 중", floorName()), "#ffffff", true, me?.crown, me?.staff)];
       for (const p of others) rows.push(row(p.name, whereOf(p), colorOf(p.id), false, p.crown, p.staff));
-      if (failed) rows.push(el("li", { className: "note" }, "다른 사람 정보를 불러오지 못했어요. 혼자서도 던전에 들어갈 수 있어요."));
-      else if (!others.length) rows.push(el("li", { className: "note" }, "아직 다른 사람이 없어요."));
+      if (failed) rows.push(el("li", { className: "note" }, T("다른 사람 정보를 불러오지 못했어요. 혼자서도 던전에 들어갈 수 있어요.")));
+      else if (!others.length) rows.push(el("li", { className: "note" }, T("아직 다른 사람이 없어요.")));
       listEl.replaceChildren(...rows);
     }
 
@@ -3538,7 +3540,7 @@
         const open = cleared && (s.kind === "golddungeon" || nmBest >= 1);
         const c = open ? "#ffcf5c" : "#7a6a3a";
         drawGlyph(open ? s.glyph : "×", sx, sy, c);
-        drawLabel(s.kind === "golddungeon" ? `${GD.floor}층` : nmBest >= 1 ? `악몽${Math.min(NM.floors, nmBest)}` : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        drawLabel(s.kind === "golddungeon" ? T("{0}층", GD.floor) : nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
         if (s.label) drawLabel(s.label, (s.x0 + s.x1 + 1) / 2 * TILE, (s.door.y - 2) * TILE - 4, cleared ? "#ffcf5c" : "#7a6a3a", 12);
         continue;
       }
@@ -3546,7 +3548,7 @@
       if (s.kind === "nightmare50") {
         const c = nmCleared ? (reduceMotion ? "#ff6bd3" : rainbowColor(s.door.x)) : "#7a5a8a";
         drawGlyph(nmCleared ? s.glyph : "×", sx, sy, c);
-        drawLabel(nmCleared ? `${NM.floors}층 룬` : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        drawLabel(nmCleared ? T("{0}층 룬", NM.floors) : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
         continue;
       }
       // 헬 던전: 문 두 개 + 건물 둘레의 붉은 빛·위쪽 불꽃·큰 이름 (가장 화려하게)
@@ -3555,16 +3557,16 @@
         const fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + s.door.x)))}, 30)`;
         const c = open ? fire : "#6a3a30";
         drawGlyph(open ? s.glyph : "×", sx, sy, c);
-        drawLabel(s.kind === "hell" ? (nmCleared ? "1층" : "닫힘") : open ? "층 고르기" : "닫힘", sx + TILE / 2, sy - 2, c, 9);
+        drawLabel(s.kind === "hell" ? (nmCleared ? T("1층") : T("닫힘")) : open ? T("층 고르기") : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
         if (s.kind === "hell") drawHellFacade(s, t);
         continue;
       }
       const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR : s.kind === "forge" ? FORGE_COLOR
         : (cleared ? "#d07bff" : "#7a5a8a");
       drawGlyph(s.glyph, sx, sy, color);
-      if (s.kind === "nightmare") drawLabel("1층", sx + TILE / 2, sy - 2, color, 9);   // 오른쪽 문은 50층 (룬)
+      if (s.kind === "nightmare") drawLabel(T("1층"), sx + TILE / 2, sy - 2, color, 9);   // 오른쪽 문은 50층 (룬)
       // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
-      const label = s.kind === "hourshop" ? `${s.label} ${HourShop.minutesLeft()}분` : s.label;
+      const label = s.kind === "hourshop" ? T("{0} {1}분", s.label, HourShop.minutesLeft()) : s.label;
       // 이름은 건물 맨 윗줄 바로 위 (대장간처럼 문이 위쪽에 있는 건물은 y0)
       drawLabel(label, sx + TILE / 2, (s.y0 ?? s.door.y - 2) * TILE - 4, color, 12);
     }
@@ -3583,14 +3585,14 @@
       drawLabel(label, dx + TILE / 2, below ? dy + TILE * 2 + 9 : dy - 2, open ? `rgb(${rgb})` : "#6b7080", 10);
     };
     const floor = resumeFloor(), skip = skipFloor();
-    drawDoor(doors.start, "▼", "255, 207, 92", "1층", true);
-    drawDoor(doors.skip, skip >= 2 ? "▼" : "×", "190, 140, 255", skip >= 2 ? `${skip}층` : "닫힘", skip >= 2);
-    if (isStaff()) drawDoor(LOBBY.staffDoor, "▼", "95, 212, 255", "운영자", true, true);
+    drawDoor(doors.start, "▼", "255, 207, 92", T("1층"), true);
+    drawDoor(doors.skip, skip >= 2 ? "▼" : "×", "190, 140, 255", skip >= 2 ? T("{0}층", skip) : T("닫힘"), skip >= 2);
+    if (isStaff()) drawDoor(LOBBY.staffDoor, "▼", "95, 212, 255", T("운영자"), true, true);
     if (floor) {
       drawPortal(LOBBY.portal.x * TILE, LOBBY.portal.y * TILE);
-      drawLabel(`포탈 ${presenceLabel(presenceFloor(floor, inNM()))}`, LOBBY.portal.x * TILE + TILE / 2, (LOBBY.portal.y + 1) * TILE + 11, PORTAL_COLOR, 10);  // 이름표와 겹치지 않게 아래에
+      drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(floor, inNM()))), LOBBY.portal.x * TILE + TILE / 2, (LOBBY.portal.y + 1) * TILE + 11, PORTAL_COLOR, 10);  // 이름표와 겹치지 않게 아래에
     }
-    drawLabel("던전 입구", gate.x * TILE + TILE / 2, (gate.y - 2) * TILE - 4, "#ffcf5c", 12);
+    drawLabel(T("던전 입구"), gate.x * TILE + TILE / 2, (gate.y - 2) * TILE - 4, "#ffcf5c", 12);
 
     // 다른 사람들 → 나 (내가 맨 위에 보이게). 이름 위에 그 사람이 포탈을 타고 나온 층(◎N층),
     // 층 랭킹 1~3위는 이름 왼쪽에 금·은·동 왕관
@@ -3606,7 +3608,7 @@
     };
     for (const p of Lobby.people()) person(p.x, p.y, p.name, p.color, p.portal, p.crown, p.staff);
     const me = Lobby.me();
-    person(lobbyPos.x, lobbyPos.y, me?.name || "나", "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff);
+    person(lobbyPos.x, lobbyPos.y, me?.name || T("나"), "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff);
   }
 
   // 캐릭터 머리 위 이름 (검은 테두리로 바닥 위에서도 잘 보이게)
@@ -3656,11 +3658,11 @@
     ctx.fillStyle = "#06222c";
     ctx.fillText("GM", cx, top + h * 0.42);
   }
-  const staffSvg = () => `<svg class="crown" viewBox="0 0 20 14" width="22" height="16" aria-label="운영자" role="img">` +
+  const staffSvg = () => `<svg class="crown" viewBox="0 0 20 14" width="22" height="16" aria-label="${T("운영자")}" role="img">` +
     `<path d="M0.5 0.5h19v7.2q0 5.8-9.5 5.8t-9.5-5.8z" fill="${STAFF_COLOR}" stroke="rgba(0,0,0,.65)" stroke-width="1"/>` +
     `<text x="10" y="8.6" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#06222c" font-family="Courier New, monospace">GM</text></svg>`;
   // 목록용 같은 왕관 (SVG)
-  const crownSvg = (rank) => `<svg class="crown" viewBox="0 0 19 14" width="22" height="16" aria-label="랭킹 ${rank}위" role="img">` +
+  const crownSvg = (rank) => `<svg class="crown" viewBox="0 0 19 14" width="22" height="16" aria-label="${T("랭킹 {0}위", rank)}" role="img">` +
     `<path d="M0.5 13.5V3l4.25 3.5L9.5 0.5l4.75 6L18.5 3v10.5z" fill="${CROWN_COLORS[rank]}" stroke="rgba(0,0,0,.65)" stroke-width="1"/>` +
     `<text x="9.5" y="13" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#1a1406" font-family="Courier New, monospace">${rank}</text></svg>`;
 
@@ -4472,16 +4474,16 @@
     const rec = recOf(item), tierName = rec.name;
     if (RLItems.isAccessory(item)) {
       const want = rec.accUniques?.[item.slot] || [], ok = item.uq && want.includes(item.uq);
-      return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName})${ok ? " · ✓ 추천 유니크" : ""}`, [el("div", { className: "guide-slot" },
-        rec.acc, ...(want.length ? [el("br"), `✦ 추천 유니크: ${[...new Set(want)].map(uniqueLabel).join(" 또는 ")}`] : []))])];
+      return [fold("rec", T("📋 {0} 추천 ({1}){2}", RLItems.SLOT_NAMES[item.slot], tierName, ok ? T(" · ✓ 추천 유니크") : ""), [el("div", { className: "guide-slot" },
+        rec.acc, ...(want.length ? [el("br"), T("✦ 추천 유니크: {0}", [...new Set(want)].map(uniqueLabel).join(T(" 또는 ")))] : []))])];
     }
     const r = rec.slots[item.slot];
     if (!r) return [];
     const uqWant = rec.uniques?.[item.slot];
     if (item.rarity === "unique") {
       const ok = uqWant === item.uq;
-      return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName})${ok ? " · ✓ 추천 유니크" : ""}`, [el("div", { className: "guide-slot" },
-        ok ? "이 부위 추천 유니크예요" : `이 부위 추천 유니크는 ${uniqueLabel(uqWant)}`)])];
+      return [fold("rec", T("📋 {0} 추천 ({1}){2}", RLItems.SLOT_NAMES[item.slot], tierName, ok ? T(" · ✓ 추천 유니크") : ""), [el("div", { className: "guide-slot" },
+        ok ? T("이 부위 추천 유니크예요") : T("이 부위 추천 유니크는 {0}", uniqueLabel(uqWant)))])];
     }
     const has = new Set([...(item.main || []), ...(item.lines || [])].map(([k]) => k)), fit = recommendFit(item);
     const mark = (k) => el("span", { className: has.has(k) ? "set-on" : "" }, `${has.has(k) ? "✓" : ""}${statLabel(k)}`);
@@ -4489,21 +4491,21 @@
     // 장검 + 방패도 쓸 만함 (흡혈 보너스): 추천 종류가 아니면 대안으로 안내
     const alt = (item.slot === "weapon" && RLItems.isShieldOnly(item)) || (item.slot === "offhand" && item.type === "shield");
     const kindOk = !alt;
-    return [fold("rec", `📋 ${RLItems.SLOT_NAMES[item.slot]} 추천 (${tierName}) · 추가 능력치 ${fit.got}/${fit.of}`, [el("div", { className: "guide-slot" },
-      ...(uqWant ? [el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ 추천 유니크: ${uniqueLabel(uqWant)}`), el("br"), el("span", { className: "meta" }, "유니크가 없으면 레전더리:"), el("br")] : []),
-      ...(r.kind ? [el("span", { className: "meta" }, kindOk ? r.kind : `장검 + 방패 조합 (추천은 ${r.kind}): 흡혈 줄을 무기·방패·투구·가슴에 노리세요 (장검 + 방패 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%, 최대 ${RLItems.SHIELD_GUARD.cap}%)`), el("br")] : []),
+    return [fold("rec", T("📋 {0} 추천 ({1}) · 추가 능력치 {2}/{3}", RLItems.SLOT_NAMES[item.slot], tierName, fit.got, fit.of), [el("div", { className: "guide-slot" },
+      ...(uqWant ? [el("span", { style: { color: RLItems.RARITIES.unique.color } }, T("✦ 추천 유니크: {0}", uniqueLabel(uqWant))), el("br"), el("span", { className: "meta" }, T("유니크가 없으면 레전더리:")), el("br")] : []),
+      ...(r.kind ? [el("span", { className: "meta" }, kindOk ? r.kind : T("장검 + 방패 조합 (추천은 {0}): 흡혈 줄을 무기·방패·투구·가슴에 노리세요 (장검 + 방패 흡혈 +{1}%, 최대 {2}%)", r.kind, RLItems.SHIELD_GUARD.lifesteal, RLItems.SHIELD_GUARD.cap)), el("br")] : []),
       "★ ", ...join(r.main), el("br"),
       "◆ ", ...join(r.lines))])];
   }
   // 단계마다 시뮬레이션 설명 (items.js RECOMMEND 주석)
   const GUIDE_NOTE = {
-    normal: "일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)",
-    nightmare: `나이트메어 50층을 깨는 조합이에요. 나이트메어에서는 내 저항이 장비 합에서 ${EL.zonePenalty.nightmare}% 낮아져서, ${EL.resCap}%가 되려면 장비 저항 ${EL.resCap + EL.zonePenalty.nightmare}%를 모아야 해요 — 방어구·무기에도 저항 줄을. (시뮬레이션: 레전더리 +10 · 장신구 저항 2줄, 장비 합 115%면 몰려오는 몬스터 26%·보스 0%. 저항 줄 4개뿐이면 89% → 49%로 42%)`,
-    hell: `헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 장비 합에서 ${EL.zonePenalty.hell}% 낮아져서, ${EL.resCap}%가 되려면 장비 저항 ${EL.resCap + EL.zonePenalty.hell}%를 모아야 해요 (업경 목걸이면 최대 ${EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 "최고 조합 보기"에서`,
+    normal: T("일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)"),
+    nightmare: T("나이트메어 50층을 깨는 조합이에요. 나이트메어에서는 내 저항이 장비 합에서 {0}% 낮아져서, {1}%가 되려면 장비 저항 {2}%를 모아야 해요 — 방어구·무기에도 저항 줄을. (시뮬레이션: 레전더리 +10 · 장신구 저항 2줄, 장비 합 115%면 몰려오는 몬스터 26%·보스 0%. 저항 줄 4개뿐이면 89% → 49%로 42%)", EL.zonePenalty.nightmare, EL.resCap, EL.resCap + EL.zonePenalty.nightmare),
+    hell: T("헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 장비 합에서 {0}% 낮아져서, {1}%가 되려면 장비 저항 {2}%를 모아야 해요 (업경 목걸이면 최대 {3}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 \"최고 조합 보기\"에서", EL.zonePenalty.hell, EL.resCap, EL.resCap + EL.zonePenalty.hell, EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax),
   };
   // 추천 탭 단계 버튼: 일반 · 나이트메어 · 헬 · 🔍 파밍
   const guideTabs = (tier) => el("div", { className: "guide-tiers" },
-    ...[...RLItems.RECOMMEND.tiers.map(t => [t, RLItems.RECOMMEND[t].name]), ...(window.RLBuilds ? [["farm", "🔍 파밍"]] : [])].map(([t, name]) => el("button", {
+    ...[...RLItems.RECOMMEND.tiers.map(t => [t, RLItems.RECOMMEND[t].name]), ...(window.RLBuilds ? [["farm", T("🔍 파밍")]] : [])].map(([t, name]) => el("button", {
       type: "button", className: `guide-tier${t === tier ? " on" : ""}`, textContent: name,
       onclick: () => { guideTier = t; renderGuide(); },
     })));
@@ -4514,16 +4516,16 @@
     const bag = Inv.items().filter(it => !wornIds.has(it.id));
     const isIt = (p) => (it) => (p.rw ? RLItems.runewordOf(it)?.name === p.rw : it.uq === p.uq);
     const mfOf = (p) => (p.rw ? RLItems.RUNEWORDS.find(w => w.name === p.rw).stats.mf : RLItems.UNIQUE.items[p.uq].stats.mf) || 0;
-    const nameOf = (p) => (p.rw ? `룬워드 ${p.rw}` : `✦ ${RLItems.UNIQUE.items[p.uq].name}`);
+    const nameOf = (p) => (p.rw ? T("룬워드 {0}", rwLabel(p.rw)) : `✦ ${RLItems.UNIQUE.items[p.uq].name}`);
     const whereOf = (p) => {
-      if (p.uq) { const U = RLItems.UNIQUE.items[p.uq]; return `헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"}`; }
+      if (p.uq) { const U = RLItems.UNIQUE.items[p.uq]; return T("헬 {0}층 {1}", U.boss, RLMonsters.namedAt(U.boss)?.name || T("네임드")); }
       const w = RLItems.RUNEWORDS.find(x => x.name === p.rw);
-      return `커먼 ${RLItems.BASE_NAMES[p.base]} 홈 ${w.runes.length}개 이상에 ${runeSeq(w)} 룬`;
+      return T("커먼 {0} 홈 {1}개 이상에 {2} 룬", RLItems.BASE_NAMES[p.base], w.runes.length, runeSeq(w));
     };
     const rows = [guideTabs("farm"),
-      el("h3", {}, `🔍 파밍 추천 (아이템 발견 ${s.mf} / ${RLItems.FIND.max}%)`),
-      el("div", { className: "meta" }, `처치마다 ${Math.round(RLItems.FIND.bonus * 100)}% × 발견% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 × (1 + 발견% / ${RLItems.FIND.uniqueDiv}). 100%면 헬 30층 레전더리·세트가 처치마다 약 ×2.3`),
-      goal(s.mf >= RLItems.FIND.max, `아이템 발견 ${g.mf || 0}% / ${RLItems.FIND.max}%`)];
+      el("h3", {}, T("🔍 파밍 추천 (아이템 발견 {0} / {1}%)", s.mf, RLItems.FIND.max)),
+      el("div", { className: "meta" }, T("처치마다 {0}% × 발견% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 × (1 + 발견% / {1}). 100%면 헬 30층 레전더리·세트가 처치마다 약 ×2.3", Math.round(RLItems.FIND.bonus * 100), RLItems.FIND.uniqueDiv)),
+      goal(s.mf >= RLItems.FIND.max, T("아이템 발견 {0}% / {1}%", g.mf || 0, RLItems.FIND.max))];
     for (const b of F.builds) {
       rows.push(el("h3", { style: { marginTop: "8px" } }, b.name), el("div", { className: "meta" }, b.when));
       const seen = {};
@@ -4534,21 +4536,21 @@
         rows.push(el("div", { className: `guide-slot${on ? " set-on" : ""}` },
           el("b", {}, `${RLItems.SLOT_NAMES[p.slot]} · `),
           el("span", { style: on ? {} : { color: p.rw ? RLItems.RUNEWORD_COLOR : RLItems.RARITIES.unique.color } }, nameOf(p)),
-          ` +${mfOf(p)}% · ${on ? "✓ 착용 중" : got ? "가방에 있음" : whereOf(p)}`));
+          ` +${mfOf(p)}% · ${on ? T("✓ 착용 중") : got ? T("가방에 있음") : whereOf(p)}`));
       }
-      rows.push(el("div", { className: "meta" }, `나머지: ${b.rest}`));
-      if (b.wave) rows.push(el("div", { className: "meta" }, `시뮬레이션 (헬 ${F.floors.join("·")}층): 몰려오는 20마리 ${b.wave.map(x => `${x[0]}% ${x[1]}턴`).join(" · ")}, 보통 보스 ${b.boss.map(x => `${x[0]}%`).join("·")} — 보통 장비(레전더리 단검 2)는 32~36턴`));
+      rows.push(el("div", { className: "meta" }, T("나머지: {0}", b.rest)));
+      if (b.wave) rows.push(el("div", { className: "meta" }, T("시뮬레이션 (헬 {0}층): 몰려오는 20마리 {1}, 보통 보스 {2} — 보통 장비(레전더리 단검 2)는 32~36턴", F.floors.join("·"), b.wave.map(x => T("{0}% {1}턴", x[0], x[1])).join(" · "), b.boss.map(x => `${x[0]}%`).join("·"))));
       if (b.note) rows.push(el("div", { className: "meta" }, b.note));
     }
-    rows.push(el("a", { className: "guide-builds", href: "builds.html#farm", target: "_blank", rel: "noopener" }, "🏆 파밍 조합 자세히 (새 창)"));
+    rows.push(el("a", { className: "guide-builds", href: "builds.html#farm", target: "_blank", rel: "noopener" }, T("🏆 파밍 조합 자세히 (새 창)")));
     invGuide.replaceChildren(...rows);
   }
   const goal = (ok, text) => el("div", { className: ok ? "set-on" : "meta" }, `${ok ? "✓" : "○"} ${text}`);
   function renderGuide() {
     if (guideTier === "farm" && window.RLBuilds) { renderFarmGuide(); return; }
-    const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], T = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
+    const tier = guideTier || zoneTier(), rec = RLItems.RECOMMEND[tier], TG = rec.targets, s = stats(), eq = Inv.equipped(), g = Inv.totals().stats;
     const worn = Object.values(eq).filter(Boolean);
-    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= T.enh).length;
+    const ancLeg = worn.filter(it => it.rarity === "legendary" && it.ancient && !RLItems.isAccessory(it)).length, accN = worn.filter(RLItems.isAccessory).length, enhOk = worn.filter(it => !RLItems.isAccessory(it) && (it.enh || 0) >= TG.enh).length;
     const accUq = worn.filter(it => RLItems.isAccessory(it) && it.uq && (rec.accUniques?.[it.slot] || []).includes(it.uq)).length;
     // 저항: 그 단계 기준 (나이트메어 −40 · 헬 −70을 장비 합에서, 지금 있는 곳과 상관없이)
     const cut = EL.zonePenalty[tier] || 0;
@@ -4556,35 +4558,35 @@
     const tabs = guideTabs(tier);
     const rows = [
       tabs,
-      el("h3", {}, `📋 추천 능력치 (${rec.goal})`),
+      el("h3", {}, T("📋 추천 능력치 ({0})", rec.goal)),
       el("div", { className: "meta" }, GUIDE_NOTE[tier]),
-      ...(T.res ? [goal(res.every(v => v >= T.res), `속성 저항 불 ${res[0]} · 얼음 ${res[1]} · 번개 ${res[2]} / ${T.res}%${cut ? ` (장비 합 −${cut}: ${T.res + cut}% 모으기)` : ""}`)] : []),
-      goal(s.lifesteal >= T.lifesteal, `흡혈 ${s.lifesteal} / ${T.lifesteal}%${g.guard ? ` (장검 + 방패: 최대 ${RLItems.SHIELD_GUARD.cap}%)` : ""}`),
-      goal(s.crit >= T.crit, `치명타 확률 ${s.crit} / ${T.crit}%`),
-      ...(T.uniques ? [goal(accUq >= T.acc, `추천 유니크 장신구 ${accUq} / ${T.acc}칸`)]
-        : [goal(ancLeg >= T.legendary, `고대 레전더리 ${ancLeg} / ${T.legendary}부위`), goal(accN >= T.acc, `장신구 ${accN} / ${T.acc}칸 (목걸이·반지 2개)`)]),
-      goal(enhOk >= T.legendary, `+${T.enh} 이상 강화 ${enhOk} / ${T.legendary}부위`),
+      ...(TG.res ? [goal(res.every(v => v >= TG.res), T("속성 저항 불 {0} · 얼음 {1} · 번개 {2} / {3}%{4}", res[0], res[1], res[2], TG.res, cut ? T(" (장비 합 −{0}: {1}% 모으기)", cut, TG.res + cut) : ""))] : []),
+      goal(s.lifesteal >= TG.lifesteal, T("흡혈 {0} / {1}%{2}", s.lifesteal, TG.lifesteal, g.guard ? T(" (장검 + 방패: 최대 {0}%)", RLItems.SHIELD_GUARD.cap) : "")),
+      goal(s.crit >= TG.crit, T("치명타 확률 {0} / {1}%", s.crit, TG.crit)),
+      ...(TG.uniques ? [goal(accUq >= TG.acc, T("추천 유니크 장신구 {0} / {1}칸", accUq, TG.acc))]
+        : [goal(ancLeg >= TG.legendary, T("고대 레전더리 {0} / {1}부위", ancLeg, TG.legendary)), goal(accN >= TG.acc, T("장신구 {0} / {1}칸 (목걸이·반지 2개)", accN, TG.acc))]),
+      goal(enhOk >= TG.legendary, T("+{0} 이상 강화 {1} / {2}부위", TG.enh, enhOk, TG.legendary)),
     ];
-    const buildsLink = el("a", { className: "guide-builds", href: "builds.html", target: "_blank", rel: "noopener" }, "🏆 최고 조합 보기 (새 창: 유니크 없이 · 유니크 포함 · 헬 초반 · 파밍)");
+    const buildsLink = el("a", { className: "guide-builds", href: "builds.html", target: "_blank", rel: "noopener" }, T("🏆 최고 조합 보기 (새 창: 유니크 없이 · 유니크 포함 · 헬 초반 · 파밍)"));
     // 헬: 부위별 줄 대신 가장 강한 유니크 순위 (builds.js, 헬 50층 시뮬레이션). 자세한 조합·줄은 최고 조합 페이지
     if (tier === "hell" && window.RLBuilds) {
       const have = new Set(Inv.items().map(it => it.uq).filter(Boolean)), worn = new Set(Object.values(eq).filter(Boolean).map(it => it.uq).filter(Boolean));
-      rows.push(el("h3", { style: { marginTop: "6px" } }, "✦ 가장 강한 유니크 (헬 50층)"),
-        el("div", { className: "meta" }, "그 유니크를 낄 때 가장 빠른 조합 순서예요 (몰려오는 몬스터 + 염라대왕 턴). 유니크를 모두 모으기보다 강한 유니크 + 세트를 섞는 게 가장 빨라요"),
+      rows.push(el("h3", { style: { marginTop: "6px" } }, T("✦ 가장 강한 유니크 (헬 50층)")),
+        el("div", { className: "meta" }, T("그 유니크를 낄 때 가장 빠른 조합 순서예요 (몰려오는 몬스터 + 염라대왕 턴). 유니크를 모두 모으기보다 강한 유니크 + 세트를 섞는 게 가장 빨라요")),
         ...RLBuilds.uniqueRank.map((r, i) => { const U = RLItems.UNIQUE.items[r.uq], on = worn.has(r.uq), got = have.has(r.uq);
           return el("div", { className: `guide-slot${on ? " set-on" : ""}` }, el("b", { style: on ? {} : { color: RLItems.RARITIES.unique.color } }, `${i + 1}. ${U.name}`),
-            ` ${RLItems.SLOT_NAMES[U.slot]} · ${on ? "✓ 착용 중" : got ? "가방에 있음" : `헬 ${U.boss}층 ${RLMonsters.namedAt(U.boss)?.name || "네임드"}`}`, el("br"),
-            el("span", { className: "meta" }, `같이: ${r.with} · ${r.turns[0]}턴 / ${r.turns[1]}턴${r.text ? ` · ${r.text}` : ""}`)); }),
-        el("div", { className: "guide-slot" }, el("b", {}, `장신구 · ${accN} / 3칸`), el("br"), rec.acc),
-        el("div", { className: "guide-slot guide-early" }, el("b", {}, "헬 초반 (10~30층)"), el("br"),
-          el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${RLItems.UNIQUE.items.fang.name}`), ` + 레전더리 보조 단검 (헬 ${RLItems.UNIQUE.items.fang.boss}층 ${RLMonsters.namedAt(RLItems.UNIQUE.items.fang.boss)?.name || "네임드"}). 없으면 룬워드 나무(지팡이) + 보조 단검`),
-        el("div", { className: "guide-slot guide-farm" }, el("b", {}, `🔍 파밍: 아이템 발견 ${s.mf} / ${RLItems.FIND.max}%`), el("br"),
-          el("span", { className: "meta" }, "초반: 기억(투구)·몰래(갑옷) + 선견지명 또는 카리스마(장검) + 도원결의(방패) 룬워드 = 100% (네임드 층은 원래 장비로). 후반: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2. 위 🔍 파밍 버튼에서 부위별로 볼 수 있어요")),
+            ` ${RLItems.SLOT_NAMES[U.slot]} · ${on ? T("✓ 착용 중") : got ? T("가방에 있음") : T("헬 {0}층 {1}", U.boss, RLMonsters.namedAt(U.boss)?.name || T("네임드"))}`, el("br"),
+            el("span", { className: "meta" }, T("같이: {0} · {1}턴 / {2}턴{3}", r.with, r.turns[0], r.turns[1], r.text ? ` · ${r.text}` : ""))); }),
+        el("div", { className: "guide-slot" }, el("b", {}, T("장신구 · {0} / 3칸", accN)), el("br"), rec.acc),
+        el("div", { className: "guide-slot guide-early" }, el("b", {}, T("헬 초반 (10~30층)")), el("br"),
+          el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${RLItems.UNIQUE.items.fang.name}`), T(" + 레전더리 보조 단검 (헬 {0}층 {1}). 없으면 룬워드 나무(지팡이) + 보조 단검", RLItems.UNIQUE.items.fang.boss, RLMonsters.namedAt(RLItems.UNIQUE.items.fang.boss)?.name || T("네임드"))),
+        el("div", { className: "guide-slot guide-farm" }, el("b", {}, T("🔍 파밍: 아이템 발견 {0} / {1}%", s.mf, RLItems.FIND.max)), el("br"),
+          el("span", { className: "meta" }, T("초반: 기억(투구)·몰래(갑옷) + 선견지명 또는 카리스마(장검) + 도원결의(방패) 룬워드 = 100% (네임드 층은 원래 장비로). 후반: 기억·몰래 + 쇠이빨 목걸이 + 여의 반지 2. 위 🔍 파밍 버튼에서 부위별로 볼 수 있어요"))),
         buildsLink);
       invGuide.replaceChildren(...rows);
       return;
     }
-    rows.push(el("h3", { style: { marginTop: "6px" } }, "부위별 추천"));
+    rows.push(el("h3", { style: { marginTop: "6px" } }, T("부위별 추천")));
     for (const slot of RLItems.SLOTS) {
       const r = rec.slots[slot], it = eq[slot], uqWant = rec.uniques?.[slot];
       if (!r) continue;
@@ -4593,20 +4595,20 @@
       const join = (ks) => ks.flatMap((k, i) => (i ? [" · ", mark(k)] : [mark(k)]));
       const fit = it && RLItems.recommendTier(it) === tier ? recommendFit(it) : null, uqHit = uqWant && it?.uq === uqWant;
       rows.push(el("div", { className: "guide-slot" },
-        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}${uqHit ? " · ✓ 추천 유니크" : fit ? ` · ${fit.got}/${fit.of}` : it ? "" : " · 비어 있음"}`), el("br"),
-        ...(uqWant ? [el("span", { className: uqHit ? "set-on" : "", style: uqHit ? {} : { color: RLItems.RARITIES.unique.color } }, `✦ ${uniqueLabel(uqWant)}`), el("br"), el("span", { className: "meta" }, "또는 레전더리: "), el("br")] : []),
+        el("b", {}, `${RLItems.SLOT_NAMES[slot]}${r.kind ? ` (${r.kind})` : ""}${uqHit ? T(" · ✓ 추천 유니크") : fit ? ` · ${fit.got}/${fit.of}` : it ? "" : T(" · 비어 있음")}`), el("br"),
+        ...(uqWant ? [el("span", { className: uqHit ? "set-on" : "", style: uqHit ? {} : { color: RLItems.RARITIES.unique.color } }, `✦ ${uniqueLabel(uqWant)}`), el("br"), el("span", { className: "meta" }, T("또는 레전더리: ")), el("br")] : []),
         "★ ", ...join(r.main), el("br"),
         "◆ ", ...join(r.lines)));
     }
     const accWant = rec.accUniques ? [...new Set(Object.values(rec.accUniques).flat())] : [];
-    rows.push(el("div", { className: "guide-slot" }, el("b", {}, `장신구 (목걸이·반지 2개) · ${accN} / 3칸`), el("br"), rec.acc,
+    rows.push(el("div", { className: "guide-slot" }, el("b", {}, T("장신구 (목걸이·반지 2개) · {0} / 3칸", accN)), el("br"), rec.acc,
       ...(accWant.length ? [el("br"), el("span", { style: { color: RLItems.RARITIES.unique.color } }, `✦ ${accWant.map(uniqueLabel).join(" · ")}`)] : [])));
     if (tier === "normal") rows.push(
-      el("div", { className: "meta" }, "흡혈: 무기·보조무기 주 능력치 + 추가 능력치 = 20%. 치명타: 갑옷·팔 주 능력치 + 줄 7개 → 75%"));
+      el("div", { className: "meta" }, T("흡혈: 무기·보조무기 주 능력치 + 추가 능력치 = 20%. 치명타: 갑옷·팔 주 능력치 + 줄 7개 → 75%")));
     else rows.push(
-      el("div", { className: "meta" }, `저항: 속성 저항 줄(최대 ${RLItems.RES_R4.fireRes[1]}%) + 팔 모든 속성 저항(${RLItems.RES_R4.allRes[1]}%) + 장신구 저항 줄 6개(속성 하나 최대 ${RLItems.ACCESSORY.res.fireRes.legendary[1]}%, 모든 속성 최대 ${RLItems.ACCESSORY.res.allRes.legendary[1]}%) → ${EL.resCap}%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%`),
-      el("div", { className: "meta" }, "저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요"));
-    rows.push(el("div", { className: "meta" }, `장검 + 방패도 돼요: 흡혈 +${RLItems.SHIELD_GUARD.lifesteal}%·흡혈 최대 ${RLItems.SHIELD_GUARD.cap}%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요`), buildsLink);
+      el("div", { className: "meta" }, T("저항: 속성 저항 줄(최대 {0}%) + 팔 모든 속성 저항({1}%) + 장신구 저항 줄 6개(속성 하나 최대 {2}%, 모든 속성 최대 {3}%) → {4}%. 흡혈: 무기·보조무기 주 능력치 6% × 2 + 추가 능력치 4% × 2 = 20%", RLItems.RES_R4.fireRes[1], RLItems.RES_R4.allRes[1], RLItems.ACCESSORY.res.fireRes.legendary[1], RLItems.ACCESSORY.res.allRes.legendary[1], EL.resCap)),
+      el("div", { className: "meta" }, T("저항이 모자라면 장신구 저항 줄을 그 속성으로 맞추세요. 홈이 붙었다면 완벽한 다이아몬드(모든 저항 +4%, 갑옷 홈 4개면 +16%)로 저항 줄을 대신할 수 있어요")));
+    rows.push(el("div", { className: "meta" }, T("장검 + 방패도 돼요: 흡혈 +{0}%·흡혈 최대 {1}%. 그때는 흡혈 줄을 무기·방패·투구·가슴에 노리세요", RLItems.SHIELD_GUARD.lifesteal, RLItems.SHIELD_GUARD.cap)), buildsLink);
     invGuide.replaceChildren(...rows);
   }
 
@@ -5796,7 +5798,7 @@
     if (!player || player.oldGear) return;
     if (!Object.values(Inv.equipped()).some(it => it && isLegacy(it))) return;
     player.oldGear = true;
-    if (!quiet) log("예전(v3까지) 장비를 껴서 이번 판은 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요.", "bad");
+    if (!quiet) log(T("예전(v3까지) 장비를 껴서 이번 판은 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."), "bad");
   }
   // 안내 창 (계정·게스트마다 한 번): 예전 장비가 있으면 규칙 변경 안내, 아니면 이미 하던 사람에게 75층·드롭 변경 안내
   function legacyNotice() {
@@ -5810,25 +5812,25 @@
       if (store.get(floorKey) || (!Inv.items().length && bestDepth <= 1)) return;  // 새 판은 1층부터 최고 층 1
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
-        Object.assign(document.createElement("b"), { textContent: "업데이트: " }),
-        `🛡 내 속성 저항이 나이트메어 −40 · 헬 −70으로 바뀌었어요: 장비 저항 합에서 먼저 빼고 그 뒤 최대 75% — 나이트메어는 115%, 헬은 145%를 모아야 75%예요 (추천 탭의 저항 줄도 늘었어요). 나이트메어·헬 몬스터 방어력이 공격력만큼 올라가고, 그만큼 HP·공격력은 조금 내려갔어요. ` +
-        `⚔ 장검 기본 공격 피해 ×2 (보조 단검 두 번째 공격 대신) — 헬 50층 유니크 없는 최고 조합 1~3위가 장검이에요. 여의주 검: 주변에 다른 몬스터가 없으면 번개가 같은 몬스터를 다시 침. 업경대: 막아도 반사. 룬워드 치유는 없어졌어요 (예전 치유 투구는 룬 효과만 남아요). ` +
-        `🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ` +
-        `💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ` +
-        `⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ` +
-        `💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ` +
-        `💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ` +
-        `🛡 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ` +
-        `✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120%와 고유 효과 — 이 게임의 최종 목표 아이템이에요. ` +
-        `✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ` +
-        `🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. "지옥의" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ` +
-        `✨ 룬이 생겼어요: 가~하 14개, 나이트메어 ${NM.floors}층 보스가 ${RLItems.RUNE_DROP.count}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ` +
-        `나이트메어를 완료했다면 나이트메어 건물 오른쪽 문으로 ${NM.floors}층에 바로 들어갈 수 있어요. ` +
-        `속성 세트(화염·서리·뇌전)는 3세트에 화상·느려짐·4번 튕김, 5세트에 스킬 피해 +50%·능력치·저항이 켜져요 (예전엔 반대). ` +
-        `방어구 세트 효과가 2·3·5세트로 바뀌었어요 (효과는 그대로, 예전 4세트 효과가 3세트에서 켜짐 → 두 세트를 2 + 3으로 나눠 입으면 한쪽은 2세트, 다른 쪽은 3세트 효과까지). ` +
-        `로비 아래쪽에 ⚒ 대장간이 생겼어요: 옵션 재련(레전더리·세트의 추가 능력치 한 줄 다시 굴리기)과 홈 초기화. 강화는 +${RLItems.ENHANCE.max}까지 (+${RLItems.ENHANCE.goldFrom}부터 골드도). ` +
-        `몬스터가 ${RLMonsters.CROWD.from}마리 이상 붙으면 둘러싸임 방어로 받는 피해가 줄어요 (최대 −${Math.round(RLMonsters.CROWD.max * 100)}%). 나이트메어 깊은 층 몬스터의 공격력이 조금 낮아졌어요. ` +
-        `레전더리·세트는 🔒 잠글 수 있고(가방 전부 판매에서 남음), 속성 피해 줄은 아이템마다 하나만 붙어요. 새 아이템에는 홈이 붙을 수 있고 ♦ 보석을 넣어요. 새 무기 장검(보조 손은 방패만). 자세한 규칙은 개발 일기와 규칙 문서에서.`);
+        Object.assign(document.createElement("b"), { textContent: T("업데이트: ") }),
+        T("🛡 내 속성 저항이 나이트메어 −40 · 헬 −70으로 바뀌었어요: 장비 저항 합에서 먼저 빼고 그 뒤 최대 75% — 나이트메어는 115%, 헬은 145%를 모아야 75%예요 (추천 탭의 저항 줄도 늘었어요). 나이트메어·헬 몬스터 방어력이 공격력만큼 올라가고, 그만큼 HP·공격력은 조금 내려갔어요. ") +
+        T("⚔ 장검 기본 공격 피해 ×2 (보조 단검 두 번째 공격 대신) — 헬 50층 유니크 없는 최고 조합 1~3위가 장검이에요. 여의주 검: 주변에 다른 몬스터가 없으면 번개가 같은 몬스터를 다시 침. 업경대: 막아도 반사. 룬워드 치유는 없어졌어요 (예전 치유 투구는 룬 효과만 남아요). ") +
+        T("🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ") +
+        T("💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ") +
+        T("⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ") +
+        T("💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ") +
+        T("💍 장신구: 목걸이 1·반지 2 칸이 생겼어요! 공격력·방어력·최대 HP(주 능력치)와 속성 저항 줄(얻은 곳에 따라 일반 0~1·나이트메어 1~2·헬 1~3줄)이 붙어요. 고대 장신구는 드롭으로만. ") +
+        T("🛡 룬워드 폭풍전야의 속성 저항 감소가 주변 8칸 → 2칸으로 넓어졌어요 — 속성 세트 + 폭풍전야로 헬을 노려 보세요. ") +
+        T("✦✦ 유니크 아이템 10개: 헬 네임드 보스가 15% 확률로 자기 유니크(보스마다 2개) 중 하나를 떨어뜨려요. 주 능력치는 그 부위 전부, 레전더리의 120%와 고유 효과 — 이 게임의 최종 목표 아이템이에요. ") +
+        T("✦ 헬 네임드 보스 5마리: 헬 10·20·30·40·50층을 불가사리·구미호·이무기·저승사자·염라대왕이 지켜요. 저마다 패턴이 있고(도감에서 확인), 쓰러뜨리면 룬 2개! ") +
+        T("🔥 헬 던전이 열렸어요! 로비 맨 위, 나이트메어를 완료하면 들어갈 수 있는 마지막 50층 던전이에요. 몬스터마다 속성 저항이 있고 내 저항은 10% 낮아져요. \"지옥의\" 아이템과 지옥 강화석이 나오고, 10·20·30·40·50층을 완료하면 오른쪽 문으로 골라서 들어갈 수 있어요. ") +
+        T("✨ 룬이 생겼어요: 가~하 14개, 나이트메어 {0}층 보스가 {1}개씩 떨어뜨려요 (무지개색 ♦). 보석처럼 홈에 넣고, 아래 룬 3개 = 위 룬 1개. 커먼 아이템의 홈을 정해진 순서의 룬으로 채우면 룬워드 12개(천하무적·폭풍전야…)가 돼요 (규칙 문서). ", NM.floors, RLItems.RUNE_DROP.count) +
+        T("나이트메어를 완료했다면 나이트메어 건물 오른쪽 문으로 {0}층에 바로 들어갈 수 있어요. ", NM.floors) +
+        T("속성 세트(화염·서리·뇌전)는 3세트에 화상·느려짐·4번 튕김, 5세트에 스킬 피해 +50%·능력치·저항이 켜져요 (예전엔 반대). ") +
+        T("방어구 세트 효과가 2·3·5세트로 바뀌었어요 (효과는 그대로, 예전 4세트 효과가 3세트에서 켜짐 → 두 세트를 2 + 3으로 나눠 입으면 한쪽은 2세트, 다른 쪽은 3세트 효과까지). ") +
+        T("로비 아래쪽에 ⚒ 대장간이 생겼어요: 옵션 재련(레전더리·세트의 추가 능력치 한 줄 다시 굴리기)과 홈 초기화. 강화는 +{0}까지 (+{1}부터 골드도). ", RLItems.ENHANCE.max, RLItems.ENHANCE.goldFrom) +
+        T("몬스터가 {0}마리 이상 붙으면 둘러싸임 방어로 받는 피해가 줄어요 (최대 −{1}%). 나이트메어 깊은 층 몬스터의 공격력이 조금 낮아졌어요. ", RLMonsters.CROWD.from, Math.round(RLMonsters.CROWD.max * 100)) +
+        T("레전더리·세트는 🔒 잠글 수 있고(가방 전부 판매에서 남음), 속성 피해 줄은 아이템마다 하나만 붙어요. 새 아이템에는 홈이 붙을 수 있고 ♦ 보석을 넣어요. 새 무기 장검(보조 손은 방패만). 자세한 규칙은 개발 일기와 규칙 문서에서."));
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };
@@ -5836,13 +5838,13 @@
     }
     store.set(key, "1");
     store.set(floorKey, "1");  // 아래 안내에 최대 층이 같이 있어서 따로 띄우지 않음
-    showNotice("던전과 아이템 규칙이 바뀌었어요", [
-      `일반 던전은 이제 ${RLMonsters.MAX_FLOOR}층까지예요. ${RLMonsters.MAX_FLOOR}층 보스를 쓰러뜨리면 완료되고, 그 뒤에는 ${RLMonsters.MAX_FLOOR}층에서 계속 파밍할 수 있어요.`,
-      `아이템 규칙이 v${RLItems.RULES_VERSION}로 바뀌었어요. 부위마다 붙는 능력치가 다르고, 치명타 같은 % 능력치는 등급별로 정해진 범위예요.`,
-      `가지고 계신 예전 장비 ${old}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 "적용 N%"로 보여요)`,
-      `지금 장비로는 ${RLMonsters.MAX_FLOOR}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.`,
-      "지금까지의 랭킹 기록은 랭킹 화면의 \"v3 베타\"에 그대로 남아요. \"v4 베타\" 랭킹은 새로 시작해요.",
-      "예전 장비를 끼고 한 판은 v4 베타 랭킹에 기록되지 않아요. 가방에 보관하거나 거래소에 파는 건 괜찮아요.",
+    showNotice(T("던전과 아이템 규칙이 바뀌었어요"), [
+      T("일반 던전은 이제 {0}층까지예요. {0}층 보스를 쓰러뜨리면 완료되고, 그 뒤에는 {0}층에서 계속 파밍할 수 있어요.", RLMonsters.MAX_FLOOR),
+      T("아이템 규칙이 v{0}로 바뀌었어요. 부위마다 붙는 능력치가 다르고, 치명타 같은 % 능력치는 등급별로 정해진 범위예요.", RLItems.RULES_VERSION),
+      T("가지고 계신 예전 장비 {0}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 \"적용 N%\"로 보여요)", old),
+      T("지금 장비로는 {0}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.", RLMonsters.MAX_FLOOR),
+      T("지금까지의 랭킹 기록은 랭킹 화면의 \"v3 베타\"에 그대로 남아요. \"v4 베타\" 랭킹은 새로 시작해요."),
+      T("예전 장비를 끼고 한 판은 v4 베타 랭킹에 기록되지 않아요. 가방에 보관하거나 거래소에 파는 건 괜찮아요."),
     ]);
   }
 
@@ -6033,8 +6035,8 @@
   if (!Account.loggedIn() || !RANKING_API) legacyNotice();  // 로그인 중이면 계정 저장본을 받은 뒤(syncAfterLogin)
   document.addEventListener("visibilitychange", () => { if (!document.hidden) Lobby.ping(); });
   renderAccount();
-  if (imported === "ok") log("예전 주소에서 하던 게스트 기록(가방·진행 상황)을 옮겨 왔다.", "good");
-  else if (imported === "merge" && !Account.loggedIn()) log("예전 주소의 장비를 받아 왔다. 계정으로 하던 장비는 그 계정으로 로그인하면 가방에 합쳐진다.", "info");
+  if (imported === "ok") log(T("예전 주소에서 하던 게스트 기록(가방·진행 상황)을 옮겨 왔다."), "good");
+  else if (imported === "merge" && !Account.loggedIn()) log(T("예전 주소의 장비를 받아 왔다. 계정으로 하던 장비는 그 계정으로 로그인하면 가방에 합쳐진다."), "info");
   // 게스트면 예전 주소의 게스트 장비를 바로 합침 (로그인 중이면 서버 저장본을 받은 뒤 syncAfterLogin 안에서)
   if (!Account.loggedIn()) mergeOldSite();
   // 로그인 중이면 서버 저장본과 맞춘 다음에 상자 보관함을 가방으로 (syncAfterLogin 안에서)
