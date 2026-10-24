@@ -7,3 +7,11 @@ node_modules/
 ranking-php/config.php
 ranking-php/data/*
 !ranking-php/data/.htaccess
+
+# 테스트 결과(최근 3번만 test/results에)와 실행 중 만드는 파일
+test/results/
+test/php/*.sqlite*
+test/php/config.*.php
+!test/php/config.test.php
+test/php/*.json
+test/php/*.txt
