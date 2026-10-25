@@ -704,7 +704,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=83"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=85"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -3150,6 +3150,8 @@
     const portal = { x: gate.x, y: gate.y + 3 };
     // 운영자 입구: 던전 입구 건물 바로 오른쪽. 운영자 기기에서만 보이고 열림 (다른 사람에게는 그냥 바닥)
     const staffDoor = { x: gate.x + 3, y: gate.y };
+    // 운영자 시험 입구: 점프 던전 건물 오른쪽 위 모서리 (헬 50층 몬스터). 운영자 기기에서만 보이고 열림
+    const towerHell = { x: 7, y: 19 };
     const deco = new Map();           // "x,y" → 막힌 칸 종류
     const put = (x, y, kind) => deco.set(`${x},${y}`, kind);
     for (let x = 0; x < MAP_W; x++) { put(x, 0, "edge"); put(x, MAP_H - 1, "edge"); }
@@ -3184,7 +3186,7 @@
     for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
     const shopAt = (x, y) => shops.find(s => s.door.x === x && s.door.y === y) || null;
     const doorAt = (x, y) => Object.keys(doors).find(k => doors[k].x === x && doors[k].y === y) || null;
-    return { gate, doors, portal, staffDoor, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
+    return { gate, doors, portal, staffDoor, towerHell, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
   })();
   let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
 
@@ -3421,6 +3423,7 @@
     const door = LOBBY.doorAt(nx, ny);
     if (door) { enterDungeon(door); return; }
     if (isStaff() && nx === LOBBY.staffDoor.x && ny === LOBBY.staffDoor.y) { enterStaffDoor(); return; }
+    if (isStaff() && nx === LOBBY.towerHell.x && ny === LOBBY.towerHell.y) { Tower.enter("hell50"); return; }   // 점프 던전 오른쪽 운영자 문 (다른 사람에게는 그냥 벽)
     const shopDoor = LOBBY.shopAt(nx, ny);
     if (shopDoor) {
       if (shopDoor.tab) openMarket(shopDoor.tab);
@@ -3428,7 +3431,7 @@
       else if (shopDoor.kind === "nightmare50") enterNightmare(NM.floors);
       else if (shopDoor.kind === "hourshop") openHourShop();
       else if (shopDoor.kind === "forge") openForge();
-      else if (shopDoor.kind === "jumptower") Tower.enter();
+      else if (shopDoor.kind === "jumptower") Tower.enter("hunt1");
       else if (shopDoor.kind === "hell") enterHell(1);
       else if (shopDoor.kind === "hellPick") openHellPick();
       else if (shopDoor.kind === "golddungeon") enterGoldDungeon(false);
@@ -3696,6 +3699,12 @@
     drawDoor(doors.start, "▼", "255, 207, 92", T("1층"), true);
     drawDoor(doors.skip, skip >= 2 ? "▼" : "×", "190, 140, 255", skip >= 2 ? T("{0}층", skip) : T("닫힘"), skip >= 2);
     if (isStaff()) drawDoor(LOBBY.staffDoor, "▼", "95, 212, 255", T("운영자"), true, true);
+    if (isStaff()) {   // 점프 던전 운영자 문 (헬 50층): 문 위에 작은 이름
+      const d = LOBBY.towerHell, c = `rgba(255, 90, 46, ${0.65 + 0.35 * pulse})`;
+      ctx.fillStyle = "#050608"; ctx.fillRect(d.x * TILE, d.y * TILE, TILE, TILE);
+      drawGlyph("▼", d.x * TILE, d.y * TILE, c);
+      drawLabel(T("헬50"), d.x * TILE + TILE / 2 + 4, d.y * TILE - 2, "#ff7a3d", 9);
+    }
     if (floor) {
       drawPortal(LOBBY.portal.x * TILE, LOBBY.portal.y * TILE);
       drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(floor, inNM()))), LOBBY.portal.x * TILE + TILE / 2, (LOBBY.portal.y + 1) * TILE + 11, PORTAL_COLOR, 10);  // 이름표와 겹치지 않게 아래에
@@ -4195,14 +4204,16 @@
   })();
 
   // ---- 점프 던전 (dc#82~83, 시험판): 옆에서 보는 실시간 사냥 맵. 물리·맵·몬스터 움직임은 jump.js (RLJump) ----
-  // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 나무 발판 아래로 · R 처음부터 · Esc/P 로비로
-  // 몬스터는 발판 위를 오가다 같은 발판 4칸 안에 플레이어가 서 있으면 다가옴
+  // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 발판 아래로 · R 처음부터 · Esc/P 로비로
+  // 더블 점프: 공중에서 Space를 한 번 더 (땅·사다리에서 다시 생김)
+  // 몬스터는 발판 위를 바삐 오가다, 가로 8칸 안에 플레이어가 보이면 같은 발판이면 빠르게 쫓아오고 위아래 4줄 안이면 바로 위·아래로 따라옴
   // 싸움은 자동: 몬스터에 닿아 있으면 0.5초(한 턴)마다 서로 공격하고, 세트·룬워드 스킬도 턴마다 알아서 씀. 능력치는 지금 장비 그대로
   // 몬스터를 다 잡으면 포탈이 열리고, 포탈에 닿으면 클리어 (최고 기록은 기기에)
   // 시험판이라 지금 판(던전 진행)과 따로: HP는 들어올 때 가득, 쓰러지면 이 층을 처음부터. 경험치·골드·아이템은 아직 없음
   const Tower = (() => {
     const J = window.RLJump, STEP = 1 / 120, ZT = 2, TURN = 0.5;   // 화면은 가까이 보기처럼 2배 (16×12칸)
-    let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0;
+    let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0, lastDoubled = 0;
+    let burn = null, slowTo = 0, iceFree = 0;   // 헬 몬스터 원소: 화상 { dmg, left, next }, 느려짐(턴까지), 얼음 면역(턴까지)
     let mobs = [], hp = 0, maxHp = 1, turnAcc = 0, turnN = 0, cd = {}, pops = [], fx = [], hurtT = -1, portalOpen = false;
     const held = { left: false, right: false, up: false, down: false, jump: false };
     let jumpTap = false;
@@ -4210,29 +4221,44 @@
     const tileVar = (x, y) => ((x * 7 + y * 13) ^ (x * y)) & 3;   // 바닥·벽 무늬 4가지 중 하나 (칸마다 고정)
     const secs = (t) => (Math.floor(t * 10) / 10).toFixed(1);
     const alive = () => mobs.filter(m => m.hp > 0);
+    const hell = () => J.MAPS[mapId].zone === "hell";
+    const where = () => (hell() ? T("헬 {0}층", J.MAPS[mapId].depth) : T("{0}층", J.MAPS[mapId].depth));
+    // 능력치: 지금 장비 그대로. 헬이면 원소 저항을 헬 기준(장비 합 −70 뒤 최대치)으로
+    function hstats() {
+      const s = stats();
+      if (hell()) { const g = Inv.totals().stats; s.res = Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), "hell")])); }
+      return s;
+    }
     const center = (m) => ({ x: m.x, y: m.y - J.MOB.h / 2 });
     const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));   // 몬스터끼리 거리 (몸 가운데, 대각선도 1칸)
-    function enter() {
+    // id: "hunt1" (1층) / "hell50" (운영자 시험: 헬 50층 몬스터, 헬 저항 −70)
+    function enter(id = "hunt1") {
       // 예전 jump.js가 캐시에 남아 맵이 없으면 들어가지 않고 새로고침 안내
-      if (!J?.MAPS?.[mapId] || !J.newMob) { log(T("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요."), "bad"); return; }
+      if (!J?.MAPS?.[id] || !J.newMob || !J.aggroOf) { log(T("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요."), "bad"); return; }
+      if (J.MAPS[id].staff && !isStaff()) return;
+      mapId = id;
       map = J.parse(J.MAPS[mapId].rows);
       restart();
       best = Number(store.get(bestKey())) || null;
-      lobbyPos = { x: 5, y: 18 };   // 나오면 문 앞
+      lobbyPos = { x: id === "hell50" ? 7 : 5, y: 18 };   // 나오면 들어간 문 앞
       closeShop();
       setScene("jump");
       updateStats();
-      log(T("점프 던전 1층에 들어왔다. 몬스터 {0}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)", mobs.length), "good");
+      log(T("점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)", where(), mobs.length), "good");
       last = 0; acc = 0;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(loop);
     }
     // 층을 처음부터: 몬스터 새로, HP 가득
     function restart() {
-      st = J.newState(map); cleared = null; lastLanded = 0; for (const k in held) held[k] = false;
+      st = J.newState(map); cleared = null; lastLanded = 0; lastDoubled = 0; for (const k in held) held[k] = false;
       const depth = J.MAPS[mapId].depth;
-      mobs = map.spawns.map(p => ({ ...J.newMob(map, p), ...RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), "normal", depth), hitT: -1, deadT: -1 }));
+      // 헬: 던전 헬과 같은 몬스터 (나이트메어 종류, 원소, 정예 확률 그대로). 보스·네임드는 아직 없음
+      const make = () => (hell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), Math.random() < RLMonsters.eliteChance(NM.base) ? "elite" : "normal", depth)
+        : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), "normal", depth));
+      mobs = map.spawns.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1 }));
       maxHp = stats().maxHp; hp = maxHp;
+      burn = null; slowTo = 0; iceFree = 0;
       turnAcc = 0; turnN = 0; cd = { fb: 0, nova: 0, chain: 0, whirl: 0 }; pops = []; fx = []; portalOpen = false;
     }
     function exit() {
@@ -4241,7 +4267,7 @@
       updateStats();
       render();
     }
-    function input() { const i = { ...held, jumpHeld: held.jump, jump: jumpTap }; jumpTap = false; return i; }
+    function input() { const i = { ...held, jumpHeld: held.jump, jump: jumpTap, slow: turnN < slowTo ? 0.55 : 1 }; jumpTap = false; return i; }
     function loop(t) {
       if (scene !== "jump") return;
       raf = requestAnimationFrame(loop);
@@ -4251,12 +4277,14 @@
         acc += dt;
         while (acc >= STEP) {
           J.step(map, st, input(), STEP);
-          for (const m of alive()) { const busy = J.touching(st, m); if (busy) m.dir = st.x < m.x ? -1 : 1; J.mobStep(m, STEP, busy, Math.random, J.sameFloor(st, m) ? st.x : null); }
+          for (const m of alive()) { const busy = J.touching(st, m); if (busy) m.dir = st.x < m.x ? -1 : 1; J.mobStep(m, STEP, busy, Math.random, J.aggroOf(st, m)); }
           acc -= STEP;
           turnAcc += STEP;
           if (turnAcc >= TURN) { turnAcc -= TURN; combatTurn(); if (cleared || hp <= 0) break; }
         }
         if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
+        // 더블 점프: 발밑에 하얀 고리
+        if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; fx.push({ kind: "ring", x: st.x, y: st.y, r: 0.7, color: "rgba(255, 255, 255, 0.85)", t0: performance.now() }); }
         if (portalOpen && !cleared && Math.abs(st.x - map.portal.x) < 0.8 && Math.abs(st.y - map.portal.y) < 0.6) clear();
       }
       render();
@@ -4285,7 +4313,9 @@
     }
     function combatTurn() {
       turnN++;
-      const s = stats();
+      const s = hstats();
+      // 화상: every턴마다 한 번씩 ticks번
+      if (burn && turnN >= burn.next) { hp -= burn.dmg; hurtT = performance.now(); pop(st, burn.dmg, EL.colors.fire); burn.next += EL.burn.every; if (--burn.left <= 0) burn = null; }
       skills(s);
       const touch = alive().filter(m => J.touching(st, m));
       // 플레이어: 닿은 몬스터 중 가장 가까운 하나 (두 손이면 두 번, 광란이면 그 옆 몬스터도 절반)
@@ -4313,12 +4343,20 @@
         hp -= d;
         hurtT = performance.now();
         pop(st, d, "#ff5c5c");
+        if (m.el) element(m, s, d);
       }
       if (hp <= 0) {
         hp = 0;
-        log(T("쓰러졌다! 점프 던전 1층을 처음부터 다시 시작한다. (지금 판에는 영향 없음)"), "bad");
+        log(T("쓰러졌다! 점프 던전 {0}을 처음부터 다시 시작한다. (지금 판에는 영향 없음)", where()), "bad");
         restart();
       }
+    }
+    // 헬 몬스터 원소 (던전과 같은 규칙, 플레이어 저항만큼 약해짐): 불 화상 · 얼음 느려짐(달리기 55%) · 번개 한 번 더
+    function element(m, s, dealt) {
+      const cut = (k) => 1 - s.res[k] / 100;
+      if (m.el === "fire") { const dmg = Math.round(dealt * EL.burn.mul * cut("fire")); if (dmg > 0) burn = { dmg: Math.max(burn?.dmg || 0, dmg), left: EL.burn.ticks, next: burn?.next ?? turnN + EL.burn.every }; }
+      else if (m.el === "ice") { if (turnN >= slowTo && turnN >= iceFree && Math.random() < EL.ice.chance * cut("ice")) { slowTo = turnN + EL.ice.turns; iceFree = slowTo + EL.ice.immune; pop(st, T("느려짐"), EL.colors.ice); } }
+      else if (m.el === "bolt") { const dmg = Math.max(1, Math.round(dealt * EL.bolt.mul * cut("bolt"))); hp -= dmg; pop(st, dmg, EL.colors.bolt); }
     }
     // 세트·룬워드 스킬: 던전과 같은 쿨타임(턴)과 피해. 거리는 칸 (몸 가운데끼리, 대각선도 1칸)
     function skills(s) {
@@ -4375,7 +4413,7 @@
       const isBest = best == null || st.time < best;
       if (isBest) { best = st.time; store.set(bestKey(), String(best)); }
       cleared = { time: st.time, isBest };
-      log(T("점프 던전 1층 클리어! {0}초{1}", secs(st.time), isBest ? T(" (새 최고 기록!)") : ""), "good");
+      log(T("점프 던전 {0} 클리어! {1}초{2}", where(), secs(st.time), isBest ? T(" (새 최고 기록!)") : ""), "good");
     }
     const KEYS = { arrowleft: "left", a: "left", arrowright: "right", d: "right", arrowup: "up", w: "up", arrowdown: "down", s: "down", " ": "jump", j: "jump", k: "jump" };
     // 키를 누르고 뗄 때. 쓴 키면 true
@@ -4408,7 +4446,8 @@
         // 뒷벽: 어두운 돌바닥 무늬
         if (art) { Sprites.draw(`floor_normal_${tileVar(x, y)}`, px, py); ctx.fillStyle = "rgba(8, 10, 18, 0.62)"; ctx.fillRect(px, py, TILE, TILE); }
         if (c === "#") { if (!(art && Sprites.draw(`wall_normal_${tileVar(x, y)}`, px, py))) { ctx.fillStyle = "#3a3f52"; ctx.fillRect(px, py, TILE, TILE); } }
-        else if (c === "=") { if (!(art && Sprites.draw("tower_plank", px, py))) { ctx.fillStyle = "#8a5a2b"; ctx.fillRect(px, py, TILE, 6); } }
+        // 발판: 벽처럼 꽉 찬 정사각형 돌 타일 (윗면이 밝음). 아래에서는 뚫고 올라가고 ↓로 내려감
+        else if (c === "=") { if (!(art && Sprites.draw("tower_tile", px, py))) { ctx.fillStyle = "#565d70"; ctx.fillRect(px, py, TILE, TILE); ctx.fillStyle = "#a8b0c6"; ctx.fillRect(px, py, TILE, 2); } }
         else if (c === "H") { if (!(art && Sprites.draw("tower_ladder", px, py))) drawGlyph("H", px, py, "#c99050"); }
       }
       // 포탈 (다 잡으면): 살짝 커졌다 작아짐
@@ -4482,13 +4521,14 @@
       hud(T("HP {0}/{1}", Math.ceil(hp).toLocaleString(), maxHp.toLocaleString()), 134, 6, "#ff8a8a");
       hud(portalOpen ? T("포탈이 열렸다!") : T("남은 몬스터 {0}/{1}", alive().length, mobs.length), 8, 22, portalOpen ? PORTAL_COLOR : "#d0d4e0");
       hud(T("⏱ {0}초", secs(cleared ? cleared.time : st.time)) + (best != null ? "  " + T("최고 {0}초", secs(best)) : ""), 8, 38, "#ffcf5c");
+      if (hell()) hud(where() + (burn ? "  " + T("🔥 화상") : "") + (turnN < slowTo ? "  " + T("❄ 느려짐") : ""), 8, 54, "#ff7a3d");
       ctx.font = '11px "Courier New", monospace';
       hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";
         ctx.font = 'bold 20px "Courier New", monospace';
-        hud(T("🌀 1층 클리어! {0}초", secs(cleared.time)), VIEW_W / 2, VIEW_H / 2 - 36, "#ffcf5c");
+        hud(T("🌀 {0} 클리어! {1}초", where(), secs(cleared.time)), VIEW_W / 2, VIEW_H / 2 - 36, "#ffcf5c");
         ctx.font = '13px "Courier New", monospace';
         if (cleared.isBest) hud(T("새 최고 기록!"), VIEW_W / 2, VIEW_H / 2 - 6, "#4fd17a");
         hud(narrowScreen() ? T("점프 버튼: 다시 · 포탈: 나가기") : T("Space·Enter 다시 · Esc 로비로"), VIEW_W / 2, VIEW_H / 2 + 20, "#d0d4e0");

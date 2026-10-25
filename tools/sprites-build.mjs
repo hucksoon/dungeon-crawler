@@ -227,6 +227,15 @@ function drawPlank() {   // 칸 위쪽 1/3만 (아래에서 뚫고 올라가는 
   g.rect(3, 9, 3, 4, "#5a3818"); g.rect(26, 9, 3, 4, "#5a3818");   // 받침
   return g;
 }
+function drawTile() {   // 점프 던전 발판: 벽처럼 꽉 찬 정사각형 돌 타일 (윗면은 밝게 = 밟는 곳)
+  const g = canvas();
+  g.rect(0, 0, 32, 32, "#565d70");
+  g.rect(0, 15, 32, 2, "#3a3f4e"); g.rect(15, 0, 2, 15, "#3a3f4e"); g.rect(7, 17, 2, 15, "#3a3f4e"); g.rect(23, 17, 2, 15, "#3a3f4e");   // 돌 이음매
+  for (const [x, y] of [[3, 5], [21, 9], [11, 22], [27, 26], [4, 27]]) g.rect(x, y, 2, 1, "#6c7488");   // 돌 결
+  g.rect(0, 0, 32, 3, "#a8b0c6"); g.rect(0, 3, 32, 1, "#7e869c");   // 윗면
+  g.rect(0, 30, 32, 2, "#2a2e3a"); g.rect(30, 4, 2, 26, "#2a2e3a"); g.rect(0, 4, 1, 26, "#6c7488");   // 그림자·빛
+  return g;
+}
 function drawLadder() {
   const g = canvas();
   for (const x of [7, 23]) { g.rect(x, 0, 3, 32, "#9a6a34"); g.rect(x, 0, 1, 32, "#c99050"); }
@@ -252,6 +261,7 @@ function drawBanner(on) {
   };
 }
 add("tower_plank", { draw: drawPlank });
+add("tower_tile", { draw: drawTile });
 add("tower_ladder", { draw: drawLadder });
 add("tower_flag", { draw: drawFlag });
 add("tower_cp", { draw: drawBanner(false) });

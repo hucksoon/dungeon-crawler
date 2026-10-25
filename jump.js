@@ -4,9 +4,10 @@
 //         S 시작 · m 몬스터 · P 포탈(몬스터를 다 잡으면 열림) · C 체크포인트 · G 깃발 · . 빈칸
 (function (root) {
   "use strict";
-  // 손맛: 점프 높이 약 2.7칸(꾹 누를 때), 한 번에 가로 약 4칸. 짧게 누르면 낮게 (떼면 올라가는 속도 절반)
+  // 손맛: 점프 높이 약 2.7칸(꾹 누를 때), 한 번에 가로 약 4칸. 짧게 누르면 낮게 (떼면 올라가는 속도 절반). 공중에서 한 번 더 뛸 수 있음
   const PHYS = {
     gravity: 60, maxFall: 20, jumpVel: 18, cutJump: 0.5,
+    airJumps: 1, airJumpVel: 15.5,   // 더블 점프: 공중에서 한 번 더 (약 2칸 더, 둘 다 꾹 누르면 모두 약 4.5칸)
     run: 7.5, accel: 70, airAccel: 55, friction: 60,
     climb: 5,
     coyote: 0.09,     // 발판 끝을 지나고도 이만큼은 점프 가능 (초)
@@ -36,7 +37,8 @@
     "#.S..H..m......m....P....m.....m..H....#",
     "########################################",
   ];
-  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 } };
+  // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1 } };
 
   function parse(rows) {
     const h = rows.length, w = rows[0].length;
@@ -55,7 +57,7 @@
 
   function newState(map) {
     return { x: map.start.x, y: map.start.y, vx: 0, vy: 0, ground: true, climbing: false, coyote: 0, buffer: 0, face: 1,
-      time: 0, done: false, respawn: { ...map.start }, falls: 0, jumped: 0, landed: 0 };
+      time: 0, done: false, respawn: { ...map.start }, falls: 0, jumped: 0, landed: 0, airJumps: 0, doubled: 0 };
   }
 
   const solidAt = (map, tx, ty) => map.cell(tx, ty) === SOLID;
@@ -73,11 +75,11 @@
     return false;
   }
 
-  // 한 걸음 (dt초). input = { left, right, up, down, jump (이번에 눌렀음), jumpHeld (누르고 있음) }
+  // 한 걸음 (dt초). input = { left, right, up, down, jump (이번에 눌렀음), jumpHeld (누르고 있음), slow (달리기 배율, 얼음으로 느려질 때 1 미만) }
   function step(map, s, input, dt) {
     if (s.done) return s;
     s.time += dt;
-    const P = PHYS;
+    const P = PHYS, run = P.run * (input.slow ?? 1);
     if (input.jump) s.buffer = P.buffer; else s.buffer = Math.max(0, s.buffer - dt);
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     if (dir) s.face = dir;
@@ -89,8 +91,9 @@
       else if (input.down && s.ground && ladderAt(map, col, Math.round(s.y))) { s.climbing = true; s.x = col + 0.5; s.vx = 0; s.vy = 0; s.y += 0.06; }
     }
     if (s.climbing) {
-      if (s.buffer > 0) { s.climbing = false; s.vy = -P.jumpVel * 0.8; s.vx = dir * P.run; s.buffer = 0; s.jumped++; s.ground = false; }   // 점프로 떠남
-      else if (dir && !input.up && !input.down) { s.climbing = false; s.vx = dir * P.run * 0.5; }   // 옆으로 떨어져 나감
+      s.airJumps = 0;   // 사다리를 잡으면 더블 점프가 다시 생김
+      if (s.buffer > 0) { s.climbing = false; s.vy = -P.jumpVel * 0.8; s.vx = dir * run; s.buffer = 0; s.jumped++; s.ground = false; }   // 점프로 떠남
+      else if (dir && !input.up && !input.down) { s.climbing = false; s.vx = dir * run * 0.5; }   // 옆으로 떨어져 나감
       else if (!onLadder(map, s)) s.climbing = false;
       else {
         s.vy = ((input.down ? 1 : 0) - (input.up ? 1 : 0)) * P.climb;
@@ -109,12 +112,14 @@
 
     // 가로: 가속·마찰
     const acc = s.ground ? P.accel : P.airAccel;
-    if (dir) s.vx = clamp(s.vx + dir * acc * dt, -P.run, P.run);
+    if (dir) s.vx = clamp(s.vx + dir * acc * dt, -run, run);
     else { const f = (s.ground ? P.friction : P.airAccel * 0.5) * dt; s.vx = Math.abs(s.vx) <= f ? 0 : s.vx - Math.sign(s.vx) * f; }
 
     // 점프: 땅이거나 방금 떨어졌을 때(코요테)
     if (s.ground) s.coyote = P.coyote; else s.coyote = Math.max(0, s.coyote - dt);
     if (s.buffer > 0 && s.coyote > 0) { s.vy = -P.jumpVel; s.buffer = 0; s.coyote = 0; s.ground = false; s.jumped++; }
+    // 더블 점프: 공중에서 새로 누른 순간 (발판 근처에서 미리 누른 것은 내려앉은 뒤 보통 점프로 쓰지 않게 지움)
+    else if (input.jump && !s.ground && s.airJumps < P.airJumps) { s.vy = -P.airJumpVel; s.buffer = 0; s.airJumps++; s.doubled++; if (dir) s.vx = dir * run; }
     if (!input.jumpHeld && s.vy < 0) s.vy *= Math.pow(P.cutJump, dt * 30);   // 일찍 떼면 낮게
 
     s.vy = Math.min(P.maxFall, s.vy + P.gravity * dt);
@@ -122,6 +127,7 @@
     const wasGround = s.ground;
     moveY(map, s, s.vy * dt, input.down);
     if (s.ground && !wasGround) s.landed++;
+    if (s.ground) s.airJumps = 0;
     return finish(map, s);
   }
 
@@ -168,8 +174,9 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   // ---- 몬스터: 서 있는 발판 위를 왔다 갔다 (떨어지거나 뛰지 않음), 가끔 멈춤 ----
-  // aggro: 같은 발판에 선 플레이어가 이 칸 안이면 그쪽으로 걸어옴
-  const MOB = { w: 0.8, h: 0.9, speed: 1.6, pauseMin: 0.6, pauseMax: 1.6, walkMin: 1.5, walkMax: 4, aggro: 4 };
+  // aggro: 플레이어가 가로로 이 칸 안이면 그쪽으로. 같은 발판이면 chase 속도로 쫓아오고,
+  //        위아래 sense줄 안의 다른 발판이면 플레이어 바로 위·아래로 자리를 잡음 (발판 끝은 못 넘음)
+  const MOB = { w: 0.8, h: 0.9, speed: 2, chase: 3.2, pauseMin: 0.3, pauseMax: 0.9, walkMin: 2, walkMax: 5, aggro: 8, sense: 4 };
   // 발판 끝: 발밑이 밟히고 몸 칸이 막히지 않은 데까지
   function patrol(map, x, y) {
     const ok = (tx) => { const c = map.cell(tx, y); return (c === SOLID || oneWayAt(map, tx, y)) && map.cell(tx, y - 1) !== SOLID; };
@@ -181,12 +188,21 @@
   function newMob(map, at, rand = Math.random) {
     return { x: at.x, y: at.y, ...patrol(map, at.x, at.y), dir: rand() < 0.5 ? -1 : 1, wait: rand() * MOB.pauseMax, walk: 0 };
   }
-  // 한 걸음. busy(싸우는 중)면 제자리, toward(같은 발판의 플레이어 x)가 aggro칸 안이면 그쪽으로
-  function mobStep(m, dt, busy = false, rand = Math.random, toward = null) {
+  // 플레이어 쪽으로 갈지: 같은 발판이면 { x, chase: true }, 위아래 sense줄 안이면 { x, chase: false }, 아니면 null
+  function aggroOf(s, m) {
+    if (Math.abs(s.x - m.x) > MOB.aggro) return null;
+    if (sameFloor(s, m)) return { x: s.x, chase: true };
+    return Math.abs(s.y - m.y) <= MOB.sense ? { x: s.x, chase: false } : null;
+  }
+  // 한 걸음. busy(싸우는 중)면 제자리, target(aggroOf)이 있으면 그쪽으로
+  function mobStep(m, dt, busy = false, rand = Math.random, target = null) {
     if (busy) return m;
-    if (toward != null && Math.abs(toward - m.x) <= MOB.aggro) {
-      m.dir = toward < m.x ? -1 : 1; m.wait = 0; m.walk = MOB.walkMin;
-      m.x = clamp(m.x + m.dir * MOB.speed * dt, m.x0, m.x1);
+    if (target) {
+      const dx = target.x - m.x;
+      m.wait = 0; m.walk = MOB.walkMin;
+      if (Math.abs(dx) < 0.1) return m;   // 바로 위·아래에 섰으면 기다림
+      m.dir = dx < 0 ? -1 : 1;
+      m.x = clamp(m.x + m.dir * Math.min(Math.abs(dx), (target.chase ? MOB.chase : MOB.speed) * dt), m.x0, m.x1);
       return m;
     }
     if (m.wait > 0) { m.wait -= dt; if (m.wait <= 0) { m.walk = MOB.walkMin + rand() * (MOB.walkMax - MOB.walkMin); if (rand() < 0.4) m.dir = -m.dir; } return m; }
@@ -204,7 +220,7 @@
   // 스킬 거리 (칸, 대각선도 1칸): 몸 가운데끼리
   const reach = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs((a.y - PHYS.h / 2) - (b.y - MOB.h / 2)));
 
-  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, mobStep, sameFloor, touching, reach };
+  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, mobStep, aggroOf, sameFloor, touching, reach };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RLJump = api;
 })(typeof window !== "undefined" ? window : globalThis);

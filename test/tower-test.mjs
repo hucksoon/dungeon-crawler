@@ -54,6 +54,18 @@ const st = (m, x, y) => ({ ...J.newState(m), x, y });
   check("coyote time: jump still works a moment after walking off the edge", s.jumped === 1, JSON.stringify(s.jumped));
 }
 
+{
+  // 더블 점프: 공중에서 새로 누르면 한 번 더 (꾹 누르면 모두 4칸 넘게), 세 번째는 안 됨, 땅에 내려서면 다시 생김
+  const m = mini(["##########", "#........#", "#........#", "#........#", "#........#", "#........#", "#........#", "#........#", "#S.......#", "##########"]);
+  const s = st(m, 4.5, 9); let peak = 9;
+  run(m, s, (t) => ({ jump: Math.abs(t - 0) < DT / 2 || Math.abs(t - 0.3) < DT / 2 || Math.abs(t - 0.6) < DT / 2, jumpHeld: true }), 2, (q) => { peak = Math.min(peak, q.y); return false; });
+  check("double jump: a second press in the air goes ~2 tiles higher (> 4 tiles total); a third press does nothing", 9 - peak > 4 && 9 - peak < 5 && s.doubled === 1 && s.ground, `${(9 - peak).toFixed(2)} doubled ${s.doubled}`);
+  run(m, s, (t) => ({ jump: Math.abs(t - 0) < DT / 2 || Math.abs(t - 0.3) < DT / 2, jumpHeld: true }), 2);
+  check("double jump comes back after landing", s.doubled === 2 && s.ground);
+  const w = st(m, 4.5, 9); run(m, w, (t) => ({ jump: t === 0, jumpHeld: true }), 0.05);
+  check("a press on the ground is the normal jump (the double jump is kept for the air)", w.jumped === 1 && w.doubled === 0 && w.airJumps === 0);
+}
+
 // ---- 맵을 실제로 깰 수 있는지 ----
 const m = J.parse(J.MAPS.hunt1.rows);
 const standableAt = (x, y) => { const c = m.cell(x, y); return c === "#" || c === "=" || (c === "H" && m.cell(x, y - 1) !== "H"); };
@@ -124,11 +136,17 @@ console.log("route to the top monster:", routeTo(mobSegs.reduce((a, g) => (g.y <
   check("a monster in a fight stays put", q.x === x);
   const s = { x: q.x + 0.7, y: q.y }, far = { x: q.x + 1.5, y: q.y }, above = { x: q.x, y: q.y - 2 };
   check("touching: side by side yes, a tile away no, a floor above no", J.touching(s, q) && !J.touching(far, q) && !J.touching(above, q));
-  // 다가오기: 같은 발판 4칸 안의 플레이어 쪽으로 (발판 끝은 못 넘음), 다른 층이면 무시
-  const g = J.newMob(m, m.spawns.find(p => p.y === 17), rand), pl = { ...J.newState(m), x: g.x + 3, y: 17 };
-  const sx = g.x; for (let t = 0; t < 2; t += DT) J.mobStep(g, DT, J.touching(pl, g), rand, J.sameFloor(pl, g) ? pl.x : null);
-  const up = J.newMob(m, m.spawns.find(p => p.y === 13), rand), hi = { ...J.newState(m), x: up.x + 2, y: 17 };
-  check("aggro: a monster walks to a player 3 tiles away on its floor and stops when touching; ignores a player on another floor", J.sameFloor(pl, g) && J.touching(pl, g) && g.x > sx + 1 && !J.sameFloor(hi, up), JSON.stringify([sx, g.x, pl.x]));
+  // 다가오기: 같은 발판 8칸 안이면 빠르게 쫓아와 닿으면 멈춤
+  const g = J.newMob(m, m.spawns.find(p => p.y === 17), rand), pl = { ...J.newState(m), x: g.x + 7, y: 17 };
+  const sx = g.x; let t1 = 0;
+  for (; t1 < 3 && !J.touching(pl, g); t1 += DT) J.mobStep(g, DT, J.touching(pl, g), rand, J.aggroOf(pl, g));
+  check("aggro: same floor, 7 tiles away → chases fast (≥ 3 tiles/s) until touching", J.touching(pl, g) && (g.x - sx) / t1 >= 3, JSON.stringify([sx, g.x, t1]));
+  // 위아래 4줄 안의 다른 발판: 플레이어 바로 위로 자리를 잡고 기다림 (발판 끝은 못 넘음)
+  const up = J.newMob(m, m.spawns.find(p => p.y === 13), rand), below = { ...J.newState(m), x: up.x + 3, y: 17 };
+  for (let t = 0; t < 3; t += DT) J.mobStep(up, DT, false, rand, J.aggroOf(below, up));
+  check("aggro: a player 4 rows below → the monster moves right above the player and waits", Math.abs(up.x - below.x) < 0.15 && up.y === 13 && !J.sameFloor(below, up), JSON.stringify([up.x, below.x]));
+  const topMob = J.newMob(m, m.spawns.find(p => p.y === 5), rand);
+  check("aggro: too far (12 rows down or 9+ tiles across) → just patrols", J.aggroOf({ ...J.newState(m), x: topMob.x, y: 17 }, topMob) === null && J.aggroOf({ ...pl, x: g.x + 9 }, g) === null);
   check("skill reach counts tiles (diagonal = 1)", J.reach({ x: 5, y: 10 }, { x: 7, y: 9 }) === 2 && J.reach({ x: 5, y: 10 }, { x: 5.5, y: 10 }) === 0.5);
 }
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);
