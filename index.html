@@ -195,7 +195,7 @@
   /* ---- 로비 ---- 로비에서는 던전용 버튼(포션, 포탈)을 숨기고 접속자 목록을 보여줌 */
   body:not(.in-lobby) .lobby-only { display: none; }
   body.in-lobby .dungeon-only { display: none !important; }
-  body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 탑: 포션·지도 없음 (점프·포탈(나가기)만) */
+  body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 던전: 포션·지도 없음 (점프·포탈(나가기)만) */
   #lobby-panel {
     width: 640px;
     max-width: 100%;
@@ -704,7 +704,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js"></script>
+<script src="jump.js?v=83"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -3195,7 +3195,7 @@
     scene = s;
     document.body.classList.toggle("in-lobby", s === "lobby");
     document.body.classList.toggle("in-tower", s === "jump");
-    try { sessionStorage.setItem(SCENE_KEY, s === "jump" ? "lobby" : s); } catch {}   // 점프 탑은 새로고침하면 로비로
+    try { sessionStorage.setItem(SCENE_KEY, s === "jump" ? "lobby" : s); } catch {}   // 점프 던전은 새로고침하면 로비로
     Lobby.ping();
   }
 
@@ -3459,7 +3459,7 @@
       try {
         const headers = await serverHeaders();
         if (!headers) throw new Error("no token");
-        // 점프 탑 안에서는 다른 사람에게 탑 문 앞(로비)에 있는 것으로
+        // 점프 던전 안에서는 다른 사람에게 문 앞(로비)에 있는 것으로
         const body = scene !== "dungeon" ? { scene: "lobby", x: lobbyPos.x, y: lobbyPos.y, portal: presenceFloor(resumeFloor(), inNM()) } : { scene, depth: gameOver ? 0 : presenceFloor(depth, inNM()) };
         const res = await fetch(rankingUrl("lobby"), { method: "POST", headers, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(res.status);
@@ -4213,7 +4213,8 @@
     const center = (m) => ({ x: m.x, y: m.y - J.MOB.h / 2 });
     const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));   // 몬스터끼리 거리 (몸 가운데, 대각선도 1칸)
     function enter() {
-      if (!J) return;
+      // 예전 jump.js가 캐시에 남아 맵이 없으면 들어가지 않고 새로고침 안내
+      if (!J?.MAPS?.[mapId] || !J.newMob) { log(T("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요."), "bad"); return; }
       map = J.parse(J.MAPS[mapId].rows);
       restart();
       best = Number(store.get(bestKey())) || null;
@@ -6672,7 +6673,7 @@
 
   document.getElementById("tp-potion").addEventListener("click", usePotion);
   document.getElementById("tp-jump").addEventListener("click", aimJump);
-  // 점프 탑: 점프 버튼은 누르고 있는 동안 (짧게 누르면 낮게)
+  // 점프 던전: 점프 버튼은 누르고 있는 동안 (짧게 누르면 낮게)
   const tpJump = document.getElementById("tp-jump");
   tpJump.addEventListener("pointerdown", (e) => { if (scene === "jump") { e.preventDefault(); Tower.hold("jump", true); } });
   for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tpJump.addEventListener(ev, () => { if (scene === "jump") Tower.hold("jump", false); });
@@ -6912,7 +6913,7 @@
   document.getElementById("death-restart").addEventListener("click", startOver);
 
   // ---- 입력 ----
-  // 점프 탑: 키를 떼면 멈춤 (창이 가려지면 모두 뗀 것으로)
+  // 점프 던전: 키를 떼면 멈춤 (창이 가려지면 모두 뗀 것으로)
   window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); });
   window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); });
   window.addEventListener("keydown", (e) => {
@@ -6952,7 +6953,7 @@
       return;
     }
     if (!modal.hidden || e.target instanceof HTMLInputElement) return;
-    if (scene === "jump") { if (Tower.key(e, true)) e.preventDefault(); return; }   // 점프 탑: 누르고 있는 동안 움직임
+    if (scene === "jump") { if (Tower.key(e, true)) e.preventDefault(); return; }   // 점프 던전: 누르고 있는 동안 움직임
     const k = e.key.toLowerCase();
     let handled = true;
     switch (k) {

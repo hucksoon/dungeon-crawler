@@ -30,7 +30,8 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
     if (map && f === "jump.js") {
       const src = body.toString(), from = 'const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 } };';
       if (!src.includes(from)) throw new Error("map line moved");
-      body = src.replace(from, `const MAPS = { hunt1: { name: "t", depth: 1, rows: ${JSON.stringify(MAPS[map])} } };`);
+      // stale: 예전(점프 탑) jump.js가 캐시에 남은 경우 — hunt1 맵이 없음
+      body = src.replace(from, map === "stale" ? 'const MAPS = { tower1: { name: "t", rows: HUNT1 } };' : `const MAPS = { hunt1: { name: "t", depth: 1, rows: ${JSON.stringify(MAPS[map])} } };`);
     }
     r.fulfill({ contentType: { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp" }[path.extname(f)] || "text/html", body }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
@@ -128,6 +129,13 @@ try {
   L = await logs(page);
   check("knocked out: the floor restarts with full HP (log), no game over", L.includes("쓰러졌다! 점프 던전 1층을 처음부터 다시 시작한다") && !(await page.locator("#death-modal").isVisible().catch(() => false)), L.slice(-300));
   check("knock-out: no page errors", errors.length === 0, errors.join("; "));
+  await ctx.close();
+
+  // ---- 예전 jump.js가 캐시에 남았을 때: 들어가지 않고 새로고침 안내 (오류 없음) ----
+  ({ ctx, page, errors } = await open({ map: "stale" }));
+  await walkIn(page);
+  check("stale cached jump.js: stays in the lobby with a refresh notice, no page error", (await scene(page)).join() === "false,true" && (await logs(page)).includes("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요.") && errors.length === 0, JSON.stringify([await scene(page), errors]));
+  check("the page asks for a versioned jump.js (a new page never pairs with an old cached copy)", await page.evaluate(() => [...document.scripts].some(s => /jump\.js\?v=\d+/.test(s.src))));
   await ctx.close();
 
   // ---- 휴대폰: 방향 버튼 누르고 있기로 싸우고 포탈까지, 점프 버튼, 포탈 = 나가기 ----

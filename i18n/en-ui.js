@@ -1051,5 +1051,6 @@
     "남은 몬스터 {0}/{1}": "Monsters left {0}/{1}",
     "← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기": "← → move · Space jump · ↑↓ ladder · touch to auto-attack · R restart · Esc leave",
     "🌀 1층 클리어! {0}초": "🌀 Floor 1 clear! {0}s",
+    "점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요.": "Couldn't load the Jump Dungeon. Please refresh the page.",
   } });
 })(typeof self !== "undefined" ? self : this);
