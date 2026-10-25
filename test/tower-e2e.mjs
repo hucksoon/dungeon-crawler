@@ -20,19 +20,25 @@ const MAPS = {
 };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {} } = {}) {
+// staff: 가짜 서버가 로비 응답에서 운영자 기기(unlimited)라고 알려 줌
+const API = "https://api.test/api.php";
+async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {}, staff = false } = {}) {
   const ctx = await browser.newContext(opts); const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
-    if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: 'window.RANKING_API = "";' });
+    if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: `window.RANKING_API = "${staff ? API : ""}";` });
     const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
     let body = fs.readFileSync(p);
     if (map && f === "jump.js") {
-      const src = body.toString(), from = 'const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 } };';
+      const src = body.toString(), from = 'hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }';
       if (!src.includes(from)) throw new Error("map line moved");
-      body = src.replace(from, `const MAPS = { hunt1: { name: "t", depth: 1, rows: ${JSON.stringify(MAPS[map])} } };`);
+      // stale: 예전(점프 탑) jump.js가 캐시에 남은 경우 — hunt1 맵이 없음
+      body = src.replace(from, map === "stale" ? 'tower1: { name: "t", rows: HUNT1 }' : `hunt1: { name: "t", depth: 1, rows: ${JSON.stringify(MAPS[map])} }`);
     }
     r.fulfill({ contentType: { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp" }[path.extname(f)] || "text/html", body }); });
+  await ctx.route(API + "**", r => { const route = new URL(r.request().url()).searchParams.get("r");
+    if (route === "lobby") return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ me: { id: "g-staff", staff: true, unlimited: true }, players: [], mail: 0 }) });
+    r.fulfill({ status: 404, contentType: "application/json", body: "{}" }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
     localStorage.setItem("rl_device_id", "tower-dev-0001"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l);
@@ -88,6 +94,16 @@ try {
   await page.keyboard.up(" "); await sleep(900);
   const back = await skin(page);
   check("Space: jumps up (body ≥ 2 tiles higher mid-air), lands back on the floor", g0 && air && back && back.y - air.y > 2 && Math.abs(back.y - g0.y) < 0.1, JSON.stringify({ g0, air, back }));
+  // 더블 점프: 꾹(0.25초) → 떼고 → 공중에서 다시 꾹. 0.48초 때 몸이 한 번 뛴 것보다 1칸 넘게 더 높이
+  const dj = await page.evaluate(() => new Promise(done => {
+    const f = (type) => window.dispatchEvent(new KeyboardEvent(type, { key: " ", bubbles: true }));
+    const skinNow = () => { const c = document.getElementById("game"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0, sy = 0;
+      for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2]; if (r > 240 && g > 170 && g < 195 && b > 130 && b < 160) { n++; sy += Math.floor(i / 4 / c.width); } } return n ? sy / n / 64 : null; };
+    f("keydown"); setTimeout(() => f("keyup"), 250); setTimeout(() => f("keydown"), 280);
+    setTimeout(() => { const y = skinNow(); f("keyup"); done(y); }, 480);
+  }));
+  await sleep(1200);
+  check("double jump: a second Space in the air lifts the body > 1 tile above a single jump", dj != null && air.y - dj > 1 && Math.abs((await skin(page)).y - g0.y) < 0.1, JSON.stringify({ single: air.y, double: dj, ground: g0.y }));
   await press(page, "r"); await sleep(250);
   const r0 = await skin(page);
   check("R restarts at the start", r0 && Math.abs(r0.x - s0.x) < 0.1 && Math.abs(r0.y - s0.y) < 0.1, JSON.stringify({ s0, r0 }));
@@ -128,6 +144,37 @@ try {
   L = await logs(page);
   check("knocked out: the floor restarts with full HP (log), no game over", L.includes("쓰러졌다! 점프 던전 1층을 처음부터 다시 시작한다") && !(await page.locator("#death-modal").isVisible().catch(() => false)), L.slice(-300));
   check("knock-out: no page errors", errors.length === 0, errors.join("; "));
+  await ctx.close();
+
+  // ---- 운영자: 점프 던전 오른쪽 위 모서리(7,19)에 헬 50층 문. 다른 사람에게는 벽 ----
+  ({ ctx, page, errors } = await open());
+  await press(page, "p"); await sleep(300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 8); await press(page, "ArrowDown", 2); await sleep(200);
+  check("not staff: the corner (7,19) is a wall (stays in the lobby)", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("헬 50층"));
+  await ctx.close();
+  ({ ctx, page, errors } = await open({ staff: true }));
+  await sleep(1500);
+  await press(page, "p"); await sleep(1300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 8); await press(page, "ArrowDown", 2); await sleep(300);
+  L = await logs(page);
+  check("staff: the corner door enters the jump dungeon with hell 50 monsters", (await scene(page))[0] && L.includes("점프 던전 헬 50층에 들어왔다. 몬스터 10마리를 모두 잡으면 포탈이 열린다"), JSON.stringify([await scene(page), L.slice(-300)]));
+  await sleep(1200);
+  await page.screenshot({ path: path.join(OUT, "tower-hell50.png") });
+  // 맨몸으로 헬 50층 몬스터에게 닿으면 금방 쓰러지고 처음부터 (판은 그대로)
+  await hold(page, "ArrowRight", 6000); await sleep(300);
+  L = await logs(page);
+  check("staff hell 50: monsters are hell-strong (a naked character is knocked out and the floor restarts)", L.includes("쓰러졌다! 점프 던전 헬 50층을 처음부터 다시 시작한다"), L.slice(-300));
+  await press(page, "Escape"); await sleep(300);
+  check("staff: leaving puts you in front of the hell door (7,18)", (await scene(page)).join() === "false,true");
+  await page.locator("#game").screenshot({ path: path.join(OUT, "tower-hell-door.png") });
+  await press(page, "ArrowDown"); await sleep(300);
+  check("staff: ↓ from there enters the hell floor again", (await scene(page))[0] && ((await logs(page)).match(/헬 50층에 들어왔다/g) || []).length === 2);
+  check("staff: no page errors", errors.length === 0, errors.join("; "));
+  await ctx.close();
+
+  // ---- 예전 jump.js가 캐시에 남았을 때: 들어가지 않고 새로고침 안내 (오류 없음) ----
+  ({ ctx, page, errors } = await open({ map: "stale" }));
+  await walkIn(page);
+  check("stale cached jump.js: stays in the lobby with a refresh notice, no page error", (await scene(page)).join() === "false,true" && (await logs(page)).includes("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요.") && errors.length === 0, JSON.stringify([await scene(page), errors]));
+  check("the page asks for a versioned jump.js (a new page never pairs with an old cached copy)", await page.evaluate(() => [...document.scripts].some(s => /jump\.js\?v=\d+/.test(s.src))));
   await ctx.close();
 
   // ---- 휴대폰: 방향 버튼 누르고 있기로 싸우고 포탈까지, 점프 버튼, 포탈 = 나가기 ----

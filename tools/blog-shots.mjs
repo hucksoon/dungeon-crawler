@@ -184,7 +184,7 @@ const SCENES = [
     await press(o.page, ["p"], 300);
     await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
     await sleep(500);
-    const plan = [["ArrowRight", 200, 900], ["ArrowRight", 2000, 2600], [" ", 3600, 3950], ["ArrowRight", 3650, 4100]];
+    const plan = [["ArrowRight", 200, 900], ["ArrowRight", 2000, 2600], [" ", 3600, 3900], [" ", 3950, 4250], ["ArrowRight", 3650, 4300]];   // 끝에 더블 점프
     const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
       const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
       const out = [], t0 = performance.now(), fire = (type, key) => window.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
