@@ -155,7 +155,10 @@ try {
   await sleep(1500);
   await press(page, "p"); await sleep(1300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 8); await press(page, "ArrowDown", 2); await sleep(300);
   L = await logs(page);
-  check("staff: the corner door enters the jump dungeon with hell 50 monsters", (await scene(page))[0] && L.includes("점프 던전 헬 50층에 들어왔다. 몬스터 10마리를 모두 잡으면 포탈이 열린다"), JSON.stringify([await scene(page), L.slice(-300)]));
+  const n50 = Number((L.match(/점프 던전 헬 50층에 들어왔다\. 몬스터 (\d+)마리/) || [])[1]);
+  check("staff: the corner door enters the jump dungeon with hell 50 monsters", (await scene(page))[0] && n50 > 0, JSON.stringify([await scene(page), L.slice(-300)]));
+  check("staff hell 50: as many monsters as dungeon hell 50 (47~53) plus the boss", n50 >= 48 && n50 <= 54, String(n50));
+  check("staff hell 50: the floor-50 named boss 염라대왕 waits on the top platform", L.includes("보스 염라대왕이(가) 맨 위 발판에서 기다린다!"), L.slice(-200));
   await sleep(1200);
   await page.screenshot({ path: path.join(OUT, "tower-hell50.png") });
   // 맨몸으로 헬 50층 몬스터에게 닿으면 금방 쓰러지고 처음부터 (판은 그대로)

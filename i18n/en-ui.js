@@ -1056,5 +1056,7 @@
     "🔥 화상": "🔥 Burning",
     "❄ 느려짐": "❄ Slowed",
     "🌀 {0} 클리어! {1}초": "🌀 {0} clear! {1}s",
+    "보스 {0}이(가) 맨 위 발판에서 기다린다!": "The boss {0} is waiting on the top platform!",
+    "분노": "Enraged",
   } });
 })(typeof self !== "undefined" ? self : this);

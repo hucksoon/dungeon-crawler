@@ -147,6 +147,14 @@ console.log("route to the top monster:", routeTo(mobSegs.reduce((a, g) => (g.y <
   check("aggro: a player 4 rows below → the monster moves right above the player and waits", Math.abs(up.x - below.x) < 0.15 && up.y === 13 && !J.sameFloor(below, up), JSON.stringify([up.x, below.x]));
   const topMob = J.newMob(m, m.spawns.find(p => p.y === 5), rand);
   check("aggro: too far (12 rows down or 9+ tiles across) → just patrols", J.aggroOf({ ...J.newState(m), x: topMob.x, y: 17 }, topMob) === null && J.aggroOf({ ...pl, x: g.x + 9 }, g) === null);
+  // 헬 50층: 발판 곳곳에 흩어 놓기 (밟을 수 있는 칸 위, 시작 근처 6칸은 비움, 여러 층에)
+  const h = J.parse(J.MAPS.hell50.rows), spots = J.spawnSpots(h, 50, rand);
+  const onFloor = spots.every(p => segs.some(g => g.y === p.y && p.x >= g.x0 && p.x <= g.x1 + 1));
+  check("hell 50 spawns: 50 spots on standable floors, none within 6 tiles of the start, spread over 4+ floors, boss spot on the top platform",
+    spots.length === 50 && onFloor && !spots.some(p => p.y === h.start.y && Math.abs(p.x - h.start.x) < 5.7) && new Set(spots.map(p => p.y)).size >= 4 && segAt(J.MAPS.hell50.boss)?.y === 5,
+    JSON.stringify(spots.slice(0, 5)));
+  const big = J.newMob(h, J.MAPS.hell50.boss, rand, 1.2);
+  check("a wide (boss) monster: patrol keeps the wider body on the platform and touches from farther", big.x0 === 14 + 0.6 && J.touching({ x: big.x + 1.0, y: 5 }, big) && !J.touching({ x: big.x + 1.0, y: 5 }, { ...big, w: undefined }));
   check("skill reach counts tiles (diagonal = 1)", J.reach({ x: 5, y: 10 }, { x: 7, y: 9 }) === 2 && J.reach({ x: 5, y: 10 }, { x: 5.5, y: 10 }) === 0.5);
 }
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);
