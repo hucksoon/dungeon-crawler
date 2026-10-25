@@ -175,6 +175,23 @@ const SCENES = [
       { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 }] });
     await sleep(700); await o.page.keyboard.press("ArrowRight"); await sleep(330);
     return { ...o, shot: "#stage", nowait: true }; }],
+  // 점프 탑 (시험판): 던전에서 포탈(P)로 로비에 나와 왼쪽 아래 점프 탑 문으로. 키를 정해진 시각에 누르고 떼며 발판 4개를 올라감
+  //   (시각은 jump.js 물리로 미리 맞춤: 나무 발판 3개 → 돌 블록). 화면 전체를 3/8 크기로 60ms마다
+  ["tower-climb", "점프 탑: ← → 달리기와 Space 점프로 발판을 올라가요", async () => {
+    const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-tower", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
+    const o = await open({ dsf: 1.6, seed: { rl_save: save(3, "blog-tower", { hp: 500, mh: 500 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
+    await press(o.page, ["p"], 300);
+    await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
+    await sleep(500);
+    const plan = [["ArrowRight", 200, 370], [" ", 370, 770], ["ArrowRight", 900, 1150], [" ", 1000, 1400], ["ArrowRight", 1700, 2450], [" ", 2060, 2460], ["ArrowRight", 2800, 3500], [" ", 3050, 3450]];
+    const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
+      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
+      const out = [], t0 = performance.now(), fire = (type, key) => window.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
+      for (const [key, a, b] of plan) { setTimeout(() => fire("keydown", key), a); setTimeout(() => fire("keyup", key), b); }
+      const grab = () => { cut.getContext("2d").drawImage(c, 0, 0, cut.width, cut.height); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, 60); else done(out); };
+      grab();
+    }), [plan, 4300]);
+    return { ...o, frames, delay: 6 }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 

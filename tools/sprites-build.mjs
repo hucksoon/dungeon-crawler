@@ -219,6 +219,44 @@ add("doll_o_dagger", { from: "player/hand2/misc/dagger" });
 add("doll_o_staff", { from: "player/hand1/quarterstaff", flop: true });
 add("doll_o_axe", { from: "player/hand1/hand_axe", flop: true });
 
+// 점프 탑 (옆에서 보는 맵): 나무 발판, 사다리, 깃발(도착), 체크포인트 깃대 (꺼짐/켜짐)
+function drawPlank() {   // 칸 위쪽 1/3만 (아래에서 뚫고 올라가는 얇은 발판)
+  const g = canvas();
+  g.rect(0, 0, 32, 9, "#8a5a2b"); g.rect(0, 0, 32, 2, "#c08548"); g.rect(0, 8, 32, 1, "#4a2c12");
+  for (const x of [7, 18, 27]) g.rect(x, 2, 1, 6, "#6b4220");
+  g.rect(3, 9, 3, 4, "#5a3818"); g.rect(26, 9, 3, 4, "#5a3818");   // 받침
+  return g;
+}
+function drawLadder() {
+  const g = canvas();
+  for (const x of [7, 23]) { g.rect(x, 0, 3, 32, "#9a6a34"); g.rect(x, 0, 1, 32, "#c99050"); }
+  for (const y of [3, 11, 19, 27]) { g.rect(10, y, 13, 3, "#8a5a2b"); g.rect(10, y, 13, 1, "#c08548"); }
+  return g;
+}
+function drawFlag() {
+  const g = canvas();
+  g.rect(8, 2, 2, 29, "#d0d4e0"); g.rect(8, 2, 1, 29, "#ffffff"); g.rect(6, 30, 6, 2, "#7d8396");
+  g.poly([[10, 3], [28, 7], [10, 13]], "#ffcf5c"); g.poly([[10, 3], [28, 7], [10, 6]], "#fff0b0");
+  g.set(15, 7, "#b07c18"); g.set(16, 7, "#b07c18");
+  g.outline();
+  return g;
+}
+function drawBanner(on) {
+  return () => {
+    const g = canvas();
+    g.rect(14, 6, 2, 25, "#7d8396"); g.rect(11, 30, 8, 2, "#4a4e5e");
+    g.poly([[16, 7], [26, 10], [16, 14]], on ? "#4fd17a" : "#5b5f72");
+    if (on) { g.set(14, 4, "#bff7cf"); g.set(15, 3, "#ffffff"); g.set(16, 4, "#bff7cf"); }
+    g.outline();
+    return g;
+  };
+}
+add("tower_plank", { draw: drawPlank });
+add("tower_ladder", { draw: drawLadder });
+add("tower_flag", { draw: drawFlag });
+add("tower_cp", { draw: drawBanner(false) });
+add("tower_cp_on", { draw: drawBanner(true) });
+
 // ---- 만들기 ----
 const files = [];
 for (const [i, sp] of SPRITES.entries()) {

@@ -1032,5 +1032,18 @@
     "등록을 취소한 아이템": "Listing canceled",
     "{0}에게서 산 아이템": "Bought from {0}",
     "{0}에게 판매": "Sold to {0}",
+    // 점프 탑 (dc#82)
+    "점프 탑": "Jump Tower",
+    "점프 탑에 들어왔다. 발판을 밟고 맨 위 깃발까지 올라가자! (Esc로 나가기)": "You entered the Jump Tower. Hop up the platforms to the flag at the top! (Esc to leave)",
+    "점프 탑 클리어! {0}초{1}": "Jump Tower cleared! {0}s{1}",
+    " (새 최고 기록!)": " (new best!)",
+    "⏱ {0}초": "⏱ {0}s",
+    "최고 {0}초": "Best {0}s",
+    "방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기": "Arrows move · Jump button · Portal = leave",
+    "← → 이동 · Space 점프 · ↑↓ 사다리 · R 다시 · Esc 나가기": "← → move · Space jump · ↑↓ ladder · R restart · Esc leave",
+    "🚩 클리어! {0}초": "🚩 Clear! {0}s",
+    "새 최고 기록!": "New best!",
+    "점프 버튼: 다시 · 포탈: 나가기": "Jump: again · Portal: leave",
+    "Space·Enter 다시 · Esc 로비로": "Space/Enter again · Esc to lobby",
   } });
 })(typeof self !== "undefined" ? self : this);
