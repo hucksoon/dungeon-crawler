@@ -4207,7 +4207,9 @@
   // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 발판 아래로 · R 처음부터 · Esc/P 로비로
   // 더블 점프: 공중에서 Space를 한 번 더 (땅·사다리에서 다시 생김)
   // 몬스터는 발판 위를 바삐 오가다, 가로 8칸 안에 플레이어가 보이면 같은 발판이면 빠르게 쫓아오고 위아래 4줄 안이면 바로 위·아래로 따라옴
-  // 싸움은 자동: 몬스터에 닿아 있으면 0.5초(한 턴)마다 서로 공격하고, 세트·룬워드 스킬도 턴마다 알아서 씀. 능력치는 지금 장비 그대로
+  // 공격은 자동: 0.5초(한 턴)마다 보는 쪽으로 무기를 휘두름 (앞 1.5칸, 앞에 없고 뒤에 있으면 돌아섬). 몬스터는 닿아 있으면 반격
+  // 스킬은 떨어진 몬스터에게도 (파이어볼 7칸 · 체인 6칸 · 노바 2.5칸)
+  // 세트·룬워드 스킬도 턴마다 알아서 씀. 능력치는 지금 장비 그대로
   // 몬스터를 다 잡으면 포탈이 열리고, 포탈에 닿으면 클리어 (최고 기록은 기기에)
   // 시험판이라 지금 판(던전 진행)과 따로: HP는 들어올 때 가득, 쓰러지면 이 층을 처음부터. 경험치·골드·아이템은 아직 없음
   const Tower = (() => {
@@ -4222,6 +4224,11 @@
     const secs = (t) => (Math.floor(t * 10) / 10).toFixed(1);
     const alive = () => mobs.filter(m => m.hp > 0);
     const BOSS_W = 1.2, BOSS_SCALE = 1.6;   // 보스는 몸이 크고 그림도 1.6배
+    // 기본 공격: 한 턴마다 보는 쪽으로 휘두름 (몸 가운데에서 REACH칸 + 몬스터 몸 절반까지, 위아래로 몸이 겹치면)
+    // 스킬 거리 (칸): 옆에서 보는 맵에 맞게 던전보다 넓게 — 파이어볼 7 · 체인 6(튕길 때 4) · 노바 2.5 · 회전 베기 1.5
+    const REACH = 1.5, SWING_MS = 230, HR = { fb: 7, chain: 6, hop: 4, nova: 2.5, whirl: 1.5 };
+    let swingT = -1e9, swingFace = 1;
+    const inFront = (m, face) => { const dx = (m.x - st.x) * face; return dx > -0.2 && dx <= REACH + (m.w || J.MOB.w) / 2 && Math.abs(m.y - st.y) < 1; };
     const hell = () => J.MAPS[mapId].zone === "hell";
     const where = () => (hell() ? T("헬 {0}층", J.MAPS[mapId].depth) : T("{0}층", J.MAPS[mapId].depth));
     // 능력치: 지금 장비 그대로. 헬이면 원소 저항을 헬 기준(장비 합 −70 뒤 최대치)으로
@@ -4245,7 +4252,7 @@
       closeShop();
       setScene("jump");
       updateStats();
-      log(T("점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)", where(), mobs.length), "good");
+      log(T("점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (공격·스킬은 자동 · Esc로 나가기)", where(), mobs.length), "good");
       const boss = mobs.find(m => m.boss);
       if (boss) log(T("보스 {0}이(가) 맨 위 발판에서 기다린다!", boss.name), null, boss.named ? RLMonsters.NAMED_COLOR : BOSS_COLOR);
       last = 0; acc = 0;
@@ -4335,8 +4342,11 @@
       if (burn && turnN >= burn.next) { hp -= burn.dmg; hurtT = performance.now(); pop(st, burn.dmg, EL.colors.fire); burn.next += EL.burn.every; if (--burn.left <= 0) burn = null; }
       skills(s);
       const touch = alive().filter(m => J.touching(st, m));
-      // 플레이어: 닿은 몬스터 중 가장 가까운 하나 (두 손이면 두 번, 광란이면 그 옆 몬스터도 절반)
-      const target = touch.sort((a, b) => Math.abs(a.x - st.x) - Math.abs(b.x - st.x))[0];
+      // 플레이어: 한 턴마다 보는 쪽으로 휘두름. 앞에 없고 뒤에 있으면 (← → 를 누르고 있지 않을 때) 돌아서 휘두름
+      // 맞는 건 앞쪽 가장 가까운 하나 (두 손이면 두 번, 광란이면 그 옆 몬스터도 절반)
+      if (!alive().some(m => inFront(m, st.face)) && !held.left && !held.right && alive().some(m => inFront(m, -st.face))) st.face = -st.face;
+      swingT = performance.now(); swingFace = st.face;
+      const target = alive().filter(m => inFront(m, st.face)).sort((a, b) => Math.abs(a.x - st.x) - Math.abs(b.x - st.x))[0];
       if (target) {
         const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [s.longsword ? RLItems.LONGSWORD.hitMul : 1];
         const elemPct = s.elem.fire + s.elem.ice + s.elem.bolt;
@@ -4379,10 +4389,10 @@
     function skills(s) {
       const fast = s.rw.skillFast ? 1 : 0, ls = s.rw.skillLs ? RW_FX.skillLs.share : 0;
       const tick = (k) => { if (cd[k] > 0) cd[k]--; return cd[k] <= 0; };
-      const inReach = (r) => alive().filter(m => J.reach(st, m) <= r + 0.5).sort((a, b) => J.reach(st, a) - J.reach(st, b));
+      const inReach = (r) => alive().filter(m => J.reach(st, m) <= r).sort((a, b) => J.reach(st, a) - J.reach(st, b));
       const now = performance.now();
       if (s.rw.whirl && tick("whirl")) {
-        const hit = inReach(1);
+        const hit = inReach(HR.whirl);
         if (hit.length) {
           cd.whirl = RW_FX.whirl.every;
           const crit = Math.random() * 100 < s.crit, raw = (s.atk + rnd(2)) * s.rw.whirl / 100 * (crit ? s.critMul : 1);
@@ -4392,26 +4402,26 @@
       }
       const fbSet = s.fireball;
       if ((fbSet || s.rw.fireball) && tick("fb")) {
-        const c = inReach(FB.range)[0];
+        const c = inReach(HR.fb)[0];
         if (c) {
           cd.fb = (fbSet ? FB.every : RW_FX.fireball.every) - fast;
           const { crit, dmg } = skillRoll(s, fbSet ? FB.mul : RW_FX.fireball.mul, s.fireballPct + s.elem.fire);
           const at = center(c);
-          fx.push({ kind: "boom", x: at.x, y: at.y, r: FB.radius + 0.5, color: EL.colors.fire, t0: now, from: { x: st.x, y: st.y - 0.45 } });
+          fx.push({ kind: "boom", x: at.x, y: at.y, r: FB.radius + 0.5, color: EL.colors.fire, t0: now, dur: 480, from: { x: st.x, y: st.y - 0.45 } });
           for (const m of alive().filter(m => cheb(center(m), at) <= FB.radius + 0.5)) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "fire"))), crit, s, EL.colors.fire, ls);
         }
       }
       if (s.nova && tick("nova")) {
-        const hit = inReach(NOVA.radius);
+        const hit = inReach(HR.nova);
         if (hit.length) {
           cd.nova = NOVA.every - fast;
           const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
-          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: NOVA.radius + 0.5, color: EL.colors.ice, t0: now });
+          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: HR.nova, color: EL.colors.ice, t0: now, dur: 380 });
           for (const m of hit) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "ice"))), crit, s, EL.colors.ice, ls);
         }
       }
       if (s.chain && tick("chain")) {
-        let at = inReach(CHAIN.range)[0];
+        let at = inReach(HR.chain)[0];
         if (at) {
           cd.chain = CHAIN.every - fast;
           const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
@@ -4420,7 +4430,7 @@
             done.add(at); pts.push(center(at));
             const from = center(at);
             damage(at, Math.max(1, Math.round(dmg * elemMul(at, "bolt"))), crit, s, EL.colors.bolt, ls);
-            at = alive().filter(m => !done.has(m) && cheb(center(m), from) <= CHAIN.range + 0.5).sort((a, b) => cheb(center(a), from) - cheb(center(b), from))[0];
+            at = alive().filter(m => !done.has(m) && cheb(center(m), from) <= HR.hop).sort((a, b) => cheb(center(a), from) - cheb(center(b), from))[0];
           }
           fx.push({ kind: "bolt", pts, color: EL.colors.bolt, t0: now });
         }
@@ -4499,16 +4509,34 @@
       const sy = st.ground ? 1 - 0.18 * squash : st.vy < 0 ? 1.08 : 1, sx = 2 - sy;
       const bob = st.ground && Math.abs(st.vx) > 0.5 ? (Math.floor(now / 110) % 2) * -0.7 : 0;
       const flip = st.climbing ? (Math.floor(st.y * 3) % 2 ? -1 : 1) : st.face < 0 ? -1 : 1;
+      // 휘두르기: 앞으로 몸을 숙이며 반 걸음 내딛고(발끝 축), 앞에 초승달 모양 베기 궤적 (무기 등급 색 테두리)
+      const sw = (now - swingT) / SWING_MS, swinging = sw >= 0 && sw < 1 && !st.climbing && !reduceMotion;
+      const lean = swinging ? Math.sin(sw * Math.PI) : 0;
       ctx.save();
-      ctx.translate(st.x * TILE, st.y * TILE + bob);
+      ctx.translate(st.x * TILE + swingFace * lean * 2.5, st.y * TILE + bob);
+      if (lean) ctx.rotate(swingFace * lean * 0.28);
       ctx.scale(flip * sx, sy);
       if (art) { const doll = Doll.canvas(); ctx.drawImage(doll, -TILE / 2, -TILE, TILE, TILE); drawFlash(doll, -TILE / 2, -TILE, Math.max(0, 0.7 - (now - hurtT) / 220)); }
       else drawGlyph("@", -TILE / 2, -TILE, "#ffffff");
       ctx.restore();
+      if (sw >= 0 && sw < 1 && !st.climbing) {
+        const wr = Inv.equipped().weapon?.rarity, edge = (wr && RLItems.RARITIES[wr]?.color) || "#c8d0e0";
+        const a0 = -1.9, a1 = a0 + 2.6 * Math.min(1, sw * 1.6);   // 위에서 앞 아래로 쓸어내림
+        ctx.save();
+        ctx.translate((st.x + swingFace * 0.25) * TILE, (st.y - 0.5) * TILE);
+        ctx.scale(swingFace, 1);
+        ctx.globalAlpha = 1 - sw * sw;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = edge; ctx.lineWidth = 3.2;
+        ctx.beginPath(); ctx.arc(0, 0, TILE * 0.85, a0, a1); ctx.stroke();
+        ctx.strokeStyle = "#e8f0ff"; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(0, 0, TILE * 0.85, a0 + 0.15, a1); ctx.stroke();
+        ctx.restore();
+      }
       // 스킬 이펙트 (0.3초)
-      fx = fx.filter(f => now - f.t0 < 320);
+      fx = fx.filter(f => now - f.t0 < (f.dur || 320));
       for (const f of fx) {
-        const p = (now - f.t0) / 320;
+        const p = (now - f.t0) / (f.dur || 320);
         ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = ctx.fillStyle = f.color; ctx.lineWidth = 1.5;
         if (f.kind === "ring") { ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, f.r * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); }
         else if (f.kind === "boom") {
@@ -4552,7 +4580,7 @@
         hud(`${boss.name}${boss.el ? " · " + EL.names[boss.el] : ""}${boss.enraged ? " · " + T("분노") : ""}  ${Math.round(boss.hp / boss.maxHp * 100)}%`, bx, 19, boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR);
       }
       ctx.font = '11px "Courier New", monospace';
-      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
+      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↑↓ 사다리 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";

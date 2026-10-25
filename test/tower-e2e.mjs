@@ -7,6 +7,10 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const ORIGIN = "https://game.apacimtest.com/";
+const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 화염의 세트 2개 (파이어볼) — 블로그 그림과 같은 씨앗
+const FIRE = [513, 806].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));
+const invOf = (its) => { const e = Object.fromEntries(I.SLOTS.map(x => [x, null])); for (const it of its) e[it.slot] = it; return JSON.stringify({ bag: [], equip: e, log: [], stones: 0 }); };
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const save = (run = {}) => JSON.stringify({ v: 1, best: 3, run: { d: 3, hp: 500, mh: 500, a: 5, g: 10, p: 1, l: 5, x: 0, xn: 1e9, rid: "tower-run", k: 0, pp: 0, ...run } });
@@ -17,12 +21,14 @@ const level = () => JSON.stringify({ rid: "tower-run", d: 3, turn: 3, map: Array
 const MAPS = {
   move: ["############", "#..........#", "#..........#", "#..........#", "#..........#", "#..====....#", "#S.........#", "############"],
   fight: ["##########", "#........#", "#........#", "#S..m...P#", "##########"],
+  // 높은 발판(바닥에서 4줄 위)의 몬스터: 휘둘러서는 못 닿고, 파이어볼(7칸)은 닿음
+  high: ["############", "#..........#", "#..........#", "#.....m....#", "#....===...#", "#..........#", "#..........#", "#S........P#", "############"],
 };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 // staff: 가짜 서버가 로비 응답에서 운영자 기기(unlimited)라고 알려 줌
 const API = "https://api.test/api.php";
-async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {}, staff = false } = {}) {
+async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {}, staff = false, inv = null } = {}) {
   const ctx = await browser.newContext(opts); const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
@@ -40,10 +46,11 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
     if (route === "lobby") return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ me: { id: "g-staff", staff: true, unlimited: true }, players: [], mail: 0 }) });
     r.fulfill({ status: 404, contentType: "application/json", body: "{}" }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
+  await ctx.addInitScript(([s, l, iv]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
     localStorage.setItem("rl_device_id", "tower-dev-0001"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l);
+    if (iv) localStorage.setItem("rl_inv:g:tower-dev-0001", iv);
     for (const k of ["rl_notice_1025a"]) localStorage.setItem(k, "1");
-    window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [save(run), level()]);
+    window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [save(run), level(), inv]);
   await page.goto(ORIGIN); await sleep(800);
   return { ctx, page, errors };
 }
@@ -80,7 +87,8 @@ try {
   await ctx.close();
 
   // ---- 움직임 (몬스터 없는 작은 맵) ----
-  ({ ctx, page, errors } = await open({ map: "move" }));
+  // 동작 줄이기: 휘두를 때 몸이 기우는 움직임이 꺼져 위치를 정확히 잴 수 있음 (베기 궤적은 그대로 보임)
+  ({ ctx, page, errors } = await open({ map: "move", opts: { viewport: { width: 1100, height: 1000 }, reducedMotion: "reduce" } }));
   await walkIn(page); await sleep(300);
   const s0 = await skin(page);
   await hold(page, "ArrowRight", 450); await sleep(400);
@@ -114,6 +122,19 @@ try {
   await hold(page, "ArrowDown", 400); await sleep(300);
   const dropped = await skin(page);
   check("↓ drops back through the plank", dropped && Math.abs(dropped.y - r0.y) < 0.15, JSON.stringify({ r0, dropped }));
+  // 휘두르기: 몬스터가 없어도 한 턴(0.5초)마다 앞에 베기 궤적 (밝은 하늘색 #e8f0ff 픽셀)
+  const slashes = await page.evaluate(() => new Promise(done => {
+    const c = document.getElementById("game"), g = c.getContext("2d"), seen = [];
+    const t0 = performance.now(), tick = () => {
+      const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] > 220 && d[i + 1] > 230 && d[i + 2] > 248 && d[i] < 240) n++;
+      seen.push(n);
+      if (performance.now() - t0 < 1500) setTimeout(tick, 40); else done(seen);
+    };
+    tick();
+  }));
+  const bursts = slashes.reduce((a, n, i) => a + (n > 15 && !(slashes[i - 1] > 15) ? 1 : 0), 0);
+  check("swing every turn: a slash arc appears ~every 0.5 s even with no monster (2~4 swings in 1.5 s)", bursts >= 2 && bursts <= 4, JSON.stringify(slashes));
   check("move map: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
@@ -135,6 +156,17 @@ try {
   L = await logs(page);
   check("Enter after a clear starts the floor again: the monster is back and the floor clears again", (L.match(/남은 몬스터 0마리/g) || []).length === 2 && (L.match(/점프 던전 1층 클리어!/g) || []).length === 2, L.slice(-300));
   check("fight map: no page errors", errors.length === 0, errors.join("; "));
+  await ctx.close();
+
+  // ---- 스킬은 떨어진 몬스터에게도: 4줄 위 발판의 몬스터 ----
+  ({ ctx, page, errors } = await open({ map: "high" }));
+  await walkIn(page); await sleep(3500);
+  check("no skill: a monster 4 rows up can't be reached by the swing (still alive after 3.5 s)", !(await logs(page)).includes("처치!"));
+  await ctx.close();
+  ({ ctx, page, errors } = await open({ map: "high", inv: invOf(FIRE) }));
+  await walkIn(page); await sleep(3500);
+  check("fire set: the fireball (7 tiles) kills the monster 4 rows up without touching it", (await logs(page)).includes("처치! (남은 몬스터 0마리)"), (await logs(page)).slice(-200));
+  check("ranged skill map: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
   // ---- 쓰러지면 처음부터 (HP 1) ----
