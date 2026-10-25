@@ -16,29 +16,37 @@
   };
   const SOLID = "#", PLANK = "=", LADDER = "H";
 
-  // 사냥터 1층 (dc#83): 폭 40 × 높이 18. 바닥·가운데 발판 두 층·맨 위 발판, 사다리 4개. m 몬스터 10마리, P 포탈(다 잡으면 열림)
+  // 사냥터 1층 (dc#83 → dc#87): 폭 40 × 높이 25, 사다리 없이 발판 14개가 9층으로. 두 줄 차이는 보통 점프, 서너 줄 차이는 더블 점프로만
+  // m 몬스터 10마리 (층마다 흩어 놓음), P 포탈(다 잡으면 열림), 맨 위 긴 발판 가운데는 보스 자리 (헬 50층)
   const HUNT1 = [
     "########################################",
     "#......................................#",
     "#......................................#",
+    "#.........=====================........#",
     "#......................................#",
-    "#..................m...................#",
-    "#.............============.............#",
+    "#....................m.................#",
+    "#.................=======..............#",
     "#......................................#",
-    "#...................==.................#",
-    "#..............m...........m...........#",
-    "#.......====H======.....====H===.......#",
-    "#...........H...............H..........#",
-    "#...........H...............H..........#",
-    "#.......m...H.............m.H....m.....#",
-    "#..==H=========.......============H==..#",
-    "#....H............................H....#",
-    "#....H...........==...............H....#",
-    "#.S..H..m......m....P....m.....m..H....#",
+    "#.....=========........................#",
+    "#...........................m..........#",
+    "#........................=======.......#",
+    "#................m.....................#",
+    "#======......=========.................#",
+    "#......................................#",
+    "#...............................======.#",
+    "#.........m............m...............#",
+    "#......=========....=======............#",
+    "#......................................#",
+    "#............................==========#",
+    "#...m...............m..................#",
+    "#==========....===========.............#",
+    "#......................................#",
+    "#....====......................====....#",
+    "#.S...........m.....P.....m.........m..#",
     "########################################",
   ];
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
-  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 19.5, y: 5 } } };
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 20.5, y: 3 } } };
   // crowd: 몬스터 수는 던전 그 층과 같게 (m 자리 대신 발판 곳곳에 흩어 놓음). boss: 보스가 서는 곳 (맨 위 발판 가운데)
 
   function parse(rows) {
@@ -65,9 +73,11 @@
   const ladderAt = (map, tx, ty) => map.cell(tx, ty) === LADDER;
   // 위에서만 밟히는 칸: 나무 발판, 사다리 맨 위 (위 칸이 사다리가 아닐 때)
   const oneWayAt = (map, tx, ty) => map.cell(tx, ty) === PLANK || (ladderAt(map, tx, ty) && !ladderAt(map, tx, ty - 1));
-  const span = (s) => [Math.floor(s.x - PHYS.w / 2 + 1e-6), Math.floor(s.x + PHYS.w / 2 - 1e-6)];
+  // 몸 크기: 플레이어는 PHYS.w × PHYS.h, 몬스터는 s.w × s.h (보스는 더 큼)
+  const wOf = (s) => s.w ?? PHYS.w, hOf = (s) => s.h ?? PHYS.h;
+  const span = (s) => [Math.floor(s.x - wOf(s) / 2 + 1e-6), Math.floor(s.x + wOf(s) / 2 - 1e-6)];
   // 몸이 사다리 칸에 걸쳐 있는지 (가운데 기준)
-  const onLadder = (map, s) => ladderAt(map, Math.floor(s.x), Math.floor(s.y - 0.05)) || ladderAt(map, Math.floor(s.x), Math.floor(s.y - PHYS.h / 2));
+  const onLadder = (map, s) => ladderAt(map, Math.floor(s.x), Math.floor(s.y - 0.05)) || ladderAt(map, Math.floor(s.x), Math.floor(s.y - hOf(s) / 2));
   // 발밑에 밟을 수 있는 게 있는지 (발끝이 칸 경계에 있을 때)
   function standing(map, s) {
     if (Math.abs(s.y - Math.round(s.y)) > 1e-4) return false;
@@ -120,7 +130,7 @@
     if (s.ground) s.coyote = P.coyote; else s.coyote = Math.max(0, s.coyote - dt);
     if (s.buffer > 0 && s.coyote > 0) { s.vy = -P.jumpVel; s.buffer = 0; s.coyote = 0; s.ground = false; s.jumped++; }
     // 더블 점프: 공중에서 새로 누른 순간 (발판 근처에서 미리 누른 것은 내려앉은 뒤 보통 점프로 쓰지 않게 지움)
-    else if (input.jump && !s.ground && s.airJumps < P.airJumps) { s.vy = -P.airJumpVel; s.buffer = 0; s.airJumps++; s.doubled++; if (dir) s.vx = dir * run; }
+    else if (input.jump && !s.ground && !s.noAirJump && s.airJumps < P.airJumps) { s.vy = -P.airJumpVel; s.buffer = 0; s.airJumps++; s.doubled++; if (dir) s.vx = dir * run; }
     if (!input.jumpHeld && s.vy < 0) s.vy *= Math.pow(P.cutJump, dt * 30);   // 일찍 떼면 낮게
 
     s.vy = Math.min(P.maxFall, s.vy + P.gravity * dt);
@@ -135,10 +145,10 @@
   function moveX(map, s, dx) {
     if (!dx) return;
     s.x += dx;
-    const [x0, x1] = span(s), y0 = Math.floor(s.y - PHYS.h + 1e-6), y1 = Math.floor(s.y - 1e-6);
+    const [x0, x1] = span(s), y0 = Math.floor(s.y - hOf(s) + 1e-6), y1 = Math.floor(s.y - 1e-6);
     for (let ty = y0; ty <= y1; ty++) {
-      if (dx > 0 && solidAt(map, x1, ty)) { s.x = x1 - PHYS.w / 2; s.vx = 0; return; }
-      if (dx < 0 && solidAt(map, x0, ty)) { s.x = x0 + 1 + PHYS.w / 2; s.vx = 0; return; }
+      if (dx > 0 && solidAt(map, x1, ty)) { s.x = x1 - wOf(s) / 2; s.vx = 0; return; }
+      if (dx < 0 && solidAt(map, x0, ty)) { s.x = x0 + 1 + wOf(s) / 2; s.vx = 0; return; }
     }
   }
 
@@ -158,8 +168,8 @@
       }
     } else if (dy < 0) {
       // 위로: 머리가 돌 블록에 닿으면 멈춤 (나무 발판은 뚫고 올라감)
-      const head = s.y - PHYS.h, ty = Math.floor(head);
-      for (let tx = x0; tx <= x1; tx++) if (solidAt(map, tx, ty)) { s.y = ty + 1 + PHYS.h; s.vy = 0; return; }
+      const head = s.y - hOf(s), ty = Math.floor(head);
+      for (let tx = x0; tx <= x1; tx++) if (solidAt(map, tx, ty)) { s.y = ty + 1 + hOf(s); s.vy = 0; return; }
     } else if (standing(map, s)) s.ground = true;
   }
 
@@ -174,21 +184,18 @@
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  // ---- 몬스터: 서 있는 발판 위를 왔다 갔다 (떨어지거나 뛰지 않음), 가끔 멈춤 ----
-  // aggro: 플레이어가 가로로 이 칸 안이면 그쪽으로. 같은 발판이면 chase 속도로 쫓아오고,
-  //        위아래 sense줄 안의 다른 발판이면 플레이어 바로 위·아래로 자리를 잡음 (발판 끝은 못 넘음)
-  const MOB = { w: 0.8, h: 0.9, speed: 2, chase: 3.2, pauseMin: 0.3, pauseMax: 0.9, walkMin: 2, walkMax: 5, aggro: 8, sense: 4 };
-  // 발판 끝: 발밑이 밟히고 몸 칸이 막히지 않은 데까지
-  function patrol(map, x, y, w = MOB.w) {
-    const ok = (tx) => { const c = map.cell(tx, y); return (c === SOLID || oneWayAt(map, tx, y)) && map.cell(tx, y - 1) !== SOLID; };
-    let x0 = Math.floor(x), x1 = x0;
-    while (ok(x0 - 1)) x0--;
-    while (ok(x1 + 1)) x1++;
-    return { x0: x0 + w / 2, x1: x1 + 1 - w / 2 };
-  }
-  // w: 몸 너비 (보스는 더 큼)
-  function newMob(map, at, rand = Math.random, w = MOB.w) {
-    return { x: at.x, y: at.y, w, ...patrol(map, at.x, at.y, w), dir: rand() < 0.5 ? -1 : 1, wait: rand() * MOB.pauseMax, walk: 0 };
+  // ---- 몬스터: 플레이어와 같은 물리(step)로 움직이고, 생각(mobInput)이 키 대신 입력을 만듦 ----
+  // 쫓기: 가로 aggro칸 · 위아래 senseY줄 안에 플레이어가 있으면
+  //   같은 높이 → 그쪽으로 달려감 (닿으면 멈춰 싸움)
+  //   위에 있으면 → 위(1~4줄)의 가까운 발판 밑으로 가서 뛰어오름 (3~4줄이면 더블 점프)
+  //   아래에 있으면 → 발판을 뚫고 내려가거나(↓) 발판 끝에서 뛰어내림
+  // 돌아다니기: 걷다 쉬다, 발판 끝에서는 대개 돌아서고 가끔 뛰어내림, 가끔 위 발판으로 뛰거나 아래로 내려감
+  // 몬스터도 더블 점프 (공중에서 한 번 더): 높은 발판과 넓은 틈
+  const MOB = { w: 0.8, h: 0.9, speed: 2, chase: 3.2, aggro: 8, senseY: 7, think: 0.15, jumpHold: 0.32, djAt: 0.3 };
+  // w·h: 몸 크기 (보스는 더 큼)
+  function newMob(map, at, rand = Math.random, w = MOB.w, h = MOB.h) {
+    return { ...newState(map), x: at.x, y: at.y, w, h, respawn: { x: at.x, y: at.y }, face: rand() < 0.5 ? -1 : 1,
+      think: rand() * MOB.think, plan: {}, hold: 0, act: "walk", actT: rand() * 2 };
   }
   // 발판 곳곳에 n자리 (밟을 수 있는 칸마다 고르게, 시작 근처 avoid칸은 뺌). 칸 하나에 여러 마리도 됨
   function spawnSpots(map, n, rand = Math.random, avoid = 6) {
@@ -199,39 +206,86 @@
     }
     return Array.from({ length: n }, () => { const c = cells[Math.floor(rand() * cells.length)]; return { x: c.x + (rand() - 0.5) * 0.6, y: c.y }; });
   }
-  // 플레이어 쪽으로 갈지: 같은 발판이면 { x, chase: true }, 위아래 sense줄 안이면 { x, chase: false }, 아니면 null
-  function aggroOf(s, m) {
-    if (Math.abs(s.x - m.x) > MOB.aggro) return null;
-    if (sameFloor(s, m)) return { x: s.x, chase: true };
-    return Math.abs(s.y - m.y) <= MOB.sense ? { x: s.x, chase: false } : null;
-  }
-  // 한 걸음. busy(싸우는 중)면 제자리, target(aggroOf)이 있으면 그쪽으로
-  function mobStep(m, dt, busy = false, rand = Math.random, target = null) {
-    if (busy) return m;
-    if (target) {
-      const dx = target.x - m.x;
-      m.wait = 0; m.walk = MOB.walkMin;
-      if (Math.abs(dx) < 0.1) return m;   // 바로 위·아래에 섰으면 기다림
-      m.dir = dx < 0 ? -1 : 1;
-      m.x = clamp(m.x + m.dir * Math.min(Math.abs(dx), (target.chase ? MOB.chase : MOB.speed) * dt), m.x0, m.x1);
-      return m;
+  const standable = (map, tx, ty) => solidAt(map, tx, ty) || oneWayAt(map, tx, ty);
+  // 발밑이 뚫고 내려갈 수 있는 칸(나무 발판·사다리 맨 위)인지
+  const onOneWay = (map, m) => { const [x0, x1] = span(m); for (let tx = x0; tx <= x1; tx++) if (solidAt(map, tx, m.y)) return false; return true; };
+  // 위(1~4줄)에 뛰어오를 수 있는 발판이 있는 칸 { x: 가운데, rise: 몇 줄 위 } (near칸 안). 여러 개면 가깝고 낮고 플레이어(px) 쪽인 칸, 없으면 null
+  function plankAbove(map, m, near, px = m.x) {
+    let best = null, score = Infinity;
+    for (let c = Math.floor(m.x) - near; c <= Math.floor(m.x) + near; c++) for (let r = 1; r <= 4; r++) {
+      if (!oneWayAt(map, c, m.y - r)) continue;
+      let blocked = false;
+      for (let k = 1; k <= r + 1; k++) if (solidAt(map, c, m.y - k)) blocked = true;
+      if (blocked) continue;
+      const sc = Math.abs(c + 0.5 - m.x) + 0.5 * Math.abs(c + 0.5 - px) + r * 0.3;
+      if (sc < score) { score = sc; best = { x: c + 0.5, rise: r }; }
+      break;   // 이 열에서는 가장 낮은 발판만
     }
-    if (m.wait > 0) { m.wait -= dt; if (m.wait <= 0) { m.walk = MOB.walkMin + rand() * (MOB.walkMax - MOB.walkMin); if (rand() < 0.4) m.dir = -m.dir; } return m; }
-    m.x += m.dir * MOB.speed * dt;
-    if (m.x <= m.x0) { m.x = m.x0; m.dir = 1; }
-    else if (m.x >= m.x1) { m.x = m.x1; m.dir = -1; }
-    m.walk -= dt;
-    if (m.walk <= 0) m.wait = MOB.pauseMin + rand() * (MOB.pauseMax - MOB.pauseMin);
-    return m;
+    return best;
   }
-  // 플레이어와 몬스터가 닿았는지 (몸이 조금이라도 겹치거나 바로 옆)
-  // 플레이어가 몬스터와 같은 발판에 서 있는지 (발끝 높이가 같고 그 발판 범위 안)
-  const sameFloor = (s, m) => s.ground && !s.climbing && Math.abs(s.y - m.y) < 1e-6 && s.x >= m.x0 - 0.6 && s.x <= m.x1 + 0.6;
-  const touching = (s, m) => Math.abs(s.x - m.x) < (PHYS.w + (m.w || MOB.w)) / 2 + 0.15 && Math.abs(s.y - m.y) < (PHYS.h + MOB.h) / 2;
+  // p: 플레이어 { x, y(발 디딘 높이) }. 생각은 think초마다 (덜 떨림), 입력은 매 걸음
+  function plan(map, m, p, rand) {
+    const dx = p ? p.x - m.x : 0, dy = p ? p.y - m.y : 0, chase = !!p && Math.abs(dx) <= MOB.aggro && Math.abs(dy) <= MOB.senseY;
+    const slow = (chase ? MOB.chase : MOB.speed) / PHYS.run, toward = (x) => (Math.abs(x - m.x) < 0.15 ? 0 : Math.sign(x - m.x));
+    if (!m.ground) return { dir: chase ? Math.sign(dx) : m.face, slow, down: m.y < (m.dropY ?? -9) + 0.5 };
+    if (chase) return { ...chasePlan(), chase: true };
+    function chasePlan() {
+      if (dy < -1.2) {   // 위에 있음: 가까운(7칸) 발판 밑으로 가서 뛰어오르기 (3~4줄이면 더블 점프) → 없으면 그쪽으로 걷기
+        const pa = plankAbove(map, m, 7, p.x);
+        if (pa) return toward(pa.x) ? { dir: toward(pa.x), slow, jump: Math.abs(pa.x - m.x) < 0.45, rise: pa.rise } : { jump: true, slow, rise: pa.rise };
+        return { dir: Math.sign(dx), slow };
+      }
+      if (dy > 1.2) return onOneWay(map, m) ? { down: true, slow } : { dir: Math.sign(dx) || m.face, slow };   // 아래에 있음: 뚫고 내려가기 / 끝에서 뛰어내리기
+      return Math.abs(dx) < 0.3 ? { slow } : { dir: Math.sign(dx), slow };
+    }
+    // 돌아다니기: 쉬기 20% · 위로 가기 18% (가까운 발판 밑으로 가서 뜀) · 아래로 7% · 걷기
+    m.actT -= MOB.think;
+    if (m.actT <= 0) {
+      const r = rand();
+      m.act = "walk"; m.actT = 1.5 + rand() * 2.5;
+      if (r < 0.2) { m.act = "pause"; m.actT = 0.4 + rand() * 0.8; }
+      else if (r < 0.38) { const pa = plankAbove(map, m, 5); if (pa) { m.act = "up"; m.goX = pa.x; m.goRise = pa.rise; m.actT = 3; } }
+      else if (r < 0.45 && onOneWay(map, m)) { m.act = "drop"; m.actT = 0.3; }
+      if (m.act === "walk" && rand() < 0.5) m.face = -m.face;
+    }
+    if (m.act === "pause") return { slow };
+    if (m.act === "drop") { m.act = "walk"; return { down: true, slow }; }
+    if (m.act === "up") {
+      if (toward(m.goX)) return { dir: toward(m.goX), slow };
+      m.act = "walk"; m.actT = 1 + rand() * 2;
+      return { jump: true, slow, rise: m.goRise };
+    }
+    // 발판 끝: 대개 돌아서고 가끔(10%) 그대로 뛰어내림
+    const ahead = Math.floor(m.x + m.face * (wOf(m) / 2 + 0.15));
+    if (!standable(map, ahead, m.y) && !m.edgeGo) { if (rand() < 0.1) m.edgeGo = true; else m.face = -m.face; }
+    else if (standable(map, ahead, m.y)) m.edgeGo = false;
+    return { dir: m.face, slow };
+  }
+  // 몬스터 한 걸음의 입력 (busy: 플레이어와 닿아 싸우는 중이면 서서 싸움)
+  // 쫓는 중 발판 끝에 닿으면: 플레이어가 같은 높이나 위면 건너뛰고(점프), 아래면 그대로 뛰어내림
+  function mobInput(map, m, p, dt, rand = Math.random, busy = false) {
+    m.hold = Math.max(0, m.hold - dt);
+    m.think -= dt;
+    if (m.think <= 0) { m.think = MOB.think; m.plan = plan(map, m, p, rand); }
+    const pl = m.plan || {};
+    // 틈 건너기는 더블 점프까지 (rise 3)
+    if (pl.chase && pl.dir && m.ground && !m.climbing && p && p.y - m.y < 0.5 && !standable(map, Math.floor(m.x + pl.dir * (wOf(m) / 2 + 0.05)), m.y)) { pl.jump = true; pl.rise = 3; }
+    if (busy && !m.climbing) return { slow: pl.slow ?? 0.3, jumpHeld: m.hold > 0 };
+    // ↓: 땅(발판)이나 사다리에서 누르기 시작하고, 떨어지는 중에는 발판 하나를 뚫는 동안만 (그 아래 발판에는 내려섬)
+    if (pl.down && m.ground && !m.climbing) m.dropY = m.y;
+    const down = !!pl.down && (m.ground || m.climbing || m.y < (m.dropY ?? -9) + 0.5);
+    const inp = { left: pl.dir < 0, right: pl.dir > 0, up: !!pl.up, down, jump: false, jumpHeld: m.hold > 0, slow: pl.slow ?? 0.3 };
+    if (pl.jump && m.ground && !m.climbing) { inp.jump = inp.jumpHeld = true; m.hold = MOB.jumpHold; m.djT = (pl.rise || 0) > 2 ? MOB.djAt : 0; pl.jump = false; }
+    // 더블 점프: 뛰고 djAt초 뒤 (거의 꼭대기에서) 한 번 더, 그 뒤로도 꾹
+    else if (m.djT > 0 && !m.ground) { m.djT -= dt; if (m.djT <= 0) { inp.jump = inp.jumpHeld = true; m.hold = MOB.jumpHold; } }
+    return inp;
+  }
+  // 플레이어와 몬스터가 닿았는지 (가로로 몸이 겹치거나 바로 옆, 세로로 몸이 겹침)
+  const touching = (s, m) => Math.abs(s.x - m.x) < (PHYS.w + wOf(m)) / 2 + 0.15 && s.y - PHYS.h < m.y + 0.05 && m.y - hOf(m) < s.y + 0.05;
   // 스킬 거리 (칸, 대각선도 1칸): 몸 가운데끼리
-  const reach = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs((a.y - PHYS.h / 2) - (b.y - MOB.h / 2)));
+  const reach = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs((a.y - PHYS.h / 2) - (b.y - hOf(b) / 2)));
 
-  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, spawnSpots, mobStep, aggroOf, sameFloor, touching, reach };
+  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, newMob, spawnSpots, mobInput, touching, reach };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RLJump = api;
 })(typeof window !== "undefined" ? window : globalThis);

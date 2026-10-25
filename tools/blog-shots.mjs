@@ -175,23 +175,23 @@ const SCENES = [
       { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 }] });
     await sleep(700); await o.page.keyboard.press("ArrowRight"); await sleep(330);
     return { ...o, shot: "#stage", nowait: true }; }],
-  // 점프 던전 1층 (시험판): 던전에서 포탈(P)로 로비에 나와 왼쪽 아래 점프 던전 문으로. 화염의 세트 2개 + 장비
-  //   키를 정해진 시각에 누르고 떼며 바닥을 달림 → 다가오는 몬스터와 자동으로 싸우고 파이어볼이 터짐. 화면 전체를 3/8 크기로 60ms마다
-  ["hunt-fight", "점프 던전: 0.5초마다 무기를 휘두르고, 파이어볼은 멀리 있는 몬스터에게도", async () => {
+  // 점프 던전 1층 (시험판): 던전에서 포탈(P)로 로비에 나와 왼쪽 아래 점프 던전 문으로. 화염·뇌전 세트 2개씩 + 장비
+  //   키를 정해진 시각에 누르고 떼며 바닥을 달리고 더블 점프 → 몬스터가 쫓아오고, 휘두르기·화염구·체인 라이트닝. 화면 전체를 3/8 크기로 60ms마다
+  ["hunt-fight", "점프 던전: 휘두르기, 날아가는 화염구, 차례로 튕기는 체인 번개", async () => {
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
-    const fire = [513, 806].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));
+    const fire = [513, 806, 56, 464].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));   // 화염의 세트(투구·장화) + 뇌전의 세트(바지·갑옷): 파이어볼 + 체인 라이트닝
     const o = await open({ dsf: 1.6, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv([...fire, ...g40.filter(it => !fire.some(f => f.slot === it.slot))]) } });
     await press(o.page, ["p"], 300);
     await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
     await sleep(500);
-    const plan = [["ArrowRight", 200, 900], ["ArrowRight", 2000, 2600], [" ", 3600, 3900], [" ", 3950, 4250], ["ArrowRight", 3650, 4300]];   // 끝에 더블 점프
+    const plan = [["ArrowRight", 200, 1100], ["ArrowRight", 2400, 3000], [" ", 3700, 4000], [" ", 4050, 4350], ["ArrowLeft", 3750, 4400]];   // 끝에 더블 점프로 위 발판
     const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
       const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
       const out = [], t0 = performance.now(), fire = (type, key) => window.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
       for (const [key, a, b] of plan) { setTimeout(() => fire("keydown", key), a); setTimeout(() => fire("keyup", key), b); }
       const grab = () => { cut.getContext("2d").drawImage(c, 0, 0, cut.width, cut.height); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, 60); else done(out); };
       grab();
-    }), [plan, 5200]);
+    }), [plan, 6000]);
     return { ...o, frames, delay: 6 }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];

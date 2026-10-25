@@ -704,7 +704,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=86"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=87"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -4204,7 +4204,7 @@
   })();
 
   // ---- 점프 던전 (dc#82~83, 시험판): 옆에서 보는 실시간 사냥 맵. 물리·맵·몬스터 움직임은 jump.js (RLJump) ----
-  // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 발판 아래로 · R 처음부터 · Esc/P 로비로
+  // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↓ 발판 아래로 (사다리 없음, 높은 곳은 더블 점프) · R 처음부터 · Esc/P 로비로
   // 더블 점프: 공중에서 Space를 한 번 더 (땅·사다리에서 다시 생김)
   // 몬스터는 발판 위를 바삐 오가다, 가로 8칸 안에 플레이어가 보이면 같은 발판이면 빠르게 쫓아오고 위아래 4줄 안이면 바로 위·아래로 따라옴
   // 공격은 자동: 0.5초(한 턴)마다 보는 쪽으로 무기를 휘두름 (앞 1.5칸, 앞에 없고 뒤에 있으면 돌아섬). 몬스터는 닿아 있으면 반격
@@ -4223,7 +4223,7 @@
     const tileVar = (x, y) => ((x * 7 + y * 13) ^ (x * y)) & 3;   // 바닥·벽 무늬 4가지 중 하나 (칸마다 고정)
     const secs = (t) => (Math.floor(t * 10) / 10).toFixed(1);
     const alive = () => mobs.filter(m => m.hp > 0);
-    const BOSS_W = 1.2, BOSS_SCALE = 1.6;   // 보스는 몸이 크고 그림도 1.6배
+    const BOSS_W = 1.2, BOSS_H = 1.4, BOSS_SCALE = 1.6;   // 보스는 몸이 크고 그림도 1.6배
     // 기본 공격: 한 턴마다 보는 쪽으로 휘두름 (몸 가운데에서 REACH칸 + 몬스터 몸 절반까지, 위아래로 몸이 겹치면)
     // 스킬 거리 (칸): 옆에서 보는 맵에 맞게 던전보다 넓게 — 파이어볼 7 · 체인 6(튕길 때 4) · 노바 2.5 · 회전 베기 1.5
     const REACH = 1.5, SWING_MS = 230, HR = { fb: 7, chain: 6, hop: 4, nova: 2.5, whirl: 1.5 };
@@ -4237,12 +4237,15 @@
       if (hell()) { const g = Inv.totals().stats; s.res = Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), "hell")])); }
       return s;
     }
-    const center = (m) => ({ x: m.x, y: m.y - J.MOB.h / 2 });
+    const center = (m) => ({ x: m.x, y: m.y - (m.h || J.MOB.h) / 2 });
+    // 시간차 일(체인 라이트닝 튕김 등)·날아가는 화염구. gen이 바뀌면(처음부터) 버림
+    let later = [], shots = [], gen = 0, groundY = 0;
+    const after = (ms, fn) => { const g = gen; later.push({ at: performance.now() + ms, fn: () => { if (g === gen) fn(); } }); };
     const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));   // 몬스터끼리 거리 (몸 가운데, 대각선도 1칸)
     // id: "hunt1" (1층) / "hell50" (운영자 시험: 헬 50층 몬스터, 헬 저항 −70)
     function enter(id = "hunt1") {
       // 예전 jump.js가 캐시에 남아 맵이 없으면 들어가지 않고 새로고침 안내
-      if (!J?.MAPS?.[id] || !J.newMob || !J.aggroOf) { log(T("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요."), "bad"); return; }
+      if (!J?.MAPS?.[id] || !J.newMob || !J.mobInput) { log(T("점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요."), "bad"); return; }
       if (J.MAPS[id].staff && !isStaff()) return;
       mapId = id;
       map = J.parse(J.MAPS[mapId].rows);
@@ -4269,13 +4272,14 @@
       // crowd 맵(헬 50층): 몬스터 수를 던전 그 층과 같게 (헬 50층 47~53마리) 발판 곳곳에, 보스(네임드)는 맨 위 발판에
       const M = J.MAPS[mapId], n = RLMonsters.nmMonsterCount(depth), spread = NM.monsters.spread;
       const spots = M.crowd ? J.spawnSpots(map, between(n - spread, n + spread)) : map.spawns;
-      mobs = spots.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1 }));
+      mobs = spots.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1, atkT: -1e9 }));
       if (M.boss) {
         const b = (hell() && RLMonsters.makeNamedBoss(depth)) || (hell() ? RLMonsters.makeHellBoss(depth) : RLMonsters.makeBoss(depth));
-        mobs.push({ ...J.newMob(map, M.boss, Math.random, BOSS_W), ...b, boss: true, hitT: -1, deadT: -1 });
+        mobs.push({ ...J.newMob(map, M.boss, Math.random, BOSS_W, BOSS_H), ...b, boss: true, hitT: -1, deadT: -1, atkT: -1e9 });
       }
       maxHp = stats().maxHp; hp = maxHp;
       burn = null; slowTo = 0; iceFree = 0;
+      gen++; later = []; shots = []; groundY = st.y;
       turnAcc = 0; turnN = 0; cd = { fb: 0, nova: 0, chain: 0, whirl: 0 }; pops = []; fx = []; portalOpen = false;
     }
     function exit() {
@@ -4294,7 +4298,10 @@
         acc += dt;
         while (acc >= STEP) {
           J.step(map, st, input(), STEP);
-          for (const m of alive()) { const busy = J.touching(st, m); if (busy) m.dir = st.x < m.x ? -1 : 1; J.mobStep(m, STEP, busy, Math.random, J.aggroOf(st, m)); }
+          if (st.ground || st.climbing) groundY = st.y;
+          // 몬스터: 플레이어와 같은 물리. 쫓을 때는 플레이어가 발 디딘 높이로 (뛰는 중이면 마지막으로 선 높이)
+          const tgt = { x: st.x, y: groundY };
+          for (const m of alive()) { const busy = J.touching(st, m); const inp = J.mobInput(map, m, tgt, STEP, Math.random, busy); if (busy) m.face = st.x < m.x ? -1 : 1; J.step(map, m, inp, STEP); }
           acc -= STEP;
           turnAcc += STEP;
           if (turnAcc >= TURN) { turnAcc -= TURN; combatTurn(); if (cleared || hp <= 0) break; }
@@ -4303,6 +4310,11 @@
         // 더블 점프: 발밑에 하얀 고리
         if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; fx.push({ kind: "ring", x: st.x, y: st.y, r: 0.7, color: "rgba(255, 255, 255, 0.85)", t0: performance.now() }); }
         if (portalOpen && !cleared && Math.abs(st.x - map.portal.x) < 0.8 && Math.abs(st.y - map.portal.y) < 0.6) clear();
+        // 시간차 일, 날아가는 화염구
+        const now = performance.now();
+        const due = later.filter(l => now >= l.at); later = later.filter(l => now < l.at); for (const l of due) l.fn();
+        for (const b of shots) flyShot(b, dt);
+        shots = shots.filter(b => !b.done);
       }
       render();
     }
@@ -4335,7 +4347,7 @@
       // 염라대왕(헬 50층 네임드): judge.every턴마다 속성이 불 → 얼음 → 번개 (그 속성 저항이 높아짐), HP가 적으면 분노
       for (const b of alive().filter(m => m.pattern === "judge")) {
         const el = RLMonsters.judgeElement(turnN, b.judge.every);
-        if (el !== b.el) { b.el = el; b.res = RLMonsters.hellRes(b.named, el, true); log(T("{0}의 심판: 이제 {1} 속성이다! ({1} 저항 {2}%)", b.name, EL.names[el], b.res[el]), null, EL.colors[el]); }
+        if (el !== b.el) { b.el = el; b.res = RLMonsters.hellRes(b.named, el, true); fx.push({ kind: "aura", ...center(b), r: 3, color: EL.colors[el], t0: performance.now(), dur: 800, parts: sparks(18) }); log(T("{0}의 심판: 이제 {1} 속성이다! ({1} 저항 {2}%)", b.name, EL.names[el], b.res[el]), null, EL.colors[el]); }
         if (enrageOn(b) && !b.enraged) { b.enraged = true; log(T("{0}이(가) 분노했다! 공격력 ×{1}", b.name, b.judge.enrageMul), null, RLMonsters.NAMED_COLOR); }
       }
       // 화상: every턴마다 한 번씩 ticks번
@@ -4364,8 +4376,15 @@
       const crowd = RLMonsters.crowdCut(touch.length);
       for (const m of touch) {
         if (m.hp <= 0 || hp <= 0) continue;
+        m.atkT = performance.now();   // 공격 모션 (플레이어 쪽으로 몸을 내밂)
         if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) { pop(st, T("피함"), RLItems.RARITIES.unique.color); continue; }
         if (s.parry && Math.random() * 100 < s.parry) { pop(st, T("막음"), "#d0d4e0"); continue; }
+        // 맞는 자리에 속성 이펙트: 불 불꽃 · 얼음 얼음 조각 · 번개 몬스터에서 튀는 전기 · 없으면 하얀 타격
+        const pc = { x: st.x, y: st.y - 0.45 }, t0 = performance.now();
+        if (m.el === "fire") fx.push({ kind: "burst", ...pc, color: EL.colors.fire, t0, dur: 420, parts: sparks(10) });
+        else if (m.el === "ice") fx.push({ kind: "shards", ...pc, color: EL.colors.ice, t0, dur: 420, parts: sparks(8) });
+        else if (m.el === "bolt") fx.push({ kind: "zap", a: center(m), b: pc, color: EL.colors.bolt, t0, dur: 260 });
+        else fx.push({ kind: "impact", ...pc, color: "#ffffff", t0, dur: 200 });
         const d = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(m) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));   // 염라대왕 분노면 공격 ×2
         hp -= d;
         hurtT = performance.now();
@@ -4396,7 +4415,7 @@
         if (hit.length) {
           cd.whirl = RW_FX.whirl.every;
           const crit = Math.random() * 100 < s.crit, raw = (s.atk + rnd(2)) * s.rw.whirl / 100 * (crit ? s.critMul : 1);
-          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: 1.5, color: "rgba(255, 210, 127, 0.8)", t0: now });
+          fx.push({ kind: "spin", x: st.x, y: st.y - 0.45, r: HR.whirl, color: "rgba(255, 210, 127, 0.9)", t0: now, dur: 360 });
           for (const m of hit) damage(m, Math.max(1, Math.round(raw) - m.def), crit, s);
         }
       }
@@ -4406,9 +4425,12 @@
         if (c) {
           cd.fb = (fbSet ? FB.every : RW_FX.fireball.every) - fast;
           const { crit, dmg } = skillRoll(s, fbSet ? FB.mul : RW_FX.fireball.mul, s.fireballPct + s.elem.fire);
-          const at = center(c);
-          fx.push({ kind: "boom", x: at.x, y: at.y, r: FB.radius + 0.5, color: EL.colors.fire, t0: now, dur: 480, from: { x: st.x, y: st.y - 0.45 } });
-          for (const m of alive().filter(m => cheb(center(m), at) <= FB.radius + 0.5)) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "fire"))), crit, s, EL.colors.fire, ls);
+          // 화염구가 손끝에서 몬스터 쪽으로 날아가(따라가며) 닿는 순간 3×3으로 터짐 (피해도 그때)
+          shots.push({ x: st.x + st.face * 0.4, y: st.y - 0.55, target: c, trail: [], g: gen,
+            hit: (at) => {
+              fx.push({ kind: "explode", x: at.x, y: at.y, r: FB.radius + 0.5, color: EL.colors.fire, t0: performance.now(), dur: 520, parts: sparks(14) });
+              for (const m of alive().filter(m => cheb(center(m), at) <= FB.radius + 0.5)) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "fire"))), crit, s, EL.colors.fire, ls);
+            } });
         }
       }
       if (s.nova && tick("nova")) {
@@ -4416,7 +4438,7 @@
         if (hit.length) {
           cd.nova = NOVA.every - fast;
           const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
-          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: HR.nova, color: EL.colors.ice, t0: now, dur: 380 });
+          fx.push({ kind: "nova", x: st.x, y: st.y - 0.45, r: HR.nova, color: EL.colors.ice, t0: now, dur: 520, parts: sparks(16) });
           for (const m of hit) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "ice"))), crit, s, EL.colors.ice, ls);
         }
       }
@@ -4425,16 +4447,33 @@
         if (at) {
           cd.chain = CHAIN.every - fast;
           const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
-          const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0), done = new Set(), pts = [{ x: st.x, y: st.y - 0.45 }];
+          // 튕길 차례를 먼저 정하고 (나 → 1번째 → 2번째 …) 0.12초마다 한 번씩 번개가 건너가며 그때 피해 + 번호
+          const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0), order = [];
           for (let k = 0; k < strikes && at; k++) {
-            done.add(at); pts.push(center(at));
+            order.push(at);
             const from = center(at);
-            damage(at, Math.max(1, Math.round(dmg * elemMul(at, "bolt"))), crit, s, EL.colors.bolt, ls);
-            at = alive().filter(m => !done.has(m) && cheb(center(m), from) <= HR.hop).sort((a, b) => cheb(center(a), from) - cheb(center(b), from))[0];
+            at = alive().filter(m => !order.includes(m) && cheb(center(m), from) <= HR.hop).sort((a, b) => cheb(center(a), from) - cheb(center(b), from))[0];
           }
-          fx.push({ kind: "bolt", pts, color: EL.colors.bolt, t0: now });
+          order.forEach((m, k) => after(k * 120, () => {
+            const a = k ? center(order[k - 1]) : { x: st.x + st.face * 0.3, y: st.y - 0.6 }, b = center(m);
+            fx.push({ kind: "zap", a, b, color: EL.colors.bolt, t0: performance.now(), dur: 300 });
+            fx.push({ kind: "burst", x: b.x, y: b.y, color: EL.colors.bolt, t0: performance.now(), dur: 280, parts: sparks(8) });
+            pops.push({ x: b.x - 0.45, y: b.y - 0.6, text: `${k + 1}`, color: "#fff27a", big: true, t0: performance.now() });
+            if (m.hp > 0) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "bolt"))), crit, s, EL.colors.bolt, ls);
+          }));
         }
       }
+    }
+    // 터지는 조각들: 방향·빠르기·크기 (그릴 때마다 같은 모양)
+    const sparks = (n) => Array.from({ length: n }, (_, i) => ({ a: (i / n) * Math.PI * 2 + Math.random() * 0.5, v: 0.6 + Math.random() * 0.6, r: 0.6 + Math.random() * 0.8 }));
+    // 화염구 한 프레임: 14칸/초로 과녁(몬스터 가운데)을 따라감. 과녁이 쓰러졌으면 마지막 자리로. 닿으면 터짐
+    function flyShot(b, dt) {
+      if (b.g !== gen) { b.done = true; return; }
+      if (b.target.hp > 0) b.to = center(b.target);
+      const to = b.to || center(b.target), dx = to.x - b.x, dy = to.y - b.y, d = Math.hypot(dx, dy), stepLen = 14 * dt;
+      b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 9) b.trail.shift();
+      if (d <= stepLen + 0.15) { b.done = true; b.hit(to); return; }
+      b.x += dx / d * stepLen; b.y += dy / d * stepLen;
     }
     function clear() {
       const isBest = best == null || st.time < best;
@@ -4489,11 +4528,14 @@
         const fade = m.deadT < 0 ? 1 : 1 - (now - m.deadT) / 400;
         if (fade <= 0) continue;
         const px = (m.x - 0.5) * TILE, py = (m.y - 1) * TILE, name = `mon_${m.id}`, k = m.boss ? BOSS_SCALE : 1;
-        const bob = m.deadT < 0 && m.wait <= 0 ? (Math.floor(now / 160 + m.x0) % 2) * -0.6 : 0;
+        const bob = m.deadT < 0 && m.ground && Math.abs(m.vx) > 0.3 ? (Math.floor(now / 160 + m.respawn.x) % 2) * -0.6 : 0;
+        // 공격 모션: 0.22초 동안 플레이어 쪽으로 몸을 내밀며 살짝 커짐
+        const la = (now - m.atkT) / 220, lunge = la >= 0 && la < 1 ? Math.sin(la * Math.PI) : 0;
         ctx.save();
         ctx.globalAlpha = fade;
-        // 발끝 가운데를 축으로 뒤집고 (보스는) 키움
-        ctx.translate(m.x * TILE, m.y * TILE); ctx.scale((m.dir > 0 ? -1 : 1) * k, k); ctx.translate(-m.x * TILE, -m.y * TILE + bob);
+        // 발끝 가운데를 축으로 뒤집고 (보스는) 키움. 공중이면 살짝 늘어남
+        const air = m.deadT < 0 && !m.ground ? 0.08 : 0, kk = k * (1 + 0.12 * lunge);
+        ctx.translate(m.x * TILE + (st.x < m.x ? -1 : 1) * lunge * 4, m.y * TILE); ctx.scale((m.face > 0 ? -1 : 1) * kk * (1 - air), kk * (1 + air)); ctx.translate(-m.x * TILE, -m.y * TILE + bob);
         if (art && Sprites.has(name)) { Sprites.draw(name, px, py); drawFlash(Sprites.src(name), px, py, Math.max(0, 0.8 - (now - m.hitT) / 200)); }
         else drawGlyph(m.ch, px, py, m.color);
         ctx.restore();
@@ -4538,16 +4580,52 @@
       for (const f of fx) {
         const p = (now - f.t0) / (f.dur || 320);
         ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = ctx.fillStyle = f.color; ctx.lineWidth = 1.5;
-        if (f.kind === "ring") { ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, f.r * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); }
-        else if (f.kind === "boom") {
-          if (p < 0.4) { const q = p / 0.4; ctx.beginPath(); ctx.arc((f.from.x + (f.x - f.from.x) * q) * TILE, (f.from.y + (f.y - f.from.y) * q) * TILE, 3, 0, Math.PI * 2); ctx.fill(); }
-          else { ctx.globalAlpha = 0.55 * (1 - p); ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, f.r * TILE * (p - 0.2), 0, Math.PI * 2); ctx.fill(); }
-        } else if (f.kind === "bolt") {
-          ctx.beginPath();
-          f.pts.forEach((q, i) => { const jx = i ? (Math.random() - 0.5) * 4 : 0, jy = i ? (Math.random() - 0.5) * 4 : 0; ctx[i ? "lineTo" : "moveTo"](q.x * TILE + jx, q.y * TILE + jy); });
-          ctx.stroke();
+        const X = f.x * TILE, Y = f.y * TILE;
+        const dots = (dist, size, fill = true) => { for (const q of f.parts) { const d = dist * q.v, x = X + Math.cos(q.a) * d, y = Y + Math.sin(q.a) * d; ctx.beginPath(); ctx.arc(x, y, size * q.r, 0, Math.PI * 2); fill ? ctx.fill() : ctx.stroke(); } };
+        if (f.kind === "ring") { ctx.beginPath(); ctx.arc(X, Y, f.r * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); }
+        else if (f.kind === "explode") {
+          // 화염구 폭발: 밝은 가운데 → 주황 불덩이가 커지며 사라짐, 불똥이 사방으로
+          const R = f.r * TILE * (0.35 + 0.65 * Math.sqrt(p));
+          const g = ctx.createRadialGradient(X, Y, 0, X, Y, R);
+          g.addColorStop(0, `rgba(255, 245, 200, ${0.95 * (1 - p)})`); g.addColorStop(0.45, `rgba(255, 150, 50, ${0.8 * (1 - p)})`); g.addColorStop(1, "rgba(200, 40, 0, 0)");
+          ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, R, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1 - p; ctx.fillStyle = "#ffd36b"; dots(f.r * TILE * 1.3 * p, 1.6 * (1 - p) + 0.4);
+        } else if (f.kind === "nova") {
+          // 프로스트 노바: 얼음 고리가 퍼지고 고리 위로 얼음 가시가 솟음, 안쪽은 차갑게 빛남
+          const R = f.r * TILE * (0.2 + 0.8 * Math.sqrt(p));
+          ctx.fillStyle = `rgba(150, 220, 255, ${0.18 * (1 - p)})`; ctx.beginPath(); ctx.arc(X, Y, R, 0, Math.PI * 2); ctx.fill();
+          ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y, R, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = "#e6f7ff"; ctx.lineWidth = 1.2;
+          for (const q of f.parts) { const a = q.a, r0 = R - 2, r1 = R + 4 * q.r * (1 - p); ctx.beginPath(); ctx.moveTo(X + Math.cos(a) * r0, Y + Math.sin(a) * r0); ctx.lineTo(X + Math.cos(a) * r1, Y + Math.sin(a) * r1); ctx.stroke(); }
+        } else if (f.kind === "zap") {
+          // 번개 한 줄기: 지그재그 (바깥 색 + 하얀 가운데)
+          const A = f.a, B = f.b, n = 7, pts = [];
+          for (let i = 0; i <= n; i++) { const t = i / n, j = i && i < n ? (Math.random() - 0.5) * 5 : 0; pts.push([(A.x + (B.x - A.x) * t) * TILE + j, (A.y + (B.y - A.y) * t) * TILE + j * 0.6]); }
+          for (const [w, c] of [[3.2, f.color], [1.2, "#ffffff"]]) { ctx.lineWidth = w; ctx.strokeStyle = c; ctx.beginPath(); pts.forEach(([x, y], i) => ctx[i ? "lineTo" : "moveTo"](x, y)); ctx.stroke(); }
+        } else if (f.kind === "burst") { dots(TILE * 0.9 * p, 1.8 * (1 - p) + 0.3); }
+        else if (f.kind === "shards") {
+          ctx.lineWidth = 1.3;
+          for (const q of f.parts) { const d = TILE * 0.8 * p * q.v, x = X + Math.cos(q.a) * d, y = Y + Math.sin(q.a) * d; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(q.a) * 3, y + Math.sin(q.a) * 3); ctx.stroke(); }
+        } else if (f.kind === "impact") {
+          ctx.lineWidth = 1.2; const r = 2 + 5 * p;
+          for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; ctx.beginPath(); ctx.moveTo(X + Math.cos(a) * r * 0.4, Y + Math.sin(a) * r * 0.4); ctx.lineTo(X + Math.cos(a) * r, Y + Math.sin(a) * r); ctx.stroke(); }
+        } else if (f.kind === "aura") {
+          // 보스 속성 바뀜: 그 색 기운이 크게 퍼짐
+          ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X, Y, f.r * TILE * p, 0, Math.PI * 2); ctx.stroke();
+          dots(f.r * TILE * 0.8 * p, 1.4);
+        } else if (f.kind === "spin") {
+          // 회전 베기: 몸 둘레를 한 바퀴 도는 호
+          const a = p * Math.PI * 2; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X, Y, f.r * TILE * 0.8, a - 1.6, a); ctx.stroke();
         }
         ctx.restore();
+      }
+      // 날아가는 화염구: 꼬리 불꽃(작아지며 흐려짐) + 주황 불덩이 + 노란 가운데
+      for (const b of shots) {
+        b.trail.forEach((q, i) => { const k = (i + 1) / b.trail.length; ctx.globalAlpha = 0.5 * k; ctx.fillStyle = i % 2 ? "#ff7a3d" : "#ffb347"; ctx.beginPath(); ctx.arc(q.x * TILE, q.y * TILE, 1 + 2.2 * k, 0, Math.PI * 2); ctx.fill(); });
+        ctx.globalAlpha = 1;
+        const g = ctx.createRadialGradient(b.x * TILE, b.y * TILE, 0, b.x * TILE, b.y * TILE, 4.5);
+        g.addColorStop(0, "#fff6c8"); g.addColorStop(0.5, "#ffa53a"); g.addColorStop(1, "rgba(255, 80, 20, 0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x * TILE, b.y * TILE, 4.5, 0, Math.PI * 2); ctx.fill();
       }
       // 화면 글자: 피해 숫자(위로 떠오름) · HP · 남은 몬스터 · 시간 · 조작 · 클리어
       ctx.setTransform(PX, 0, 0, PX, 0, 0);
@@ -4580,7 +4658,7 @@
         hud(`${boss.name}${boss.el ? " · " + EL.names[boss.el] : ""}${boss.enraged ? " · " + T("분노") : ""}  ${Math.round(boss.hp / boss.maxHp * 100)}%`, bx, 19, boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR);
       }
       ctx.font = '11px "Courier New", monospace';
-      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↑↓ 사다리 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
+      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";

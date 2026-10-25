@@ -1057,6 +1057,6 @@
     "보스 {0}이(가) 맨 위 발판에서 기다린다!": "The boss {0} is waiting on the top platform!",
     "분노": "Enraged",
     "점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (공격·스킬은 자동 · Esc로 나가기)": "You entered Jump Dungeon {0}. Defeat all {1} monsters to open the portal! (attacks and skills are automatic · Esc to leave)",
-    "← → 이동 · Space 점프(공중에서 한 번 더) · ↑↓ 사다리 · 공격은 자동 · R 다시 · Esc 나가기": "← → move · Space jump (again in the air) · ↑↓ ladder · auto attack · R restart · Esc leave",
+    "← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기": "← → move · Space jump (again in the air) · ↓ drop through · auto attack · R restart · Esc leave",
   } });
 })(typeof self !== "undefined" ? self : this);

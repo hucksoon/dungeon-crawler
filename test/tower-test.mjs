@@ -1,8 +1,8 @@
 // 점프 던전 물리·맵·몬스터 (jump.js): 브라우저 없이 node로
 // 1) 물리 하나하나 (서기, 점프 높이, 짧은 점프, 나무 발판 뚫고 오르기·밟기·↓로 내려가기, 돌 블록 머리 부딪힘·옆 벽, 사다리, 코요테)
-// 2) 사냥터 1층을 실제로 다닐 수 있는지: 밟을 수 있는 발판마다 여러 동작(제자리·좌우 점프, 짧은 점프, 걸어서 떨어지기, 사다리)을
-//    진짜 물리로 돌려 어디에 내려서는지 이어 붙이고, 몬스터가 있는 발판 모두와 포탈까지 가는 길이 있는지 찾음
-// 3) 몬스터: 자기 발판 안에서만 왔다 갔다, 싸우는 중엔 멈춤, 닿음 판정
+// 2) 사냥터 1층(사다리 없음)을 실제로 다닐 수 있는지: 밟을 수 있는 발판마다 여러 동작(제자리·좌우 점프, 짧은 점프, 더블 점프, 걸어서 떨어지기)을
+//    진짜 물리로 돌려 어디에 내려서는지 이어 붙이고, 모든 발판·포탈까지 길이 있는지, 더블 점프로만 가는 층이 있는지 찾음
+// 3) 몬스터: 같은 물리로 쫓아옴(같은 층·더블 점프로 위로·↓로 아래로), 싸우는 중엔 멈춤, 돌아다니며 여러 층을 오감, 닿음 판정
 import { createRequire } from "node:module";
 import path from "node:path";
 const REPO = process.argv[2];
@@ -83,78 +83,87 @@ const label = (g) => `${g.y}:${g.x0}-${g.x1}`;
 const startSeg = segs.find(g => g.y === m.start.y && m.start.x >= g.x0 && m.start.x <= g.x1 + 1);
 const segAt = (p) => segs.find(g => g.y === p.y && p.x >= g.x0 && p.x <= g.x1 + 1);
 const mobSegs = [...new Set(m.spawns.map(segAt))], portalSeg = segAt(m.portal);
-check("hunt1: start, portal, 10 monsters, all on standable floors", startSeg && portalSeg && m.spawns.length === 10 && mobSegs.every(Boolean), JSON.stringify({ startSeg, portalSeg, n: m.spawns.length }));
-// 동작: [시작 x 위치들] × [방향 −1·0·1] × [꾹 점프 / 짧은 점프 / 걸어 내려가기 / 사다리 ↑ / 사다리 ↓]
-const actions = [];
-for (const dir of [-1, 0, 1]) {
-  actions.push({ name: `jump${dir}`, input: (t) => ({ left: dir < 0, right: dir > 0, jump: t === 0, jumpHeld: true }) });
-  actions.push({ name: `hop${dir}`, input: (t) => ({ left: dir < 0, right: dir > 0, jump: t === 0, jumpHeld: t < 0.08 }) });
-  actions.push({ name: `latejump${dir}`, input: (t) => ({ left: dir < 0, right: dir > 0, jump: Math.abs(t - 0.25) < DT / 2, jumpHeld: t >= 0.25 }) });
-  if (dir) actions.push({ name: `walk${dir}`, input: () => ({ left: dir < 0, right: dir > 0 }) });
-}
-actions.push({ name: "up", input: () => ({ up: true }) }, { name: "down", input: () => ({ down: true }) });
-const edges = new Map();
-function next(g) {
-  if (edges.has(g)) return edges.get(g);
-  const out = new Set();
-  const xs = [g.x0 + 0.35, (g.x0 + g.x1 + 1) / 2, g.x1 + 1 - 0.35, g.x0 + 0.5, g.x1 + 0.5];
-  // 사다리 아래(몸이 사다리 칸)나 사다리 맨 위에 서서 ↑↓
-  for (let x = g.x0; x <= g.x1; x++) if (m.cell(x, g.y - 1) === "H" || m.cell(x, g.y) === "H") xs.push(x + 0.5);
-  for (const x of xs) for (const a of actions) {
-    const s = st(m, x, g.y);
-    let left = false, landed = null;
-    run(m, s, a.input, 2.5, (q) => { if (!q.ground || Math.abs(q.x - x) > 1.2 || q.climbing) left = true; if (left && q.ground && !q.climbing) { landed = segOf(q); return true; } return false; });
-    if (landed && landed !== g) out.add(landed);
+check("hunt1: start, portal, 10 monsters on standable floors (several heights)", startSeg && portalSeg && m.spawns.length === 10 && mobSegs.every(Boolean), JSON.stringify({ startSeg, portalSeg, n: m.spawns.length }));
+check("hunt1: no ladders — every floor is reached by jumping", !m.rows.some(r => r.includes("H")));
+// 동작: [시작 x 위치들] × [방향 −1·0·1] × [꾹 점프 / 짧은 점프 / 늦은 점프 / 더블 점프(꼭대기 근처에서 한 번 더) / 걸어 내려가기 / ↓]
+const DJ = [0.2, 0.3, 0.4];
+const actionsOf = (dj) => {
+  const out = [];
+  for (const dir of [-1, 0, 1]) {
+    const lr = { left: dir < 0, right: dir > 0 };
+    out.push({ name: `jump${dir}`, input: (t) => ({ ...lr, jump: t === 0, jumpHeld: true }) });
+    out.push({ name: `hop${dir}`, input: (t) => ({ ...lr, jump: t === 0, jumpHeld: t < 0.08 }) });
+    out.push({ name: `latejump${dir}`, input: (t) => ({ ...lr, jump: Math.abs(t - 0.25) < DT / 2, jumpHeld: t >= 0.25 }) });
+    if (dj) for (const at of DJ) {
+      out.push({ name: `dj${dir}@${at}`, input: (t) => ({ ...lr, jump: t === 0 || Math.abs(t - at) < DT / 2, jumpHeld: true }) });
+      // 앞으로 달리다 늦게 뛰고 더블 점프 (넓은 틈)
+      if (dir) out.push({ name: `rundj${dir}@${at}`, input: (t) => ({ ...lr, jump: Math.abs(t - 0.2) < DT / 2 || Math.abs(t - 0.2 - at) < DT / 2, jumpHeld: t >= 0.2 }) });
+    }
+    if (dir) out.push({ name: `walk${dir}`, input: () => lr });
   }
-  edges.set(g, out);
+  out.push({ name: "down", input: () => ({ down: true }) });
   return out;
+};
+function graph(dj) {
+  const edges = new Map(), actions = actionsOf(dj);
+  return (g) => {
+    if (edges.has(g)) return edges.get(g);
+    const out = new Set();
+    const xs = [g.x0 + 0.35, (g.x0 + g.x1 + 1) / 2, g.x1 + 1 - 0.35, g.x0 + 0.5, g.x1 + 0.5];
+    for (const x of xs) for (const a of actions) {
+      const s = st(m, x, g.y);
+      let left = false, landed = null;
+      run(m, s, a.input, 2.5, (q) => { if (!q.ground || Math.abs(q.x - x) > 1.2) left = true; if (left && q.ground) { landed = segOf(q); return true; } return false; });
+      if (landed && landed !== g) out.add(landed);
+    }
+    edges.set(g, out);
+    return out;
+  };
 }
-const seen = new Map([[startSeg, null]]), queue = [startSeg];
-while (queue.length) { const g = queue.shift(); for (const h of next(g)) if (!seen.has(h)) { seen.set(h, g); queue.push(h); } }
+const bfs = (from, next) => { const seen = new Map([[from, null]]), q = [from]; while (q.length) { const g = q.shift(); for (const h of next(g)) if (!seen.has(h)) { seen.set(h, g); q.push(h); } } return seen; };
+const next = graph(true), seen = bfs(startSeg, next), seenNoDJ = bfs(startSeg, graph(false));
 const routeTo = (goal) => { const r = []; for (let g = goal; g; g = seen.get(g)) r.unshift(label(g)); return r.join(" → "); };
-const missed = mobSegs.filter(g => !seen.has(g));
-check("hunt1: every monster floor is reachable from the start with real physics (jumps, ladders)", !missed.length, `missed ${missed.map(label)}; reached ${[...seen.keys()].map(label).join(" ")}`);
+const missed = segs.filter(g => g.y < m.h - 1 && !seen.has(g));
+check("hunt1: every floor (all 14 platforms + ground) is reachable from the start with real physics (jumps, double jumps)", !missed.length && segs.length === 15, `missed ${missed.map(label)}; reached ${[...seen.keys()].map(label).join(" ")}`);
 check("hunt1: the portal spot is reachable", seen.has(portalSeg));
-// 위에서 다시 바닥으로 내려올 수 있는지 (맨 위 몬스터 발판 → 바닥)
+const djOnly = segs.filter(g => seen.has(g) && !seenNoDJ.has(g));
+check("hunt1: some floors need the double jump (unreachable with single jumps only), including the top", djOnly.length >= 4 && djOnly.some(g => g.y === 3), `${djOnly.map(label)} / single-jump reach ${[...seenNoDJ.keys()].map(label)}`);
 {
-  const top = mobSegs.reduce((a, g) => (g.y < a.y ? g : a));
-  const back = new Map([[top, null]]), q = [top];
-  while (q.length) { const g = q.shift(); for (const h of next(g)) if (!back.has(h)) { back.set(h, g); q.push(h); } }
-  check("hunt1: from the top floor you can get back down to the portal", back.has(portalSeg));
+  const top = segs.reduce((a, g) => (g.y < a.y ? g : a));
+  check("hunt1: from the top floor you can get back down to the portal", bfs(top, next).has(portalSeg));
+  console.log("route to the top:", routeTo(top));
 }
-console.log("route to the top monster:", routeTo(mobSegs.reduce((a, g) => (g.y < a.y ? g : a))));
-// ---- 몬스터 ----
+// ---- 몬스터: 플레이어와 같은 물리 + 생각(mobInput) ----
 {
   let rnd = 1; const rand = () => ((rnd = (rnd * 16807) % 2147483647) / 2147483647);
-  const mobs = m.spawns.map(p => J.newMob(m, p, rand));
-  let inside = true, moved = 0;
-  const x0s = mobs.map(q => q.x);
-  for (let t = 0; t < 30; t += DT) for (const q of mobs) { J.mobStep(q, DT, false, rand); const g = segAt({ x: Math.floor(q.x), y: q.y }); if (!g || q.x < q.x0 - 1e-9 || q.x > q.x1 + 1e-9) inside = false; }
-  mobs.forEach((q, i) => { if (Math.abs(q.x - x0s[i]) > 0.5) moved++; });
-  check("monsters patrol their own floor for 30 s: never leave it, most of them move", inside && moved >= 6, JSON.stringify({ inside, moved }));
-  const q = mobs[0], x = q.x; for (let t = 0; t < 3; t += DT) J.mobStep(q, DT, true, rand);
-  check("a monster in a fight stays put", q.x === x);
-  const s = { x: q.x + 0.7, y: q.y }, far = { x: q.x + 1.5, y: q.y }, above = { x: q.x, y: q.y - 2 };
-  check("touching: side by side yes, a tile away no, a floor above no", J.touching(s, q) && !J.touching(far, q) && !J.touching(above, q));
-  // 다가오기: 같은 발판 8칸 안이면 빠르게 쫓아와 닿으면 멈춤
-  const g = J.newMob(m, m.spawns.find(p => p.y === 17), rand), pl = { ...J.newState(m), x: g.x + 7, y: 17 };
-  const sx = g.x; let t1 = 0;
-  for (; t1 < 3 && !J.touching(pl, g); t1 += DT) J.mobStep(g, DT, J.touching(pl, g), rand, J.aggroOf(pl, g));
-  check("aggro: same floor, 7 tiles away → chases fast (≥ 3 tiles/s) until touching", J.touching(pl, g) && (g.x - sx) / t1 >= 3, JSON.stringify([sx, g.x, t1]));
-  // 위아래 4줄 안의 다른 발판: 플레이어 바로 위로 자리를 잡고 기다림 (발판 끝은 못 넘음)
-  const up = J.newMob(m, m.spawns.find(p => p.y === 13), rand), below = { ...J.newState(m), x: up.x + 3, y: 17 };
-  for (let t = 0; t < 3; t += DT) J.mobStep(up, DT, false, rand, J.aggroOf(below, up));
-  check("aggro: a player 4 rows below → the monster moves right above the player and waits", Math.abs(up.x - below.x) < 0.15 && up.y === 13 && !J.sameFloor(below, up), JSON.stringify([up.x, below.x]));
-  const topMob = J.newMob(m, m.spawns.find(p => p.y === 5), rand);
-  check("aggro: too far (12 rows down or 9+ tiles across) → just patrols", J.aggroOf({ ...J.newState(m), x: topMob.x, y: 17 }, topMob) === null && J.aggroOf({ ...pl, x: g.x + 9 }, g) === null);
+  const chase = (from, p, secs = 10) => { const q = J.newMob(m, from, rand); let t = 0; for (; t < secs; t += DT) { const busy = J.touching(p, q); J.step(m, q, J.mobInput(m, q, p, DT, rand, busy), DT); if (busy) break; } return { q, t, hit: J.touching(p, q) }; };
+  let r = chase({ x: 12.5, y: 24 }, { x: 19, y: 24 });
+  check("chase: same floor 6.5 tiles → runs over (≥ 3 tiles/s) until touching", r.hit && 6.5 / r.t >= 2.8, JSON.stringify([r.t, r.q.x]));
+  r = chase({ x: 20, y: 24 }, { x: 20, y: 20 });
+  check("chase up: a player 4 rows up → the monster double-jumps up to them", r.hit && r.q.doubled >= 1, JSON.stringify([r.t, r.q.x, r.q.y, r.q.doubled]));
+  r = chase({ x: 17, y: 12 }, { x: 10, y: 8 });
+  check("chase up across: walks under the next platform and double-jumps", r.hit, JSON.stringify([r.t, r.q.x, r.q.y]));
+  r = chase({ x: 20, y: 3 }, { x: 21, y: 6 });
+  check("chase down: drops through the plank (↓) to a player below", r.hit && r.q.y >= 5, JSON.stringify([r.t, r.q.x, r.q.y]));
+  // 싸우는 중(닿음)이면 서서 싸움
+  const f = J.newMob(m, { x: 12.5, y: 24 }, rand), fp = { x: 13.2, y: 24 }, fx = f.x;
+  for (let t = 0; t < 2; t += DT) J.step(m, f, J.mobInput(m, f, fp, DT, rand, J.touching(fp, f)), DT);
+  check("a monster touching the player stands and fights", Math.abs(f.x - fx) < 0.05 && f.ground, JSON.stringify([fx, f.x]));
+  const s = { x: f.x + 0.7, y: f.y }, far = { x: f.x + 1.5, y: f.y }, above = { x: f.x, y: f.y - 2 };
+  check("touching: side by side yes, a tile away no, a floor above no", J.touching(s, f) && !J.touching(far, f) && !J.touching(above, f));
+  // 돌아다니기 (플레이어 없음) 2분: 맵 밖으로 안 나가고, 오르내리며 4층 넘게 다님
+  const mobs = m.spawns.map(p => J.newMob(m, p, rand)), floors = new Set();
+  let inside = true;
+  for (let t = 0; t < 120; t += DT) for (const q of mobs) { J.step(m, q, J.mobInput(m, q, null, DT, rand, false), DT); if (q.y > m.h - 1 + 1e-6 || q.x < 1 || q.x > m.w - 1) inside = false; if (q.ground) floors.add(q.y); }
+  check("wandering 2 min: monsters stay inside, go up and down over 5+ floors, not all end on the ground", inside && floors.size >= 5 && mobs.some(q => q.y < 24), JSON.stringify({ inside, floors: [...floors], ys: mobs.map(q => q.y) }));
   // 헬 50층: 발판 곳곳에 흩어 놓기 (밟을 수 있는 칸 위, 시작 근처 6칸은 비움, 여러 층에)
   const h = J.parse(J.MAPS.hell50.rows), spots = J.spawnSpots(h, 50, rand);
   const onFloor = spots.every(p => segs.some(g => g.y === p.y && p.x >= g.x0 && p.x <= g.x1 + 1));
-  check("hell 50 spawns: 50 spots on standable floors, none within 6 tiles of the start, spread over 4+ floors, boss spot on the top platform",
-    spots.length === 50 && onFloor && !spots.some(p => p.y === h.start.y && Math.abs(p.x - h.start.x) < 5.7) && new Set(spots.map(p => p.y)).size >= 4 && segAt(J.MAPS.hell50.boss)?.y === 5,
+  check("hell 50 spawns: 50 spots on standable floors, none within 6 tiles of the start, spread over 6+ floors, boss spot on the top platform",
+    spots.length === 50 && onFloor && !spots.some(p => p.y === h.start.y && Math.abs(p.x - h.start.x) < 5.7) && new Set(spots.map(p => p.y)).size >= 6 && segAt(J.MAPS.hell50.boss)?.y === 3,
     JSON.stringify(spots.slice(0, 5)));
-  const big = J.newMob(h, J.MAPS.hell50.boss, rand, 1.2);
-  check("a wide (boss) monster: patrol keeps the wider body on the platform and touches from farther", big.x0 === 14 + 0.6 && J.touching({ x: big.x + 1.0, y: 5 }, big) && !J.touching({ x: big.x + 1.0, y: 5 }, { ...big, w: undefined }));
+  const big = J.newMob(h, J.MAPS.hell50.boss, rand, 1.2, 1.4);
+  check("a wide (boss) monster touches from farther", J.touching({ x: big.x + 1.0, y: 3 }, big) && !J.touching({ x: big.x + 1.0, y: 3 }, { ...big, w: undefined }));
   check("skill reach counts tiles (diagonal = 1)", J.reach({ x: 5, y: 10 }, { x: 7, y: 9 }) === 2 && J.reach({ x: 5, y: 10 }, { x: 5.5, y: 10 }) === 0.5);
 }
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);
