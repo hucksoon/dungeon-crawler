@@ -498,6 +498,7 @@
     <button id="inv-btn" type="button" data-t>인벤토리 (I)</button>
     <button id="dex-btn" type="button" data-t>도감 (B)</button>
     <button id="gfx-btn" type="button" hidden></button>
+    <button id="map-btn" class="dungeon-only" type="button"></button>
     <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
     <select id="lang-select" aria-label="Language" hidden></select>
@@ -538,7 +539,7 @@
     <ul id="lobby-list"></ul>
   </div>
   <div id="log"></div>
-  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="touch-only" data-t>방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
@@ -717,19 +718,21 @@
   const MAP_W = 32, MAP_H = 24;    // 맵 크기(타일 단위)
   const VIEW_W = MAP_W * TILE, VIEW_H = MAP_H * TILE;   // 화면 크기 (그리는 좌표)
   const PX = 1.6;                  // 캔버스 실제 픽셀 = 그리는 좌표 × 1.6 (픽셀 그림 32px = TILE 20 × 1.6)
+  // 던전은 2배로 가까이: 플레이어를 가운데에 두고 16×12칸(방 하나 정도)만 보임. 전체 지도(M)로 바꿀 수 있음
+  const ZOOM = 2, CAM_W = MAP_W / ZOOM, CAM_H = MAP_H / ZOOM;
   const canvas = document.getElementById("game");
   const popups = document.getElementById("popups");
 
   // 피해 숫자: 맞은 칸 위에 떠올랐다 사라짐. 치명타는 굵고 크게
   // color: 속성 피해(화상·번개 튕김)는 그 속성 색
   function showDamage(target, dmg, crit, color) {
-    const scale = canvas.clientWidth / VIEW_W;
+    const cam = camera(), scale = canvas.clientWidth / VIEW_W * cam.z;
     const d = document.createElement("div");
     d.className = typeof dmg === "string" ? "dmg parry" : crit ? "dmg crit" : "dmg";
     d.textContent = dmg;
     if (color) d.style.color = color;
-    d.style.left = `${(target.x + 0.5) * TILE * scale}px`;
-    d.style.top = `${(target.y + 0.2) * TILE * scale}px`;
+    d.style.left = `${((target.x + 0.5) * TILE - cam.x) * scale}px`;
+    d.style.top = `${((target.y + 0.2) * TILE - cam.y) * scale}px`;
     popups.append(d);
     d.addEventListener("animationend", () => d.remove());
     setTimeout(() => d.remove(), 2000);  // 애니메이션이 꺼진 환경 대비
@@ -3742,6 +3745,27 @@
       },
     };
   })();
+  // ---- 화면 시점: 가까이(기본) / 전체 지도 ----
+  const VIEW_KEY = "rl_view";
+  let fullMap = store.get(VIEW_KEY) === "full";
+  const mapBtn = document.getElementById("map-btn");
+  const mapLabel = () => { mapBtn.textContent = fullMap ? T("가까이 보기 (M)") : T("전체 지도 (M)"); };
+  function toggleMap() {
+    fullMap = !fullMap;
+    if (fullMap) store.set(VIEW_KEY, "full"); else store.del(VIEW_KEY);
+    mapLabel();
+    render();
+  }
+  mapLabel();
+  mapBtn.addEventListener("click", () => { toggleMap(); mapBtn.blur(); });
+  // 화면 왼쪽 위가 지도의 어디인지(그리는 좌표)와 배율. 지도 끝에서는 더 밀려나지 않게
+  function camera() {
+    if (scene !== "dungeon" || fullMap || !player) return { x: 0, y: 0, z: 1 };
+    const cx = Math.max(0, Math.min(MAP_W - CAM_W, player.x + 0.5 - CAM_W / 2));
+    const cy = Math.max(0, Math.min(MAP_H - CAM_H, player.y + 0.5 - CAM_H / 2));
+    return { x: cx * TILE, y: cy * TILE, z: ZOOM };
+  }
+
   // 지역마다 다른 바닥·벽 (골드 던전 악몽도 골드)
   const zoneArt = () => (inHell() ? "hell" : inNM() ? "nm" : inGold() ? "gold" : "normal");
   // 칸마다 무늬 4가지 중 하나 (같은 칸은 늘 같은 무늬)
@@ -3774,9 +3798,13 @@
   }
 
   function render() {
+    ctx.setTransform(PX, 0, 0, PX, 0, 0);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     if (scene === "lobby") { renderLobby(); return; }
+    // 시점: 아래는 모두 지도 좌표로 그리고, 가까이 보기면 확대·이동
+    const cam = camera(), z = PX * cam.z;
+    ctx.setTransform(z, 0, 0, z, -cam.x * z, -cam.y * z);
 
     const art = Sprites.on, zone = zoneArt();
     for (let y = 0; y < MAP_H; y++) {
@@ -6132,6 +6160,7 @@
     switch (k) {
       case "i":                    openInventory(); break;
       case "b":                    openDex(); break;
+      case "m":                    if (scene === "dungeon") toggleMap(); else handled = false; break;
       case "arrowup": case "w":    tryMove(0, -1); break;
       case "arrowdown": case "s":  tryMove(0, 1); break;
       case "arrowleft": case "a":  tryMove(-1, 0); break;
