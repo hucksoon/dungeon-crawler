@@ -21,7 +21,8 @@ for f in "$T"/*-e2e.mjs "$T"/*-test.mjs "$T"/parity.mjs; do
   case "$n" in php-test|parity) arg="$T/fixtures";; move-e2e) arg="$T/fixtures/old-address-index.html";; esac
   timeout 600 node --require "$T/ko-default.cjs" "$f" "$REPO" "$arg" > "$RUN/$n.log" 2>&1; code=$?
   p=$(grep -c '^PASS' "$RUN/$n.log"); x=$(grep -c '^FAIL' "$RUN/$n.log")
-  st=ok; [ "$x" -gt 0 ] && st=FAIL; [ "$p" -eq 0 ] && [ "$x" -eq 0 ] && [ "$code" -ne 0 ] && st=ERROR
+  # 도중에 멈춘 테스트(예외)는 PASS가 있어도 ERROR (종료 코드가 0이 아님)
+  st=ok; [ "$x" -gt 0 ] && st=FAIL; [ "$x" -eq 0 ] && [ "$code" -ne 0 ] && st=ERROR
   row "$st $n: pass $p fail $x $(grep -m3 '^FAIL' "$RUN/$n.log" | cut -c1-150 | tr '\n' '|')"
 done
 

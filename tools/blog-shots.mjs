@@ -151,6 +151,16 @@ const SCENES = [
       const [a, b] = open(L.px - 1, L.py) && open(L.px - 2, L.py) ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
       return [a, a, b, b, b, b, a, a].map((k, i) => [k, 120 + i * 300]); });
     return { ...o, frames: await record(o.page, keys, 2700, { cols: 5, rows: 3, every: 50 }), delay: 5 }; }],
+  // 점프: 앞을 막은 몬스터를 넘어 2칸 (J + 방향). 갈 수 있는 쪽을 찾아 몬스터를 그 앞에 둠
+  ["anim-jump", "점프: 앞을 막은 몬스터를 훌쩍 넘어 2칸", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(8, "blog-jump", { hp: 1e6, mh: 1e6, a: 30 }), "rl_inv:g:DEV": inv(g40) } });
+    const dir = await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), open = (x, y) => L.map[y * 32 + x] !== "0" && !L.enemies.some(e => e.x === x && e.y === y);
+      const d = [[1, 0, "ArrowRight"], [-1, 0, "ArrowLeft"], [0, 1, "ArrowDown"], [0, -1, "ArrowUp"]].find(([dx, dy]) => open(L.px + dx, L.py + dy) && open(L.px + dx * 2, L.py + dy * 2) && open(L.px + dx * 3, L.py + dy * 3));
+      L.enemies = L.enemies.filter(e => Math.abs(e.x - L.px) + Math.abs(e.y - L.py) > 4); localStorage.setItem("rl_level", JSON.stringify(L)); return d; });
+    await o.page.evaluate(([dx, dy, id, m]) => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies.push({ ...m, x: L.px + dx, y: L.py + dy }); localStorage.setItem("rl_level", JSON.stringify(L)); },
+      [dir[0], dir[1], 0, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "troll"), "normal", 8), hp: 1e9, maxHp: 1e9, atk: 1 }]);
+    await o.page.reload(); await sleep(900);
+    return { ...o, frames: await record(o.page, [["j", 300], [dir[2], 450]], 1500, { cols: 6, rows: 4, every: 40 }) }; }],
   // 세트 스킬 이펙트 GIF: 세트 2개 + 흡혈 지팡이, 주변에 단단한 몬스터. 제자리 대기(Space)만 → 2턴마다 스킬
   ...[["skill-fire", "파이어볼: 날아가서 3×3으로 터짐", [513, 806]], ["skill-frost", "프로스트 노바: 얼음 고리가 퍼짐", [96, 775]], ["skill-storm", "체인 라이트닝: 번개가 차례로 튕김", [56, 464]]].map(([name, caption, ks]) => [name, caption, async () => {
     const gear = [...ks.map(k => I.generate(`fx|n20|k${k}`, "golden", 95)), I.generate("ls|k10", "golden", 40)];

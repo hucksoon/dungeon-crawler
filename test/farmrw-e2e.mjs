@@ -95,7 +95,7 @@ try {
   check("guide tiers: 일반 · 나이트메어 · 헬 · 🔍 파밍", (await page.locator(".guide-tier").allInnerTexts()).join() === "일반,나이트메어,헬,🔍 파밍");
   await page.locator(".guide-tier", { hasText: "파밍" }).click(); await sleep(150);
   const fg = await page.locator("#inv-guide").innerText();
-  check("파밍 추천: 아이템 발견 50 / 100%, two builds", fg.includes("🔍 파밍 추천 (아이템 발견 50 / 100%)") && fg.includes("초반 파밍") && fg.includes("후반 파밍"), fg.slice(0, 400));
+  check("파밍 추천: 아이템 발견 50 / 150% (most gear can give), two builds", fg.includes("🔍 파밍 추천 (아이템 발견 50 / 150%)") && fg.includes("초반 파밍") && fg.includes("후반 파밍"), fg.slice(0, 400));
   check("파밍 추천: 기억·몰래 ✓ 착용 중, 선견지명 가방에 있음, 도원결의 rune recipe, 여의 반지 boss", /룬워드 기억 \+25% · ✓ 착용 중/.test(fg) && /룬워드 몰래 \+25% · ✓ 착용 중/.test(fg) && /룬워드 선견지명 \+25% · 가방에 있음/.test(fg)
     && fg.includes(`룬워드 도원결의 +25% · 커먼 방패 홈 4개 이상에 ${RW("도원결의").runes.map(k => I.RUNES[k].name).join("·")} 룬`) && fg.includes("✦ 여의 반지 +15% · 헬 30층 이무기") && fg.includes("🏆 파밍 조합 자세히"), fg);
   check("파밍 추천: 2nd 여의 반지 row also listed (two ring rows)", (fg.match(/여의 반지 \+15%/g) || []).length === 2);

@@ -94,7 +94,8 @@ try {
   const want = clone(L); I.reforgeLine(want, 3);
   check("reforge in game = rules (line 3 rerolled, rf saved, gold paid)", JSON.stringify(got.lines) === JSON.stringify(want.lines) && JSON.stringify(got.rf) === "[3]" && (await goldOf(page)) === g0 - cost, JSON.stringify([got.lines, want.lines, g0, await goldOf(page)]));
   check("after the first reforge only that line has a button, others say 재련 불가", (await page.locator("#inv-detail button.reforge-btn").count()) === 1 && ((await page.locator("#inv-detail").innerText()).match(/재련 불가/g) || []).length === 4);
-  await pick(gemmed);
+  // 재련한 L과 이름이 같을 수 있어서(악몽의 … 레전더리 갑옷) 같은 이름 중 홈 초기화 버튼이 있는 것을 고름
+  for (const b of await page.locator(".bag-item", { hasText: I.itemName(gemmed) }).all()) { await b.click(); await sleep(120); if (await page.locator("#inv-detail button.socket-reset-btn").count()) break; }
   const rc = I.socketResetCost(gemmed);
   await page.locator("#inv-detail button.socket-reset-btn").click(); await sleep(150);
   inv = await readInv(page);

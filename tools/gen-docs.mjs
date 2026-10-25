@@ -240,7 +240,7 @@ ${table(["어디서", "확률", "등급 확률"], [
   ["장비 상자 (캐시)", "-", tableRates(I.TABLES.box)],
 ])}
 
-- [아이템 발견](items.md#아이템-발견-r8-1023-dc51) %가 있으면 처치마다 ${pct(I.FIND.bonus)} × 발견% 확률로 보물 표 아이템 하나 더 (최대 ${I.FIND.max}% → ${pct(I.findBonusChance(I.FIND.max))})
+- [아이템 발견](items.md#아이템-발견-r8-1023-dc51) %가 있으면 처치마다 ${pct(I.FIND.bonus)} × 발견% 확률로 보물 표 아이템 하나 더 (최대치 없음, 장비로 최대 ${I.FIND.max}% → ${pct(I.findBonusChance(I.FIND.max))})
 `;
 
 // ---------------------------------------------------------------- economy.md
@@ -689,7 +689,7 @@ ${table(["네임드", "유니크 장신구", "부위", "고유 효과"],
 
 - **처치할 때마다 ${pct(I.FIND.bonus)} × 발견% 확률로 보너스 아이템 하나** (보물 표: 레어 이상). 발견 100%면 처치마다 ${pct(I.findBonusChance(100))} (시드 …|j층|f처치 수, 서버가 똑같이 다시 만들어 검증)
 - **네임드 유니크·유니크 장신구 확률 × (1 + 발견% / ${I.FIND.uniqueDiv})**: 발견 100%면 유니크 ${pct(I.UNIQUE.chance)} → ${pct(I.UNIQUE.chance * I.findUniqueMul(100))}, 유니크 장신구 ${pct(I.UNIQUE.accChance)} → ${pct(I.UNIQUE.accChance * I.findUniqueMul(100))}
-- 최대 **${I.FIND.max}%** (더 모아도 ${I.FIND.max}%로 셈). 인벤토리 능력치 요약에 🔍 줄로 보여요
+- **최대치 없음** (10/25): 모은 만큼 그대로. 장비로 모을 수 있는 가장 큰 값은 ${I.FIND.max}% (장검·방패·투구·갑옷 룬워드 25씩 + 쇠이빨 목걸이 20 + 여의 반지 15 × 2) → 처치마다 ${pct(I.findBonusChance(I.FIND.max))}, 유니크 ×${I.findUniqueMul(I.FIND.max).toFixed(2)}. 인벤토리 능력치 요약에 🔍 줄로 보여요
 
 ${table(["아이템", "종류", "아이템 발견"], [
   ...I.RUNEWORDS.filter(w => w.stats.mf).map(w => [`**${w.name}**`, `룬워드 (${w.bases.map(b => I.BASE_NAMES[b]).join("·")} ${w.runes.length}홈)`, `+${w.stats.mf}% (지옥의 아이템, 악몽의 ×${I.RUNEWORD_TIER_MUL.nightmare})`]),

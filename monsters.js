@@ -65,7 +65,8 @@
   };
 
   // 방어력이 공격력과 같으면 피해 2/3, 2배면 1/2, 4배면 1/3. 방어력이 아무리 높아도 최소 1
-  const damageToPlayer = (atk, def) => Math.max(1, Math.round(atk * DEFENSE_K * atk / (DEFENSE_K * atk + Math.max(0, def))));
+  // 공격이 0이면 (테스트 몬스터 등) 0/0이 되지 않게 최소 피해 1
+  const damageToPlayer = (atk, def) => (atk > 0 ? Math.max(1, Math.round(atk * DEFENSE_K * atk / (DEFENSE_K * atk + Math.max(0, def)))) : 1);
 
   // 정예: 2층부터 8%, 층마다 1%p씩 올라 최대 20%
   const ELITE = { from: 2, base: 0.08, perFloor: 0.01, max: 0.2, hpMul: 2, atkMul: 1.5, defAdd: 1, xpMul: 3 };
