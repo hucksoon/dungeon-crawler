@@ -1,4 +1,4 @@
-// 점프 (dc#81): J(휴대폰은 점프 버튼) + 방향 → 2칸. 가운데 몬스터·아이템은 넘고 벽은 못 넘음, 내려설 칸이 비어 있어야 함
+// 점프 (dc#81): Space 또는 J(휴대폰은 점프 버튼) + 방향 (제자리 대기는 마침표 .) → 2칸. 가운데 몬스터·아이템은 넘고 벽은 못 넘음, 내려설 칸이 비어 있어야 함
 // 한 턴을 쓰고 쿨타임 5턴 (저장됨), 취소(J·Esc), 공중에서는 높이 떠서 그림자, 동작 줄이기면 바로 착지
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
@@ -50,20 +50,20 @@ try {
   // ---- 몬스터 넘기 + 쿨타임 ----
   let { ctx, page, errors } = await open(level({ enemies: [mob(6, 5)], items: [{ x: 6, y: 5, type: "gold", amount: 99 }, { x: 7, y: 5, type: "gold", amount: 50 }] }));
   const g0 = (await S(page)).run.g, t0 = (await L(page)).turn;
-  await press(page, ["j"]);
-  check("J: asks for a direction (log) and the jump button shows aiming", (await logs(page)).includes("점프할 방향을 고르세요") && (await page.locator("#tp-jump").getAttribute("class") || "").includes("aiming"));
+  await press(page, [" "]);
+  check("Space: asks for a direction (log) and the jump button shows aiming", (await logs(page)).includes("점프할 방향을 고르세요") && (await page.locator("#tp-jump").getAttribute("class") || "").includes("aiming"));
   await press(page, ["ArrowRight"]); await sleep(150);
   let lv = await L(page), sv = await S(page);
   check("jump right over the monster: lands 2 tiles away", lv.px === 7 && lv.py === 5, JSON.stringify([lv.px, lv.py]));
   check("one turn used, monster unhurt (jumping is not an attack)", lv.turn === t0 + 1 && lv.enemies[0].hp === 1e9, JSON.stringify([t0, lv.turn, lv.enemies[0].hp]));
   check("picks up gold on the landing tile only (not the one jumped over)", sv.run.g === g0 + 50 && lv.items.some(i => i.x === 6 && i.y === 5), JSON.stringify([g0, sv.run.g, lv.items]));
   check("cooldown saved: jc 4 after the jump turn (5-turn cooldown)", sv.run.jc === 4, JSON.stringify(sv.run.jc));
-  await press(page, ["j"]);
-  check("J during cooldown: refused with turns left, no aiming", (await logs(page)).includes("점프는 4턴 뒤에 다시 할 수 있다") && !((await page.locator("#tp-jump").getAttribute("class")) || "").includes("aiming"));
+  await press(page, [" "]);
+  check("Space during cooldown: refused with turns left, no aiming", (await logs(page)).includes("점프는 4턴 뒤에 다시 할 수 있다") && !((await page.locator("#tp-jump").getAttribute("class")) || "").includes("aiming"));
   await page.reload(); await sleep(800);
   check("cooldown survives reload", (await S(page)).run.jc === 4);
   // 제자리 대기 4번 (페이지 버튼에 포커스가 있어도 게임으로 가게 window에 바로 보냄)
-  for (let i = 0; i < 4; i++) { await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }))); await sleep(60); }
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: ".", bubbles: true }))); await sleep(60); }
   sv = await S(page);
   check("after 4 more turns the jump is ready again", sv.run?.jc === 0, JSON.stringify(sv).slice(0, 300));
   check("no page errors", errors.length === 0, errors.join("; "));
@@ -74,22 +74,26 @@ try {
   let before = await L(page);
   await press(page, ["j", "ArrowLeft"]);
   lv = await L(page);
-  check("wall: can't jump into the wall (stays, no turn used)", lv.px === 3 && lv.turn === before.turn && (await logs(page)).includes("벽 때문에"), JSON.stringify([lv.px, lv.turn]));
-  await press(page, ["j", "ArrowDown"]);
+  check("J works too · wall: can't jump into the wall (stays, no turn used)", lv.px === 3 && lv.turn === before.turn && (await logs(page)).includes("벽 때문에"), JSON.stringify([lv.px, lv.turn]));
+  await press(page, [" ", "ArrowDown"]);
   lv = await L(page);
   check("landing tile has a monster: refused, stays, no turn", lv.py === 5 && lv.turn === before.turn && (await logs(page)).includes("내려설 칸에 몬스터"), JSON.stringify([lv.py, lv.turn]));
-  await press(page, ["j", "j", "ArrowRight"]);
+  await press(page, [" ", " ", "ArrowRight"]);
   lv = await L(page);
-  check("J twice cancels: the arrow is a normal 1-tile step", (await logs(page)).includes("점프를 취소했다") && lv.px === 4, JSON.stringify(lv.px));
-  await press(page, ["j", "Escape", "ArrowRight"]);
+  check("Space twice cancels: the arrow is a normal 1-tile step", (await logs(page)).includes("점프를 취소했다") && lv.px === 4, JSON.stringify(lv.px));
+  await press(page, [" ", "Escape", "ArrowRight"]);
   lv = await L(page);
   check("Esc cancels too", lv.px === 5, JSON.stringify(lv.px));
+  const t1 = lv.turn;
+  await press(page, ["."]);
+  lv = await L(page);
+  check("period (.) waits one turn in place (no jump aim)", lv.turn === t1 + 1 && lv.px === 5 && !((await page.locator("#tp-jump").getAttribute("class")) || "").includes("aiming"), JSON.stringify([t1, lv.turn, lv.px]));
   await ctx.close();
 
   // ---- 높이 뛰는 그림: 공중(0.16초)에서는 몸이 착지 때보다 위에 ----
   ({ ctx, page, errors } = await open(level({ px: 5, py: 6 })));
   const rest = await skin(page);
-  const air = await skin(page, ["j", "ArrowRight"], 160);
+  const air = await skin(page, [" ", "ArrowRight"], 160);
   await sleep(600);
   const land = await skin(page);
   check("jump arc: mid-air the body is high above the ground and between tiles, then lands 2 tiles over", rest && air && land && air.y < land.y - 0.3 && air.x > rest.x + 0.5 && air.x < land.x - 0.5 && Math.abs(land.x - rest.x - 2) < 0.2, JSON.stringify({ rest, air, land }));
@@ -110,7 +114,7 @@ try {
 
   // ---- 동작 줄이기: 바로 착지 ----
   ({ ctx, page, errors } = await open(level({ px: 5, py: 6 }), { opts: { viewport: { width: 1100, height: 1000 }, reducedMotion: "reduce" } }));
-  const r0 = await skin(page), r1 = await skin(page, ["j", "ArrowRight"], 60);
+  const r0 = await skin(page), r1 = await skin(page, [" ", "ArrowRight"], 60);
   check("reduced motion: lands at once (no arc)", r0 && r1 && Math.abs(r1.x - r0.x - 2) < 0.2 && Math.abs(r1.y - r0.y) < 0.1, JSON.stringify({ r0, r1 }));
   await ctx.close();
 } finally {

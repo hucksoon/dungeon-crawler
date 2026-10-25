@@ -58,7 +58,7 @@ try {
   let errs = [];
   for (const d of [45, 95, 120, 125, 150, 200]) for (let i = 0; i < 3; i++) {
     const { page, errors } = await open(d, null);
-    await page.keyboard.press(" "); await sleep(150);  // 한 턴 쉬면 층이 저장됨
+    await page.keyboard.press("."); await sleep(150);  // 한 턴 쉬면 층이 저장됨
     errs.push(...errors);
     (await L(page))?.enemies?.forEach(e => ids.add(e.id));
     await page.context().close();
@@ -94,7 +94,7 @@ try {
   const old = { x: 11, y: 10, id: "golden_goblin", ch: "g", name: "황금 고블린", color: "#ffd700", kind: "golden", hp: 1, maxHp: 1, atk: 0, def: 0, xp: 10, fleeAt: null };
   const oldFar = { ...old, x: 20, y: 15, hp: 50, maxHp: 50 };
   ({ page, errors } = await open(8, level(8, [old, oldFar])));
-  for (let i = 0; i < 4; i++) { await page.keyboard.press(i ? " " : "ArrowRight"); await sleep(120); }
+  for (let i = 0; i < 4; i++) { await page.keyboard.press(i ? "." : "ArrowRight"); await sleep(120); }
   lv = await L(page);
   check("old saved golden: 2 drops", lv.items.filter(i => i.type === "gear").length === 2);
   check("old saved golden: flee timer from default (24)", (await logText(page)).includes("24턴 안에"));

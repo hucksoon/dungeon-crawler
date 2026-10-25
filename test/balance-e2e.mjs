@@ -92,7 +92,7 @@ try {
   // 2. 시험의 세트 5세트: 받는 피해 −10%
   ({ ctx, page, errors } = await open("baltest-c", { rl_save: saveB("balC", { hp: 9e6, mh: 9e6 }), rl_level: lv(40, "balC", "normal", [foe2(11, 10, { atk: 3000 })]), "rl_inv:g:DEV": inv(...trial) }));
   const def = +(await page.locator("#def").innerText());
-  await press(page, "Space"); await sleep(80);
+  await press(page, "."); await sleep(80);
   const got = +((await logs(page)).match(/에게 (\d+) 피해를 입음/) || [])[1];
   const exp = [3000, 3001].map(a => Math.max(1, Math.round(M.damageToPlayer(a, def) * 0.9)));
   check("trial 5-set: damage taken −10%", exp.includes(got), `got ${got}, expected ${exp} (def ${def})`);

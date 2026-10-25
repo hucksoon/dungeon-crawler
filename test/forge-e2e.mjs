@@ -118,7 +118,7 @@ try {
   const ATK = 400;
   const foes = [[9, 10], [11, 10], [10, 9], [10, 11]].map(([x, y], i) => foe(x, y, { id: "rat", name: "쥐", hp: 1e7, maxHp: 1e7, atk: ATK, def: 0, nm: 0, kind: "normal" }));
   const r2 = await open("forgetest-b", { rl_save: sv(5, "fgB", 0, { hp: 100000, mh: 100000 }), rl_level: lv(5, "fgB", "normal", foes), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(), log: [], stones: 0 }) });
-  await press(r2.page, " "); await sleep(200);
+  await press(r2.page, "."); await sleep(200);
   const st = await r2.page.locator("#status").innerText();
   const hits = [...(await logs(r2.page)).matchAll(/쥐에게 (\d+) 피해를 입음/g)].map(m => +m[1]);
   check("4 adjacent → HUD 🛡 둘러싸임 −16%", st.includes("둘러싸임 −16%"), st);

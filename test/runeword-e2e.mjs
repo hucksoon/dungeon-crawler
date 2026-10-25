@@ -55,7 +55,7 @@ async function open(dev, seed, api = false) {
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -85,16 +85,16 @@ try {
   await ctx.close();
   // 불사
   ({ ctx, page, errors } = await open("rwtest-c", { rl_save: save(30, "rwC", { hp: 50 }), rl_level: lv(30, "rwC", "nm", [foe(11, 10, { atk: 1e7 })]), "rl_inv:g:DEV": inv(ch) }));
-  await press(page, "Space"); await sleep(200);
+  await press(page, "."); await sleep(200);
   check("undying: lethal hit → HP 1, still alive, log", (await hp(page)) === 1 && (await logs(page)).includes("천하무적: 쓰러질 피해를 버텨냈다") && await page.locator("#death-modal").isHidden().catch(() => true));
-  await press(page, "Space"); await sleep(250);
+  await press(page, "."); await sleep(250);
   check("undying only once per floor: next lethal hit kills", (await logs(page)).includes("쓰러졌다"), await logs(page));
   check("no page errors (천하무적)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
   // 2. 태산(갑옷) 보호막: 2턴마다 최대 HP 20%가 먼저 막음
   ({ ctx, page, errors } = await open("rwtest-d", { rl_save: save(30, "rwD", { hp: 3000 }), rl_level: lv(30, "rwD", "nm", [foe(11, 10, { atk: 400 })]), "rl_inv:g:DEV": inv(rw("태산", "chest")) }));
-  await press(page, "Space", 3); await sleep(200);
+  await press(page, ".", 3); await sleep(200);
   check("shield: monster hits absorbed (보호막이 … 막음)", (await logs(page)).includes("보호막이") && (await page.locator("#skill-hud, #hud, body").first().innerText()).length > 0, await logs(page));
   check("no page errors (태산)", errors.length === 0, errors.join("; "));
   await ctx.close();
@@ -105,7 +105,7 @@ try {
   // 4. 나무(지팡이) 약한 파이어볼 + 몰래(스킬 흡혈) + 마음가짐 없이 3턴마다
   ({ ctx, page, errors } = await open("rwtest-f", { rl_save: save(30, "rwF", { hp: 500, mh: 3000, a: 5000 }), rl_level: lv(30, "rwF", "nm", [foe(12, 10)]), "rl_inv:g:DEV": inv(rw("나무"), rw("몰래")) }));
   const hf0 = await hp(page);
-  await press(page, "Space", 3); await sleep(200);
+  await press(page, ".", 3); await sleep(200);
   const lg = await logs(page);
   check("나무: weak fireball without the fire set", lg.includes("🔥 파이어볼!"), lg);
   check("몰래: skill damage heals (lifesteal on set skills)", (await hp(page)) > hf0, `${hf0} → ${await hp(page)}`);
@@ -121,7 +121,7 @@ try {
   // 5. 폭풍전야: 체인 라이트닝 + 2턴마다 주변 몬스터 속성 저항 −20% → 속성 피해 ×1.2
   const sd = rw("폭풍전야");
   ({ ctx, page, errors } = await open("rwtest-h", { rl_save: save(30, "rwH", { a: 1000 }), rl_level: lv(30, "rwH", "nm", [foe(11, 10), foe(12, 10, { name: "B" }), foe(14, 10, { name: "C" })]), "rl_inv:g:DEV": inv(sd) }));
-  await press(page, "Space", 2); await sleep(200);
+  await press(page, ".", 2); await sleep(200);
   L = await stored(page, "rl_level");
   check("폭풍전야: chain lightning fires without the bolt set", (await logs(page)).includes("⚡ 체인 라이트닝!"));
   const byName = (n) => L.enemies.find(e => e.name === n);

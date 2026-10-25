@@ -41,7 +41,7 @@ async function open(dev, seed) {
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -65,7 +65,7 @@ try {
   await ctx.close();
   // 2. 여의주 검: 몬스터가 하나뿐이어도 체인이 그 몬스터를 여러 번
   ({ ctx, page, errors } = await open("w53-b", { rl_save: save(5, "w53B"), rl_level: lv(5, "w53B", "hell", [mob(12, 10)]), "rl_inv:g:DEV": inv(yeouiju, sh) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   lg = await logs(page);
   const n = +((lg.match(/체인 라이트닝! (\d+)번 튕겨/) || [])[1] || 0);
   check("여의주 검: one monster, chain hits it strikes+2 times", n === I.CHAIN.strikes + 2, lg.slice(-300));
@@ -74,7 +74,7 @@ try {
   // 3. 업경대: 막아도 반사 (Math.random 0.01 → 늘 막음)
   ({ ctx, page, errors } = await open("w53-c", { rl_save: save(5, "w53C"), rl_level: lv(5, "w53C", "hell", [mob(11, 10, { atk: 50000 })]), "rl_inv:g:DEV": inv(ls, mirror) }));
   await page.evaluate(() => { Math.random = () => 0.01; });
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   lg = await logs(page);
   const L = await stored(page, "rl_level");
   check("업경대: parried hit still reflects (업보: 막은 …)", lg.includes("방패로 막아냈다") && lg.includes("업보: 막은") && L.enemies[0].hp < 1e7, lg.slice(-300));

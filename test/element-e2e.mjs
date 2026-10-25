@@ -100,10 +100,10 @@ try {
   check("player fire: target burns (atk/10, 5 ticks)", E.burn && E.burn.left === 5 && E.burn.dmg === Math.round(atk * 0.1), JSON.stringify(E.burn) + " atk " + atk);
   // 때린 턴(0)에 걸리고 → 1턴 없음 → 2턴 화상 → 3턴 없음
   const hp0 = E.hp;
-  await press(page, "Space"); await sleep(60);
+  await press(page, "."); await sleep(60);
   E = (await level(page)).enemies[0];
   const tick1 = hp0 - E.hp;
-  await press(page, "Space"); await sleep(60);
+  await press(page, "."); await sleep(60);
   const E2 = (await level(page)).enemies[0];
   check("burn ticks every 2 turns", tick1 === Math.round(atk * 0.1) && E.burn.left === 4 && E2.hp === E.hp && E2.burn.left === 4, `${tick1} ${E.hp - E2.hp} ${JSON.stringify(E2.burn)}`);
   // 다시 때리면 갱신: 남은 횟수만 5로 (그 턴 화상으로 4), 박자(at)는 그대로. 갱신이 없었으면 3
@@ -139,7 +139,7 @@ try {
   let slowed = null;
   for (let i = 0; i < 60 && !slowed; i++) { await press(page, "ArrowRight"); const e = (await level(page)).enemies[0]; if (e.slow > 0) slowed = e; }
   check("player ice: target slowed (4 turns then immune)", slowed && slowed.slow <= 4 && (await logs(page)).includes("얼어붙어 느려졌다"));
-  await press(page, "Space", 4);
+  await press(page, ".", 4);
   const ice2 = (await level(page)).enemies[0];
   check("after slow ends, immune for a while", !ice2.slow && ice2.immune > 0, JSON.stringify([ice2.slow, ice2.immune]));
   await ctx.close();
@@ -147,7 +147,7 @@ try {
   // 5. 몬스터 불: 맞으면 화상 (들어간 피해의 1/10), HUD에 표시
   ({ ctx, page, errors } = await open("eltest-e", { rl_save: save(3, "elE"), rl_level: lv(3, "elE", "nm", [foe(11, 10, { atk: 5000, el: "fire", name: "악몽의 불꽃 타이탄" })]), "rl_inv:g:DEV": inv(plain) }));
   const hpBefore = +(await page.locator("#hp").innerText()).split("/")[0];
-  await press(page, "Space"); await sleep(60);
+  await press(page, "."); await sleep(60);
   const hit = hpBefore - +(await page.locator("#hp").innerText()).split("/")[0];
   let LE = await level(page);
   check("monster fire: player burns for 1/10 of the hit (nightmare resist −40 → ×1.4)", LE.ps?.burn && LE.ps.burn.dmg === Math.round(hit * 0.1 * 1.4) && (await page.locator("#status").innerText()).includes("화상"), JSON.stringify(LE.ps) + " hit " + hit);
@@ -157,7 +157,7 @@ try {
   const res = resIt.lines.find(l => l[0] === "fireRes")[1];
   ({ ctx, page, errors } = await open("eltest-f", { rl_save: save(3, "elF"), rl_level: lv(3, "elF", "nm", [foe(11, 10, { atk: 5000, el: "fire" })]), "rl_inv:g:DEV": inv(resIt) }));
   const hpB = +(await page.locator("#hp").innerText()).split("/")[0];
-  await press(page, "Space"); await sleep(60);
+  await press(page, "."); await sleep(60);
   const hitB = hpB - +(await page.locator("#hp").innerText()).split("/")[0];
   LE = await level(page);
   check(`fire resist ${res}% reduces the burn`, LE.ps?.burn && LE.ps.burn.dmg === Math.round(hitB * 0.1 * (1 - (res - 40) / 100)), JSON.stringify(LE.ps) + " hit " + hitB);
@@ -167,7 +167,7 @@ try {
 
   // 6. 몬스터 번개: 한 번 더 맞음 (1/3)
   ({ ctx, page, errors } = await open("eltest-g", { rl_save: save(3, "elG"), rl_level: lv(3, "elG", "nm", [foe(11, 10, { atk: 5000, el: "bolt" })]), "rl_inv:g:DEV": inv(plain) }));
-  await press(page, "Space"); await sleep(60);
+  await press(page, "."); await sleep(60);
   const lg = await logs(page);
   const first = +lg.match(/에게 (\d+) 피해를 입음/)[1], second = +(lg.match(/번개가 튕겨 한 번 더 (\d+) 피해/) || [])[1];
   check("monster bolt: second hit for 1/3 of the first (resist −40 → ×1.4)", second === Math.max(1, Math.round(first / 3 * 1.4)), `${first} ${second}`);
@@ -176,9 +176,9 @@ try {
   // 7. 몬스터 얼음: 걸리면 2턴에 한 번만 움직임 (한 번 누를 때 몬스터가 두 번)
   ({ ctx, page, errors } = await open("eltest-h", { rl_save: save(3, "elH"), rl_level: lv(3, "elH", "nm", [foe(11, 10, { atk: 50, el: "ice" })]), "rl_inv:g:DEV": inv(plain) }));
   let got = false;
-  for (let i = 0; i < 80 && !got; i++) { await press(page, "Space"); got = (await logs(page)).includes("몸이 얼어붙었다"); }
+  for (let i = 0; i < 80 && !got; i++) { await press(page, "."); got = (await logs(page)).includes("몸이 얼어붙었다"); }
   const t0 = (await level(page)).turn;
-  await press(page, "Space"); await press(page, "Space");
+  await press(page, "."); await press(page, ".");
   const t1 = (await level(page)).turn;
   check("monster ice: player slowed, a key press can take 2 turns", got && t1 - t0 >= 3 && (await logs(page)).includes("몸이 얼어 이번 턴은 움직이지 못했다"), `${got} ${t0} ${t1}`);
   check("HUD shows 느려짐 or 면역", /느려짐|면역/.test(await page.locator("#status").innerText()));
@@ -187,7 +187,7 @@ try {
 
   // 8. 랭킹: 서버가 나이트메어 r3 아이템을 검증하고, 장비 보기에 속성 피해·저항
   ({ ctx, page, errors } = await open("eltest-i", { rl_save: save(10, "elI"), rl_level: lv(10, "elI", "nm"), "rl_inv:g:DEV": inv(fireIt, resIt, boltIt) }, { api: true }));
-  await press(page, "Space"); await sleep(4000);
+  await press(page, "."); await sleep(4000);
   const meRes = await (await fetch("http://127.0.0.1:8102/api.php?r=me&season=nm", { headers: { Origin: ORIGIN.slice(0, -1), "X-Guest-Id": "eltest-i" } })).json();
   const prof = await (await fetch(`http://127.0.0.1:8102/api.php?r=player&id=${meRes.id}&season=nm`, { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
   const st = prof.gear?.stats;

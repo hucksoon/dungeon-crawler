@@ -117,7 +117,7 @@ try {
 
   // ---- 몬스터가 때림: 플레이어가 붉게 번쩍 (장비 없음 = 막기·피하기 없음) ----
   o = await open({ enemies: [mob("skeleton", 6, 5, { atk: 30 })] });
-  const hurt = await measure(o.page, 5, 5, " ", 280);
+  const hurt = await measure(o.page, 5, 5, ".", 280);
   check("monster attack: after the player's turn the monster lunges and the player flashes red", hurt.red >= 30, JSON.stringify(hurt));
   await o.ctx.close();
 
@@ -126,7 +126,7 @@ try {
   o = await open({ enemies: [mob("skeleton", 6, 5, { atk: 30 })], gear: [shield] });
   const calm = await measure(o.page, 5, 5);
   await o.page.evaluate(() => { Math.random = () => 0; });
-  const block = await measure(o.page, 5, 5, " ", 260);
+  const block = await measure(o.page, 5, 5, ".", 260);
   const hp = await o.page.evaluate(() => JSON.parse(localStorage.getItem("rl_save")).run.hp);
   check("block: shield parry takes no damage and a white flash shows toward the attacker", hp === 1e6 && block.white > calm.white + 6 && block.red <= calm.red + 5, JSON.stringify({ hp, calm, block }));
   await o.ctx.close();
@@ -137,7 +137,7 @@ try {
     // 파이어볼은 가장 가까운 (6,5)를 가운데로 터짐. 노바는 0.12초면 얼음 고리가 플레이어 칸을 지나 옆 칸(6,5)에 있음. 몬스터는 얼음·불·번개 색이 없는 오크
     o = await open({ enemies: [mob("orc", 7, 5, { hp: 1e9, maxHp: 1e9, atk: 0 }), mob("orc", 6, 5, { hp: 1e9, maxHp: 1e9, atk: 0 })], gear });
     const calm = await measure(o.page, x, y);
-    const fx = await measure(o.page, x, y, " ", ms);
+    const fx = await measure(o.page, x, y, ".", ms);
     await o.page.waitForTimeout(900);
     const after = await measure(o.page, x, y);
     check(`${name}: effect drawn (${key} colored pixels) and then gone`, fx[key] >= 15 && fx[key] > calm[key] + 12 && after[key] <= calm[key] + 5, JSON.stringify({ calm: calm[key], fx: fx[key], after: after[key] }));

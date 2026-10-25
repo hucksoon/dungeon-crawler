@@ -93,7 +93,7 @@ try {
   check("equipped into offhand slot", (await inv(page)).equip.offhand?.id === sturdyS.id);
   await page.keyboard.press("Escape");
   // 몬스터에게 200번 맞아 보기: 패링 비율 ≈ 38~40%
-  for (let i = 0; i < 200; i++) await page.keyboard.press(" ");
+  for (let i = 0; i < 200; i++) await page.keyboard.press(".");
   await sleep(200);
   const L = await logs(page);
   const parried = L.filter(t => t.includes("방패로 막아냈다")).length, hurt = L.filter(t => t.includes("피해를 입음")).length;
