@@ -216,6 +216,13 @@ try {
   ({ ctx, page, errors } = await open({ opts: { ...devices["iPhone 13"] }, map: "fight" }));
   await walkIn(page);
   check("phone: entered by walking with the d-pad keys", (await scene(page))[0]);
+  // 점프 던전 배치: ◀ ▶ 는 왼쪽(화면 왼쪽 절반), 큰 점프 버튼은 오른쪽 아래, ▲는 숨김, ▼는 ◀▶ 아래, 메뉴(인벤토리·도감·포탈)는 위 줄
+  const box = (sel) => page.locator(sel).evaluate(b => { const r = b.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom, shown: !!b.offsetParent }; });
+  const [BL, BR, BD, BU, JB, INV, W] = [await box('#touch-pad [data-dir="-1,0"]'), await box('#touch-pad [data-dir="1,0"]'), await box('#touch-pad [data-dir="0,1"]'), await box('#touch-pad [data-dir="0,-1"]'), await box("#tp-jump"), await box("#tp-inv"), await page.evaluate(() => innerWidth)];
+  check("phone layout in the jump dungeon: ◀ ▶ side by side on the left, ▼ under them, ▲ hidden",
+    BL.shown && BR.shown && BD.shown && !BU.shown && BL.r <= BR.x + 1 && Math.abs(BL.y - BR.y) < 2 && BR.r < W / 2 && BD.y > BL.b - 1 && BD.x < BR.r, JSON.stringify({ BL, BR, BD, BU, W }));
+  check("phone layout: big round jump button on the right (≥ 100 px), menu row on top",
+    JB.w >= 100 && JB.h >= 100 && JB.r > W * 0.75 && JB.x > BR.r + 20 && INV.b <= BL.y + 1, JSON.stringify({ JB, INV, BL, W }));
   check("phone: jump button says 점프, buttons fit on screen", (await page.locator("#tp-jump").innerText()) === "점프" && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll("#touch-pad button")].every(b => !b.offsetParent || b.getBoundingClientRect().right <= innerWidth)));
   const right = page.locator('#touch-pad [data-dir="1,0"]');
   await right.dispatchEvent("pointerdown"); await sleep(5000); await right.dispatchEvent("pointerup"); await sleep(200);
@@ -226,6 +233,25 @@ try {
   await page.locator("#tp-portal").tap(); await sleep(250);
   check("phone: portal button leaves", (await scene(page)).join() === "false,true");
   check("phone: no page errors", errors.length === 0, errors.join("; "));
+  await ctx.close();
+  // ---- 휴대폰: 두 손가락 — ▶를 누른 채 점프 버튼 (달리며 뛰기), 다른 화면(던전·로비)의 배치는 그대로 ----
+  ({ ctx, page, errors } = await open({ opts: { ...devices["iPhone 13"], reducedMotion: "reduce" }, map: "move" }));
+  await walkIn(page); await sleep(400);
+  await page.locator("#touch-pad").scrollIntoViewIfNeeded(); await sleep(150); await page.screenshot({ path: path.join(OUT, "tower-phone.png") });
+  const p0 = await skin(page);
+  const both = await page.evaluate(() => new Promise(done => {
+    const r = document.querySelector('#touch-pad [data-dir="1,0"]'), j = document.getElementById("tp-jump");
+    const ev = (el, type, id) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, bubbles: true, isPrimary: id === 1, pointerType: "touch" }));
+    ev(r, "pointerdown", 1);
+    setTimeout(() => ev(j, "pointerdown", 2), 150);
+    setTimeout(() => { const c = document.getElementById("game"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0, sx = 0, sy = 0;
+      for (let i = 0; i < d.length; i += 4) { const R = d[i], G = d[i + 1], B = d[i + 2]; if (R > 240 && G > 170 && G < 195 && B > 130 && B < 160) { n++; sx += (i / 4) % c.width; sy += Math.floor(i / 4 / c.width); } }
+      ev(j, "pointerup", 2); ev(r, "pointerup", 1); done(n ? { x: sx / n / 64, y: sy / n / 64 } : null); }, 420);
+  }));
+  check("phone two fingers: holding ▶ and pressing jump runs right AND jumps (> 2 tiles up, moved right)", p0 && both && p0.y - both.y > 2 && both.x - p0.x > 1, JSON.stringify({ p0, both }));
+  await page.locator("#tp-portal").tap(); await sleep(300);
+  check("phone: back in the lobby the normal pad returns (▲ visible, jump button not the big circle)", await page.evaluate(() => !!document.querySelector('#touch-pad [data-dir="0,-1"]').offsetParent && document.getElementById("tp-jump").getBoundingClientRect().width < 100));
+  check("phone two-finger map: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally {
   await browser.close();

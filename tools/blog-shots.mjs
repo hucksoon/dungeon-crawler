@@ -40,9 +40,10 @@ const json = (r, o, status = 200) => r.fulfill({ status, contentType: "applicati
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1 }) {
+// touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false }) {
   const dev = "blogshot-device-1";
-  const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf });
+  const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message)); page.on("dialog", d => d.accept());
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
@@ -193,6 +194,19 @@ const SCENES = [
       grab();
     }), [plan, 6000]);
     return { ...o, frames, delay: 6 }; }],
+  // 점프 던전 휴대폰 화면: 왼손 ◀ ▶ (▼), 오른손 큰 점프 버튼. 게임 화면과 버튼만 (위쪽 메뉴는 잘라냄)
+  ["hunt-phone", "휴대폰: 왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼", async () => {
+    const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
+    const o = await open({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
+    await press(o.page, ["p"], 300);
+    await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
+    await sleep(1800);
+    await o.page.evaluate(() => { const g = document.getElementById("stage") || document.getElementById("game"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
+    await sleep(300);
+    const shotPath = path.join(OUT, "hunt-phone.png");
+    const top = await o.page.evaluate(() => (document.getElementById("stage") || document.getElementById("game")).getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
+    await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
+    return { ...o, prebuilt: true }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 
@@ -201,7 +215,8 @@ const done = [];
 try {
   for (const [name, caption, shoot] of SCENES) {
     if (only.length && !only.some(s => name.includes(s))) continue;
-    const { ctx, page, errors, shot, more = [], nowait = false, frames, delay = 4 } = await shoot();
+    const { ctx, page, errors, shot, more = [], nowait = false, frames, delay = 4, prebuilt = false } = await shoot();
+    if (prebuilt) { done.push(`${name}.png — ${caption}${errors.length ? ` (페이지 오류 ${errors.length}: ${errors[0].slice(0, 80)})` : ""}`); await ctx.close(); continue; }
     if (frames) {   // 움직이는 그림: 프레임을 이어 GIF로 (ImageMagick)
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gif-"));
       frames.forEach((f, i) => fs.writeFileSync(path.join(dir, `${String(i).padStart(3, "0")}.png`), Buffer.from(f.split(",")[1], "base64")));

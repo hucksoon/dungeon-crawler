@@ -196,6 +196,29 @@
   body:not(.in-lobby) .lobby-only { display: none; }
   body.in-lobby .dungeon-only { display: none !important; }
   body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 던전: 포션·지도 없음 (점프·포탈(나가기)만) */
+  /* 점프 던전 휴대폰 배치 (dc#89): 왼손 엄지 ◀ ▶ (아래에 ▼ 발판 아래로) · 오른손 엄지 큰 점프 버튼 · 위에 작게 인벤토리·도감·포탈.
+     ▲는 쓰지 않음 (사다리 없음). 상자(.dpad·.actions)를 풀어 버튼을 한 격자에 바로 놓음 */
+  @media (pointer: coarse) {
+    body.in-tower #touch-pad {
+      display: grid; gap: 8px; align-items: center;
+      grid-template-columns: 68px 68px minmax(0, 1fr) 120px;
+      grid-template-areas: "inv dex . portal" "left right . jump" "down down . jump";
+    }
+    body.in-tower #touch-pad .dpad, body.in-tower #touch-pad .actions { display: contents; }
+    body.in-tower #touch-pad .up { display: none; }
+    body.in-tower #touch-pad button { touch-action: none; }   /* 두 손가락으로 눌러도 화면이 움직이거나 커지지 않게 */
+    body.in-tower #touch-pad .left { grid-area: left; margin: 0; }
+    body.in-tower #touch-pad .right { grid-area: right; margin: 0; }
+    body.in-tower #touch-pad .down { grid-area: down; justify-self: center; width: 100px; height: 52px; margin: 0; }
+    body.in-tower #tp-inv { grid-area: inv; } body.in-tower #tp-dex { grid-area: dex; } body.in-tower #tp-portal { grid-area: portal; }
+    body.in-tower #tp-inv, body.in-tower #tp-dex, body.in-tower #tp-portal { padding: 6px 2px; font-size: 12px; }
+    body.in-tower #tp-jump { grid-area: jump; width: 120px; height: 120px; border-radius: 50%; font-size: 20px; font-weight: bold; justify-self: end; }
+    body.in-tower #tp-jump.held { background: var(--border); color: var(--accent); }
+  }
+  @media (pointer: coarse) and (max-width: 360px) {
+    body.in-tower #touch-pad { grid-template-columns: 62px 62px minmax(0, 1fr) 104px; }
+    body.in-tower #tp-jump { width: 104px; height: 104px; }
+  }
   #lobby-panel {
     width: 640px;
     max-width: 100%;
@@ -4658,7 +4681,7 @@
         hud(`${boss.name}${boss.el ? " · " + EL.names[boss.el] : ""}${boss.enraged ? " · " + T("분노") : ""}  ${Math.round(boss.hp / boss.maxHp * 100)}%`, bx, 19, boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR);
       }
       ctx.font = '11px "Courier New", monospace';
-      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
+      hud(narrowScreen() ? T("◀ ▶ 이동 · 점프(공중에서 한 번 더) · ▼ 발판 아래로 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";
@@ -6850,8 +6873,9 @@
   document.getElementById("tp-jump").addEventListener("click", aimJump);
   // 점프 던전: 점프 버튼은 누르고 있는 동안 (짧게 누르면 낮게)
   const tpJump = document.getElementById("tp-jump");
-  tpJump.addEventListener("pointerdown", (e) => { if (scene === "jump") { e.preventDefault(); Tower.hold("jump", true); } });
-  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tpJump.addEventListener(ev, () => { if (scene === "jump") Tower.hold("jump", false); });
+  // 누르는 동안 버튼이 눌린 색, 지원하는 폰이면 아주 짧게 진동 (눌렸다는 느낌)
+  tpJump.addEventListener("pointerdown", (e) => { if (scene === "jump") { e.preventDefault(); tpJump.classList.add("held"); try { navigator.vibrate?.(12); } catch {} Tower.hold("jump", true); } });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tpJump.addEventListener(ev, () => { if (scene === "jump") { tpJump.classList.remove("held"); Tower.hold("jump", false); } });
   document.getElementById("tp-inv").addEventListener("click", openInventory);
   document.getElementById("tp-dex").addEventListener("click", openDex);
   document.getElementById("tp-portal").addEventListener("click", portal);

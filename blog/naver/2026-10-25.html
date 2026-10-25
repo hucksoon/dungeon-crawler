@@ -63,7 +63,7 @@
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 11장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/anim-fight.gif" download="2026-10-25-1-anim-fight.gif">1. 공격·반격·쓰러짐·걷기 움직임</a> · <a href="../images/anim-walk.gif" download="2026-10-25-2-anim-walk.gif">2. 걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지</a> · <a href="../images/doll-naked.png" download="2026-10-25-3-doll-naked.png">3. 장비가 하나도 없으면 속옷만</a> · <a href="../images/doll-gear.png" download="2026-10-25-4-doll-gear.png">4. 낀 장비가 등급 색으로 보여요</a> · <a href="../images/skill-fire.gif" download="2026-10-25-5-skill-fire.gif">5. 파이어볼: 날아가서 3×3으로 터짐</a> · <a href="../images/skill-frost.gif" download="2026-10-25-6-skill-frost.gif">6. 프로스트 노바: 얼음 고리가 퍼짐</a> · <a href="../images/skill-storm.gif" download="2026-10-25-7-skill-storm.gif">7. 체인 라이트닝: 번개가 차례로 튕김</a> · <a href="../images/heal-green.png" download="2026-10-25-8-heal-green.png">8. 흡혈로 찬 HP는 초록 숫자로</a> · <a href="../images/anim-jump.gif" download="2026-10-25-9-anim-jump.gif">9. 점프: 앞을 막은 몬스터를 훌쩍 넘어 2칸</a> · <a href="../images/tower-climb.gif" download="2026-10-25-10-tower-climb.gif">10. 점프 탑: ← → 달리기와 Space 점프로 발판을 올라가요</a> · <a href="../images/hunt-fight.gif" download="2026-10-25-11-hunt-fight.gif">11. 점프 던전: 휘두르기, 날아가는 화염구, 차례로 튕기는 체인 번개</a></p>
+<p class="steps">이미지 12장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/anim-fight.gif" download="2026-10-25-1-anim-fight.gif">1. 공격·반격·쓰러짐·걷기 움직임</a> · <a href="../images/anim-walk.gif" download="2026-10-25-2-anim-walk.gif">2. 걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지</a> · <a href="../images/doll-naked.png" download="2026-10-25-3-doll-naked.png">3. 장비가 하나도 없으면 속옷만</a> · <a href="../images/doll-gear.png" download="2026-10-25-4-doll-gear.png">4. 낀 장비가 등급 색으로 보여요</a> · <a href="../images/skill-fire.gif" download="2026-10-25-5-skill-fire.gif">5. 파이어볼: 날아가서 3×3으로 터짐</a> · <a href="../images/skill-frost.gif" download="2026-10-25-6-skill-frost.gif">6. 프로스트 노바: 얼음 고리가 퍼짐</a> · <a href="../images/skill-storm.gif" download="2026-10-25-7-skill-storm.gif">7. 체인 라이트닝: 번개가 차례로 튕김</a> · <a href="../images/heal-green.png" download="2026-10-25-8-heal-green.png">8. 흡혈로 찬 HP는 초록 숫자로</a> · <a href="../images/anim-jump.gif" download="2026-10-25-9-anim-jump.gif">9. 점프: 앞을 막은 몬스터를 훌쩍 넘어 2칸</a> · <a href="../images/tower-climb.gif" download="2026-10-25-10-tower-climb.gif">10. 점프 탑: ← → 달리기와 Space 점프로 발판을 올라가요</a> · <a href="../images/hunt-fight.gif" download="2026-10-25-11-hunt-fight.gif">11. 점프 던전: 휘두르기, 날아가는 화염구, 차례로 튕기는 체인 번개</a> · <a href="../images/hunt-phone.png" download="2026-10-25-12-hunt-phone.png">12. 휴대폰: 왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼</a></p>
 <div id="paper">
 <p>어제 던전에 픽셀 그림을 입히고 나니 아쉬운 점이 바로 보였어요. 몬스터도 플레이어도 <strong>그림처럼 가만히</strong> 있다가 순간이동하듯 칸을 옮겼거든요. 오늘은 Claude Code와 함께 움직임을 넣고, 플레이어가 실제로 낀 장비를 입고 다니게 했어요.</p>
 <p><br></p>
@@ -192,6 +192,11 @@
 <p>스킬도 더 눈에 보이게 바꿨어요. 파이어볼은 꼬리를 단 <strong>화염구가 내 손에서 몬스터까지 날아가</strong> 닿는 순간 터지고, 체인 라이트닝은 <strong>나 → 1번째 → 2번째 → 3번째 → 4번째</strong> 순서로 번개가 하나씩 건너가며 번호가 떠요. 프로스트 노바는 얼음 고리와 가시가 퍼져요.</p>
 <p><br></p>
 <p>해 보니 공격하면서 점프하면 너무 낮게 뛰어서, <strong>점프를 더 높게</strong> 바꿨어요. 이제 한 번에 3칸 넘게, 더블 점프까지 하면 5칸 넘게 뛰고, 버튼을 톡 쳐도 2칸 넘게 올라가요.</p>
+<p><br></p>
+<p>휴대폰에서는 달리면서 뛰기가 어려웠어요. ◀는 왼쪽 끝, ▶는 오른쪽 끝, 점프 버튼은 가운데에 있었거든요. 그래서 점프 던전에서는 <strong>왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼</strong>을 누르도록 버튼 자리를 바꿨어요. 두 손가락으로 동시에 누르면 달리면서 뛸 수 있어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/hunt-phone.png" alt="휴대폰: 왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">휴대폰: 왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼</span></p>
 <p><br></p>
 <p>바꾼 직후에는 브라우저가 예전 화면을 잠시 기억하고 있어서 &quot;점프 탑&quot;이 그대로 보일 수 있어요. 새로고침하면 바뀌고, 새 화면과 예전 파일이 섞여 오류가 나지 않도록 파일에 버전을 붙여 두었어요.</p>
 <p><br></p>
