@@ -114,7 +114,7 @@ try {
   await ctx.close();
   // 새로 만든 나이트메어 층의 골드 더미
   ({ ctx, page, errors } = await open("nmstest-c", { rl_save: saveN("nmsC"), "rl_inv:g:DEV": invOf([]) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   const L = await level(page);
   const piles = L.items.filter(i => i.type === "gold");
   check("nightmare gold piles ×8 (each = 8 × normal pile)", L.z === "nm" && piles.length >= 2 && piles.every(p => p.amount % 8 === 0 && p.amount >= 8 * Math.round(2 * mul) && p.amount <= 8 * Math.round(8 * mul)), JSON.stringify(piles.map(p => p.amount)));

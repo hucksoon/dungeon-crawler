@@ -20,7 +20,7 @@ await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathn
   r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
 await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
 await ctx.addInitScript(([bag]) => { if (localStorage.getItem("seeded")) return; localStorage.setItem("seeded", 1);
-  localStorage.setItem("rl_device_id", "i18ndev"); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1019", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:i18ndev`, "1");
+  localStorage.setItem("rl_device_id", "i18ndev"); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1019", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:i18ndev`, "1");
   localStorage.setItem("rl_inv:g:i18ndev", bag); }, [JSON.stringify({ bag: [leg, uq], equip: {}, log: [] })]);
 const invText = async () => { await page.keyboard.press("i"); await sleep(400); const t = await page.locator("body").innerText(); await page.keyboard.press("Escape"); await sleep(200); return t; };
 

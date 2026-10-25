@@ -181,8 +181,10 @@
   .dpad-right .down { margin-right: var(--dpad-shift); }
   .dpad button { width: 68px; height: 68px; font-size: 24px; padding: 0; }
   .dpad button:active, .dpad button.held { background: var(--border); color: var(--accent); }
-  .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; flex: 1; max-width: 260px; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; flex: 1; min-width: 0; max-width: 260px; }   /* 글자가 길어도 방향 버튼을 밀어내지 않게 */
   .actions button { padding: 12px 4px; font-size: 14px; white-space: nowrap; }
+  #tp-portal { grid-column: 1 / -1; }   /* 던전: 포션·점프 / 인벤토리·도감 / 포탈 */
+  #tp-jump.aiming { background: #3a2f12; border-color: #ffcf5c; color: #ffcf5c; }   /* 점프 방향 고르는 중 */
   /* 폭이 좁은 휴대폰(iPhone SE 등): 버튼을 조금 줄여 글자가 한 줄에 들어가게 */
   @media (max-width: 360px) {
     #touch-pad { --dpad-shift: 10px; }
@@ -525,6 +527,7 @@
     </div>
     <div class="actions">
       <button type="button" id="tp-potion" class="dungeon-only" data-t>포션</button>
+      <button type="button" id="tp-jump" class="dungeon-only" data-t>점프</button>
       <button type="button" id="tp-inv" data-t>인벤토리</button>
       <button type="button" id="tp-dex" data-t>도감</button>
       <button type="button" id="tp-portal" class="dungeon-only" data-t>포탈</button>
@@ -540,7 +543,7 @@
     <ul id="lobby-list"></ul>
   </div>
   <div id="log"></div>
-  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: Space &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="touch-only" data-t>방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
@@ -1538,7 +1541,7 @@
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
       uq: TT.uniques.special,
       lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
-      mf: RLItems.findPct(g.mf),   // 아이템 발견 % (최대 FIND.max): 보너스 아이템·유니크 확률
+      mf: RLItems.findPct(g.mf),   // 아이템 발견 % (최대치 없음): 보너스 아이템·유니크 확률
     };
   }
   // 속성 저항 최대치: 기본 75% + 유니크 장신구 (쇠이빨·여의·업경)
@@ -1765,6 +1768,7 @@
   function tryMove(dx, dy) {
     if (scene === "lobby") { lobbyMove(dx, dy); return; }
     if (gameOver) return;
+    if (jumpAim) { jump(dx, dy); return; }   // 점프를 고른 뒤의 방향 (키보드·터치 모두)
     Anim.newTurn();
     let nx = player.x + dx, ny = player.y + dy;
     if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) return;
@@ -1783,23 +1787,55 @@
         pickup();
         nx += dx; ny += dy;
       }
-      player.x = nx; player.y = ny;
-      pickup();
-      if (isShop(nx, ny)) openShop();
-      if (map[ny][nx] === STAIRS) {
-        // 싸우다가 실수로 내려가지 않도록, 근처에 몬스터가 있으면 막음
-        const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
-        if (bossAlive()) log(T("보스가 살아 있는 동안 계단이 열리지 않는다."), "bad");
-        else if (near) log(T("주변 {0}칸 안에 몬스터가 {1}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.", RLMonsters.STAIRS_BLOCK_RADIUS, near), "bad");
-        else if (inGold() || depth >= maxFloor()) { completeFloor(); return; }
-        else { descend(); return; }
-      }
+      if (arrive(nx, ny)) return;
     }
+    endTurn();
+  }
+
+  // 칸에 도착: 아이템 줍기, 상점, 계단. 계단으로 층이 끝나면 true (그러면 턴을 넘기지 않음)
+  function arrive(nx, ny) {
+    player.x = nx; player.y = ny;
+    pickup();
+    if (isShop(nx, ny)) openShop();
+    if (map[ny][nx] === STAIRS) {
+      // 싸우다가 실수로 내려가지 않도록, 근처에 몬스터가 있으면 막음
+      const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
+      if (bossAlive()) log(T("보스가 살아 있는 동안 계단이 열리지 않는다."), "bad");
+      else if (near) log(T("주변 {0}칸 안에 몬스터가 {1}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.", RLMonsters.STAIRS_BLOCK_RADIUS, near), "bad");
+      else if (inGold() || depth >= maxFloor()) { completeFloor(); return true; }
+      else { descend(); return true; }
+    }
+    return false;
+  }
+
+  // ---- 점프: Space 또는 J(휴대폰은 점프 버튼)를 누르고 방향 → 2칸 앞으로. 가운데 칸의 몬스터·아이템은 넘고 벽은 못 넘음
+  // 내려설 칸이 비어 있어야 함. 한 턴을 쓰고 쿨타임 JUMP.cooldown턴 (포션처럼 저장, 로비에 가면 풀림)
+  const JUMP = { range: 2, cooldown: 5 };
+  let jumpAim = false;
+  function aimJump() {
+    if (gameOver || scene !== "dungeon") return;
+    if (!jumpAim && player.jumpCd > 0) { log(T("점프는 {0}턴 뒤에 다시 할 수 있다.", player.jumpCd), "bad"); return; }
+    jumpAim = !jumpAim;
+    log(jumpAim ? T("점프할 방향을 고르세요 (2칸 · 몬스터를 넘을 수 있어요 · 다시 누르면 취소)") : T("점프를 취소했다."));
+    updateStats();
+  }
+  function jump(dx, dy) {
+    jumpAim = false;
+    const blocked = (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || map[y][x] === WALL;
+    const mx = player.x + dx, my = player.y + dy, nx = player.x + dx * JUMP.range, ny = player.y + dy * JUMP.range;
+    if (blocked(mx, my) || blocked(nx, ny)) { log(T("벽 때문에 그쪽으로는 뛸 수 없다."), "bad"); updateStats(); return; }
+    if (enemies.some(e => e.x === nx && e.y === ny)) { log(T("내려설 칸에 몬스터가 있다."), "bad"); updateStats(); return; }
+    Anim.newTurn();
+    Anim.jump(player, nx, ny);
+    player.jumpCd = JUMP.cooldown;
+    log(T("점프!"));
+    if (arrive(nx, ny)) return;
     endTurn();
   }
 
   function wait() {
     if (gameOver || scene === "lobby") return;
+    jumpAim = false;
     Anim.newTurn();
     endTurn();
   }
@@ -2379,7 +2415,7 @@
   // 층 구조(지형, 몬스터, 바닥 아이템)는 크기 때문에 이 브라우저에만 따로 저장 (LEVEL_KEY)
   const runFields = () => ({
     d: depth, hp: player.hp, mh: player.maxHp, a: player.atk, g: player.gold,
-    pc: player.potCd || 0, l: player.plvl, x: player.xp, xn: player.xpNext,
+    pc: player.potCd || 0, jc: player.jumpCd || 0, l: player.plvl, x: player.xp, xn: player.xpNext,
     rid: player.rid, k: player.kills, pp: player.potionPicks, sb: shopBought, sr: shopRerolls,
     rv: player.revived ? 1 : 0,
     ...(player.ud ? { ud: player.ud } : {}),
@@ -2540,6 +2576,7 @@
       atk: r.a,
       gold: r.g,
       potCd: Math.max(0, Math.min(POTION.cooldown, r.pc | 0)),
+      jumpCd: Math.max(0, Math.min(JUMP.cooldown, r.jc | 0)),
       plvl: r.l, xp: r.x, xpNext: r.xn,
       rid: r.rid || newRunId(), kills: r.k || 0, potionPicks: r.pp || 0,
       revived: !!r.rv,
@@ -2961,6 +2998,7 @@
   function worldTurn() {
     turn++;
     if (player.potCd > 0) player.potCd--;
+    if (player.jumpCd > 0) player.jumpCd--;
     // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음)
     const s0 = stats(), rw = s0.rw;
     const shieldPct = Math.max(rw.shield || 0, s0.uq.shield || 0);   // 룬워드 태산·용비늘 장화 중 큰 것
@@ -3168,6 +3206,7 @@
     if ((from === "portal" || from === "clear") && !gameOver) {
       player.hp = stats().maxHp;
       player.potCd = 0;
+      player.jumpCd = 0;
       clearStatus(player);
       saveGame(true);
       updateStats();
@@ -3241,6 +3280,7 @@
     player.oldGear = false;
     player.hp = stats().maxHp;
     player.potCd = 0;
+    player.jumpCd = 0;
     clearStatus(player);
     shopBought = [];
     shopRerolls = 0;
@@ -3877,6 +3917,17 @@
       hit(who, from, at = 80) { add(who, "hit", 240, from ? toward(from, who) : {}, at); },
       dodge(who, from, at) { const d = toward(from, who); add(who, "dodge", 280, d.dx || d.dy ? { dx: -d.dy, dy: d.dx } : { dy: 1 }, at); },   // 공격 방향과 직각으로
       block(who, from, at) { add(who, "block", 300, toward(who, from), at); },
+      // 점프: (지금 칸) → (nx, ny)로 높이 뛰어 2칸. 떠날 때·내려설 때 먼지
+      jump(who, nx, ny) {
+        if (reduceMotion) return;
+        const t = now(), fx0 = who.x, fy0 = who.y;
+        last.set(who, { x: nx, y: ny });   // 걷기 미끄러짐 대신
+        add(who, "jump", 320, { dx: fx0 - nx, dy: fy0 - ny });
+        if (Sprites.on) {
+          dust.push({ x: fx0, y: fy0, dx: nx - fx0, side: 1, t0: t, dur: 320 });
+          dust.push({ x: nx, y: ny, dx: 0, side: 1, t0: t + 290, dur: 360 });
+        }
+      },
       die(e, at = 80) {
         if (reduceMotion) return;
         dying.push({ name: `mon_${e.id}`, ch: e.ch, color: e.color, x: e.x, y: e.y, t0: now() + at, dur: 380 });
@@ -3894,18 +3945,24 @@
             if (Sprites.on) dust.push({ x: prev.x, y: prev.y, dx: who.x - prev.x, side, t0: t, dur: 320 });
           }
         }
-        const o = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null, rot: 0 };
+        const o = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null, rot: 0, lift: 0 };
         let busy = false;
         for (const f of fx.get(who) || []) {
           const p = (t - f.t0) / f.dur;
           if (p >= 1) continue;
           busy = true;
-          if (p < 0) { if (f.kind === "walk") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
+          if (p < 0) { if (f.kind === "walk" || f.kind === "jump") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
           const arc = Math.sin(p * Math.PI);
           if (f.kind === "walk") {
             o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
             o.y -= arc * TILE * 0.13;          // 통통: 걸음 가운데에서 가장 높이
             o.rot += f.side * arc * 0.16;     // 뒤뚱: 약 9도
+          }
+          else if (f.kind === "jump") {
+            o.walkX += f.dx * TILE * (1 - p); o.walkY += f.dy * TILE * (1 - p);   // 공중에서는 고르게
+            o.lift = arc * TILE * 0.8;          // 높이 (그림자는 땅에)
+            o.y -= o.lift;
+            o.rot += -Math.sign(f.dx || 0) * arc * 0.25;   // 뛰는 쪽으로 몸을 숙임
           }
           else if (f.kind === "lunge") { o.x += f.dx * TILE * 0.38 * arc; o.y += f.dy * TILE * 0.38 * arc; }
           else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
@@ -3928,6 +3985,7 @@
         const t = now();
         dust = dust.filter(d => t < d.t0 + d.dur);
         for (const d of dust) {
+          if (t < d.t0) continue;   // 아직 (내려설 때 먼지)
           const p = (t - d.t0) / d.dur, fx0 = d.x * TILE + TILE / 2, fy = d.y * TILE + TILE - 3 - p * 2;
           ctx.save();
           ctx.globalAlpha = 0.55 * (1 - p);
@@ -4304,6 +4362,16 @@
 
     // 플레이어 (낀 장비 그림, 걷기·공격·맞음·피함·막음 움직임)
     const po = Anim.of(player), ppx = player.x * TILE + po.x, ppy = player.y * TILE + po.y;
+    if (po.lift > 0) {   // 점프 중: 땅에 그림자 (높이 뛸수록 작고 옅게)
+      const k = po.lift / (TILE * 0.8);
+      ctx.save();
+      ctx.globalAlpha = 0.45 - 0.2 * k;
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.ellipse(ppx + TILE / 2, ppy + po.lift + TILE - 2, TILE * (0.36 - 0.12 * k), TILE * (0.12 - 0.04 * k), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     drawStatus(player, ppx, ppy);
     ctx.save();
     ctx.globalAlpha = po.alpha;
@@ -4373,6 +4441,9 @@
     document.getElementById("best").textContent = inHell() ? (hellCleared ? T("{0} 완료", hellBest) : (hellBest || "-")) : inNM() ? (nmCleared ? T("{0} 완료", nmBest) : (nmBest || "-"))
       : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? T("포션 ({0}턴)", player.potCd) : T("포션 (준비됨)");
+    const jumpBtn = document.getElementById("tp-jump");
+    jumpBtn.textContent = jumpAim ? T("방향 ▲▼◀▶") : player.jumpCd > 0 ? T("점프 ({0}턴)", player.jumpCd) : T("점프");
+    jumpBtn.classList.toggle("aiming", jumpAim);
     const st = [
       ...(skillHud()),
       ...(player.burn ? [T("🔥 화상 {0}회", player.burn.left)] : []),
@@ -4392,7 +4463,7 @@
       hp: 20, maxHp: 20,
       atk: 3,
       gold: 0,
-      potCd: 0,
+      potCd: 0, jumpCd: 0,
       plvl: 1, xp: 0, xpNext: 10,
       rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false, zone: "normal",
     };
@@ -4552,7 +4623,7 @@
   for (const b of modal.querySelectorAll(".tabs button")) b.addEventListener("click", () => setKind(b.dataset.kind));
 
   accountBtn.addEventListener("click", async () => {
-    accountBtn.blur();  // 이후 Space(대기) 키가 버튼을 다시 누르지 않게
+    accountBtn.blur();  // 이후 Space(점프) 키가 버튼을 다시 누르지 않게
     if (!Account.loggedIn()) { openLogin(); return; }
     if (cloudTimer) await flushCloud();
     await Profile.stop();
@@ -4705,7 +4776,7 @@
       ...(s.dual ? [T("두 손 무기: 한 턴에 2번 공격 (왼손 {0}%)", Math.round(RLItems.DUAL_WIELD.secondHit * 100))] : []),
       ...(s.longsword ? [T("장검: 기본 공격 피해 ×{0} (스킬은 그대로)", RLItems.LONGSWORD.hitMul)] : []),
       ...(s.dmgReduce ? [T("받는 피해 −{0}%", s.dmgReduce)] : []),
-      ...(s.mf ? [T("🔍 아이템 발견 +{0}%{1}: 처치마다 {2}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×{3}", s.mf, g.mf > s.mf ? T(" (최대 {0}%)", RLItems.FIND.max) : "", Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10, RLItems.findUniqueMul(s.mf).toFixed(2))] : []),
+      ...(s.mf ? [T("🔍 아이템 발견 +{0}%: 처치마다 {1}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×{2}", s.mf, Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10, RLItems.findUniqueMul(s.mf).toFixed(2))] : []),
       ...(s.splash ? [T("광란: 때린 적 주변 1칸도 피해의 {0}%", Math.round(RLItems.SPLASH.mul * 100))] : []),
       ...(s.fireball ? [T("파이어볼: {0}턴마다 3×3, 피해 약 {1} (방어력 무시)", RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))) + (s.fireballBurn ? T(" · 화상") : "")] : []),
       ...(s.nova ? [T("프로스트 노바: {0}턴마다 주변 8칸, 피해 약 {1} (방어력 무시)", RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))) + (s.novaSlow ? T(" · 느려짐") : "")] : []),
@@ -6282,6 +6353,7 @@
   pad.addEventListener("contextmenu", (e) => e.preventDefault());  // 길게 눌러도 메뉴가 뜨지 않게
 
   document.getElementById("tp-potion").addEventListener("click", usePotion);
+  document.getElementById("tp-jump").addEventListener("click", aimJump);
   document.getElementById("tp-inv").addEventListener("click", openInventory);
   document.getElementById("tp-dex").addEventListener("click", openDex);
   document.getElementById("tp-portal").addEventListener("click", portal);
@@ -6353,7 +6425,7 @@
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
-    const floorKey = `rl_notice_1023d:${owner}`;  // 저항 감소·몬스터 방어력, 장검 ×2·여의주 검·업경대·치유 삭제, 아이템 발견·룬워드 남는 홈·나무, 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
+    const floorKey = `rl_notice_1025a:${owner}`;  // 픽셀 그래픽·점프(Space)·대기(.)·아이템 발견 최대치 없음, 저항 감소·몬스터 방어력, 장검 ×2·여의주 검·업경대·치유 삭제, 아이템 발견·룬워드 남는 홈·나무, 장신구 수치·강화, 세 힘 제거, 유니크 장신구, 장신구, 폭풍전야 2칸, 유니크, 헬 네임드 보스, 헬 던전, 룬·룬워드·나이트메어 50층 문, 방어구 세트 2·3·5, 대장간·+12·둘러싸임 방어, 자물쇠·속성 피해 한 줄, 홈·보석, 장검(방패 전용)·견고의 장검, 속성 세트(화염·서리·뇌전), 저항 줄 조정·전설의 힘, 나이트메어 아이템의 힘 ×3·악몽 강화석, 시간 상점·골드 던전
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
@@ -6361,9 +6433,10 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: T("업데이트: ") }),
+        T("🎨 픽셀 그래픽·움직임·스킬 이펙트가 생겼어요 (글자로 보기·전체 지도(M) 버튼). 🦘 Space + 방향으로 몬스터를 넘는 2칸 점프 (5턴마다), 제자리 대기는 이제 마침표(.) 키예요. 🔍 아이템 발견에 최대치가 없어졌어요. ") +
         T("🛡 내 속성 저항이 나이트메어 −40 · 헬 −70으로 바뀌었어요: 장비 저항 합에서 먼저 빼고 그 뒤 최대 75% — 나이트메어는 115%, 헬은 145%를 모아야 75%예요 (추천 탭의 저항 줄도 늘었어요). 나이트메어·헬 몬스터 방어력이 공격력만큼 올라가고, 그만큼 HP·공격력은 조금 내려갔어요. ") +
         T("⚔ 장검 기본 공격 피해 ×2 (보조 단검 두 번째 공격 대신) — 헬 50층 유니크 없는 최고 조합 1~3위가 장검이에요. 여의주 검: 주변에 다른 몬스터가 없으면 번개가 같은 몬스터를 다시 침. 업경대: 막아도 반사. 룬워드 치유는 없어졌어요 (예전 치유 투구는 룬 효과만 남아요). ") +
-        T("🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대 100%: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ") +
+        T("🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대치 없이 모은 만큼: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ") +
         T("💍 장신구 주 능력치가 %에서 공격력·방어력·최대 HP 수치로 바뀌었어요: 다른 장비처럼 강화하면 오르고(+10이면 2배) 악몽의 힘 ×3·지옥의 힘 ×5도 붙어요 (예전 장신구는 그대로). 운영자 입구는 마지막으로 포탈을 탔거나 쓰러진 층을 새로 만들어 들어가요. ") +
         T("⚖ 전설의 힘·세트의 힘·유니크의 힘이 없어지고 그 몫을 장신구 3칸(공격력·방어력·최대 HP와 속성 저항)이 맡아요. 📋 추천 탭이 일반·나이트메어·헬로 나뉘었어요 (헬은 추천 유니크까지). ") +
         T("💍✦ 유니크 장신구 5개: 헬 네임드 보스가 10% 확률로 따로 떨어뜨려요 (쇠이빨 목걸이·여우불 반지·여의 반지·명부의 반지·업경 목걸이). 저항 최대치·흡혈 최대치를 올려 주고, 같은 반지 두 개면 효과도 두 배. ") +
@@ -6564,8 +6637,10 @@
       case "arrowdown": case "s":  tryMove(0, 1); break;
       case "arrowleft": case "a":  tryMove(-1, 0); break;
       case "arrowright": case "d": tryMove(1, 0); break;
-      case " ":                    wait(); break;
+      case ".":                    wait(); break;           // 제자리 대기 (10/25부터 마침표, Space는 점프)
       case "q":                    usePotion(); break;
+      case " ": case "j":          aimJump(); break;        // 점프: Space(또는 J) + 방향
+      case "escape":               if (jumpAim) aimJump(); else handled = false; break;   // 점프 고르기 취소
       case "p": case "r": case "l": portal(); break;  // R(예전 재시작)·L(예전 로비로)도 포탈
       default: handled = false;
     }

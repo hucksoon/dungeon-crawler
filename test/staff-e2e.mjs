@@ -159,7 +159,7 @@ try {
     localStorage.setItem("rl_level", JSON.stringify(L)); sessionStorage.setItem("rl_scene", "dungeon");
   });
   await D.page.reload(); await sleep(2000);
-  await press(D.page, " "); await sleep(400);
+  await press(D.page, "."); await sleep(400);
   const deadSave = await D.page.evaluate(() => JSON.parse(localStorage.getItem("rl_save")));
   check("death: last-death floor saved, operator button on the death screen", deadSave?.ld?.d === 5 && deadSave?.ld?.z === "normal" && await D.page.locator("#death-modal button.staff-revive").isVisible(), JSON.stringify(deadSave?.ld));
   await D.page.locator("#death-modal button.staff-revive").click(); await sleep(400);

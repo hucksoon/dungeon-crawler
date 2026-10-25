@@ -198,7 +198,7 @@
     const items = [...I.RUNEWORDS.filter(w => w.stats.mf).map(w => [el("span", { className: "rw" }, w.label), T(" 룬워드 ({0}) +{1}%", w.bases.map(b => BASE[b] || b).join("·"), w.stats.mf)]),
       ...Object.values(I.UNIQUE.items).filter(U => U.stats?.mf).map(U => [el("span", { className: "uq" }, U.name), T(" 유니크{0} (헬 {1}층) +{2}%{3}", U.acc ? T(" 장신구") : "", U.boss, U.stats.mf, U.acc && U.slot === "ring" ? T(" (두 개면 두 배)") : "")])];
     const card = (b, i) => {
-      const total = Math.min(I.FIND.max, b.slots.reduce((a, s) => a + mfOf(s), 0));
+      const total = b.slots.reduce((a, s) => a + mfOf(s), 0);   // 최대치 없음
       const kids = [el("div", { className: "build-head" }, el("b", {}, b.name), el("span", { className: "res" }, T("아이템 발견 {0}%", total))),
         el("div", { className: "note" }, b.when),
         el("table", {}, el("tbody", {}, ...b.slots.map(s => el("tr", {}, el("th", {}, I.SLOT_NAMES[s.slot]), el("td", {}, ...cell(s.slot, s), el("div", {}, T("🔍 아이템 발견 +{0}%", mfOf(s)))))),
@@ -210,7 +210,7 @@
     };
     document.getElementById("farm").replaceChildren(
       el("h2", {}, F.title),
-      el("p", { className: "sub" }, T("아이템 발견 %: 처치할 때마다 {0}% × 발견% 확률로 보너스 아이템 하나 (레어 이상), 네임드 유니크·유니크 장신구 확률 × (1 + 발견% / {1}). 최대 {2}%", Math.round(I.FIND.bonus * 100), I.FIND.uniqueDiv, I.FIND.max)),
+      el("p", { className: "sub" }, T("아이템 발견 %: 처치할 때마다 {0}% × 발견% 확률로 보너스 아이템 하나 (레어 이상), 네임드 유니크·유니크 장신구 확률 × (1 + 발견% / {1}). 최대치 없이 모은 만큼 (장비로 최대 {2}%)", Math.round(I.FIND.bonus * 100), I.FIND.uniqueDiv, I.FIND.max)),
       ...F.builds.map(card),
       el("div", { className: "build" }, el("div", { className: "build-head" }, el("b", {}, T("{0} (비교)", F.compare.name))), floorRows(F.floors, F.compare)),
       el("h3", {}, T("얼마나 더 나올까 (헬 30층 몬스터 처치 1번)")),

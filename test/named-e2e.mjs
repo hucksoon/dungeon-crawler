@@ -39,7 +39,7 @@ async function open(dev, seed, api = false) {
     r.fulfill({ status: res.status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }, body: await res.text() }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -54,7 +54,7 @@ const named = (n, extra = {}) => ({ x: 11, y: 10, ...M.makeNamedBoss(n), ...extr
 try {
   // 1. 헬 10층을 새로 만들면 계단 방에 불가사리 (네임드 로그)
   let { ctx, page, errors } = await open("namedtest-a", { rl_save: save(10, "nmA"), "rl_inv:g:DEV": inv(v4) });
-  await press(page, " "); await sleep(150);
+  await press(page, "."); await sleep(150);
   let L = await stored(page, "rl_level");
   check("hell floor 10 spawns named boss 불가사리", L.d === 10 && L.enemies.filter(e => e.named).length === 1 && L.enemies.find(e => e.named).name === "불가사리", JSON.stringify(L.enemies.filter(e => e.kind === "boss").map(e => e.name)));
   await ctx.close();
@@ -66,11 +66,11 @@ try {
   // 2. 불가사리: 맞을 때마다 방어력 −5% (HUD·방어력), 쓰러뜨리면 풀리고 룬 2개
   ({ ctx, page, errors } = await open("namedtest-b", { rl_save: save(10, "nmB"), rl_level: lv(10, "nmB", "hell", [named(10, { hp: 2e9, maxHp: 2e9, atk: 5, el: null })]), "rl_inv:g:DEV": inv(v4) }));
   const def0 = +(await page.locator("#def").innerText());
-  await press(page, " ", 3); await sleep(150);
+  await press(page, ".", 3); await sleep(150);
   let lg = await logs(page);
   const def1 = +(await page.locator("#def").innerText());
   check("불가사리 shred: −5% per hit (log, HUD, def lower)", lg.includes("갑옷을 갉아먹었다! 방어력 −5%") && lg.includes("방어력 −15%") && (await page.locator("#status").innerText()).includes("🦷 방어력 −15%") && def1 === Math.round(def0 * 0.85), JSON.stringify([def0, def1]));
-  await press(page, " ", 5); await sleep(100);
+  await press(page, ".", 5); await sleep(100);
   check("shred caps at −25%", (await page.locator("#status").innerText()).includes("방어력 −25%") && !(await logs(page)).includes("−30%"));
   await page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); return L; });
   await ctx.close();
@@ -84,11 +84,11 @@ try {
   // 3. 구미호: HP 50% 이하가 되면 분신 2마리. 분신은 장비·골드 없음
   const g = M.makeNamedBoss(20);
   ({ ctx, page, errors } = await open("namedtest-c", { rl_save: save(20, "nmC"), rl_level: lv(20, "nmC", "hell", [named(20, { hp: Math.floor(g.maxHp * 0.5), atk: 1 })]), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, " "); await sleep(150);
+  await press(page, "."); await sleep(150);
   L = await stored(page, "rl_level");
   const clones = L.enemies.filter(e => e.clone);
   check("구미호 splits: 2 clones (구미호의 분신, 15% HP)", clones.length === 2 && clones.every(c => c.name === "구미호의 분신" && c.maxHp === Math.round(g.maxHp * 0.15)) && (await logs(page)).includes("분신 2마리"), JSON.stringify(L.enemies.map(e => [e.name, e.hp])));
-  await press(page, " ", 2); await sleep(100);
+  await press(page, ".", 2); await sleep(100);
   check("splits only once", (await stored(page, "rl_level")).enemies.filter(e => e.clone).length === 2);
   await ctx.close();
   const clone = { x: 11, y: 10, id: "gumiho", ch: "f", name: "구미호의 분신", color: M.NAMED_COLOR, kind: "elite", clone: true, el: "ice", res: g.res, hell: 1, hp: 1, maxHp: 100, atk: 1, def: 0, xp: 0 };
@@ -101,9 +101,9 @@ try {
   await ctx.close();
   // 4. 이무기: 휩쓸기 예고 → 3턴마다 꼬리 휩쓸기
   ({ ctx, page, errors } = await open("namedtest-d", { rl_save: save(30, "nmD"), rl_level: lv(30, "nmD", "hell", [named(30, { hp: 2e9, maxHp: 2e9, atk: 5, el: null })], { turn: 1 }), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, " "); await sleep(120);
+  await press(page, "."); await sleep(120);
   check("이무기 telegraph before sweep", (await logs(page)).includes("꼬리를 치켜든다! 다음 턴에 2칸 안을 휩쓴다"), await logs(page));
-  await press(page, " "); await sleep(120);
+  await press(page, "."); await sleep(120);
   lg = await logs(page);
   check("이무기 tail sweep on turn 3", lg.includes("이무기의 꼬리 휩쓸기!"), lg);
   check("no page errors (이무기)", errors.length === 0, errors.join("; "));
@@ -123,7 +123,7 @@ try {
   // 6. 염라대왕: 3턴마다 속성 바뀜, HP 30% 이하 분노
   const y = M.makeNamedBoss(50);
   ({ ctx, page, errors } = await open("namedtest-f", { rl_save: save(50, "nmF"), rl_level: lv(50, "nmF", "hell", [named(50, { x: 14, hp: Math.floor(y.maxHp * 0.25), atk: 1 })], { turn: 2 }), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, " "); await sleep(150);
+  await press(page, "."); await sleep(150);
   L = await stored(page, "rl_level"); lg = await logs(page);
   const yb = L.enemies.find(e => e.named);
   check("염라대왕 turns ice on turn 3 (resist follows)", yb.el === "ice" && yb.res.ice === 60 && yb.res.fire === 50 && lg.includes("이제 얼음 속성"), JSON.stringify([yb.el, yb.res]));

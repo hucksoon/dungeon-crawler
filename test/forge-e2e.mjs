@@ -94,7 +94,8 @@ try {
   const want = clone(L); I.reforgeLine(want, 3);
   check("reforge in game = rules (line 3 rerolled, rf saved, gold paid)", JSON.stringify(got.lines) === JSON.stringify(want.lines) && JSON.stringify(got.rf) === "[3]" && (await goldOf(page)) === g0 - cost, JSON.stringify([got.lines, want.lines, g0, await goldOf(page)]));
   check("after the first reforge only that line has a button, others say 재련 불가", (await page.locator("#inv-detail button.reforge-btn").count()) === 1 && ((await page.locator("#inv-detail").innerText()).match(/재련 불가/g) || []).length === 4);
-  await pick(gemmed);
+  // 재련한 L과 이름이 같을 수 있어서(악몽의 … 레전더리 갑옷) 같은 이름 중 홈 초기화 버튼이 있는 것을 고름
+  for (const b of await page.locator(".bag-item", { hasText: I.itemName(gemmed) }).all()) { await b.click(); await sleep(120); if (await page.locator("#inv-detail button.socket-reset-btn").count()) break; }
   const rc = I.socketResetCost(gemmed);
   await page.locator("#inv-detail button.socket-reset-btn").click(); await sleep(150);
   inv = await readInv(page);
@@ -117,7 +118,7 @@ try {
   const ATK = 400;
   const foes = [[9, 10], [11, 10], [10, 9], [10, 11]].map(([x, y], i) => foe(x, y, { id: "rat", name: "쥐", hp: 1e7, maxHp: 1e7, atk: ATK, def: 0, nm: 0, kind: "normal" }));
   const r2 = await open("forgetest-b", { rl_save: sv(5, "fgB", 0, { hp: 100000, mh: 100000 }), rl_level: lv(5, "fgB", "normal", foes), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(), log: [], stones: 0 }) });
-  await press(r2.page, " "); await sleep(200);
+  await press(r2.page, "."); await sleep(200);
   const st = await r2.page.locator("#status").innerText();
   const hits = [...(await logs(r2.page)).matchAll(/쥐에게 (\d+) 피해를 입음/g)].map(m => +m[1]);
   check("4 adjacent → HUD 🛡 둘러싸임 −16%", st.includes("둘러싸임 −16%"), st);

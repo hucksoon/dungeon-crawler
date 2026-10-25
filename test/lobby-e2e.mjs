@@ -109,7 +109,7 @@ try {
   const before = row("게스트 #aaaaaa");
   await A.page.keyboard.press(before.y > 16 ? "ArrowUp" : "ArrowDown");
   check("A's move reaches the server quickly", await waitFor(() => row("게스트 #aaaaaa").y !== before.y, 2000));
-  check("potion/space do nothing in lobby (no turn)", await (async () => { await A.page.keyboard.press("q"); await A.page.keyboard.press(" "); return (await A.page.locator("#log").innerText()).includes("로비에 들어왔다") && !(await A.page.locator("#log").innerText()).includes("포션"); })());
+  check("potion/space do nothing in lobby (no turn)", await (async () => { await A.page.keyboard.press("q"); await A.page.keyboard.press("."); return (await A.page.locator("#log").innerText()).includes("로비에 들어왔다") && !(await A.page.locator("#log").innerText()).includes("포션"); })());
 
   // A → 던전 입구
   await walkToDoor(A.page, "게스트 #aaaaaa");

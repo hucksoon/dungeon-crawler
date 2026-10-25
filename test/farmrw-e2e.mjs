@@ -48,7 +48,7 @@ async function open(dev, seed) {
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -61,7 +61,7 @@ try {
   // 1. 선견지명 회전 베기: 주변 3마리 모두 맞음, 흡혈로 HP 회복, HUD 표시
   let { ctx, page, errors } = await open("farmrw-a", { rl_save: save(5, "frA"), rl_level: lv(5, "frA", "hell", [mob(11, 10), mob(9, 9), mob(10, 11)]), "rl_inv:g:DEV": inv(sword, shield) });
   const hp0 = (await stored(page, "rl_save")).run.hp;
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   let L = await stored(page, "rl_level"), lg = await logs(page);
   check("회전 베기: 3 adjacent monsters all hit, log 🌀", lg.includes("🌀 회전 베기! 3마리") && L.enemies.every(e => e.hp < 1e7) && (lg.match(/회전 베기: /g) || []).length === 3, lg.slice(-500));
   check("회전 베기 lifesteal heals", (await page.evaluate(() => +document.getElementById("hp").innerText.split("/")[0])) > hp0, `${hp0}`);
@@ -74,7 +74,7 @@ try {
   // 2. 도원결의 반격: 막으면 그 몬스터에게 반격 (Math.random을 0.01로 고정 → 늘 막음)
   ({ ctx, page, errors } = await open("farmrw-b", { rl_save: save(5, "frB"), rl_level: lv(5, "frB", "hell", [mob(11, 10, { atk: 500 })]), "rl_inv:g:DEV": inv(gen(x => x.type === "longsword" && x.rarity === "legendary"), shield) }));
   await page.evaluate(() => { Math.random = () => 0.01; });
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   lg = await logs(page);
   check("반격: parry → 🛡 반격 hit on the attacker", lg.includes("방패로 막아냈다") && lg.includes("🛡 반격: "), lg.slice(-400));
   check("no page errors (counter)", errors.length === 0, errors.join("; "));
@@ -95,7 +95,7 @@ try {
   check("guide tiers: 일반 · 나이트메어 · 헬 · 🔍 파밍", (await page.locator(".guide-tier").allInnerTexts()).join() === "일반,나이트메어,헬,🔍 파밍");
   await page.locator(".guide-tier", { hasText: "파밍" }).click(); await sleep(150);
   const fg = await page.locator("#inv-guide").innerText();
-  check("파밍 추천: 아이템 발견 50 / 100%, two builds", fg.includes("🔍 파밍 추천 (아이템 발견 50 / 100%)") && fg.includes("초반 파밍") && fg.includes("후반 파밍"), fg.slice(0, 400));
+  check("파밍 추천: 아이템 발견 50 / 150% (most gear can give), two builds", fg.includes("🔍 파밍 추천 (아이템 발견 50 / 150%)") && fg.includes("초반 파밍") && fg.includes("후반 파밍"), fg.slice(0, 400));
   check("파밍 추천: 기억·몰래 ✓ 착용 중, 선견지명 가방에 있음, 도원결의 rune recipe, 여의 반지 boss", /룬워드 기억 \+25% · ✓ 착용 중/.test(fg) && /룬워드 몰래 \+25% · ✓ 착용 중/.test(fg) && /룬워드 선견지명 \+25% · 가방에 있음/.test(fg)
     && fg.includes(`룬워드 도원결의 +25% · 커먼 방패 홈 4개 이상에 ${RW("도원결의").runes.map(k => I.RUNES[k].name).join("·")} 룬`) && fg.includes("✦ 여의 반지 +15% · 헬 30층 이무기") && fg.includes("🏆 파밍 조합 자세히"), fg);
   check("파밍 추천: 2nd 여의 반지 row also listed (two ring rows)", (fg.match(/여의 반지 \+15%/g) || []).length === 2);

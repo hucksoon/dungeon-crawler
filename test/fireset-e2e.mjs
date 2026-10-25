@@ -80,7 +80,7 @@ try {
   // 5세트: 3마리가 모여 있으면 한 번에, 화상까지
   let { ctx, page, errors } = await open("firetest-a", { rl_save: saveN("fireA"), rl_level: lv(5, "fireA", "nm", [target(12, 10, 1), target(13, 10, 2), target(12, 11, 3), target(16, 10, 4)]), "rl_inv:g:DEV": invE(5) });
   check("HUD: 🔥 파이어볼 준비됨", (await page.locator("#status").innerText()).includes("파이어볼 준비됨"));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   let h = await hp(page);
   const lg = await logs(page);
   check("cast: nearest (2 tiles) center, 3×3 hits 3, far one (6 tiles) not hit", h[0] < 1e6 && h[1] < 1e6 && h[2] < 1e6 && h[3] === 1e6 && lg.includes("🔥 파이어볼! 3마리에게"), JSON.stringify(h));
@@ -88,9 +88,9 @@ try {
   check("5세트: all hit targets burn", (await burns(page)).slice(0, 3).every(Boolean) && !(await burns(page))[3]);
   await page.screenshot({ path: path.join(OUT, "fireball.png") });
   const d1 = 1e6 - h[1];
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   check("next turn: cooldown (HUD 1턴), no cast", (await hp(page))[3] === 1e6 && (await page.locator("#status").innerText()).includes("파이어볼 1턴") && ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 1);
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   check("every 2 turns: cast again", ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 2);
   await press(page, "i"); await sleep(150);
   check("inventory: 화염의 세트 (5/5), fireball row", (await page.locator("#inv-summary").innerText()).includes("화염의 세트 (5/5)") && (await page.locator("#inv-summary").innerText()).includes("파이어볼: 2턴마다 3×3"));
@@ -99,7 +99,7 @@ try {
 
   // 2세트: 화상 없음, 피해는 4세트보다 작음. 3칸 넘으면 안 나감
   ({ ctx, page, errors } = await open("firetest-b", { rl_save: saveN("fireB"), rl_level: lv(5, "fireB", "nm", [target(14, 10, 1)]), "rl_inv:g:DEV": invE(2) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   check("out of range (4 tiles): no cast, stays ready", (await hp(page))[0] === 1e6 && (await page.locator("#status").innerText()).includes("준비됨"));
   await press(page, "ArrowRight"); await sleep(200);   // 3칸이 됨 → 바로 나감
   const h2 = (await hp(page))[0];
@@ -124,7 +124,7 @@ try {
   const invS = (set, n) => JSON.stringify({ bag: [], equip: eqOfSet(set, n), log: [], stones: 0, nmStones: 0 });
   ({ ctx, page, errors } = await open("firetest-d", { rl_save: saveN("fireD"), rl_level: lv(5, "fireD", "nm", [target(11, 10, 1), target(10, 11, 2), target(12, 10, 3)]), "rl_inv:g:DEV": invS(frost, 5) }));
   check("HUD: ❄ 노바 준비됨", (await page.locator("#status").innerText()).includes("노바 준비됨"));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   let L = await level(page);
   check("nova: hits the 2 adjacent only (not the one 2 tiles away)", L.enemies[0].hp < 1e6 && L.enemies[1].hp < 1e6 && L.enemies[2].hp === 1e6 && (await logs(page)).includes("❄ 프로스트 노바! 2마리에게"), JSON.stringify(L.enemies.map(e => e.hp)));
   check("nova 5세트: hit enemies slowed", L.enemies[0].slow > 0 && L.enemies[1].slow > 0 && !(L.enemies[2].slow > 0));
@@ -132,24 +132,24 @@ try {
   check("no page errors (frost)", errors.length === 0, errors.join("; "));
   await ctx.close();
   ({ ctx, page, errors } = await open("firetest-e", { rl_save: saveN("fireE"), rl_level: lv(5, "fireE", "nm", [target(12, 10, 1)]), "rl_inv:g:DEV": invS(frost, 2) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   check("nova: nobody adjacent → no cast, stays ready", (await hp(page))[0] === 1e6 && (await page.locator("#status").innerText()).includes("노바 준비됨"));
   await ctx.close();
 
   // ---- 뇌전의 세트: 체인 라이트닝 ----
   ({ ctx, page, errors } = await open("firetest-f", { rl_save: saveN("fireF"), rl_level: lv(5, "fireF", "nm", [target(12, 10, 1), target(13, 10, 2), target(14, 10, 3)]), "rl_inv:g:DEV": invS(storm, 2) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   let hs = await hp(page);
   check("chain 2세트: 2 strikes on 2 different enemies (nearest first)", hs[0] < 1e6 && hs[1] < 1e6 && hs[2] === 1e6 && (await logs(page)).includes("⚡ 체인 라이트닝! 2번 튕겨"), JSON.stringify(hs));
   check("chain 2세트: no shock", !(await level(page)).enemies.some(e => e.shock));
   await ctx.close();
   ({ ctx, page, errors } = await open("firetest-g", { rl_save: saveN("fireG"), rl_level: lv(5, "fireG", "nm", [target(12, 10, 1)]), "rl_inv:g:DEV": invS(storm, 2) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   const one2 = 1e6 - (await hp(page))[0];
   check("chain 2세트, one enemy: 1 strike only", (await logs(page)).includes("⚡ 체인 라이트닝! 1번 튕겨"));
   await ctx.close();
   ({ ctx, page, errors } = await open("firetest-h", { rl_save: saveN("fireH"), rl_level: lv(5, "fireH", "nm", [target(12, 10, 1)]), "rl_inv:g:DEV": invS(storm, 5) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   L = await level(page);
   const turnNow = L.turn;
   check("chain 5세트, one enemy: hit 4 times + shock", (await logs(page)).includes("⚡ 체인 라이트닝! 4번 튕겨") && L.enemies[0].shock > turnNow, JSON.stringify([L.enemies[0].hp, L.enemies[0].shock, turnNow]));

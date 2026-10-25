@@ -33,7 +33,7 @@ async function open(dev, { country = null, locale = "en-US", store = {}, query =
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([dev, store]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1);
     localStorage.setItem("rl_device_id", dev); for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
-    for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1"); }, [dev, store]);
+    for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1"); }, [dev, store]);
   await page.goto(ORIGIN + query); await sleep(1500);
   const st = () => page.evaluate(() => ({ lang: RLI18N.lang, html: document.documentElement.lang, geo: localStorage.getItem("rl_geo"), chosen: localStorage.getItem("rl_game_lang"), shop: localStorage.getItem("rl_lang"), sel: document.getElementById("lang-select").hidden ? null : document.getElementById("lang-select").value, opts: [...document.querySelectorAll("#lang-select option")].map(o => o.textContent), title: document.getElementById("inv-btn")?.textContent }));
   return { ctx, page, errors, st };

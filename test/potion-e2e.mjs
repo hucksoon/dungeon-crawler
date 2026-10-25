@@ -65,11 +65,11 @@ try {
   const t0 = (await level(page)).turn;
   await press(page, "q"); await sleep(60);
   check("drinking during cooldown: message, no turn used", (await logs(page)).includes("포션은 9턴 뒤에 다시 마실 수 있다.") && (await level(page)).turn === t0);
-  await press(page, "Space", 4); await sleep(60);
+  await press(page, ".", 4); await sleep(60);
   check("cooldown counts down with turns", (await page.locator("#tp-potion").innerText()) === "포션 (5턴)");
   await page.reload(); await sleep(500);
   check("cooldown survives a reload", (await page.locator("#tp-potion").innerText()) === "포션 (5턴)" && JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save"))).run.pc === 5);
-  await press(page, "Space", 5); await sleep(60);
+  await press(page, ".", 5); await sleep(60);
   check("ready again after 10 turns, no count limit", (await page.locator("#tp-potion").innerText()) === "포션 (준비됨)");
   await press(page, "q"); await sleep(60);
   check("drink again", (await page.locator("#tp-potion").innerText()) === "포션 (9턴)");

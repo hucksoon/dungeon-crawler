@@ -27,7 +27,7 @@ const equipOf = (its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, nul
 const inv = (equip, bag = []) => JSON.stringify({ bag, equip: equipOf(equip), log: [], stones: 12 });
 const save = (d, rid, run = {}, extra = {}) => JSON.stringify({ v: 1, season: 4, best: Math.max(d, 40), clr: 1, nb: 50, nclr: 1, hb: 20, ...extra, run: { d, hp: 900, mh: 1200, a: 60, g: 18500, l: 42, x: 0, xn: 1e9, rid, k: 120, pp: 0, ...run } });
 const mob = (id, x, y, extra = {}) => { const m = M.MONSTERS.find(q => q.id === id) || M.MONSTERS[0]; return { id: m.id, name: m.name, ch: m.ch, color: m.color, hp: 50, maxHp: 50, atk: 3, def: 1, xp: 3, x, y, ...extra }; };
-const NOTICES = ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"];
+const NOTICES = ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"];
 
 // ---- 가짜 서버 ----
 function rankingRows() {
@@ -77,7 +77,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
 // 게임이 실제로 만든 층을 쓰고, 지도를 모두 밝힌 뒤(탐험한 것처럼) 다시 불러옴. add: 플레이어 옆에 몬스터 넣기
 async function explored(opts, { add = null, reveal = 1 } = {}) {
   const o = await open(opts);
-  await o.page.keyboard.press(" "); await sleep(300);   // 한 턴 쉬면 층이 저장됨
+  await o.page.keyboard.press("."); await sleep(300);   // 한 턴 쉬면 층이 저장됨
   await o.page.evaluate(([add, reveal]) => {
     const L = JSON.parse(localStorage.getItem("rl_level"));
     // 다 둘러본 것처럼: 바닥과 바닥 옆 벽만 (돌 속까지 벽으로 다 보이지 않게)
@@ -112,7 +112,7 @@ const SCENES = [
   ["ranking", "랭킹 페이지", async () => open({ file: "ranking.html", api: true })],
   ["lobby", "여러 사람이 모이는 로비", async () => open({ scene: "lobby", seed: { rl_save: save(40, "blog-lobby"), "rl_inv:g:DEV": inv(g40) } })],
   ["nightmare", "나이트메어 던전", async () => explored({ seed: { rl_save: save(18, "blog-nm", { z: "nm", hp: 4200, mh: 5000 }), "rl_inv:g:DEV": inv(g90) } })],
-  ["hell-named", "헬 던전 네임드 보스와의 전투", async () => { const o = await explored({ seed: { rl_save: save(10, "blog-hell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [" ", " ", " ", " "], 150); return o; }],
+  ["hell-named", "헬 던전 네임드 보스와의 전투", async () => { const o = await explored({ seed: { rl_save: save(10, "blog-hell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", ".", ".", "."], 150); return o; }],
   ["fireset", "화염의 세트 5개를 모두 입은 능력치 화면", async () => {
     const fire = [4, 751, 1373, 1818, 2642].map(k => I.generate(`bfire|n20|k${k}`, "golden", 95));
     const o = await open({ seed: { rl_save: save(20, "blog-fire", { z: "nm", hp: 5000, mh: 6000 }), "rl_inv:g:DEV": inv([...fire, ...g90]) } });
@@ -131,7 +131,7 @@ const SCENES = [
   // pixel-dungeon·pixel-hell은 전체 지도(rl_view=full), pixel-zoom은 기본 시점(가까이 보기)
   ["pixel-dungeon", "픽셀 그림으로 바뀐 던전", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(7, "blog-px7", { hp: 180, mh: 230, a: 26, g: 410, l: 10 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 7) }, { dx: -1, dy: 1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 7) }] }),
     shot: "#game", more: [["pixel-text", "같은 층을 예전 글자 화면으로 (글자로 보기)", (page) => page.click("#gfx-btn")]] })],
-  ["pixel-hell", "헬 던전도 픽셀 그림으로: 네임드 보스 불가사리", async () => { const o = await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(10, "blog-pxhell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [" ", " "], 150); return { ...o, shot: "#game" }; }],
+  ["pixel-hell", "헬 던전도 픽셀 그림으로: 네임드 보스 불가사리", async () => { const o = await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(10, "blog-pxhell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", "."], 150); return { ...o, shot: "#game" }; }],
   ["pixel-zoom", "가까이 보기: 플레이어 주변 방 하나 정도만 크게", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(9, "blog-pxzoom", { hp: 200, mh: 260, a: 28, g: 520, l: 11 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 9) }, { dx: -1, dy: -1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "wolf"), "normal", 9) }] }), shot: "#game" })],
   // 플레이어 그림: 장비 없음(속옷만) / 장비를 낀 모습, 공격하는 순간 (몬스터가 앞으로 찌르고 붉게 번쩍)
   ["doll-naked", "장비가 하나도 없으면 속옷만", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-naked", { hp: 60, mh: 60, a: 5, g: 20, l: 2 }), "rl_inv:g:DEV": inv([]) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "rat"), "normal", 3) }] }), shot: "#game" })],
@@ -151,6 +151,16 @@ const SCENES = [
       const [a, b] = open(L.px - 1, L.py) && open(L.px - 2, L.py) ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
       return [a, a, b, b, b, b, a, a].map((k, i) => [k, 120 + i * 300]); });
     return { ...o, frames: await record(o.page, keys, 2700, { cols: 5, rows: 3, every: 50 }), delay: 5 }; }],
+  // 점프: 앞을 막은 몬스터를 넘어 2칸 (J + 방향). 갈 수 있는 쪽을 찾아 몬스터를 그 앞에 둠
+  ["anim-jump", "점프: 앞을 막은 몬스터를 훌쩍 넘어 2칸", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(8, "blog-jump", { hp: 1e6, mh: 1e6, a: 30 }), "rl_inv:g:DEV": inv(g40) } });
+    const dir = await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), open = (x, y) => L.map[y * 32 + x] !== "0" && !L.enemies.some(e => e.x === x && e.y === y);
+      const d = [[1, 0, "ArrowRight"], [-1, 0, "ArrowLeft"], [0, 1, "ArrowDown"], [0, -1, "ArrowUp"]].find(([dx, dy]) => open(L.px + dx, L.py + dy) && open(L.px + dx * 2, L.py + dy * 2) && open(L.px + dx * 3, L.py + dy * 3));
+      L.enemies = L.enemies.filter(e => Math.abs(e.x - L.px) + Math.abs(e.y - L.py) > 4); localStorage.setItem("rl_level", JSON.stringify(L)); return d; });
+    await o.page.evaluate(([dx, dy, id, m]) => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies.push({ ...m, x: L.px + dx, y: L.py + dy }); localStorage.setItem("rl_level", JSON.stringify(L)); },
+      [dir[0], dir[1], 0, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "troll"), "normal", 8), hp: 1e9, maxHp: 1e9, atk: 1 }]);
+    await o.page.reload(); await sleep(900);
+    return { ...o, frames: await record(o.page, [["j", 300], [dir[2], 450]], 1500, { cols: 6, rows: 4, every: 40 }) }; }],
   // 세트 스킬 이펙트 GIF: 세트 2개 + 흡혈 지팡이, 주변에 단단한 몬스터. 제자리 대기(Space)만 → 2턴마다 스킬
   ...[["skill-fire", "파이어볼: 날아가서 3×3으로 터짐", [513, 806]], ["skill-frost", "프로스트 노바: 얼음 고리가 퍼짐", [96, 775]], ["skill-storm", "체인 라이트닝: 번개가 차례로 튕김", [56, 464]]].map(([name, caption, ks]) => [name, caption, async () => {
     const gear = [...ks.map(k => I.generate(`fx|n20|k${k}`, "golden", 95)), I.generate("ls|k10", "golden", 40)];
@@ -158,7 +168,7 @@ const SCENES = [
     const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, `blog-${name}`, { hp: 5000, mh: 1e6, a: 400 }), "rl_inv:g:DEV": inv(gear) } },
       { add: [foe(1, 0, "orc"), foe(-1, 1, "goblin"), foe(2, -1, "skeleton"), foe(0, -1, "kobold"), foe(-2, 0, "wolf")] });
     await sleep(800);
-    return { ...o, frames: await record(o.page, [" ", " ", " ", " ", " "].map((k, i) => [k, 100 + i * 480]), 2500) }; }]),
+    return { ...o, frames: await record(o.page, [".", ".", ".", ".", "."].map((k, i) => [k, 100 + i * 480]), 2500) }; }]),
   // 흡혈: 공격하면 맞은 숫자(흰색)와 함께 플레이어 위에 찬 HP가 초록 +N (화면 글자라 #stage를 찍음)
   ["heal-green", "흡혈로 찬 HP는 초록 숫자로", async () => {
     const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, "blog-heal", { hp: 5000, mh: 1e6, a: 2000 }), "rl_inv:g:DEV": inv([I.generate("ls|k10", "golden", 40)]) } },

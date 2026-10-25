@@ -62,7 +62,7 @@ async function open(dev, seed, api = false) {
     r.fulfill({ status: res.status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }, body: await res.text() }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -97,7 +97,7 @@ try {
   // 2. 유니크 장착: 상세·능력치 화면, 특수 효과
   const scale = findU("ironscale", 10), boots = findU("dragonboots", 30), scythe = findU("scythe", 40), mirror = findU("mirror", 50);
   ({ ctx, page, errors } = await open("uqtest-b", { rl_save: save(5, "uqB"), rl_level: lv(5, "uqB", "hell", [mob()]), "rl_inv:g:DEV": inv(scale, boots, mirror) }));
-  await press(page, " ", 12); await sleep(150);   // 업경대 패링 40%라 넉넉히 (12턴 모두 막을 확률 0.002%)
+  await press(page, ".", 12); await sleep(150);   // 업경대 패링 40%라 넉넉히 (12턴 모두 막을 확률 0.002%)
   let st = await page.locator("#status").innerText(), lg = await logs(page);
   check("쇠비늘: hit → defense +3% stacks (HUD)", st.includes("🐉 쇠비늘 방어력 +"), st);
   check("용비늘: shield every 2 turns (HUD)", st.includes("🛡 보호막"), st);
@@ -127,7 +127,7 @@ try {
   // 5. 폭풍전야: 2칸 떨어진 몬스터도 속성 저항 −20%
   const storm = (() => { const w = I.RUNEWORDS.find(x => x.name === "폭풍전야"); for (let i = 0; ; i++) { const it = I.generate(`st${i}|j30|k${i}`, "boss", 155); if (it.rarity === "common" && it.type === "longsword" && I.socketCount(it) === 4) return { ...it, gems: w.runes.map(k => ["rune", k]) }; } })();
   ({ ctx, page, errors } = await open("uqtest-e", { rl_save: save(5, "uqE"), rl_level: lv(5, "uqE", "hell", [mob({ x: 12, y: 10, atk: 1 })]), "rl_inv:g:DEV": inv(storm) }));
-  await press(page, " "); await sleep(200);
+  await press(page, "."); await sleep(200);
   L = await stored(page, "rl_level");
   check("폭풍전야: monster 2 tiles away gets resist −20%", I.runewordOf(storm)?.name === "폭풍전야" && L.enemies[0]?.vulnPct === 20, JSON.stringify(L.enemies[0] && [L.enemies[0].x, L.enemies[0].vulnPct, L.turn]));
   await ctx.close();

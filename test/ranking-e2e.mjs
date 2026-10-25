@@ -83,7 +83,7 @@ async function open(browser, { config = API, storage = {}, ctxOpts = { viewport:
 const db = new DatabaseSync(DBF);
 const rows = () => db.prepare("SELECT * FROM players_v4").all();
 const save = (d) => JSON.stringify({ v: 1, season: 4, best: d, run: { d, hp: 40, mh: 40, a: 5, g: 10, p: 1, l: 3, x: 0, xn: 30, rid: "e2e" + d, k: 0, pp: 0 } });
-const notices = (dev) => Object.fromEntries(["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"].map(k => [`${k}:${dev}`, "1"]));
+const notices = (dev) => Object.fromEntries(["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"].map(k => [`${k}:${dev}`, "1"]));
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 try {
@@ -101,7 +101,7 @@ try {
     check("guest row stores no device id", !JSON.stringify(rows()).includes(GUEST));
     // 아무것도 안 바뀌면 다시 보내지 않음 (로비 위치 알림은 따로 계속)
     const n = apiCalls.filter(c => c === "POST score").length;
-    for (let i = 0; i < 5; i++) await t.page.keyboard.press(" ");
+    for (let i = 0; i < 5; i++) await t.page.keyboard.press(".");
     await sleep(3500);
     check("no resubmit when nothing changed", apiCalls.filter(c => c === "POST score").length === n && n === 1, apiCalls.filter(c => c.includes("score")).join(","));
     check("game: no page errors", t.errors.length === 0, t.errors.join("; "));
@@ -194,7 +194,7 @@ try {
   {
     const t = await open(browser, { config: "https://down.test/api.php", storage: { rl_device_id: GUEST, rl_save: save(4) } });
     await t.ctx.route("https://down.test/**", r => r.abort());
-    for (let i = 0; i < 3; i++) await t.page.keyboard.press(" ");
+    for (let i = 0; i < 3; i++) await t.page.keyboard.press(".");
     await sleep(3500);
     check("server down: game has no errors", t.errors.length === 0, t.errors.join("; "));
     await t.page.goto(ORIGIN + "ranking.html");

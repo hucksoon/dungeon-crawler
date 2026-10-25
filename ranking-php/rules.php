@@ -576,7 +576,8 @@ function r_unique_of(array $item): ?array {
 }
 // 네임드 보스 처치 시드에서 유니크가 나오는지 (items.js rollUnique의 첫 굴림)
 // 아이템 발견 (items.js FIND): 서버는 굴림이 최대 발견(max%)일 때의 확률 안에 드는지만 확인 (그때 낀 장비는 모름)
-const R_FIND = ['max' => 100, 'bonus' => 0.1, 'uniqueDiv' => 300];
+// 발견에는 최대치가 없어서(10/25) max = 장비로 모을 수 있는 가장 큰 발견 150% (items.js findCeiling)
+const R_FIND = ['max' => 150, 'bonus' => 0.1, 'uniqueDiv' => 300];
 function r_find_max_unique_mul(): float { return 1 + R_FIND['max'] / R_FIND['uniqueDiv']; }
 function r_find_max_bonus(): float { return R_FIND['bonus'] * R_FIND['max'] / 100; }
 function r_unique_roll(string $seed): float { return r_rng("v4|unique?|{$seed}")(); }

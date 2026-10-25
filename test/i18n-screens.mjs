@@ -24,7 +24,7 @@ const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, nul
 const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], stones: 0 });
 const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const named = (n, extra = {}) => ({ x: 11, y: 10, ...M.makeNamedBoss(n), ...extra });
-const NOTICES = ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"];
+const NOTICES = ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 const report = {}, allErrors = [];
@@ -56,7 +56,7 @@ try {
   await ctx.close();
   // 2. 불가사리 (HP 많음): 방어력 깎기 로그·상태 줄
   ({ ctx, page } = await open("t2", { rl_save: save(10, "a2"), rl_level: lv(10, "a2", "hell", [named(10, { hp: 2e9, maxHp: 2e9, atk: 5, el: null })]), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, " ", 4); await sleep(150);
+  await press(page, ".", 4); await sleep(150);
   await sample("shred", page); add("shred", koLines(await logs(page)).concat(koLines(await page.locator("#status").innerText()), koLines(await page.locator("#stats").innerText())));
   await page.screenshot({ path: path.join(OUT, `i18n5-fight-${LANG}.png`) });
   await ctx.close();
@@ -68,13 +68,13 @@ try {
   // 4. 구미호 분신·꼬리, 저승사자, 염라대왕 심판
   for (const [n, ex] of [[20, { hp: Math.floor(M.makeNamedBoss(20).maxHp * 0.5), atk: 1 }], [30, { hp: 2e9, maxHp: 2e9, atk: 5, el: null }], [40, { hp: 2e9, maxHp: 2e9, atk: 1, el: null }], [50, { hp: 2e9, maxHp: 2e9, atk: 1 }]]) {
     ({ ctx, page } = await open(`t4${n}`, { rl_save: save(n, `b${n}`), rl_level: lv(n, `b${n}`, "hell", [named(n, ex)], { turn: 1 }), "rl_inv:g:DEV": inv(v4) }));
-    await press(page, " ", 8); await sleep(150);
+    await press(page, ".", 8); await sleep(150);
     await sample(`named${n}`, page); add(`named${n}`, koLines(await logs(page)).concat(koLines(await page.locator("#status").innerText())));
     await ctx.close();
   }
   // 5. 죽음: 공격력 큰 몬스터
   ({ ctx, page } = await open("t5", { rl_save: save(10, "a5", {}, { hp: 5, mh: 5 }), rl_level: lv(10, "a5", "hell", [{ ...named(10), atk: 9e9, hp: 2e9, maxHp: 2e9 }]), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, " ", 2); await sleep(200);
+  await press(page, ".", 2); await sleep(200);
   await sample("death", page); add("death", koLines(await logs(page)).concat(koLines(await page.locator("body").innerText())));
   await ctx.close();
   // 6. 로비 + 공지 (공지 안 본 상태) + 사람 목록

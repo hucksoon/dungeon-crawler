@@ -755,11 +755,21 @@
 
   // ---- 아이템 발견 (mf) ----
   // 몬스터를 쓰러뜨릴 때 bonus × 발견%/100 확률로 보너스 아이템(보물 표: 레어 이상, 시드 …|f처치 순번) 하나 더,
-  // 네임드의 유니크·유니크 장신구 확률 × (1 + 발견% / uniqueDiv). 발견은 max%까지만
+  // 네임드의 유니크·유니크 장신구 확률 × (1 + 발견% / uniqueDiv). 발견에는 최대치가 없음 (10/25 dc#80: 모은 만큼 그대로)
+  //   max = 장비로 모을 수 있는 가장 큰 발견 (칸마다 가장 큰 룬워드·유니크 발견의 합, findCeiling): 서버가 보너스 아이템·유니크 굴림을 검증할 때의 상한.
+  //   rules.php R_FIND.max와 같아야 함 (find-e2e가 확인). 무기 장검 25 + 방패 25 + 투구 25 + 갑옷 25 + 목걸이 20 + 반지 15 × 2 = 150
   //   시뮬레이션 (헬 30층): 발견 100%면 레전더리·세트 ×2.3, 판매 골드 ×1.95, 유니크 15% → 20%. 파밍 조합(기억·몰래·쇠이빨·여의 반지)은
   //   전투 조합보다 조금 느려서 같은 시간에 레전더리·세트 1.3~1.6배. 무기·보조에 붙이면 너무 느려져 손해라 방어구·장신구·송곳니에만
-  const FIND = { max: 100, bonus: 0.1, uniqueDiv: 300 };
-  const findPct = (mf) => Math.max(0, Math.min(FIND.max, mf || 0));
+  const FIND = { max: 150, bonus: 0.1, uniqueDiv: 300 };
+  const findPct = (mf) => Math.max(0, mf || 0);
+  // 장비로 모을 수 있는 가장 큰 발견 (룬워드는 받침 종류의 칸, 반지는 두 칸)
+  function findCeiling() {
+    const best = {};
+    const put = (slot, v) => { best[slot] = Math.max(best[slot] || 0, v || 0); };
+    for (const w of RUNEWORDS) for (const b of w.bases) put(b === "shield" ? "offhand" : WEAPONS[b] ? "weapon" : b, w.stats.mf);
+    for (const U of Object.values(UNIQUE.items)) put(U.slot, U.stats?.mf);
+    return Object.entries(best).reduce((a, [slot, v]) => a + v * (slot === "ring" ? 2 : 1), 0);
+  }
   const findBonusChance = (mf) => FIND.bonus * findPct(mf) / 100;
   const findUniqueMul = (mf) => 1 + findPct(mf) / FIND.uniqueDiv;
   // 보너스 아이템 (없으면 null). 드롭 굴림과 같은 문(rngFrom drop?)이라 서버가 시드로 검증
@@ -1375,7 +1385,7 @@
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, fromRef, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, fromRef, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findCeiling, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };

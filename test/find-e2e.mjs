@@ -21,8 +21,10 @@ await sleep(700);
 
 // ---- 규칙: 아이템 발견 ----
 const UQ = I.UNIQUE.items, RW = (n) => I.RUNEWORDS.find(w => w.name === n);
-check("STATS.mf 아이템 발견 (%), FIND max 100 / bonus 0.1 / uniqueDiv 300", I.STATS.mf?.name === "아이템 발견" && I.STATS.mf.pct && I.FIND.max === 100 && I.FIND.bonus === 0.1 && I.FIND.uniqueDiv === 300);
-check("findPct clamps 0..100, bonus chance 10% at 100, unique ×1.33", I.findPct(150) === 100 && I.findPct(-5) === 0 && I.findBonusChance(100) === 0.1 && I.findBonusChance(0) === 0 && Math.abs(I.findUniqueMul(100) - 4 / 3) < 1e-9);
+check("STATS.mf 아이템 발견 (%), FIND max 150 (= most mf gear can give) / bonus 0.1 / uniqueDiv 300", I.STATS.mf?.name === "아이템 발견" && I.STATS.mf.pct && I.FIND.max === 150 && I.findCeiling() === I.FIND.max && I.FIND.bonus === 0.1 && I.FIND.uniqueDiv === 300);
+check("no cap (dc#80): findPct keeps everything above 0, bonus 10% at 100 · 15% at 150, unique ×1.33 · ×1.5", I.findPct(150) === 150 && I.findPct(200) === 200 && I.findPct(-5) === 0 && I.findBonusChance(100) === 0.1 && Math.abs(I.findBonusChance(150) - 0.15) < 1e-12 && I.findBonusChance(0) === 0 && Math.abs(I.findUniqueMul(100) - 4 / 3) < 1e-9 && I.findUniqueMul(150) === 1.5);
+{ const m = fs.readFileSync(path.join(REPO, "ranking-php/rules.php"), "utf8").match(/const R_FIND = \['max' => (\d+), 'bonus' => ([\d.]+), 'uniqueDiv' => (\d+)\]/);
+  check("server R_FIND matches items.js FIND (max 150: server accepts rolls up to the most mf gear can give)", m && +m[1] === I.FIND.max && +m[2] === I.FIND.bonus && +m[3] === I.FIND.uniqueDiv, m?.[0]); }
 check("mf on runewords 기억 25 · 몰래 25 (치유 removed dc#53)", !RW("치유") && RW("기억").stats.mf === 25 && RW("몰래").stats.mf === 25);
 check("mf on uniques 송곳니 20 · 쇠이빨 20 · 여의 반지 15", UQ.fang.stats.mf === 20 && UQ.ironfang.stats.mf === 20 && UQ.yeoui.stats.mf === 15 && UQ.fang.text.includes("아이템 발견 +20%"));
 check("나무 buffed: atkPct 30 · critDmg 30 (+ fire dmg/res, lifesteal)", RW("나무").stats.atkPct === 30 && RW("나무").stats.critDmg === 30 && RW("나무").stats.lifesteal === 4);
@@ -40,7 +42,7 @@ const head = rwItem("기억", x => x.rarity === "common" && x.slot === "head" &&
 const chest = rwItem("몰래", x => x.rarity === "common" && x.slot === "chest" && I.socketCount(x) === 4);
 const fang = findU("fang"), ironfang = findU("ironfang"), yeoui1 = findU("yeoui"), yeoui2 = { ...yeoui1, id: yeoui1.id + "b", slot: "ring" };
 const T = I.totals([head, chest, fang, ironfang, yeoui1, yeoui2]).stats;
-check("totals: 기억 25 + 몰래 25 + 송곳니 20 + 쇠이빨 20 + 여의 15×2 = 120 (findPct → 100)", T.mf === 120 && I.findPct(T.mf) === 100, T.mf);
+check("totals: 기억 25 + 몰래 25 + 송곳니 20 + 쇠이빨 20 + 여의 15×2 = 120 (no cap: findPct → 120)", T.mf === 120 && I.findPct(T.mf) === 120, T.mf);
 const farmSum = (b) => b.slots.reduce((a, s) => a + (s.rw ? RW(s.rw).stats.mf : UQ[s.uq].stats.mf), 0);
 check("builds.js farm builds (early runewords 4 · late uniques) = 100% each", B.farm.builds.length === 2 && B.farm.builds.every(b => farmSum(b) === 100), B.farm.builds.map(farmSum).join());
 check("builds.js early hell: 송곳니 1st, 카리스마 2nd (dc#53), 나무 3rd", B.early.builds[0].slots.weapon.uq === "fang" && B.early.builds[1].slots.weapon.rw === "카리스마" && B.early.builds[2].slots.weapon.rw === "나무" && B.early.floors.join() === "10,20,30");
@@ -89,7 +91,7 @@ async function open(dev, seed) {
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([seed, dev]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d"]) localStorage.setItem(`${k}:g:${dev}`, "1");
+    localStorage.setItem("rl_device_id", dev); for (const k of ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"]) localStorage.setItem(`${k}:g:${dev}`, "1");
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v);
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [seed, dev]);
   await page.goto(ORIGIN); await sleep(450);
@@ -110,7 +112,8 @@ try {
   check("log: 🔍 아이템 발견 line", (await logs(page)).includes("🔍 아이템 발견:"));
   await press(page, "i"); await sleep(200);
   const sum = await page.locator("#inv-summary").textContent();
-  check("stats tab: 🔍 아이템 발견 +100% (최대 100%), 10% bonus, unique ×1.33", sum.includes("🔍 아이템 발견 +100% (최대 100%)") && sum.includes("10% 확률로 보너스 아이템") && sum.includes("×1.33"), sum.slice(0, 600));
+  // 낀 것: 기억 25 + 몰래 25 + 송곳니 20 + 쇠이빨 20 + 여의 15 (반지 칸 하나) = 105 → 최대치 없이 그대로 (dc#80, 예전엔 100으로 잘림)
+  check("stats tab: 🔍 아이템 발견 +105% (no cap), 10.5% bonus, unique ×1.35", sum.includes("🔍 아이템 발견 +105%:") && sum.includes("10.5% 확률로 보너스 아이템") && sum.includes("×1.35"), sum.slice(0, 600));
   await page.locator("#inv-equip .slot", { hasText: "몰래" }).first().click().catch(() => {}); await sleep(200);
   const det = await page.locator("#inv-detail").textContent().catch(() => "");
   check("detail: runeword 몰래 on 4-socket chest shows 아이템 발견 +25%, 홈 2/2, 남는 홈 2개 없어짐", det.includes("✦ 룬워드") && det.includes("몰래") && det.includes("아이템 발견 +25%") && det.includes("홈 2/2") && det.includes("남는 홈 2개는 룬워드를 완성하면서 없어졌어요"), det.slice(0, 600));
@@ -142,7 +145,7 @@ try {
   await page.locator(".inv-tab[data-tab=guide]").click(); await sleep(150);
   await page.locator(".guide-tier", { hasText: "헬" }).click(); await sleep(150);
   const g = await page.locator("#inv-guide").textContent().catch(() => "");
-  check("hell guide: 헬 초반 송곳니 + 파밍 아이템 발견 50 / 100%", g.includes("헬 초반 (10~30층)") && g.includes("송곳니") && g.includes("아이템 발견 50 / 100%") && g.includes("헬 초반 · 파밍"), g.slice(-500));
+  check("hell guide: 헬 초반 송곳니 + 파밍 아이템 발견 50 / 150% (most gear can give)", g.includes("헬 초반 (10~30층)") && g.includes("송곳니") && g.includes("아이템 발견 50 / 150%") && g.includes("헬 초반 · 파밍"), g.slice(-500));
   check("no page errors (guide)", errors.length === 0, errors.join("; "));
   await ctx.close();
   // 4. 최고 조합 페이지: 헬 초반·파밍 탭

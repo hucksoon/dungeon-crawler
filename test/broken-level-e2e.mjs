@@ -37,7 +37,7 @@ try {
     check(`${name}: HUD shows floor ${D} and HP (not --)`, (await page.locator("#depth").innerText()) === String(D) && !(await page.locator("#stats").innerText()).includes("--"), await page.locator("#stats").innerText());
     const white = await page.evaluate(([x, y]) => { const c = document.querySelector("canvas"), g = c.getContext("2d"); const k = c.width / 640, d = g.getImageData(x * 20 * k, y * 20 * k, 20 * k, 20 * k).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240) n++; return n; }, [5, 5]);
     check(`${name}: player @ drawn at its saved spot`, white > 10, String(white));
-    await page.keyboard.press(" "); await page.waitForTimeout(200);
+    await page.keyboard.press("."); await page.waitForTimeout(200);
     const L = await page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
     const bosses = L.enemies.filter(e => e.kind === "boss");
     const ok = (p) => Number.isInteger(p.x) && Number.isInteger(p.y) && map[p.y]?.[p.x] !== 0;
