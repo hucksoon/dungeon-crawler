@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 몬스터가 움직이고, 기사가 장비를 입다</title>
-<meta name="description" content="가만히 서 있던 몬스터와 플레이어에 공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<title>[네이버 옮기기] 몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</title>
+<meta name="description" content="몬스터와 플레이어에 걷기·공격·막기·쓰러짐 움직임을 넣고, 장비를 등급 색으로 입혔어요. 파이어볼·프로스트 노바·체인 라이트닝 이펙트와 흡혈 초록 숫자도 생겼어요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-10-25.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 몬스터가 움직이고, 기사가 장비를 입다">
-<meta property="og:description" content="가만히 서 있던 몬스터와 플레이어에 공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<meta property="og:title" content="[네이버 옮기기] 몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다">
+<meta property="og:description" content="몬스터와 플레이어에 걷기·공격·막기·쓰러짐 움직임을 넣고, 장비를 등급 색으로 입혔어요. 파이어볼·프로스트 노바·체인 라이트닝 이펙트와 흡혈 초록 숫자도 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-25.html">
 
 <style>
@@ -58,12 +58,12 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-10-25.html">블로그 글 보기</a></nav>
-<h1 id="title-text">몬스터가 움직이고, 기사가 장비를 입다</h1>
+<h1 id="title-text">몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</h1>
 <p class="meta">2026년 10월 25일 (일) · 태그: 개발일기, 픽셀 그래픽, 애니메이션, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 3장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/anim-fight.gif" download="2026-10-25-1-anim-fight.gif">1. 공격·반격·쓰러짐·걷기 움직임</a> · <a href="../images/doll-naked.png" download="2026-10-25-2-doll-naked.png">2. 장비가 하나도 없으면 속옷만</a> · <a href="../images/doll-gear.png" download="2026-10-25-3-doll-gear.png">3. 낀 장비가 등급 색으로 보여요</a></p>
+<p class="steps">이미지 8장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/anim-fight.gif" download="2026-10-25-1-anim-fight.gif">1. 공격·반격·쓰러짐·걷기 움직임</a> · <a href="../images/anim-walk.gif" download="2026-10-25-2-anim-walk.gif">2. 걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지</a> · <a href="../images/doll-naked.png" download="2026-10-25-3-doll-naked.png">3. 장비가 하나도 없으면 속옷만</a> · <a href="../images/doll-gear.png" download="2026-10-25-4-doll-gear.png">4. 낀 장비가 등급 색으로 보여요</a> · <a href="../images/skill-fire.gif" download="2026-10-25-5-skill-fire.gif">5. 파이어볼: 날아가서 3×3으로 터짐</a> · <a href="../images/skill-frost.gif" download="2026-10-25-6-skill-frost.gif">6. 프로스트 노바: 얼음 고리가 퍼짐</a> · <a href="../images/skill-storm.gif" download="2026-10-25-7-skill-storm.gif">7. 체인 라이트닝: 번개가 차례로 튕김</a> · <a href="../images/heal-green.png" download="2026-10-25-8-heal-green.png">8. 흡혈로 찬 HP는 초록 숫자로</a></p>
 <div id="paper">
 <p>어제 던전에 픽셀 그림을 입히고 나니 아쉬운 점이 바로 보였어요. 몬스터도 플레이어도 <strong>그림처럼 가만히</strong> 있다가 순간이동하듯 칸을 옮겼거든요. 오늘은 Claude Code와 함께 움직임을 넣고, 플레이어가 실제로 낀 장비를 입고 다니게 했어요.</p>
 <p><br></p>
@@ -83,6 +83,18 @@
 <p><br></p>
 <p>움직임이 있는 짧은 순간에만 화면을 자주 다시 그리고, 숨쉬기는 박자가 바뀔 때만 그려서 휴대폰 배터리를 아꼈어요. 기기에서 &quot;동작 줄이기&quot;를 켠 분께는 움직임을 모두 꺼요.</p>
 <p><br></p>
+<p><b><span style="font-size:19px;">걷는 느낌까지</span></b></p>
+<p>처음에는 칸 사이를 미끄러지기만 해서, 걷는다기보다 스케이트를 타는 것 같았어요. 그래서 걸음마다 몸 전체로 걷는 느낌을 더했어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/anim-walk.gif" alt="걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지</span></p>
+<p><br></p>
+<p>• <strong>통통</strong>: 걸음 가운데에서 살짝 뛰어올랐다가 내려앉아요</p>
+<p>• <strong>뒤뚱</strong>: 발끝을 축으로 몸이 왼쪽·오른쪽으로 번갈아 기울어요</p>
+<p>• <strong>먼지</strong>: 떠난 자리 발밑에 작은 흙먼지가 일었다 사라져요</p>
+<p><br></p>
+<p>다리를 따로 움직이는 그림은 쓰고 있는 무료 그림 모음에 없어서, 몸 전체의 움직임으로 걷는 느낌을 냈어요. 몬스터도 똑같이 걸어요.</p>
+<p><br></p>
 <p><b><span style="font-size:24px;">장비를 입는 기사</span></b></p>
 <p>지금까지 플레이어는 늘 같은 파란 기사 그림이었어요. 이제는 <strong>실제로 낀 장비만</strong> 겹쳐 입어요.</p>
 <p><br></p>
@@ -99,6 +111,31 @@
 <p><br></p>
 <p>장비를 바꿀 때만 그림을 새로 만들기 때문에 게임이 느려지지 않아요. 로비에서도 내 캐릭터는 지금 낀 장비를 입고 서 있어요.</p>
 <p><br></p>
+<p><b><span style="font-size:24px;">세트 스킬 이펙트</span></b></p>
+<p>화염·서리·뇌전 세트의 스킬은 그동안 칸이 잠깐 색으로 번쩍이기만 했어요. 이제 스킬마다 제대로 된 이펙트가 나와요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/skill-fire.gif" alt="파이어볼: 날아가서 3×3으로 터짐" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">파이어볼: 날아가서 3×3으로 터짐</span></p>
+<p><br></p>
+<p>• <strong>파이어볼</strong>: 불덩이가 꼬리를 달고 날아가서 3×3으로 터져요. 하얀 가운데에서 주황·빨강으로 퍼지는 불꽃과 흩어지는 불티가 보여요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/skill-frost.gif" alt="프로스트 노바: 얼음 고리가 퍼짐" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">프로스트 노바: 얼음 고리가 퍼짐</span></p>
+<p><br></p>
+<p>• <strong>프로스트 노바</strong>: 플레이어 둘레로 얼음 고리가 퍼지고, 얼음 조각과 눈송이가 흩날려요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/skill-storm.gif" alt="체인 라이트닝: 번개가 차례로 튕김" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">체인 라이트닝: 번개가 차례로 튕김</span></p>
+<p><br></p>
+<p>• <strong>체인 라이트닝</strong>: 지그재그 번개가 몬스터를 하나씩 차례로 이어 가며 깜빡여요. 무기의 번개 피해도 가느다란 번개로 보여요</p>
+<p>• 몬스터가 붉게 번쩍하는 때도 이펙트가 닿는 순간에 맞췄어요</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">흡혈은 초록 숫자로</span></b></p>
+<p>흡혈이 붙은 장비로 때리면 HP가 조금씩 차는데, 지금까지는 눈에 보이지 않았어요. 이제 한 턴에 찬 HP를 모아서 플레이어 위에 <strong>초록 숫자</strong>(+N)로 보여 줘요. HP가 가득 차 있으면 숫자가 나오지 않아요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/heal-green.png" alt="흡혈로 찬 HP는 초록 숫자로" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">흡혈로 찬 HP는 초록 숫자로</span></p>
+<p><br></p>
 <p><b><span style="font-size:24px;">움직임도 테스트로</span></b></p>
 <p>움직이는 화면은 눈으로만 보면 놓치기 쉬워요. 그래서 테스트가 키를 누른 뒤 정해진 시간에 화면 픽셀을 세요.</p>
 <p><br></p>
@@ -106,6 +143,7 @@
 <p>• 걷는 중에는 플레이어가 두 칸 사이에 있다가 도착하는지 봐요</p>
 <p>• 방패로 막으면 피해 없이 하얀 빛이 나는지 확인해요</p>
 <p>• 레전더리 갑옷은 주황, 레어 갑옷은 파랑으로 보이는지 확인해요</p>
+<p>• 스킬 이펙트가 불꽃·얼음·번개 색으로 나타났다 사라지는지, 흡혈하면 초록 숫자가 하나 뜨는지 확인해요</p>
 <p><br></p>
 <p>이 글의 움직이는 그림도 같은 방법으로, 게임 안에서 키를 누르며 화면을 40ms마다 찍어 이어 붙였어요.</p>
 <p><br></p>

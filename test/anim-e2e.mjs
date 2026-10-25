@@ -19,6 +19,11 @@ const save = JSON.stringify({ v: 1, best: D, run: { d: D, hp: 1e6, mh: 1e6, a: 5
 const chestOf = (rarity) => { for (let k = 0; k < 5000; k++) { const it = I.generate(`anim|chest|${k}`, "golden", 40); if (it.slot === "chest" && it.rarity === rarity) return it; } throw new Error(rarity); };
 const inv = (items) => JSON.stringify({ bag: [], equip: Object.fromEntries(I.SLOTS.map(s => [s, items.find(it => it.slot === s) || null])), log: [], stones: 0 });
 
+// 세트 2개 (스킬 켜짐): 화염 머리·장화 / 서리 팔·바지 / 뇌전 바지·갑옷. 흡혈 지팡이
+const setOf = (ks) => ks.map(k => I.generate(`fx|n20|k${k}`, "golden", 95));
+const SETS = { fire: setOf([513, 806]), frost: setOf([96, 775]), storm: setOf([56, 464]) };
+const lsStaff = I.generate("ls|k10", "golden", 40);
+
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 async function open({ enemies = [], gear = [], reduced = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 1000 }, reducedMotion: reduced ? "reduce" : "no-preference" });
@@ -40,12 +45,15 @@ const measure = (page, x, y, key = null, ms = 0) => page.evaluate(([x, y, key, m
   if (key) window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
   setTimeout(() => {
     const c = document.getElementById("game"), k = c.width / 640, d = c.getContext("2d").getImageData(x * 20 * k, y * 20 * k, 20 * k, 20 * k).data;
-    const n = { red: 0, skin: 0, orange: 0, blue: 0, white: 0 };
+    const n = { red: 0, skin: 0, orange: 0, blue: 0, white: 0, fire: 0, ice: 0, bolt: 0 };
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
       let h = 0; if (mx !== mn) h = mx === r ? 60 * (((g - b) / (mx - mn)) % 6) : mx === g ? 60 * ((b - r) / (mx - mn) + 2) : 60 * ((r - g) / (mx - mn) + 4); if (h < 0) h += 360;
       if (r > 170 && g < 110 && b < 110) n.red++;
       if (r > 205 && g > 225 && b > 235) n.white++;
+      if (r > 220 && g > 110 && g < 230 && b < 140 && r - b > 120) n.fire++;      // 불꽃: 주황·노랑
+      if (b > 165 && g > 140 && b - r > 15) n.ice++;                               // 얼음: 반투명 하늘색 (어두운 바닥 위)
+      if (r > 220 && g > 200 && b < 170) n.bolt++;                                 // 번개: 노랑
       if (r > 180 && g > 120 && g < 200 && b > 80 && b < 170 && r > g && g > b) n.skin++;
       if (sat > 0.45 && mx > 90 && h >= 18 && h <= 45) n.orange++;
       if (sat > 0.35 && mx > 90 && h >= 195 && h <= 235) n.blue++;
@@ -53,6 +61,18 @@ const measure = (page, x, y, key = null, ms = 0) => page.evaluate(([x, y, key, m
     done(n);
   }, ms);
 }), [x, y, key, ms]);
+
+// 칸 영역(x0..x1, y0..y1)의 살색 픽셀 무게중심 (캔버스 px). 걸음 중간에 몸이 위로 뜨는지(통통) 봄
+const skinCenter = (page, [x0, y0, x1, y1], key = null, ms = 0) => page.evaluate(([x0, y0, x1, y1, key, ms]) => new Promise(done => {
+  if (key) window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  setTimeout(() => {
+    const c = document.getElementById("game"), k = c.width / 640, T = 20 * k, w = (x1 - x0 + 1) * T, h = (y1 - y0 + 1) * T;
+    const d = c.getContext("2d").getImageData(x0 * T, y0 * T, w, h).data;
+    let n = 0, sx = 0, sy = 0;
+    for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2]; if (r > 180 && g > 120 && g < 200 && b > 80 && b < 170 && r > g && g > b) { n++; sx += (i / 4) % w; sy += Math.floor(i / 4 / w); } }
+    done(n ? { n, x: sx / n, y: sy / n } : null);
+  }, ms);
+}), [x0, y0, x1, y1, key, ms]);
 
 try {
   // ---- 플레이어 그림 ----
@@ -86,6 +106,12 @@ try {
   await o.page.waitForTimeout(500);
   const walkEnd = await measure(o.page, 5, 6);
   check("walk: the player slides between tiles, then stands on the new tile", walkMid.skin < walkEnd.skin * 0.85 && walkEnd.skin >= 60, `${walkMid.skin} → ${walkEnd.skin}`);
+  // 걷는 느낌: 걸음 가운데(75ms)에서 몸이 위로 뜨고, 옆으로 반쯤 와 있음 (왼쪽으로 한 칸). 숨쉬기(약 1.3px)와 타이머 흔들림만큼 여유
+  const box = [2, 4, 8, 8], rest = await skinCenter(o.page, box);
+  const hop = await skinCenter(o.page, box, "ArrowLeft", 75);
+  await o.page.waitForTimeout(500);
+  const land = await skinCenter(o.page, box);
+  check("walk: mid-step the body hops up and is halfway to the next tile, then lands level", rest && hop && land && hop.y < Math.min(rest.y, land.y) - 1.5 && Math.abs(land.y - rest.y) < 2 && hop.x < rest.x - 4 && hop.x > land.x + 2, JSON.stringify({ rest, hop, land }));
   check("no page errors during animations", o.errors.length === 0, o.errors.join("; "));
   await o.ctx.close();
 
@@ -105,6 +131,35 @@ try {
   check("block: shield parry takes no damage and a white flash shows toward the attacker", hp === 1e6 && block.white > calm.white + 6 && block.red <= calm.red + 5, JSON.stringify({ hp, calm, block }));
   await o.ctx.close();
 
+  // ---- 세트 스킬 이펙트: 제자리 대기 한 번에 스킬이 나감 → 이펙트 색 픽셀이 생겼다가 사라짐 ----
+  for (const [name, gear, key, x, y, ms] of [["fireball", SETS.fire, "fire", 6, 5, 250], ["frost nova", SETS.frost, "ice", 6, 5, 120], ["chain lightning", SETS.storm, "bolt", 6, 5, 90]]) {
+    // 몬스터는 플레이어 오른쪽 두 칸 (파이어볼·체인은 3칸 안, 노바는 바로 옆 칸이 필요해서 옆에도 하나)
+    // 파이어볼은 가장 가까운 (6,5)를 가운데로 터짐. 노바는 0.12초면 얼음 고리가 플레이어 칸을 지나 옆 칸(6,5)에 있음. 몬스터는 얼음·불·번개 색이 없는 오크
+    o = await open({ enemies: [mob("orc", 7, 5, { hp: 1e9, maxHp: 1e9, atk: 0 }), mob("orc", 6, 5, { hp: 1e9, maxHp: 1e9, atk: 0 })], gear });
+    const calm = await measure(o.page, x, y);
+    const fx = await measure(o.page, x, y, " ", ms);
+    await o.page.waitForTimeout(900);
+    const after = await measure(o.page, x, y);
+    check(`${name}: effect drawn (${key} colored pixels) and then gone`, fx[key] >= 15 && fx[key] > calm[key] + 12 && after[key] <= calm[key] + 5, JSON.stringify({ calm: calm[key], fx: fx[key], after: after[key] }));
+    check(`${name}: no page errors`, o.errors.length === 0, o.errors.join("; "));
+    await o.ctx.close();
+  }
+
+  // ---- 흡혈: 찬 HP를 초록 숫자(+N)로, HP가 가득하면 숫자 없음 ----
+  // 공격력이 낮으면 흡혈이 0~1이라 몬스터의 최소 피해 1과 섞임 → 공격력 2000 (흡혈 4%면 약 80)
+  const lsSave = (hp) => JSON.stringify({ ...JSON.parse(save), run: { ...JSON.parse(save).run, hp, mh: 1e6, a: 2000 } });
+  // 가득 찬 HP: 장비 HP로 최대 HP가 늘어나므로 그보다 크게 (불러오면 최대 HP로 맞춰짐)
+  for (const [label, hp] of [["below max HP", 5000], ["full HP", 1e9]]) {
+    o = await open({ enemies: [mob("skeleton", 6, 5, { hp: 1e9, maxHp: 1e9, atk: 0 })], gear: [lsStaff] });
+    await o.page.evaluate((sv) => localStorage.setItem("rl_save", sv), lsSave(hp)); await o.page.reload(); await o.page.waitForTimeout(800);
+    await o.page.keyboard.press("ArrowRight"); await o.page.waitForTimeout(150);
+    const pop = await o.page.evaluate(() => [...document.querySelectorAll("#popups .dmg.heal")].map(d => [d.textContent, getComputedStyle(d).color]));
+    // 공격력 2000 · 흡혈 4% → 약 +80 (여러 번 맞혀도 한 턴에 숫자 하나)
+    if (hp < 1e9) check("lifesteal: one green +N over the player", pop.length === 1 && /^\+\d+$/.test(pop[0][0]) && pop[0][1] === "rgb(74, 222, 128)" && +pop[0][0].slice(1) >= 10, JSON.stringify(pop));
+    else check("lifesteal at full HP: no green number", pop.length === 0, JSON.stringify(pop));
+    await o.ctx.close();
+  }
+
   // ---- 쓰러짐: 없어진 뒤에도 잠깐 붉게 물들며 사라짐 ----
   o = await open({ enemies: [mob("skeleton", 6, 5, { hp: 1, maxHp: 1, atk: 0, def: 0 })] });
   const dying = await measure(o.page, 6, 5, "ArrowRight", 200);
@@ -123,6 +178,8 @@ try {
   check("reduced motion: no red flash on hit", rf.red <= rb.red + 5, `${rb.red} → ${rf.red}`);
   const rw = await measure(o.page, 5, 6, "ArrowDown", 35);
   check("reduced motion: the player is on the new tile right away", rw.skin >= 60, JSON.stringify(rw));
+  const rr = await skinCenter(o.page, [2, 5, 8, 8]), rh = await skinCenter(o.page, [2, 5, 8, 8], "ArrowLeft", 75);
+  check("reduced motion: no hop (body already level on the next tile)", rr && rh && Math.abs(rh.y - rr.y) < 1.5 && rh.x < rr.x - 20, JSON.stringify({ rr, rh }));
   await o.ctx.close();
 } finally {
   await browser.close();

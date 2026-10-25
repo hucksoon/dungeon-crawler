@@ -91,6 +91,18 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
 }
 const press = async (page, keys, gap = 60) => { for (const k of keys) { await page.keyboard.press(k); await sleep(gap); } };
 
+// 움직이는 그림 찍기: 페이지 안에서 keys([키, ms])를 누르며 캔버스를 every ms마다, 플레이어 주변 cols×rows칸만
+// 플레이어 위치는 가까이 보기 시점(16×12칸, 지도 끝에서 멈춤, 한 칸 = 캔버스 64px)으로 계산
+const record = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page.evaluate(([keys, ms, W, H, every]) => new Promise(done => {
+  const out = [], t0 = performance.now();
+  for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
+  const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
+  const L = JSON.parse(localStorage.getItem("rl_level")), cx = Math.max(0, Math.min(16, L.px + 0.5 - 8)), cy = Math.max(0, Math.min(12, L.py + 0.5 - 6));
+  const sx = Math.max(0, Math.min(1024 - W, (L.px - cx + 0.5) * 64 - W / 2)), sy = Math.max(0, Math.min(768 - H, (L.py - cy + 0.5) * 64 - H / 2));
+  const grab = () => { cut.getContext("2d").drawImage(c, sx, sy, W, H, 0, 0, W, H); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, every); else done(out); };
+  grab();
+}), [keys, ms, cols * 64, rows * 64, every]);
+
 // ---- 장면: 이름, 설명(그림 아래 글), 찍기 ----
 const g40 = gear(40), g90 = gear(90, "golden", "blognm"), g150 = gear(150, "golden", "bloghell");
 const SCENES = [
@@ -129,17 +141,30 @@ const SCENES = [
     const o = await explored({ dsf: 1.6, seed: { rl_save: save(40, "blog-anim", { hp: 1e6, mh: 1e6, a: 900 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")) } },
       { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "minotaur"), "normal", 40), hp: 1e9, maxHp: 1e9, atk: 40 }, { dx: 0, dy: 1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 40), hp: 1, maxHp: 1, atk: 0 }] });
     await sleep(800);
-    const frames = await o.page.evaluate(() => new Promise(done => {
-      const keys = [["ArrowRight", 150], ["ArrowRight", 750], ["ArrowDown", 1350], ["ArrowDown", 1950], ["ArrowUp", 2350]], out = [], t0 = performance.now();
-      for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
-      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = 448; cut.height = 320;
-      // 플레이어가 화면의 어디에 있는지 (가까이 보기 시점: 16×12칸, 지도 끝에서 멈춤, 한 칸 = 캔버스 64px)
-      const L = JSON.parse(localStorage.getItem("rl_level")), cx = Math.max(0, Math.min(16, L.px + 0.5 - 8)), cy = Math.max(0, Math.min(12, L.py + 0.5 - 6));
-      const sx = Math.max(0, Math.min(1024 - 448, (L.px - cx + 0.5) * 64 - 224)), sy = Math.max(0, Math.min(768 - 320, (L.py - cy + 0.5) * 64 - 160));
-      const grab = () => { cut.getContext("2d").drawImage(c, sx, sy, 448, 320, 0, 0, 448, 320); out.push(cut.toDataURL()); if (performance.now() - t0 < 2900) setTimeout(grab, 40); else done(out); };
-      grab();
-    }));
-    return { ...o, frames }; }],
+    return { ...o, frames: await record(o.page, [["ArrowRight", 150], ["ArrowRight", 750], ["ArrowDown", 1350], ["ArrowDown", 1950], ["ArrowUp", 2350]], 2900) }; }],
+  ["anim-walk", "걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(5, "blog-walk", { hp: 1e6, mh: 1e6, a: 900 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies = []; localStorage.setItem("rl_level", JSON.stringify(L)); });
+    await o.page.reload(); await sleep(900);
+    // 갈 수 있는 쪽으로 왔다 갔다 (벽이면 반대로)
+    const keys = await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), open = (x, y) => L.map[y * 32 + x] !== "0";
+      const [a, b] = open(L.px - 1, L.py) && open(L.px - 2, L.py) ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
+      return [a, a, b, b, b, b, a, a].map((k, i) => [k, 120 + i * 300]); });
+    return { ...o, frames: await record(o.page, keys, 2700, { cols: 5, rows: 3, every: 50 }), delay: 5 }; }],
+  // 세트 스킬 이펙트 GIF: 세트 2개 + 흡혈 지팡이, 주변에 단단한 몬스터. 제자리 대기(Space)만 → 2턴마다 스킬
+  ...[["skill-fire", "파이어볼: 날아가서 3×3으로 터짐", [513, 806]], ["skill-frost", "프로스트 노바: 얼음 고리가 퍼짐", [96, 775]], ["skill-storm", "체인 라이트닝: 번개가 차례로 튕김", [56, 464]]].map(([name, caption, ks]) => [name, caption, async () => {
+    const gear = [...ks.map(k => I.generate(`fx|n20|k${k}`, "golden", 95)), I.generate("ls|k10", "golden", 40)];
+    const foe = (dx, dy, id) => ({ dx, dy, ...M.makeMonster(M.MONSTERS.find(m => m.id === id), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 });
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, `blog-${name}`, { hp: 5000, mh: 1e6, a: 400 }), "rl_inv:g:DEV": inv(gear) } },
+      { add: [foe(1, 0, "orc"), foe(-1, 1, "goblin"), foe(2, -1, "skeleton"), foe(0, -1, "kobold"), foe(-2, 0, "wolf")] });
+    await sleep(800);
+    return { ...o, frames: await record(o.page, [" ", " ", " ", " ", " "].map((k, i) => [k, 100 + i * 480]), 2500) }; }]),
+  // 흡혈: 공격하면 맞은 숫자(흰색)와 함께 플레이어 위에 찬 HP가 초록 +N (화면 글자라 #stage를 찍음)
+  ["heal-green", "흡혈로 찬 HP는 초록 숫자로", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, "blog-heal", { hp: 5000, mh: 1e6, a: 2000 }), "rl_inv:g:DEV": inv([I.generate("ls|k10", "golden", 40)]) } },
+      { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 }] });
+    await sleep(700); await o.page.keyboard.press("ArrowRight"); await sleep(330);
+    return { ...o, shot: "#stage", nowait: true }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 
@@ -148,11 +173,11 @@ const done = [];
 try {
   for (const [name, caption, shoot] of SCENES) {
     if (only.length && !only.some(s => name.includes(s))) continue;
-    const { ctx, page, errors, shot, more = [], nowait = false, frames } = await shoot();
+    const { ctx, page, errors, shot, more = [], nowait = false, frames, delay = 4 } = await shoot();
     if (frames) {   // 움직이는 그림: 프레임을 이어 GIF로 (ImageMagick)
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gif-"));
       frames.forEach((f, i) => fs.writeFileSync(path.join(dir, `${String(i).padStart(3, "0")}.png`), Buffer.from(f.split(",")[1], "base64")));
-      execFileSync("convert", ["-delay", "4", "-loop", "0", ...fs.readdirSync(dir).sort().map(f => path.join(dir, f)), "-layers", "Optimize", path.join(OUT, `${name}.gif`)]);
+      execFileSync("convert", ["-delay", String(delay), "-loop", "0", ...fs.readdirSync(dir).sort().map(f => path.join(dir, f)), "-layers", "Optimize", path.join(OUT, `${name}.gif`)]);
       fs.rmSync(dir, { recursive: true, force: true });
       done.push(`${name}.gif — ${caption} (${frames.length}프레임)${errors.length ? ` (페이지 오류 ${errors.length}: ${errors[0].slice(0, 80)})` : ""}`);
       await ctx.close();
