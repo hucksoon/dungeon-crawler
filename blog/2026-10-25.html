@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>몬스터가 움직이고, 기사가 장비를 입다 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="가만히 서 있던 몬스터와 플레이어에 걷기·공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<title>몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="몬스터와 플레이어에 걷기·공격·막기·쓰러짐 움직임을 넣고, 장비를 등급 색으로 입혔어요. 파이어볼·프로스트 노바·체인 라이트닝 이펙트와 흡혈 초록 숫자도 생겼어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-25.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="몬스터가 움직이고, 기사가 장비를 입다 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="가만히 서 있던 몬스터와 플레이어에 걷기·공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<meta property="og:title" content="몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="몬스터와 플레이어에 걷기·공격·막기·쓰러짐 움직임을 넣고, 장비를 등급 색으로 입혔어요. 파이어볼·프로스트 노바·체인 라이트닝 이펙트와 흡혈 초록 숫자도 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-25.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/anim-fight.gif">
 
@@ -48,7 +48,7 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>몬스터가 움직이고, 기사가 장비를 입다</h1>
+<h1>몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</h1>
 <p class="meta">2026년 10월 25일 (일) · 개발일기 · 픽셀 그래픽 · 애니메이션 · Claude Code</p>
 <p>어제 던전에 픽셀 그림을 입히고 나니 아쉬운 점이 바로 보였어요. 몬스터도 플레이어도 <strong>그림처럼 가만히</strong> 있다가 순간이동하듯 칸을 옮겼거든요. 오늘은 Claude Code와 함께 움직임을 넣고, 플레이어가 실제로 낀 장비를 입고 다니게 했어요.</p>
 <figure><img src="images/anim-fight.gif" alt="공격·반격·쓰러짐·걷기 움직임" loading="lazy"><figcaption>공격·반격·쓰러짐·걷기 움직임</figcaption></figure>
@@ -67,9 +67,20 @@
 <ul><li>아무것도 끼지 않으면 회색 속옷 하나만 입어요</li><li>장화·바지·갑옷·장갑·투구, 오른손 무기와 왼손 방패를 하나씩 겹쳐 그려요</li><li>무기는 종류대로 달라요. 단검, 지팡이, 도끼, 장검이 있고, 양손에 하나씩 들면 두 개가 다 보여요</li><li>부위마다 <strong>장비 등급 색</strong>으로 칠해요. 레어는 파랑, 에픽은 보라, 레전더리는 주황, 세트는 청록, 유니크는 금색이에요. 음영은 그대로 두고 색만 바꿔서 금속 질감이 살아 있어요</li></ul>
 <figure><img src="images/doll-gear.png" alt="낀 장비가 등급 색으로 보여요" loading="lazy"><figcaption>낀 장비가 등급 색으로 보여요</figcaption></figure>
 <p>장비를 바꿀 때만 그림을 새로 만들기 때문에 게임이 느려지지 않아요. 로비에서도 내 캐릭터는 지금 낀 장비를 입고 서 있어요.</p>
+<h2>세트 스킬 이펙트</h2>
+<p>화염·서리·뇌전 세트의 스킬은 그동안 칸이 잠깐 색으로 번쩍이기만 했어요. 이제 스킬마다 제대로 된 이펙트가 나와요.</p>
+<figure><img src="images/skill-fire.gif" alt="파이어볼: 날아가서 3×3으로 터짐" loading="lazy"><figcaption>파이어볼: 날아가서 3×3으로 터짐</figcaption></figure>
+<ul><li><strong>파이어볼</strong>: 불덩이가 꼬리를 달고 날아가서 3×3으로 터져요. 하얀 가운데에서 주황·빨강으로 퍼지는 불꽃과 흩어지는 불티가 보여요</li></ul>
+<figure><img src="images/skill-frost.gif" alt="프로스트 노바: 얼음 고리가 퍼짐" loading="lazy"><figcaption>프로스트 노바: 얼음 고리가 퍼짐</figcaption></figure>
+<ul><li><strong>프로스트 노바</strong>: 플레이어 둘레로 얼음 고리가 퍼지고, 얼음 조각과 눈송이가 흩날려요</li></ul>
+<figure><img src="images/skill-storm.gif" alt="체인 라이트닝: 번개가 차례로 튕김" loading="lazy"><figcaption>체인 라이트닝: 번개가 차례로 튕김</figcaption></figure>
+<ul><li><strong>체인 라이트닝</strong>: 지그재그 번개가 몬스터를 하나씩 차례로 이어 가며 깜빡여요. 무기의 번개 피해도 가느다란 번개로 보여요</li><li>몬스터가 붉게 번쩍하는 때도 이펙트가 닿는 순간에 맞췄어요</li></ul>
+<h3>흡혈은 초록 숫자로</h3>
+<p>흡혈이 붙은 장비로 때리면 HP가 조금씩 차는데, 지금까지는 눈에 보이지 않았어요. 이제 한 턴에 찬 HP를 모아서 플레이어 위에 <strong>초록 숫자</strong>(+N)로 보여 줘요. HP가 가득 차 있으면 숫자가 나오지 않아요.</p>
+<figure><img src="images/heal-green.png" alt="흡혈로 찬 HP는 초록 숫자로" loading="lazy"><figcaption>흡혈로 찬 HP는 초록 숫자로</figcaption></figure>
 <h2>움직임도 테스트로</h2>
 <p>움직이는 화면은 눈으로만 보면 놓치기 쉬워요. 그래서 테스트가 키를 누른 뒤 정해진 시간에 화면 픽셀을 세요.</p>
-<ul><li>공격한 순간 몬스터 칸이 붉어지는지, 끝나면 원래대로 돌아오는지 확인해요</li><li>걷는 중에는 플레이어가 두 칸 사이에 있다가 도착하는지 봐요</li><li>방패로 막으면 피해 없이 하얀 빛이 나는지 확인해요</li><li>레전더리 갑옷은 주황, 레어 갑옷은 파랑으로 보이는지 확인해요</li></ul>
+<ul><li>공격한 순간 몬스터 칸이 붉어지는지, 끝나면 원래대로 돌아오는지 확인해요</li><li>걷는 중에는 플레이어가 두 칸 사이에 있다가 도착하는지 봐요</li><li>방패로 막으면 피해 없이 하얀 빛이 나는지 확인해요</li><li>레전더리 갑옷은 주황, 레어 갑옷은 파랑으로 보이는지 확인해요</li><li>스킬 이펙트가 불꽃·얼음·번개 색으로 나타났다 사라지는지, 흡혈하면 초록 숫자가 하나 뜨는지 확인해요</li></ul>
 <p>이 글의 움직이는 그림도 같은 방법으로, 게임 안에서 키를 누르며 화면을 40ms마다 찍어 이어 붙였어요.</p>
 <h2>다음에는</h2>
 <p>이제 던전이 꽤 살아 있는 느낌이 나요. <a href="https://game.apacimtest.com/">게임</a>에 들어가 장비를 바꿔 입어 보고, 싸움이 어떻게 보이는지 확인해 보세요. 실제로 해 보면서 움직임의 빠르기나 색을 다듬을 거예요.</p>

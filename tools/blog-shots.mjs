@@ -151,6 +151,20 @@ const SCENES = [
       const [a, b] = open(L.px - 1, L.py) && open(L.px - 2, L.py) ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
       return [a, a, b, b, b, b, a, a].map((k, i) => [k, 120 + i * 300]); });
     return { ...o, frames: await record(o.page, keys, 2700, { cols: 5, rows: 3, every: 50 }), delay: 5 }; }],
+  // 세트 스킬 이펙트 GIF: 세트 2개 + 흡혈 지팡이, 주변에 단단한 몬스터. 제자리 대기(Space)만 → 2턴마다 스킬
+  ...[["skill-fire", "파이어볼: 날아가서 3×3으로 터짐", [513, 806]], ["skill-frost", "프로스트 노바: 얼음 고리가 퍼짐", [96, 775]], ["skill-storm", "체인 라이트닝: 번개가 차례로 튕김", [56, 464]]].map(([name, caption, ks]) => [name, caption, async () => {
+    const gear = [...ks.map(k => I.generate(`fx|n20|k${k}`, "golden", 95)), I.generate("ls|k10", "golden", 40)];
+    const foe = (dx, dy, id) => ({ dx, dy, ...M.makeMonster(M.MONSTERS.find(m => m.id === id), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 });
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, `blog-${name}`, { hp: 5000, mh: 1e6, a: 400 }), "rl_inv:g:DEV": inv(gear) } },
+      { add: [foe(1, 0, "orc"), foe(-1, 1, "goblin"), foe(2, -1, "skeleton"), foe(0, -1, "kobold"), foe(-2, 0, "wolf")] });
+    await sleep(800);
+    return { ...o, frames: await record(o.page, [" ", " ", " ", " ", " "].map((k, i) => [k, 100 + i * 480]), 2500) }; }]),
+  // 흡혈: 공격하면 맞은 숫자(흰색)와 함께 플레이어 위에 찬 HP가 초록 +N (화면 글자라 #stage를 찍음)
+  ["heal-green", "흡혈로 찬 HP는 초록 숫자로", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(20, "blog-heal", { hp: 5000, mh: 1e6, a: 2000 }), "rl_inv:g:DEV": inv([I.generate("ls|k10", "golden", 40)]) } },
+      { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 }] });
+    await sleep(700); await o.page.keyboard.press("ArrowRight"); await sleep(330);
+    return { ...o, shot: "#stage", nowait: true }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 

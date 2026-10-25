@@ -6,11 +6,11 @@
 <description>Claude Code와 같이 라이브 코딩으로 만드는 브라우저 로그라이크 게임의 개발 이야기</description>
 <language>ko</language>
 <item>
-<title>몬스터가 움직이고, 기사가 장비를 입다</title>
+<title>몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</title>
 <link>https://game.apacimtest.com/blog/2026-10-25.html</link>
 <guid>https://game.apacimtest.com/blog/2026-10-25.html</guid>
 <pubDate>Sun, 25 Oct 2026 12:00:00 GMT</pubDate>
-<description>가만히 서 있던 몬스터와 플레이어에 걷기·공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.</description>
+<description>몬스터와 플레이어에 걷기·공격·막기·쓰러짐 움직임을 넣고, 장비를 등급 색으로 입혔어요. 파이어볼·프로스트 노바·체인 라이트닝 이펙트와 흡혈 초록 숫자도 생겼어요.</description>
 </item>
 <item>
 <title>던전 크롤러, 영어와 일본어를 배우다</title>
