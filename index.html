@@ -3177,8 +3177,8 @@
       { kind: "hellPick", door: { x: 18, y: 3 }, glyph: "▼", tab: null },
       // 아래쪽 가운데 대장간 (문이 위쪽): 옵션 재련·홈 초기화 — 인벤토리를 대장간 모드로 엶
       { kind: "forge", label: T("대장간"), x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
-      // 왼쪽 아래 점프 탑 (문이 위쪽): 옆에서 보는 발판 맵 (시험판)
-      { kind: "jumptower", label: T("점프 탑"), x0: 3, x1: 7, y0: 19, y1: 21, door: { x: 5, y: 19 }, glyph: "▲", tab: null },
+      // 왼쪽 아래 점프 던전 (문이 위쪽): 옆에서 보는 사냥 맵 (시험판, 1층)
+      { kind: "jumptower", label: T("점프 던전"), x0: 3, x1: 7, y0: 19, y1: 21, door: { x: 5, y: 19 }, glyph: "▲", tab: null },
     ];
     for (const s of shops) if (s.x0 != null) for (let y = s.y0 ?? gate.y - 2; y <= (s.y1 ?? gate.y); y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
     for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
@@ -4194,31 +4194,46 @@
     };
   })();
 
-  // ---- 점프 탑 (dc#82, 시험판): 옆에서 보는 실시간 발판 맵. 물리·맵은 jump.js (RLJump) ----
-  // ← → 이동 · Space(↑ 대신) 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 나무 발판 아래로 · R 처음부터 · Esc/P 로비로. 깃발에 닿으면 클리어, 최고 기록은 기기에
+  // ---- 점프 던전 (dc#82~83, 시험판): 옆에서 보는 실시간 사냥 맵. 물리·맵·몬스터 움직임은 jump.js (RLJump) ----
+  // ← → 이동 · Space 점프(짧게 누르면 낮게) · ↑↓ 사다리 · ↓ 나무 발판 아래로 · R 처음부터 · Esc/P 로비로
+  // 몬스터는 발판 위를 오가다 같은 발판 4칸 안에 플레이어가 서 있으면 다가옴
+  // 싸움은 자동: 몬스터에 닿아 있으면 0.5초(한 턴)마다 서로 공격하고, 세트·룬워드 스킬도 턴마다 알아서 씀. 능력치는 지금 장비 그대로
+  // 몬스터를 다 잡으면 포탈이 열리고, 포탈에 닿으면 클리어 (최고 기록은 기기에)
+  // 시험판이라 지금 판(던전 진행)과 따로: HP는 들어올 때 가득, 쓰러지면 이 층을 처음부터. 경험치·골드·아이템은 아직 없음
   const Tower = (() => {
-    const J = window.RLJump, STEP = 1 / 120, ZT = 2;   // 화면은 가까이 보기처럼 2배 (16×12칸)
-    let map = null, st = null, mapId = "tower1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0;
+    const J = window.RLJump, STEP = 1 / 120, ZT = 2, TURN = 0.5;   // 화면은 가까이 보기처럼 2배 (16×12칸)
+    let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0;
+    let mobs = [], hp = 0, maxHp = 1, turnAcc = 0, turnN = 0, cd = {}, pops = [], fx = [], hurtT = -1, portalOpen = false;
     const held = { left: false, right: false, up: false, down: false, jump: false };
     let jumpTap = false;
-    const bestKey = () => `rl_tower_best:${Inv.owner()}:${mapId}`;
+    const bestKey = () => `rl_hunt_best:${Inv.owner()}:${mapId}`;
     const tileVar = (x, y) => ((x * 7 + y * 13) ^ (x * y)) & 3;   // 바닥·벽 무늬 4가지 중 하나 (칸마다 고정)
     const secs = (t) => (Math.floor(t * 10) / 10).toFixed(1);
+    const alive = () => mobs.filter(m => m.hp > 0);
+    const center = (m) => ({ x: m.x, y: m.y - J.MOB.h / 2 });
+    const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));   // 몬스터끼리 거리 (몸 가운데, 대각선도 1칸)
     function enter() {
       if (!J) return;
       map = J.parse(J.MAPS[mapId].rows);
       restart();
       best = Number(store.get(bestKey())) || null;
-      lobbyPos = { x: 5, y: 18 };   // 나오면 탑 문 앞
+      lobbyPos = { x: 5, y: 18 };   // 나오면 문 앞
       closeShop();
       setScene("jump");
       updateStats();
-      log(T("점프 탑에 들어왔다. 발판을 밟고 맨 위 깃발까지 올라가자! (Esc로 나가기)"), "good");
+      log(T("점프 던전 1층에 들어왔다. 몬스터 {0}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)", mobs.length), "good");
       last = 0; acc = 0;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(loop);
     }
-    function restart() { st = J.newState(map); cleared = null; lastLanded = 0; for (const k in held) held[k] = false; }
+    // 층을 처음부터: 몬스터 새로, HP 가득
+    function restart() {
+      st = J.newState(map); cleared = null; lastLanded = 0; for (const k in held) held[k] = false;
+      const depth = J.MAPS[mapId].depth;
+      mobs = map.spawns.map(p => ({ ...J.newMob(map, p), ...RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), "normal", depth), hitT: -1, deadT: -1 }));
+      maxHp = stats().maxHp; hp = maxHp;
+      turnAcc = 0; turnN = 0; cd = { fb: 0, nova: 0, chain: 0, whirl: 0 }; pops = []; fx = []; portalOpen = false;
+    }
     function exit() {
       cancelAnimationFrame(raf);
       setScene("lobby");
@@ -4233,17 +4248,133 @@
       last = t;
       if (!cleared && !document.hidden) {
         acc += dt;
-        while (acc >= STEP) { J.step(map, st, input(), STEP); acc -= STEP; }
+        while (acc >= STEP) {
+          J.step(map, st, input(), STEP);
+          for (const m of alive()) { const busy = J.touching(st, m); if (busy) m.dir = st.x < m.x ? -1 : 1; J.mobStep(m, STEP, busy, Math.random, J.sameFloor(st, m) ? st.x : null); }
+          acc -= STEP;
+          turnAcc += STEP;
+          if (turnAcc >= TURN) { turnAcc -= TURN; combatTurn(); if (cleared || hp <= 0) break; }
+        }
         if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
-        if (st.done) clear();
+        if (portalOpen && !cleared && Math.abs(st.x - map.portal.x) < 0.8 && Math.abs(st.y - map.portal.y) < 0.6) clear();
       }
       render();
+    }
+
+    // ---- 싸움 (한 턴 = TURN초). 피해 계산은 던전과 같은 식 (속성 피해·치명타·두 손·장검·광란·흡혈·회피·막기·둘러싸임) ----
+    function pop(at, text, color, big = false) { pops.push({ x: at.x, y: at.y - 1.1, text: String(text), color, big, t0: performance.now() }); }
+    function healHp(n) { const got = Math.min(n, maxHp - hp); if (got > 0) { hp += got; pop(st, `+${got}`, "#4fd17a"); } }
+    // 몬스터에게 피해 d. 흡혈 share (0이면 없음)
+    function damage(m, d, crit, s, color = null, share = 1) {
+      if (m.hp <= 0) return;
+      const taken = Math.min(d, m.hp);
+      m.hp -= d;
+      m.hitT = performance.now();
+      pop(m, d, color || (crit ? "#ffcf5c" : "#ffffff"), crit);
+      const drain = share ? Math.floor(taken * s.lifesteal / 100 * share) : 0;
+      if (drain > 0) healHp(drain);
+      if (m.hp <= 0) kill(m, s);
+    }
+    function kill(m, s) {
+      m.deadT = performance.now();
+      const left = alive().length;
+      log(T("{0} 처치! (남은 몬스터 {1}마리)", m.name, left), "good");
+      if (s.killHeal) healHp(s.killHeal);
+      if (!left && !portalOpen) { portalOpen = true; log(T("몬스터를 모두 잡았다! 포탈이 열렸다."), null, PORTAL_COLOR); }
+    }
+    function combatTurn() {
+      turnN++;
+      const s = stats();
+      skills(s);
+      const touch = alive().filter(m => J.touching(st, m));
+      // 플레이어: 닿은 몬스터 중 가장 가까운 하나 (두 손이면 두 번, 광란이면 그 옆 몬스터도 절반)
+      const target = touch.sort((a, b) => Math.abs(a.x - st.x) - Math.abs(b.x - st.x))[0];
+      if (target) {
+        const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [s.longsword ? RLItems.LONGSWORD.hitMul : 1];
+        const elemPct = s.elem.fire + s.elem.ice + s.elem.bolt;
+        for (const mul of hits) {
+          if (target.hp <= 0) break;
+          const crit = Math.random() * 100 < s.crit, k = (crit ? s.critMul : 1) * mul;
+          const raw = (s.atk + rnd(2)) * k, elem = elemPct ? s.atk * elemPct / 100 * k : 0;
+          const hit = (m, f) => Math.max(1, Math.round(raw * f) - m.def) + Math.round(elem * f * elemMix(m, s));
+          const around = s.splash ? alive().filter(m => m !== target && cheb(center(m), center(target)) <= 1.2) : [];
+          damage(target, hit(target, 1), crit, s);
+          for (const m of around) damage(m, hit(m, RLItems.SPLASH.mul), crit, s);
+        }
+      }
+      // 닿은 몬스터들의 공격 (회피·방패 막기, 받는 피해 감소, 둘러싸임 방어)
+      const crowd = RLMonsters.crowdCut(touch.length);
+      for (const m of touch) {
+        if (m.hp <= 0 || hp <= 0) continue;
+        if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) { pop(st, T("피함"), RLItems.RARITIES.unique.color); continue; }
+        if (s.parry && Math.random() * 100 < s.parry) { pop(st, T("막음"), "#d0d4e0"); continue; }
+        const d = Math.max(1, Math.round(RLMonsters.damageToPlayer(m.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
+        hp -= d;
+        hurtT = performance.now();
+        pop(st, d, "#ff5c5c");
+      }
+      if (hp <= 0) {
+        hp = 0;
+        log(T("쓰러졌다! 점프 던전 1층을 처음부터 다시 시작한다. (지금 판에는 영향 없음)"), "bad");
+        restart();
+      }
+    }
+    // 세트·룬워드 스킬: 던전과 같은 쿨타임(턴)과 피해. 거리는 칸 (몸 가운데끼리, 대각선도 1칸)
+    function skills(s) {
+      const fast = s.rw.skillFast ? 1 : 0, ls = s.rw.skillLs ? RW_FX.skillLs.share : 0;
+      const tick = (k) => { if (cd[k] > 0) cd[k]--; return cd[k] <= 0; };
+      const inReach = (r) => alive().filter(m => J.reach(st, m) <= r + 0.5).sort((a, b) => J.reach(st, a) - J.reach(st, b));
+      const now = performance.now();
+      if (s.rw.whirl && tick("whirl")) {
+        const hit = inReach(1);
+        if (hit.length) {
+          cd.whirl = RW_FX.whirl.every;
+          const crit = Math.random() * 100 < s.crit, raw = (s.atk + rnd(2)) * s.rw.whirl / 100 * (crit ? s.critMul : 1);
+          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: 1.5, color: "rgba(255, 210, 127, 0.8)", t0: now });
+          for (const m of hit) damage(m, Math.max(1, Math.round(raw) - m.def), crit, s);
+        }
+      }
+      const fbSet = s.fireball;
+      if ((fbSet || s.rw.fireball) && tick("fb")) {
+        const c = inReach(FB.range)[0];
+        if (c) {
+          cd.fb = (fbSet ? FB.every : RW_FX.fireball.every) - fast;
+          const { crit, dmg } = skillRoll(s, fbSet ? FB.mul : RW_FX.fireball.mul, s.fireballPct + s.elem.fire);
+          const at = center(c);
+          fx.push({ kind: "boom", x: at.x, y: at.y, r: FB.radius + 0.5, color: EL.colors.fire, t0: now, from: { x: st.x, y: st.y - 0.45 } });
+          for (const m of alive().filter(m => cheb(center(m), at) <= FB.radius + 0.5)) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "fire"))), crit, s, EL.colors.fire, ls);
+        }
+      }
+      if (s.nova && tick("nova")) {
+        const hit = inReach(NOVA.radius);
+        if (hit.length) {
+          cd.nova = NOVA.every - fast;
+          const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
+          fx.push({ kind: "ring", x: st.x, y: st.y - 0.45, r: NOVA.radius + 0.5, color: EL.colors.ice, t0: now });
+          for (const m of hit) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "ice"))), crit, s, EL.colors.ice, ls);
+        }
+      }
+      if (s.chain && tick("chain")) {
+        let at = inReach(CHAIN.range)[0];
+        if (at) {
+          cd.chain = CHAIN.every - fast;
+          const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
+          const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0), done = new Set(), pts = [{ x: st.x, y: st.y - 0.45 }];
+          for (let k = 0; k < strikes && at; k++) {
+            done.add(at); pts.push(center(at));
+            const from = center(at);
+            damage(at, Math.max(1, Math.round(dmg * elemMul(at, "bolt"))), crit, s, EL.colors.bolt, ls);
+            at = alive().filter(m => !done.has(m) && cheb(center(m), from) <= CHAIN.range + 0.5).sort((a, b) => cheb(center(a), from) - cheb(center(b), from))[0];
+          }
+          fx.push({ kind: "bolt", pts, color: EL.colors.bolt, t0: now });
+        }
+      }
     }
     function clear() {
       const isBest = best == null || st.time < best;
       if (isBest) { best = st.time; store.set(bestKey(), String(best)); }
       cleared = { time: st.time, isBest };
-      log(T("점프 탑 클리어! {0}초{1}", secs(st.time), isBest ? T(" (새 최고 기록!)") : ""), "good");
+      log(T("점프 던전 1층 클리어! {0}초{1}", secs(st.time), isBest ? T(" (새 최고 기록!)") : ""), "good");
     }
     const KEYS = { arrowleft: "left", a: "left", arrowright: "right", d: "right", arrowup: "up", w: "up", arrowdown: "down", s: "down", " ": "jump", j: "jump", k: "jump" };
     // 키를 누르고 뗄 때. 쓴 키면 true
@@ -4265,7 +4396,7 @@
       if (!map) return;
       const vw = MAP_W / ZT, vh = MAP_H / ZT;   // 보이는 칸 (16×12)
       const cx = Math.max(0, Math.min(map.w - vw, st.x - vw / 2)), cy = Math.max(0, Math.min(map.h - vh, st.y - 0.5 - vh / 2));
-      const z = PX * ZT;
+      const z = PX * ZT, now = performance.now();
       ctx.fillStyle = "#0b0d14";
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       ctx.setTransform(z, 0, 0, z, -cx * TILE * z, -cy * TILE * z);
@@ -4278,38 +4409,85 @@
         if (c === "#") { if (!(art && Sprites.draw(`wall_normal_${tileVar(x, y)}`, px, py))) { ctx.fillStyle = "#3a3f52"; ctx.fillRect(px, py, TILE, TILE); } }
         else if (c === "=") { if (!(art && Sprites.draw("tower_plank", px, py))) { ctx.fillStyle = "#8a5a2b"; ctx.fillRect(px, py, TILE, 6); } }
         else if (c === "H") { if (!(art && Sprites.draw("tower_ladder", px, py))) drawGlyph("H", px, py, "#c99050"); }
-        else if (c === "G") { if (!(art && Sprites.draw("tower_flag", px, py))) drawGlyph("⚑", px, py, "#ffcf5c"); }
-        else if (c === "C") {
-          const on = st.respawn.x === x + 0.5 && st.respawn.y === y + 1;
-          if (!(art && Sprites.draw(on ? "tower_cp_on" : "tower_cp", px, py))) drawGlyph("⚐", px, py, on ? "#4fd17a" : "#7d8396");
+      }
+      // 포탈 (다 잡으면): 살짝 커졌다 작아짐
+      if (portalOpen) {
+        const p = map.portal, k = 1 + 0.08 * Math.sin(now / 180);
+        ctx.save(); ctx.translate(p.x * TILE, (p.y - 0.5) * TILE); ctx.scale(k, k);
+        drawArt("portal", "*", -TILE / 2, -TILE / 2, PORTAL_COLOR);
+        ctx.restore();
+      }
+      // 몬스터: 걷는 쪽을 봄, 맞으면 붉게 번쩍, 쓰러지면 흐려지며 사라짐. 머리 위 HP 막대
+      for (const m of mobs) {
+        const fade = m.deadT < 0 ? 1 : 1 - (now - m.deadT) / 400;
+        if (fade <= 0) continue;
+        const px = (m.x - 0.5) * TILE, py = (m.y - 1) * TILE, name = `mon_${m.id}`;
+        const bob = m.deadT < 0 && m.wait <= 0 ? (Math.floor(now / 160 + m.x0) % 2) * -0.6 : 0;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(px + TILE / 2, 0); ctx.scale(m.dir > 0 ? -1 : 1, 1); ctx.translate(-px - TILE / 2, bob);
+        if (art && Sprites.has(name)) { Sprites.draw(name, px, py); drawFlash(Sprites.src(name), px, py, Math.max(0, 0.8 - (now - m.hitT) / 200)); }
+        else drawGlyph(m.ch, px, py, m.color);
+        ctx.restore();
+        if (m.deadT < 0 && m.hp < m.maxHp) {
+          ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(px + 2, py - 3, TILE - 4, 2.5);
+          ctx.fillStyle = "#e05555"; ctx.fillRect(px + 2, py - 3, (TILE - 4) * Math.max(0, m.hp / m.maxHp), 2.5);
         }
       }
-      // 플레이어: 발끝 (x, y), 보는 쪽으로 뒤집고, 뛸 때 늘어나고 내려앉을 때 눌림, 걸을 때 들썩
-      const now = performance.now(), squash = Math.max(0, 1 - (now - landT) / 140);
+      // 플레이어: 발끝 (x, y), 보는 쪽으로 뒤집고, 뛸 때 늘어나고 내려앉을 때 눌림, 걸을 때 들썩, 맞으면 붉게
+      const squash = Math.max(0, 1 - (now - landT) / 140);
       const sy = st.ground ? 1 - 0.18 * squash : st.vy < 0 ? 1.08 : 1, sx = 2 - sy;
       const bob = st.ground && Math.abs(st.vx) > 0.5 ? (Math.floor(now / 110) % 2) * -0.7 : 0;
       const flip = st.climbing ? (Math.floor(st.y * 3) % 2 ? -1 : 1) : st.face < 0 ? -1 : 1;
-      const fx = st.x * TILE, fy = st.y * TILE + bob;
       ctx.save();
-      ctx.translate(fx, fy);
+      ctx.translate(st.x * TILE, st.y * TILE + bob);
       ctx.scale(flip * sx, sy);
-      if (art) ctx.drawImage(Doll.canvas(), -TILE / 2, -TILE, TILE, TILE);
+      if (art) { const doll = Doll.canvas(); ctx.drawImage(doll, -TILE / 2, -TILE, TILE, TILE); drawFlash(doll, -TILE / 2, -TILE, Math.max(0, 0.7 - (now - hurtT) / 220)); }
       else drawGlyph("@", -TILE / 2, -TILE, "#ffffff");
       ctx.restore();
-      // 화면 글자 (시간·최고 기록·조작, 클리어)
+      // 스킬 이펙트 (0.3초)
+      fx = fx.filter(f => now - f.t0 < 320);
+      for (const f of fx) {
+        const p = (now - f.t0) / 320;
+        ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = ctx.fillStyle = f.color; ctx.lineWidth = 1.5;
+        if (f.kind === "ring") { ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, f.r * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); }
+        else if (f.kind === "boom") {
+          if (p < 0.4) { const q = p / 0.4; ctx.beginPath(); ctx.arc((f.from.x + (f.x - f.from.x) * q) * TILE, (f.from.y + (f.y - f.from.y) * q) * TILE, 3, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.globalAlpha = 0.55 * (1 - p); ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, f.r * TILE * (p - 0.2), 0, Math.PI * 2); ctx.fill(); }
+        } else if (f.kind === "bolt") {
+          ctx.beginPath();
+          f.pts.forEach((q, i) => { const jx = i ? (Math.random() - 0.5) * 4 : 0, jy = i ? (Math.random() - 0.5) * 4 : 0; ctx[i ? "lineTo" : "moveTo"](q.x * TILE + jx, q.y * TILE + jy); });
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // 화면 글자: 피해 숫자(위로 떠오름) · HP · 남은 몬스터 · 시간 · 조작 · 클리어
       ctx.setTransform(PX, 0, 0, PX, 0, 0);
-      ctx.font = 'bold 13px "Courier New", monospace';
-      ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.textBaseline = "top";
       const hud = (text, x, y, color) => { ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillText(text, x + 1, y + 1); ctx.fillStyle = color; ctx.fillText(text, x, y); };
-      hud(T("⏱ {0}초", secs(cleared ? cleared.time : st.time)), 8, 8, "#ffcf5c");
-      if (best != null) hud(T("최고 {0}초", secs(best)), 8, 26, "#8fd3ff");
+      pops = pops.filter(q => now - q.t0 < 800);
+      ctx.textAlign = "center";
+      for (const q of pops) {
+        const p = (now - q.t0) / 800;
+        ctx.globalAlpha = 1 - p * p;
+        ctx.font = `bold ${q.big ? 15 : 12}px "Courier New", monospace`;
+        hud(q.text, (q.x - cx) * TILE * ZT, (q.y - p * 0.8 - cy) * TILE * ZT, q.color);
+      }
+      ctx.globalAlpha = 1;
+      ctx.textAlign = "left";
+      ctx.font = 'bold 13px "Courier New", monospace';
+      ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(8, 8, 120, 9);
+      ctx.fillStyle = "#e05555"; ctx.fillRect(8, 8, 120 * hp / maxHp, 9);
+      hud(T("HP {0}/{1}", Math.ceil(hp).toLocaleString(), maxHp.toLocaleString()), 134, 6, "#ff8a8a");
+      hud(portalOpen ? T("포탈이 열렸다!") : T("남은 몬스터 {0}/{1}", alive().length, mobs.length), 8, 22, portalOpen ? PORTAL_COLOR : "#d0d4e0");
+      hud(T("⏱ {0}초", secs(cleared ? cleared.time : st.time)) + (best != null ? "  " + T("최고 {0}초", secs(best)) : ""), 8, 38, "#ffcf5c");
       ctx.font = '11px "Courier New", monospace';
-      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프 · ↑↓ 사다리 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
+      hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
-        ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 160, VIEW_H / 2 - 50, 320, 100);
+        ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";
         ctx.font = 'bold 20px "Courier New", monospace';
-        hud(T("🚩 클리어! {0}초", secs(cleared.time)), VIEW_W / 2, VIEW_H / 2 - 36, "#ffcf5c");
+        hud(T("🌀 1층 클리어! {0}초", secs(cleared.time)), VIEW_W / 2, VIEW_H / 2 - 36, "#ffcf5c");
         ctx.font = '13px "Courier New", monospace';
         if (cleared.isBest) hud(T("새 최고 기록!"), VIEW_W / 2, VIEW_H / 2 - 6, "#4fd17a");
         hud(narrowScreen() ? T("점프 버튼: 다시 · 포탈: 나가기") : T("Space·Enter 다시 · Esc 로비로"), VIEW_W / 2, VIEW_H / 2 + 20, "#d0d4e0");
@@ -4321,7 +4499,6 @@
       enter, exit, key, draw, restart,
       release() { for (const k in held) held[k] = false; },
       hold(name, on) { if (cleared && name === "jump" && on) { restart(); return; } holdTouch(name, on); },
-      state: () => st, cleared: () => cleared,
     };
   })();
 

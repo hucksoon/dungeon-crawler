@@ -1,7 +1,7 @@
-// 점프 탑 (dc#82): 옆에서 보는 실시간 발판 맵. 물리와 맵만 (화면은 index.html의 Tower)
+// 점프 던전 (dc#82~83): 옆에서 보는 실시간 발판 맵. 물리·맵·몬스터 움직임만 (화면·싸움은 index.html의 Tower)
 // 좌표는 칸 단위, x는 몸 가운데, y는 발끝 (아래로 갈수록 커짐). 한 칸 = 화면의 TILE
 // 맵 글자: # 돌 블록(사방이 막힘) · = 나무 발판(아래에서는 뚫고 올라가고 위에서만 밟힘) · H 사다리(↑↓로 오르내림, 맨 위는 발판)
-//         S 시작 · C 체크포인트(지나가면 떨어졌을 때 여기서 다시) · G 깃발(닿으면 클리어) · . 빈칸
+//         S 시작 · m 몬스터 · P 포탈(몬스터를 다 잡으면 열림) · C 체크포인트 · G 깃발 · . 빈칸
 (function (root) {
   "use strict";
   // 손맛: 점프 높이 약 2.7칸(꾹 누를 때), 한 번에 가로 약 4칸. 짧게 누르면 낮게 (떼면 올라가는 속도 절반)
@@ -15,62 +15,42 @@
   };
   const SOLID = "#", PLANK = "=", LADDER = "H";
 
-  // 점프 탑 1: 지그재그로 올라가고, 가운데 사다리, 체크포인트 두 곳, 맨 위 깃발 (폭 22 × 높이 40)
-  const TOWER1 = [
-    "######################",
-    "#..........G.........#",
-    "#.......######.......#",
-    "#....................#",
-    "#....===.............#",
-    "#.........C..........#",
-    "#........===.........#",
-    "#....................#",
-    "#.............===....#",
-    "#....................#",
-    "#..................==#",
-    "#....................#",
-    "#...............##...#",
-    "#....................#",
-    "#...........==.......#",
-    "#....................#",
-    "#......====..........#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#.....H..............#",
-    "#..C..H..............#",
-    "#.=====..............#",
-    "#....................#",
-    "#.......===..........#",
-    "#....................#",
-    "#...........===......#",
-    "#....................#",
-    "#................#####",
-    "#....................#",
-    "#...........====.....#",
-    "#....................#",
-    "#......====..........#",
-    "#....................#",
-    "#..====..............#",
-    "#.S..................#",
-    "######################",
+  // 사냥터 1층 (dc#83): 폭 40 × 높이 18. 바닥·가운데 발판 두 층·맨 위 발판, 사다리 4개. m 몬스터 10마리, P 포탈(다 잡으면 열림)
+  const HUNT1 = [
+    "########################################",
+    "#......................................#",
+    "#......................................#",
+    "#......................................#",
+    "#..................m...................#",
+    "#.............============.............#",
+    "#......................................#",
+    "#...................==.................#",
+    "#..............m...........m...........#",
+    "#.......====H======.....====H===.......#",
+    "#...........H...............H..........#",
+    "#...........H...............H..........#",
+    "#.......m...H.............m.H....m.....#",
+    "#..==H=========.......============H==..#",
+    "#....H............................H....#",
+    "#....H...........==...............H....#",
+    "#.S..H..m......m....P....m.....m..H....#",
+    "########################################",
   ];
-  const MAPS = { tower1: { name: "점프 탑 1", rows: TOWER1 } };
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 } };
 
   function parse(rows) {
     const h = rows.length, w = rows[0].length;
     const cell = (x, y) => (x < 0 || x >= w || y < 0 || y >= h ? SOLID : rows[y][x]);
-    let start = null, goal = null;
-    const checkpoints = [];
+    let start = null, goal = null, portal = null;
+    const checkpoints = [], spawns = [];
     rows.forEach((r, y) => [...r].forEach((c, x) => {
       if (c === "S") start = { x: x + 0.5, y: y + 1 };
       else if (c === "G") goal = { x, y };
       else if (c === "C") checkpoints.push({ x: x + 0.5, y: y + 1 });
+      else if (c === "m") spawns.push({ x: x + 0.5, y: y + 1 });
+      else if (c === "P") portal = { x: x + 0.5, y: y + 1 };
     }));
-    return { w, h, rows, cell, start, goal, checkpoints };
+    return { w, h, rows, cell, start, goal, checkpoints, spawns, portal };
   }
 
   function newState(map) {
@@ -187,7 +167,44 @@
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  const api = { PHYS, MAPS, parse, newState, step, standing, onLadder };
+  // ---- 몬스터: 서 있는 발판 위를 왔다 갔다 (떨어지거나 뛰지 않음), 가끔 멈춤 ----
+  // aggro: 같은 발판에 선 플레이어가 이 칸 안이면 그쪽으로 걸어옴
+  const MOB = { w: 0.8, h: 0.9, speed: 1.6, pauseMin: 0.6, pauseMax: 1.6, walkMin: 1.5, walkMax: 4, aggro: 4 };
+  // 발판 끝: 발밑이 밟히고 몸 칸이 막히지 않은 데까지
+  function patrol(map, x, y) {
+    const ok = (tx) => { const c = map.cell(tx, y); return (c === SOLID || oneWayAt(map, tx, y)) && map.cell(tx, y - 1) !== SOLID; };
+    let x0 = Math.floor(x), x1 = x0;
+    while (ok(x0 - 1)) x0--;
+    while (ok(x1 + 1)) x1++;
+    return { x0: x0 + MOB.w / 2, x1: x1 + 1 - MOB.w / 2 };
+  }
+  function newMob(map, at, rand = Math.random) {
+    return { x: at.x, y: at.y, ...patrol(map, at.x, at.y), dir: rand() < 0.5 ? -1 : 1, wait: rand() * MOB.pauseMax, walk: 0 };
+  }
+  // 한 걸음. busy(싸우는 중)면 제자리, toward(같은 발판의 플레이어 x)가 aggro칸 안이면 그쪽으로
+  function mobStep(m, dt, busy = false, rand = Math.random, toward = null) {
+    if (busy) return m;
+    if (toward != null && Math.abs(toward - m.x) <= MOB.aggro) {
+      m.dir = toward < m.x ? -1 : 1; m.wait = 0; m.walk = MOB.walkMin;
+      m.x = clamp(m.x + m.dir * MOB.speed * dt, m.x0, m.x1);
+      return m;
+    }
+    if (m.wait > 0) { m.wait -= dt; if (m.wait <= 0) { m.walk = MOB.walkMin + rand() * (MOB.walkMax - MOB.walkMin); if (rand() < 0.4) m.dir = -m.dir; } return m; }
+    m.x += m.dir * MOB.speed * dt;
+    if (m.x <= m.x0) { m.x = m.x0; m.dir = 1; }
+    else if (m.x >= m.x1) { m.x = m.x1; m.dir = -1; }
+    m.walk -= dt;
+    if (m.walk <= 0) m.wait = MOB.pauseMin + rand() * (MOB.pauseMax - MOB.pauseMin);
+    return m;
+  }
+  // 플레이어와 몬스터가 닿았는지 (몸이 조금이라도 겹치거나 바로 옆)
+  // 플레이어가 몬스터와 같은 발판에 서 있는지 (발끝 높이가 같고 그 발판 범위 안)
+  const sameFloor = (s, m) => s.ground && !s.climbing && Math.abs(s.y - m.y) < 1e-6 && s.x >= m.x0 - 0.6 && s.x <= m.x1 + 0.6;
+  const touching = (s, m) => Math.abs(s.x - m.x) < (PHYS.w + MOB.w) / 2 + 0.15 && Math.abs(s.y - m.y) < (PHYS.h + MOB.h) / 2;
+  // 스킬 거리 (칸, 대각선도 1칸): 몸 가운데끼리
+  const reach = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs((a.y - PHYS.h / 2) - (b.y - MOB.h / 2)));
+
+  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, mobStep, sameFloor, touching, reach };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RLJump = api;
 })(typeof window !== "undefined" ? window : globalThis);
