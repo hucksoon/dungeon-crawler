@@ -6,6 +6,8 @@
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const OUT = process.env.SHOTS_OUT || path.join(REPO, "blog/images");   // SHOTS_OUT: 다른 곳에 찍어 보기
 const require = createRequire((process.env.NODE_PATH || "/usr/lib/node_modules") + "/");
@@ -119,6 +121,25 @@ const SCENES = [
     shot: "#game", more: [["pixel-text", "같은 층을 예전 글자 화면으로 (글자로 보기)", (page) => page.click("#gfx-btn")]] })],
   ["pixel-hell", "헬 던전도 픽셀 그림으로: 네임드 보스 불가사리", async () => { const o = await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(10, "blog-pxhell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [" ", " "], 150); return { ...o, shot: "#game" }; }],
   ["pixel-zoom", "가까이 보기: 플레이어 주변 방 하나 정도만 크게", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(9, "blog-pxzoom", { hp: 200, mh: 260, a: 28, g: 520, l: 11 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 9) }, { dx: -1, dy: -1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "wolf"), "normal", 9) }] }), shot: "#game" })],
+  // 플레이어 그림: 장비 없음(속옷만) / 장비를 낀 모습, 공격하는 순간 (몬스터가 앞으로 찌르고 붉게 번쩍)
+  ["doll-naked", "장비가 하나도 없으면 속옷만", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-naked", { hp: 60, mh: 60, a: 5, g: 20, l: 2 }), "rl_inv:g:DEV": inv([]) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "rat"), "normal", 3) }] }), shot: "#game" })],
+  ["doll-gear", "낀 장비가 등급 색으로 보여요", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(40, "blog-gear", { hp: 900, mh: 1200, a: 60 }), "rl_inv:g:DEV": inv(g40) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "troll"), "elite", 40) }] }), shot: "#game" })],
+  // 움직이는 그림(GIF): 페이지 안에서 키를 누르며 캔버스를 40ms마다 찍어서 이어 붙임. 플레이어 주변 7×5칸만
+  ["anim-fight", "공격·반격·쓰러짐·걷기 움직임", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(40, "blog-anim", { hp: 1e6, mh: 1e6, a: 900 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")) } },
+      { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "minotaur"), "normal", 40), hp: 1e9, maxHp: 1e9, atk: 40 }, { dx: 0, dy: 1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 40), hp: 1, maxHp: 1, atk: 0 }] });
+    await sleep(800);
+    const frames = await o.page.evaluate(() => new Promise(done => {
+      const keys = [["ArrowRight", 150], ["ArrowRight", 750], ["ArrowDown", 1350], ["ArrowDown", 1950], ["ArrowUp", 2350]], out = [], t0 = performance.now();
+      for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
+      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = 448; cut.height = 320;
+      // 플레이어가 화면의 어디에 있는지 (가까이 보기 시점: 16×12칸, 지도 끝에서 멈춤, 한 칸 = 캔버스 64px)
+      const L = JSON.parse(localStorage.getItem("rl_level")), cx = Math.max(0, Math.min(16, L.px + 0.5 - 8)), cy = Math.max(0, Math.min(12, L.py + 0.5 - 6));
+      const sx = Math.max(0, Math.min(1024 - 448, (L.px - cx + 0.5) * 64 - 224)), sy = Math.max(0, Math.min(768 - 320, (L.py - cy + 0.5) * 64 - 160));
+      const grab = () => { cut.getContext("2d").drawImage(c, sx, sy, 448, 320, 0, 0, 448, 320); out.push(cut.toDataURL()); if (performance.now() - t0 < 2900) setTimeout(grab, 40); else done(out); };
+      grab();
+    }));
+    return { ...o, frames }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 
@@ -127,10 +148,19 @@ const done = [];
 try {
   for (const [name, caption, shoot] of SCENES) {
     if (only.length && !only.some(s => name.includes(s))) continue;
-    const { ctx, page, errors, shot, more = [] } = await shoot();
-    // shot: 그 부분만 찍기, more: 이어서 [이름, 설명, 할 일]로 더 찍기
-    const snap = (n) => (shot ? page.locator(shot).screenshot({ path: path.join(OUT, `${n}.png`) }) : page.screenshot({ path: path.join(OUT, `${n}.png`) }));
-    await sleep(500);
+    const { ctx, page, errors, shot, more = [], nowait = false, frames } = await shoot();
+    if (frames) {   // 움직이는 그림: 프레임을 이어 GIF로 (ImageMagick)
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gif-"));
+      frames.forEach((f, i) => fs.writeFileSync(path.join(dir, `${String(i).padStart(3, "0")}.png`), Buffer.from(f.split(",")[1], "base64")));
+      execFileSync("convert", ["-delay", "4", "-loop", "0", ...fs.readdirSync(dir).sort().map(f => path.join(dir, f)), "-layers", "Optimize", path.join(OUT, `${name}.gif`)]);
+      fs.rmSync(dir, { recursive: true, force: true });
+      done.push(`${name}.gif — ${caption} (${frames.length}프레임)${errors.length ? ` (페이지 오류 ${errors.length}: ${errors[0].slice(0, 80)})` : ""}`);
+      await ctx.close();
+      continue;
+    }
+    // shot: 그 부분만 찍기, more: 이어서 [이름, 설명, 할 일]로 더 찍기, nowait: 움직이는 순간을 바로 찍기
+    const snap = (n) => (shot ? page.locator(shot).screenshot({ path: path.join(OUT, `${n}.png`), animations: "allow" }) : page.screenshot({ path: path.join(OUT, `${n}.png`) }));
+    if (!nowait) await sleep(500);
     await snap(name);
     done.push(`${name}.png — ${caption}${errors.length ? ` (페이지 오류 ${errors.length}: ${errors[0].slice(0, 80)})` : ""}`);
     for (const [n, c, act] of more) { await act(page); await sleep(400); await snap(n); done.push(`${n}.png — ${c}`); }

@@ -1754,6 +1754,7 @@
   function tryMove(dx, dy) {
     if (scene === "lobby") { lobbyMove(dx, dy); return; }
     if (gameOver) return;
+    Anim.newTurn();
     let nx = player.x + dx, ny = player.y + dy;
     if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) return;
     if (map[ny][nx] === WALL) return;
@@ -1788,10 +1789,12 @@
 
   function wait() {
     if (gameOver || scene === "lobby") return;
+    Anim.newTurn();
     endTurn();
   }
 
   function attack(attacker, target) {
+    const at = Anim.attack(attacker, target);   // 공격 움직임 (몬스터는 차례로), at = 닿는 때
     if (attacker === player) {
       const s = stats();
       // 두 손 무기면 한 턴에 두 번 (두 번째 왼손 공격은 약하게). 첫 공격에 쓰러지면 끝
@@ -1816,12 +1819,14 @@
       // 구미호의 비녀: 확률로 공격을 피함
       if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
         showDamage(target, T("피함"), false, RLItems.RARITIES.unique.color);
+        Anim.dodge(target, attacker, at);
         log(T("{0}의 공격을 피했다! (홀림)", attacker.name), "good");
         return;
       }
       // 방패: 확률로 공격을 막아냄 (피해 없음)
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, T("막음"), false);
+        Anim.block(target, attacker, at);
         log(T("{0}의 공격을 방패로 막아냈다! (패링)", attacker.name), "good");
         // 업경대: 막아도 받을 피해의 %를 되돌림
         if (s.uq.reflect && attacker.hp > 0) {
@@ -1843,6 +1848,7 @@
       const crowd = RLMonsters.crowdCut(adjacentFoes());
       const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
       const took = hurtPlayer(dmg);
+      Anim.hit(target, attacker, at);
       log(T("{0}에게 {1} 피해를 입음.{2}", attacker.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
       if (target.hp <= 0) { death(); return; }
       // 쇠비늘 갑옷: 맞을 때마다 방어력 +% (이 층에서, 최대치까지)
@@ -2006,6 +2012,7 @@
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
     showDamage(target, dmg, crit);
+    Anim.hit(target, player);
     let left = target.kind !== "normal" ? T(" (남은 HP {0}/{1}", Math.max(0, target.hp), target.maxHp) : "";
     if (target.kind === "golden" && target.fleeAt != null) left += T(", 도망까지 {0}턴", Math.max(0, target.fleeAt - turn));
     if (left) left += ")";
@@ -2019,6 +2026,7 @@
 
   function killEnemy(e) {
     enemies = enemies.filter(x => x !== e);
+    Anim.die(e);
     // 구미호의 분신: 경험치·골드·장비 없음
     if (e.clone) { log(T("{0}이(가) 연기처럼 사라졌다.", e.name), null, RLMonsters.NAMED_COLOR); return; }
     Dex.kill(e.id);
@@ -3456,11 +3464,13 @@
   const LOBBY_FPS = 20;
   function lobbyLoop(t) {
     requestAnimationFrame(lobbyLoop);
+    // 던전의 짧은 움직임(걷기·공격 등, 0.1~0.4초)은 매 프레임 부드럽게
+    if (scene === "dungeon" && !document.hidden && Anim.busy()) { lobbyFrame = t; render(); return; }
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
     if (scene === "lobby" && !document.hidden) { Lobby.step(dt); render(); }
-    else if (scene === "dungeon" && !document.hidden && rainbowInSight()) render();
+    else if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight())) render();
   }
 
   // 헬 건물 장식: 둘레의 붉은 빛, 지붕 위 불꽃, 가운데 큰 이름 (나이트메어를 완료하기 전에는 어둡게)
@@ -3627,9 +3637,10 @@
 
     // 다른 사람들 → 나 (내가 맨 위에 보이게). 이름 위에 그 사람이 포탈을 타고 나온 층(◎N층),
     // 층 랭킹 1~3위는 이름 왼쪽에 금·은·동 왕관
-    const person = (x, y, name, color, portal, crown, staff) => {
+    const person = (x, y, name, color, portal, crown, staff, self = false) => {
       const cx = x * TILE + TILE / 2, by = y * TILE - 2;
-      drawArt("player", "@", x * TILE, y * TILE, color);
+      if (self) drawHero(x * TILE, y * TILE, color);   // 나는 지금 낀 장비 그림, 다른 사람은 기사 그림
+      else drawArt("player", "@", x * TILE, y * TILE, color);
       drawLabel(name, cx, by, staff ? STAFF_COLOR : color, 11);
       ctx.font = `bold 11px "Courier New", monospace`;
       const left = cx - ctx.measureText(name).width / 2;
@@ -3639,7 +3650,7 @@
     };
     for (const p of Lobby.people()) person(p.x, p.y, who(p.name), p.color, p.portal, p.crown, p.staff);
     const me = Lobby.me();
-    person(lobbyPos.x, lobbyPos.y, me ? who(me.name) : T("나"), "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff);
+    person(lobbyPos.x, lobbyPos.y, me ? who(me.name) : T("나"), "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff, true);
   }
 
   // 캐릭터 머리 위 이름 (검은 테두리로 바닥 위에서도 잘 보이게)
@@ -3736,6 +3747,8 @@
         const c = this.on && S.map[name];
         return c ? el("span", { className: "pix", style: { backgroundPosition: `-${c[0] * S.size}px -${c[1] * S.size}px` } }) : null;
       },
+      // 그림 한 칸의 [그림 모음, x, y] (다른 캔버스에 겹칠 때)
+      src(name) { const c = S?.map[name]; return c ? [sheet, c[0] * S.size, c[1] * S.size] : null; },
       // (px, py) 칸에 그림 하나. 없는 이름이면 false (그러면 글자로)
       draw(name, px, py) {
         const c = S?.map[name];
@@ -3761,9 +3774,189 @@
   // 화면 왼쪽 위가 지도의 어디인지(그리는 좌표)와 배율. 지도 끝에서는 더 밀려나지 않게
   function camera() {
     if (scene !== "dungeon" || fullMap || !player) return { x: 0, y: 0, z: 1 };
-    const cx = Math.max(0, Math.min(MAP_W - CAM_W, player.x + 0.5 - CAM_W / 2));
-    const cy = Math.max(0, Math.min(MAP_H - CAM_H, player.y + 0.5 - CAM_H / 2));
+    const o = Anim.of(player);   // 걷는 중이면 그 사이 위치를 따라감 (화면이 부드럽게 미끄러짐)
+    const cx = Math.max(0, Math.min(MAP_W - CAM_W, player.x + o.walkX / TILE + 0.5 - CAM_W / 2));
+    const cy = Math.max(0, Math.min(MAP_H - CAM_H, player.y + o.walkY / TILE + 0.5 - CAM_H / 2));
     return { x: cx * TILE, y: cy * TILE, z: ZOOM };
+  }
+
+  // ---- 플레이어 그림: 낀 장비만 겹치고 장비 등급 색으로 칠함 (아무것도 안 끼면 속옷만) ----
+  // 순서: 몸 → 장화 → 바지 → 갑옷 → 장갑 → 오른손 무기 → 왼손(방패·보조 무기) → 투구. 목걸이·반지는 그림 없음
+  const DOLL_SLOTS = ["boots", "pants", "chest", "arms", "weapon", "offhand", "head"];
+  const Doll = (() => {
+    const cv = document.createElement("canvas"), g = cv.getContext("2d");
+    const part = document.createElement("canvas"), pg = part.getContext("2d");
+    cv.width = cv.height = part.width = part.height = 32;
+    let key = null;
+    const partName = (slot, it) => (slot === "weapon" ? `doll_w_${it.type}` : slot === "offhand" ? `doll_o_${RLItems.isWeaponLike(it) ? it.type : "shield"}` : `doll_${slot}`);
+    // 부위 하나를 색칠해서 겹침: 밝기(음영)는 그대로, 색상·채도만 등급 색으로
+    function layer(name, color) {
+      const src = Sprites.src(name);
+      if (!src) return;
+      pg.globalCompositeOperation = "source-over";
+      pg.clearRect(0, 0, 32, 32);
+      pg.drawImage(src[0], src[1], src[2], 32, 32, 0, 0, 32, 32);
+      if (color) {
+        pg.globalCompositeOperation = "color";
+        pg.fillStyle = color;
+        pg.fillRect(0, 0, 32, 32);
+        pg.globalCompositeOperation = "destination-in";   // 칠한 색은 부위 모양 안에만
+        pg.drawImage(src[0], src[1], src[2], 32, 32, 0, 0, 32, 32);
+      }
+      g.drawImage(part, 0, 0);
+    }
+    return {
+      // 지금 장비로 만든 32×32 그림 (장비가 바뀔 때만 다시 만듦)
+      canvas() {
+        const eq = Inv.equipped();
+        const worn = DOLL_SLOTS.filter(slot => eq[slot]).map(slot => [partName(slot, eq[slot]), rarityColor(eq[slot])]).filter(([n]) => Sprites.has(n));
+        const k = worn.flat().join("|");
+        if (k !== key) {
+          key = k;
+          g.clearRect(0, 0, 32, 32);
+          layer("doll_base", null);
+          for (const [n, c] of worn) layer(n, c);
+        }
+        return cv;
+      },
+      key: () => key,
+    };
+  })();
+
+  // ---- 움직임 (그림만 움직이고 게임 규칙·좌표는 그대로, 움직임 줄이기 설정이면 모두 끔) ----
+  // 걷기: 칸 사이를 미끄러짐 · 공격: 상대 쪽으로 찔렀다 돌아옴 · 맞음: 흔들리고 붉게 번쩍 · 피함: 옆으로 비켜섬
+  // 막음: 방패 쪽이 하얗게 번쩍 · 쓰러짐: 붉게 물들며 가라앉아 사라짐 · 서 있을 때: 한 칸씩 숨쉬듯 들썩
+  const Anim = (() => {
+    const fx = new Map();          // 대상(몬스터·플레이어) → 효과 목록 { kind, t0, dur, dx, dy }
+    const last = new WeakMap();    // 대상 → 지난번 그린 칸 (걸으면 그 사이를 미끄러짐)
+    const phase = new WeakMap();   // 대상 → 숨쉬기 박자 (모두 같이 들썩이지 않게)
+    let dying = [];                // 쓰러진 몬스터를 잠깐 남겨서 사라지게
+    let seq = 0;                   // 한 턴 안 몬스터 공격 순서 (하나씩 차례로 보이게)
+    let idleTick = -1;
+    const now = () => performance.now();
+    const add = (who, kind, dur, d = {}, delay = 0) => {
+      if (reduceMotion || !who) return;
+      const list = (fx.get(who) || []).filter(f => f.kind !== kind && now() < f.t0 + f.dur);
+      list.push({ kind, t0: now() + delay, dur, dx: d.dx || 0, dy: d.dy || 0 });
+      fx.set(who, list);
+    };
+    const toward = (a, b) => ({ dx: Math.sign(b.x - a.x), dy: Math.sign(b.y - a.y) });
+    const ease = (p) => 1 - (1 - p) * (1 - p);
+    const ZERO = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null };
+    return {
+      // 플레이어가 행동할 때마다: 이번 턴 몬스터 공격 순서를 처음부터
+      newTurn() { seq = 0; },
+      // a가 b를 공격. 몬스터는 플레이어 행동 뒤에 하나씩. 돌려주는 값 = 그 공격이 닿는 때(ms)
+      attack(a, b) {
+        const delay = a === player ? 0 : 110 + 90 * seq++;
+        add(a, "lunge", 180, toward(a, b), delay);
+        return delay + 80;
+      },
+      hit(who, from, at = 80) { add(who, "hit", 240, from ? toward(from, who) : {}, at); },
+      dodge(who, from, at) { const d = toward(from, who); add(who, "dodge", 280, d.dx || d.dy ? { dx: -d.dy, dy: d.dx } : { dy: 1 }, at); },   // 공격 방향과 직각으로
+      block(who, from, at) { add(who, "block", 300, toward(who, from), at); },
+      die(e, at = 80) {
+        if (reduceMotion) return;
+        dying.push({ name: `mon_${e.id}`, ch: e.ch, color: e.color, x: e.x, y: e.y, t0: now() + at, dur: 380 });
+      },
+      // 그릴 때 더할 위치(그리는 좌표)와 효과. 칸이 바뀌었으면 여기서 걷기를 시작함
+      of(who) {
+        if (reduceMotion || !who) return ZERO;
+        const t = now(), prev = last.get(who);
+        if (!prev || prev.x !== who.x || prev.y !== who.y) {
+          last.set(who, { x: who.x, y: who.y });
+          if (prev && Math.abs(prev.x - who.x) <= 1 && Math.abs(prev.y - who.y) <= 1) add(who, "walk", 120, { dx: prev.x - who.x, dy: prev.y - who.y });
+        }
+        const o = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null };
+        let busy = false;
+        for (const f of fx.get(who) || []) {
+          const p = (t - f.t0) / f.dur;
+          if (p >= 1) continue;
+          busy = true;
+          if (p < 0) { if (f.kind === "walk") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
+          const arc = Math.sin(p * Math.PI);
+          if (f.kind === "walk") { o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p)); }
+          else if (f.kind === "lunge") { o.x += f.dx * TILE * 0.38 * arc; o.y += f.dy * TILE * 0.38 * arc; }
+          else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
+          else if (f.kind === "dodge") { o.x += f.dx * TILE * 0.42 * arc; o.y += f.dy * TILE * 0.42 * arc; o.alpha = Math.min(o.alpha, 1 - 0.45 * arc); }
+          else if (f.kind === "block") { o.x -= f.dx * TILE * 0.1 * arc; o.y -= f.dy * TILE * 0.1 * arc; o.spark = { dx: f.dx, dy: f.dy, a: p < 0.4 ? 1 : (1 - p) / 0.6 }; }
+        }
+        if (!busy) {
+          fx.delete(who);
+          // 숨쉬기: 몇 박자마다 한 픽셀 들썩 (그림 모드에서만)
+          if (Sprites.on) {
+            if (!phase.has(who)) phase.set(who, Math.floor(Math.random() * 4));
+            if ((Math.floor(t / 280) + phase.get(who)) % 4 >= 2) o.y -= 0.8;
+          }
+        }
+        o.x += o.walkX; o.y += o.walkY;
+        return o;
+      },
+      // 쓰러지는 중인 몬스터 그리기
+      drawDying() {
+        const t = now();
+        dying = dying.filter(d => t < d.t0 + d.dur);
+        for (const d of dying) {
+          const p = Math.max(0, (t - d.t0) / d.dur), px = d.x * TILE, py = d.y * TILE + p * TILE * 0.3;
+          ctx.save();
+          ctx.globalAlpha = 1 - p;
+          if (Sprites.on && Sprites.has(d.name)) { Sprites.draw(d.name, px, py); drawFlash(Sprites.src(d.name), px, py, Math.min(0.8, 0.3 + p)); }
+          else drawGlyph(d.ch, px, py, "#ff5a5a");
+          ctx.restore();
+        }
+      },
+      // 짧은 움직임이 남아 있으면 true (그동안은 매 프레임 다시 그림)
+      busy() {
+        const t = now();
+        if (dying.length) return true;
+        for (const list of fx.values()) if (list.some(f => t < f.t0 + f.dur)) return true;
+        return false;
+      },
+      // 숨쉬기 박자가 바뀌었으면 true (그때만 다시 그림: 초당 약 4번)
+      idleChanged() {
+        if (reduceMotion || !Sprites.on) return false;
+        const k = Math.floor(now() / 280);
+        if (k === idleTick) return false;
+        idleTick = k;
+        return true;
+      },
+    };
+  })();
+  // 그림 위에 붉은 빛 (맞음·쓰러짐): 그림 모양대로만 칠함
+  const flashCv = document.createElement("canvas"), flashG = flashCv.getContext("2d");
+  flashCv.width = flashCv.height = 32;
+  function drawFlash(src, px, py, a, color = "#ff3b3b") {
+    if (!src || a <= 0) return;
+    flashG.globalCompositeOperation = "source-over";
+    flashG.clearRect(0, 0, 32, 32);
+    if (src instanceof HTMLCanvasElement) flashG.drawImage(src, 0, 0);
+    else flashG.drawImage(src[0], src[1], src[2], 32, 32, 0, 0, 32, 32);
+    flashG.globalCompositeOperation = "source-atop";
+    flashG.fillStyle = color;
+    flashG.fillRect(0, 0, 32, 32);
+    ctx.save();
+    ctx.globalAlpha *= a;
+    ctx.drawImage(flashCv, px, py, TILE, TILE);
+    ctx.restore();
+  }
+  // 막음: 공격이 온 쪽에 하얀 반달 빛
+  function drawSpark(px, py, sp) {
+    ctx.save();
+    ctx.globalAlpha = sp.a;
+    ctx.strokeStyle = "#f4fbff";
+    ctx.shadowColor = "#9fd8ff";
+    ctx.shadowBlur = 6;
+    ctx.lineWidth = 3;
+    const ang = Math.atan2(sp.dy, sp.dx);
+    ctx.beginPath();
+    ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.42, ang - 0.9, ang + 0.9);   // 플레이어 칸 안, 공격이 온 쪽 가장자리
+    ctx.stroke();
+    ctx.restore();
+  }
+  // 플레이어 (그림 모드면 장비를 입은 그림)
+  function drawHero(px, py, color = "#ffffff") {
+    if (Sprites.on) ctx.drawImage(Doll.canvas(), px, py, TILE, TILE);
+    else drawGlyph("@", px, py, color);
   }
 
   // 지역마다 다른 바닥·벽 (골드 던전 악몽도 골드)
@@ -3807,8 +4000,11 @@
     ctx.setTransform(z, 0, 0, z, -cam.x * z, -cam.y * z);
 
     const art = Sprites.on, zone = zoneArt();
-    for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
+    // 화면에 보이는 칸만 (가까이 보기면 16×12칸 남짓)
+    const tx0 = Math.max(0, Math.floor(cam.x / TILE)), ty0 = Math.max(0, Math.floor(cam.y / TILE));
+    const tx1 = Math.min(MAP_W - 1, tx0 + Math.ceil(MAP_W / cam.z)), ty1 = Math.min(MAP_H - 1, ty0 + Math.ceil(MAP_H / cam.z));
+    for (let y = ty0; y <= ty1; y++) {
+      for (let x = tx0; x <= tx1; x++) {
         if (!seen[y][x]) continue;
         const lit = visible[y][x];
         const px = x * TILE, py = y * TILE;
@@ -3881,9 +4077,11 @@
     // 적
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
-      const px = e.x * TILE, py = e.y * TILE;
+      const o = Anim.of(e), px = e.x * TILE + o.x, py = e.y * TILE + o.y;
       // 그림 모드: 몬스터 그림을 먼저, 테두리·상태·속성 점은 그 위에
       const pic = Sprites.on && Sprites.has(`mon_${e.id}`);
+      ctx.save();
+      ctx.globalAlpha = o.alpha;
       if (e.kind === "golden") {
         // 황금 고블린은 금빛 칸으로 표시. 정예는 금색, 왕은 빨간 테두리를 더함
         ctx.fillStyle = "rgba(255, 215, 0, 0.3)";
@@ -3903,8 +4101,11 @@
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         if (e.named) ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
       }
+      if (pic) drawFlash(Sprites.src(`mon_${e.id}`), px, py, o.flash);
       drawStatus(e, px, py);
-      if (!pic) drawGlyph(e.ch, px, py, e.color);
+      if (!pic) drawGlyph(e.ch, px, py, o.flash > 0.3 ? "#ff5a5a" : e.color);
+      ctx.restore();
+      if (o.spark) drawSpark(px, py, o.spark);
       // 속성 몬스터: 오른쪽 위에 속성 색 점
       if (e.el) {
         ctx.fillStyle = EL.colors[e.el];
@@ -3912,9 +4113,17 @@
       }
     }
 
-    // 플레이어
-    drawStatus(player, player.x * TILE, player.y * TILE);
-    drawArt("player", "@", player.x * TILE, player.y * TILE, "#ffffff");
+    Anim.drawDying();
+
+    // 플레이어 (낀 장비 그림, 걷기·공격·맞음·피함·막음 움직임)
+    const po = Anim.of(player), ppx = player.x * TILE + po.x, ppy = player.y * TILE + po.y;
+    drawStatus(player, ppx, ppy);
+    ctx.save();
+    ctx.globalAlpha = po.alpha;
+    drawHero(ppx, ppy, po.flash > 0.3 ? "#ff5a5a" : "#ffffff");
+    if (Sprites.on) drawFlash(Doll.canvas(), ppx, ppy, po.flash);
+    ctx.restore();
+    if (po.spark) drawSpark(ppx, ppy, po.spark);
 
     // 세트 스킬 칸 (잠깐 번쩍임)
     const now = performance.now();

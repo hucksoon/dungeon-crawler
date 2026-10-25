@@ -202,6 +202,23 @@ add("mon_imugi", { from: "mon/unique/jormungandr", mod: [80, 70, 150] });       
 add("mon_jeoseung", { from: "mon/demons/reaper", mod: [100, 0, 100], over: [drawGat, 0, -3] });       // 검은 도포 + 갓
 add("mon_yeomra", { from: "mon/unique/asmodeus", mod: [100, 120, 100], over: [drawMyeonryugwan, 0, -2] }); // 붉은 곤룡포 + 면류관
 
+// 플레이어 옷 입히기: 맨몸(회색 속옷) 위에 낀 장비만 겹침. 밝은 회색 부위를 게임에서 등급 색으로 칠함
+// 겹치는 순서: 몸 → 장화 → 바지 → 갑옷 → 장갑 → 오른손 → 왼손 → 투구
+add("doll_base", { from: "player/base/human_m" });
+add("doll_boots", { from: "player/boots/middle_gray" });
+add("doll_pants", { from: "player/legs/leg_armour03" });
+add("doll_chest", { from: "player/body/half_plate" });
+add("doll_arms", { from: "player/gloves/glove_gray" });
+add("doll_head", { from: "player/head/fhelm_gray3" });
+add("doll_w_dagger", { from: "player/hand1/dagger" });
+add("doll_w_staff", { from: "player/hand1/quarterstaff" });
+add("doll_w_axe", { from: "player/hand1/war_axe" });
+add("doll_w_longsword", { from: "player/hand1/long_sword_slant" });
+add("doll_o_shield", { from: "player/hand2/shield_knight_gray" });
+add("doll_o_dagger", { from: "player/hand2/misc/dagger" });
+add("doll_o_staff", { from: "player/hand1/quarterstaff", flop: true });
+add("doll_o_axe", { from: "player/hand1/hand_axe", flop: true });
+
 // ---- 만들기 ----
 const files = [];
 for (const [i, sp] of SPRITES.entries()) {
@@ -210,6 +227,7 @@ for (const [i, sp] of SPRITES.entries()) {
   else {
     const layers = (Array.isArray(sp.from) ? sp.from : [sp.from]).map(src);
     im(...layers, "-background", "none", "-layers", "flatten", out);
+    if (sp.flop) im(out, "-flop", out);   // 좌우 뒤집기 (오른손 무기 → 왼손)
     if (sp.mod) im(out, "-modulate", sp.mod.join(","), out);
     if (sp.tint) im(out, "-fill", sp.tint[0], "-colorize", `${sp.tint[1]}%`, out);
     // 장식은 색을 바꾸지 않고 마지막에 얹거나 깔기
