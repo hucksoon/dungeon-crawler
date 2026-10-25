@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -57,7 +58,7 @@ const plain = I.generate("tp|d70|k1", "golden", 70);
 const saveB = (d, rid, best, extra = {}) => JSON.stringify({ v: 1, season: 4, best, ...extra, run: { d, hp: 900, mh: 1000, a: 30, g: 777, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
 try {
-  // 1. 포탈(P) → 바로 로비 (턴 없음), 로비 파란 포탈(*)로 떠난 자리로
+  // 1. 포탈(P) → 바로 로비 (턴 없음), 로비 파란 포탈로 떠난 자리로
   let { ctx, page, errors } = await open("tptest-a", { rl_save: saveB(20, "tpA", 25), rl_level: JSON.stringify({ ...JSON.parse(lv(20, "tpA", "normal")), items: [{ x: 10, y: 12, type: "treasure" }] }), "rl_inv:g:DEV": inv(plain) });
   await page.screenshot({ path: path.join(OUT, "tp-dungeon.png") });
   await press(page, "q"); await sleep(80);  // 포션 마심 → 쿨타임
@@ -66,26 +67,26 @@ try {
   await press(page, "p"); await sleep(200);
   const [hpNow, hpMax] = (await page.locator("#hp").innerText()).split("/");
   check("portal heals to full and resets the potion cooldown", hpNow === hpMax && (await page.locator("#tp-potion").innerText()) === "포션 (준비됨)" && (await logs(page)).includes("HP와 포션이 모두 회복됐다") && JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save"))).run.pc === 0, `${hpBefore} → ${hpNow}/${hpMax}`);
-  check("P goes to the lobby right away (no turn used)", await inLobby(page) && (await level(page)).turn === t0 && (await logs(page)).includes("바로 아래 파란 포탈(*)로 20층의 떠난 자리에 다시 들어갈 수 있다"));
+  check("P goes to the lobby right away (no turn used)", await inLobby(page) && (await level(page)).turn === t0 && (await logs(page)).includes("바로 앞 파란 포탈로 20층의 떠난 자리에 다시 들어갈 수 있다"));
   await page.screenshot({ path: path.join(OUT, "tp-lobby.png") });
-  // 로비 포탈 위(16,13)에 섬 → 아래로 들어가면 떠난 자리
-  await press(page, "ArrowDown"); await sleep(200);
+  // 마을 파란 포탈 문 앞에 섬 → ↑로 들어가면 떠난 자리
+  await press(page, "ArrowUp"); await sleep(200);
   const L = await level(page);
   check("back in the dungeon with full HP", (() => true)() && (await page.locator("#hp").innerText()).split("/")[0] === (await page.locator("#hp").innerText()).split("/")[1]);
   check("lobby portal returns to the same spot", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "20" && L.px === 10 && L.py === 10 && (await logs(page)).includes("떠난 자리로 돌아왔다"), JSON.stringify([L.px, L.py]));
   // 로비에서 새로고침해도 포탈 층을 기억
   await press(page, "p"); await sleep(200);
   await page.reload(); await sleep(500);
-  check("reload in the lobby keeps the portal floor", await inLobby(page) && (await logs(page)).includes("파란 포탈(*)로 20층에 돌아갈 수 있다"));
+  check("reload in the lobby keeps the portal floor", await inLobby(page) && (await logs(page)).includes("파란 포탈로 20층에 돌아갈 수 있다"));
   check("no page errors (portal)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
   // 2. 던전 입구 오른쪽 문: 최고 층 − 10층부터 (최고 40층 → 30층)
   ({ ctx, page, errors } = await open("tptest-b", { rl_save: saveB(1, "tpB", 40), rl_level: lv(1, "tpB", "normal"), "rl_inv:g:DEV": inv(plain) }));
   await press(page, "p"); await sleep(200);
-  // 1층에서 나오면 로비 포탈 없음, 1층 문 앞(15,12)
-  check("leaving from floor 1: no lobby portal (nothing to return to)", await inLobby(page) && !(await logs(page)).includes("파란 포탈(*)로"));
-  await press(page, "ArrowRight"); await press(page, "ArrowRight"); await press(page, "ArrowUp"); await sleep(250);
+  // 1층에서 나오면 로비 포탈 없음, 1층 문 앞
+  check("leaving from floor 1: no lobby portal (nothing to return to)", await inLobby(page) && !(await logs(page)).includes("파란 포탈로"));
+  await goDoor(page, "skip"); await sleep(250);
   check("right door starts at best − 10 (40 → 30)", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "30", await page.locator("#depth").innerText());
   check("new run id for the −10 start", (await level(page)).rid !== "tpB");
   await ctx.close();
@@ -93,7 +94,7 @@ try {
   // 3. 최고 11층 이하면 오른쪽 문은 닫힘
   ({ ctx, page, errors } = await open("tptest-c", { rl_save: saveB(1, "tpC", 11), rl_level: lv(1, "tpC", "normal"), "rl_inv:g:DEV": inv(plain) }));
   await press(page, "p"); await sleep(200);
-  await press(page, "ArrowRight"); await press(page, "ArrowRight"); await press(page, "ArrowUp"); await sleep(200);
+  await goDoor(page, "skip"); await sleep(200);
   check("right door closed before floor 12", await inLobby(page) && (await logs(page)).includes("12층까지 내려가면 열린다"));
   await ctx.close();
 
@@ -101,8 +102,7 @@ try {
   ({ ctx, page, errors } = await open("tptest-d", { rl_save: saveB(75, "tpD", 76, { clr: 1 }), rl_level: lv(75, "tpD", "normal"), "rl_inv:g:DEV": inv(plain) }));
   let dlg = ""; page.on("dialog", d => { dlg = d.message(); });
   await press(page, "p"); await sleep(200);
-  // 로비 포탈 위(16,13) → 오른쪽 (17,13) → 위로 (17,12) → 문(17,11)
-  await press(page, "ArrowRight"); await press(page, "ArrowUp", 2); await sleep(250);
+  await goDoor(page, "skip"); await sleep(250);
   check("cleared: right door = 65층, confirms that the portal floor goes away", (await page.locator("#depth").innerText()) === "65" && dlg.includes("65층부터 새로 들어갈까요?") && dlg.includes("75층"), dlg);
   check("no page errors (doors)", errors.length === 0, errors.join("; "));
   await ctx.close();

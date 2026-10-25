@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -77,8 +78,8 @@ async function portalOut(page) {
   const L = await page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   if (L?.tp) await page.keyboard.press(L.tp.x > L.px ? "ArrowRight" : L.tp.x < L.px ? "ArrowLeft" : L.tp.y > L.py ? "ArrowDown" : "ArrowUp"); await sleep(200);
 }
-// 로비 포탈 위 (16,13) → 왼쪽 3칸 (13,13) → 위로 9칸 (13,4) → 오른쪽 dx칸 → 위로 한 칸: 헬 문 (14,3) / 층 고르기 문 (18,3)
-async function walkToHell(page, dx = 1) { await portalOut(page); await press(page, "ArrowLeft", 3); await press(page, "ArrowUp", 9); await press(page, "ArrowRight", dx); await sleep(100); await page.keyboard.press("ArrowUp"); await sleep(350); }
+// 포탈로 마을에 나와서 헬 문(dx 1) / 층 고르기 문(dx 5)까지 걸어가 ↑
+async function walkToHell(page, dx = 1) { await portalOut(page); await goDoor(page, dx === 5 ? "hellPick" : "hell"); await sleep(100); }
 const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const findU = (k, f) => { for (let i = 0; ; i++) { const it = I.generateUnique(`ug${k}${i}|j${f}|u${i}`, 125 + f); if (it.uq === k) return it; } };
 const mob = (extra = {}) => ({ x: 11, y: 10, ...M.makeHell(M.MONSTERS.at(-1), "normal", 5, "fire"), hp: 1e9, maxHp: 1e9, atk: 50, el: null, res: { fire: 0, ice: 0, bolt: 0 }, ...extra });

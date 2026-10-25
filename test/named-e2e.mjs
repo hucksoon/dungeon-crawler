@@ -1,6 +1,7 @@
 // 헬 2단계: 네임드 보스 5마리 (불가사리·구미호·이무기·저승사자·염라대왕) — 규칙, 등장, 패턴, 룬 2개, 도감, 층 고르기 문
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -138,7 +139,7 @@ try {
   // 7. 층 고르기 문: 버튼에 네임드 이름
   ({ ctx, page, errors } = await open("namedtest-g", { rl_save: JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: 11, run: { d: 30, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid: "nmG", k: 0, pp: 0 } }), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": inv(v4) }));
   await press(page, "p"); await sleep(300);
-  await press(page, "ArrowLeft", 3); await press(page, "ArrowUp", 9); await press(page, "ArrowRight", 5); await sleep(100); await page.keyboard.press("ArrowUp"); await sleep(350);
+  await goDoor(page, "hellPick"); await sleep(100);
   check("hell pick buttons show named boss names", (await page.locator("#hellpick-list").innerText()).includes("10층 · 불가사리") && (await page.locator("#hellpick-list").innerText()).includes("20층 · 구미호 (미완료)"), await page.locator("#hellpick-list").innerText());
   await page.screenshot({ path: `${OUT}/named-pick.png` });
   await ctx.close();

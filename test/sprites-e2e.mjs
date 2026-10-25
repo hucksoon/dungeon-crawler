@@ -73,16 +73,9 @@ try {
     check(`${name}: no page errors`, errors.length === 0, errors.join("; "));
     const pic = { player: await colorsAt(page, 5, 5, true), mon: await colorsAt(page, 8, 5), wall: await colorsAt(page, 1, 1), floor: await colorsAt(page, 6, 8), stairs: await colorsAt(page, 13, 9) };
     check(`${name}: player (blue knight), monster, wall, floor and stairs are pixel sprites`, pic.player >= 20 && pic.mon >= 12 && pic.wall >= 5 && pic.floor >= 5 && pic.stairs >= 5, JSON.stringify(pic));
-    check(`${name}: text-mode button shows`, await page.locator("#gfx-btn").isVisible());
+    // 글자로 보기 버튼은 없앰 (dc#90): 늘 그림
+    check(`${name}: no text/pixel view toggle`, (await page.locator("#gfx-btn").count()) === 0);
     if (name === "desktop") {
-      await page.click("#gfx-btn"); await page.waitForTimeout(150);
-      const txt = { player: await colorsAt(page, 5, 5, true), wall: await colorsAt(page, 1, 1) };
-      check("text mode: player is a white @ glyph again and the wall a flat block", txt.player === 0 && txt.wall <= 3, JSON.stringify(txt));
-      check("text mode is remembered", (await page.evaluate(() => localStorage.getItem("rl_gfx"))) === "text");
-      await page.reload(); await page.waitForTimeout(800);
-      check("after reload still text mode", (await colorsAt(page, 1, 1)) <= 3);
-      await page.click("#gfx-btn"); await page.waitForTimeout(150);
-      check("pixel mode again: setting cleared and sprites back", (await page.evaluate(() => localStorage.getItem("rl_gfx"))) === null && (await colorsAt(page, 1, 1)) >= 5);
       // 도감: 만난 몬스터는 그림으로
       await page.keyboard.press("b"); await page.waitForTimeout(300);
       check("codex shows sprites for seen monsters", (await page.locator("#dex-body .pix").count()) > 0);
@@ -124,10 +117,16 @@ try {
     await page.screenshot({ path: path.join(OUT, "sprites-zoom.png") });
     await ctx.close();
   }
+  // 예전에 글자로 보기를 골랐던 사람(rl_gfx=text)도 그림으로, 설정은 지움
+  {
+    const { ctx, page, errors } = await open("oldtext", { viewport: { width: 1100, height: 1000 } }, { gfx: "text" });
+    check("old text-view setting is ignored: sprites shown and rl_gfx removed", (await colorsAt(page, 1, 1)) >= 5 && (await page.evaluate(() => localStorage.getItem("rl_gfx"))) === null && errors.length === 0);
+    await ctx.close();
+  }
   // 그림을 못 받으면 글자로
   const { ctx, page, errors } = await open("nosheet", { viewport: { width: 1100, height: 1000 } }, { noSheet: true });
   check("sprite sheet missing: no page errors", errors.length === 0, errors.join("; "));
-  check("sprite sheet missing: glyphs drawn (flat wall) and the button stays hidden", (await colorsAt(page, 1, 1)) <= 3 && !(await page.locator("#gfx-btn").isVisible()));
+  check("sprite sheet missing: glyphs drawn instead (flat wall)", (await colorsAt(page, 1, 1)) <= 3);
   await ctx.close();
 } finally {
   await browser.close();

@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const waitFor = async (fn, ms = 6000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(100); } return false; };
 const HOOK = `
   window.__t = {
-    s: () => ({ scene, depth, gold: player.gold, plvl: player.plvl, rid: player.rid, gameOver, lx: lobbyPos.x, ly: lobbyPos.y,
+    s: () => ({ scene, depth, gold: player.gold, plvl: player.plvl, rid: player.rid, gameOver, lx: lobbyPos.x, ly: lobbyPos.y, near: window.RLTownPos?.()?.near ?? null,
       map: map.map(r => r.join("")).join(""), resume: resumeFloor() }),
     die: () => { player.hp = 0; death(); render(); },
   };
@@ -33,16 +33,10 @@ async function open(storage, { scene, opts = { viewport: { width: 1280, height: 
   return { ctx, page, errors, dialogs, answer: (v) => { answer = v; } };
 }
 const st = (page) => page.evaluate(() => window.__t.s());
+const near = async (page) => { await sleep(80); return (await st(page)).near; };
 const logText = (page) => page.locator("#log").innerText();
-// 로비에서 (x, y) 칸으로 걸어감: 아래쪽 줄(13)로 내려가 x를 맞춘 뒤 위로
-async function walkTo(page, tx, ty) {
-  let s = await st(page);
-  const press = async (k, n) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(15); } };
-  if (s.ly < 13) await press("ArrowDown", 13 - s.ly); else if (s.ly > 13) await press("ArrowUp", s.ly - 13);
-  s = await st(page);
-  await press(s.lx < tx ? "ArrowRight" : "ArrowLeft", Math.abs(tx - s.lx));
-  await press("ArrowUp", 13 - ty);
-}
+// 마을(옆에서 보는 로비)에서 문까지 걸어가 ↑로 들어감
+import { goDoor } from "./town.mjs";
 // 포탈 열기(P/R/L/버튼) 뒤 옆 칸의 파란 포탈로 걸어 들어감
 async function stepIn(page) {
   await sleep(120);
@@ -59,9 +53,9 @@ try {
   let s = await st(N.page);
   check("new player starts in the village (lobby), no portal floor", s.scene === "lobby" && s.resume === 0);
   check("dungeon buttons: 포탈 only (no 재시작/로비로)", !(await N.page.locator("#portal-btn").isVisible()) && (await N.page.locator("#restart-btn").count()) === 0 && (await N.page.locator("#lobby-btn").count()) === 0);
-  await walkTo(N.page, 17, 11);
+  await goDoor(N.page, "skip");
   check("right door (best − 10) closed for a new player", (await st(N.page)).scene === "lobby" && (await logText(N.page)).includes("12층까지 내려가면 열린다"));
-  await walkTo(N.page, 15, 11);
+  await goDoor(N.page, "start");
   s = await st(N.page);
   check("left door → floor 1", s.scene === "dungeon" && s.depth === 1 && (await logText(N.page)).includes("던전 1층에 발을 들였다"));
   check("포탈 button visible in dungeon", await N.page.locator("#portal-btn").isVisible() && (await N.page.locator("#portal-btn").innerText()) === "포탈 (P)");
@@ -78,25 +72,25 @@ try {
   s = await st(P.page);
   check("P → village right away, gold and level kept", s.scene === "lobby" && s.gold === 333 && s.plvl === 5 && (await P.page.locator("#gold").innerText()) === "333");
   check("portal log message", (await logText(P.page)).includes("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 333 · Lv 5)"));
-  check("standing just above the lobby portal (6층)", s.lx === 16 && s.ly === 13 && s.resume === 6);
+  check("standing at the village portal door (6층)", (await near(P.page)) === "resume" && s.ly === 10 && s.resume === 6);
   check("no confirm for portal", P.dialogs.length === 0);
   await P.page.screenshot({ path: path.join(SHOTS, "portal-village.png") });
   // 새로고침해도 로비, 포탈 층 기억
   await P.page.reload();
   s = await st(P.page);
   check("reload keeps village and portal floor", s.scene === "lobby" && s.resume === 6);
-  await walkTo(P.page, 16, 13); await P.page.keyboard.press("ArrowDown");  // 새로고침하면 1층 문 앞에서 시작 → 로비 포탈(16,14)로
+  await goDoor(P.page, "resume");  // 새로고침하면 마을 아무 데서나 → 파란 포탈 문으로
   s = await st(P.page);
   check("lobby portal → back to floor 6, same map", s.scene === "dungeon" && s.depth === 6 && s.map === before.map && s.rid === before.rid && (await logText(P.page)).includes("포탈을 타고 6층의 떠난 자리로 돌아왔다"));
   // R, L도 포탈 열기
   await P.page.keyboard.press("r"); await stepIn(P.page);
   check("R also opens a portal (no reset)", (await st(P.page)).scene === "lobby" && (await st(P.page)).depth === 6 && (await st(P.page)).gold === 333);
-  await P.page.keyboard.press("ArrowDown");
+  await P.page.keyboard.press("ArrowUp");   // 포탈로 돌아오면 파란 포탈 문 앞 → ↑로 다시 들어감
   await P.page.keyboard.press("l"); await stepIn(P.page);
   check("L also opens a portal", (await st(P.page)).scene === "lobby");
   // 왼쪽 문: 취소하면 그대로
   P.answer(false);
-  await walkTo(P.page, 15, 11);
+  await goDoor(P.page, "start");
   s = await st(P.page);
   check("left door asks first; cancel keeps floor 6", s.scene === "lobby" && s.depth === 6 && P.dialogs.some(d => d.includes("포탈로 돌아갈 수 있는 층(6층)은 사라져요")));
   P.answer(true);
@@ -104,7 +98,7 @@ try {
   s = await st(P.page);
   check("left door (accept) → floor 1, gold/level kept, new map id", s.scene === "dungeon" && s.depth === 1 && s.gold === 333 && s.plvl === 5 && s.rid !== before.rid);
   await P.page.keyboard.press("p"); await stepIn(P.page);
-  check("portal from floor 1 → no lobby portal, standing at the floor-1 door", (await st(P.page)).resume === 0 && (await st(P.page)).lx === 15 && !(await logText(P.page)).split("\n").pop().includes("오른쪽 문"));
+  check("portal from floor 1 → no lobby portal, standing at the floor-1 door", (await st(P.page)).resume === 0 && (await near(P.page)) === "start" && !(await logText(P.page)).split("\n").pop().includes("오른쪽 문"));
   check("porter: no page errors", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 
@@ -117,7 +111,7 @@ try {
   check("portal while dead does nothing but keep the death modal", (await st(D.page)).scene === "dungeon" && await D.page.locator("#death-modal").isVisible());
   await D.page.locator("#death-restart").click();
   s = await st(D.page);
-  check("로비에서 새로 시작 → village, gold 0, Lv 1, floor 1", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.depth === 1 && !s.gameOver && s.lx === 15 && s.ly === 12);
+  check("로비에서 새로 시작 → village, gold 0, Lv 1, floor 1", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.depth === 1 && !s.gameOver && (await near(D.page)) === "start");
   check("death restart log", (await logText(D.page)).includes("로비에서 새로 시작한다"));
   check("no portal floor after death", s.resume === 0);
   check("dier: no page errors", D.errors.length === 0, D.errors.join("; "));
@@ -127,7 +121,7 @@ try {
   const dead = JSON.stringify({ v: 1, best: 5, run: null, dead: { d: 5, hp: 0, mh: 30, a: 5, g: 99, p: 0, l: 3, x: 0, xn: 30, rid: "dead-run", k: 0, pp: 0 } });
   const E = await open({ rl_device_id: "dead-one", rl_save: dead });
   check("dead run: village, right door closed", (await st(E.page)).scene === "lobby" && (await st(E.page)).resume === 0 && await E.page.locator("#death-modal").isHidden());
-  await walkTo(E.page, 15, 11);
+  await goDoor(E.page, "start");
   check("door → death modal over the village", await E.page.locator("#death-modal").isVisible() && (await st(E.page)).scene === "lobby");
   await E.page.keyboard.press("r");
   s = await st(E.page);

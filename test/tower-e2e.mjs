@@ -3,6 +3,7 @@
 // R 다시, Esc로 로비(문 앞), 휴대폰 버튼. 움직임·싸움은 시험 때만 작은 맵으로 바꿔 끼워 진짜 키로 확인 (큰 맵을 다닐 수 있는지는 tower-test.mjs가 물리로)
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -56,8 +57,8 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
 }
 const logs = (page) => page.evaluate(() => window.__log.join("\n"));
 const press = async (page, key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await sleep(70); } };
-// 던전에서 포탈(P) → 로비 (16,13). 포탈을 피해 왼쪽 1 → 아래 4 → 왼쪽 10 → 아래 2 = 점프 던전 문(5,19)
-const walkIn = async (page) => { await press(page, "p"); await sleep(300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 10); await press(page, "ArrowDown", 2); await sleep(200); };
+// 던전에서 포탈(P) → 마을, 점프 던전 문까지 걸어가 ↑
+const walkIn = async (page) => { await press(page, "p"); await sleep(300); await goDoor(page, "jumptower"); await sleep(100); };
 // 살색(밝은 쪽) 픽셀 무게중심 (화면 칸 = 캔버스 64px: 20 × 1.6 × 2배). 나무 발판의 갈색은 안 셈
 const skin = (page) => page.evaluate(() => {
   const c = document.getElementById("game"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -79,8 +80,8 @@ try {
   check("real map: no page errors while monsters walk around", errors.length === 0, errors.join("; "));
   await press(page, "Escape"); await sleep(250);
   check("Esc: back to the lobby", (await scene(page)).join() === "false,true");
-  await press(page, "ArrowDown"); await sleep(200);
-  check("lobby position after leaving = in front of the door (↓ enters again)", (await scene(page))[0]);
+  await press(page, "ArrowUp"); await sleep(200);
+  check("lobby position after leaving = in front of the door (↑ enters again)", (await scene(page))[0]);
   await press(page, "Escape"); await sleep(150);
   await page.reload(); await sleep(800);
   check("reload never resumes inside (lobby)", (await scene(page)).join() === "false,true");
@@ -178,17 +179,17 @@ try {
   check("knock-out: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
-  // ---- 운영자: 점프 던전 오른쪽 위 모서리(7,19)에 헬 50층 문. 다른 사람에게는 벽 ----
+  // ---- 운영자: 마을 점프 던전 건물 오른쪽에 헬 50층 문. 다른 사람에게는 문이 없음 ----
   ({ ctx, page, errors } = await open());
-  await press(page, "p"); await sleep(300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 8); await press(page, "ArrowDown", 2); await sleep(200);
-  check("not staff: the corner (7,19) is a wall (stays in the lobby)", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("헬 50층"));
+  await press(page, "p"); await sleep(300); await goDoor(page, "towerHell"); await sleep(100);
+  check("not staff: no hell-50 door there (stays in the lobby)", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("헬 50층") && await page.evaluate(() => window.RLTownPos().near === null));
   await ctx.close();
   ({ ctx, page, errors } = await open({ staff: true }));
   await sleep(1500);
-  await press(page, "p"); await sleep(1300); await press(page, "ArrowLeft"); await press(page, "ArrowDown", 4); await press(page, "ArrowLeft", 8); await press(page, "ArrowDown", 2); await sleep(300);
+  await press(page, "p"); await sleep(1300); await goDoor(page, "towerHell"); await sleep(150);
   L = await logs(page);
   const n50 = Number((L.match(/점프 던전 헬 50층에 들어왔다\. 몬스터 (\d+)마리/) || [])[1]);
-  check("staff: the corner door enters the jump dungeon with hell 50 monsters", (await scene(page))[0] && n50 > 0, JSON.stringify([await scene(page), L.slice(-300)]));
+  check("staff: the hell-50 door enters the jump dungeon with hell 50 monsters", (await scene(page))[0] && n50 > 0, JSON.stringify([await scene(page), L.slice(-300)]));
   check("staff hell 50: as many monsters as dungeon hell 50 (47~53) plus the boss", n50 >= 48 && n50 <= 54, String(n50));
   check("staff hell 50: the floor-50 named boss 염라대왕 waits on the top platform", L.includes("보스 염라대왕이(가) 맨 위 발판에서 기다린다!"), L.slice(-200));
   await sleep(1200);
@@ -198,10 +199,10 @@ try {
   L = await logs(page);
   check("staff hell 50: monsters are hell-strong (a naked character is knocked out and the floor restarts)", L.includes("쓰러졌다! 점프 던전 헬 50층을 처음부터 다시 시작한다"), L.slice(-300));
   await press(page, "Escape"); await sleep(300);
-  check("staff: leaving puts you in front of the hell door (7,18)", (await scene(page)).join() === "false,true");
+  check("staff: leaving puts you in front of the hell door", (await scene(page)).join() === "false,true" && await page.evaluate(() => window.RLTownPos().near === "towerHell"));
   await page.locator("#game").screenshot({ path: path.join(OUT, "tower-hell-door.png") });
-  await press(page, "ArrowDown"); await sleep(300);
-  check("staff: ↓ from there enters the hell floor again", (await scene(page))[0] && ((await logs(page)).match(/헬 50층에 들어왔다/g) || []).length === 2);
+  await press(page, "ArrowUp"); await sleep(300);
+  check("staff: ↑ from there enters the hell floor again", (await scene(page))[0] && ((await logs(page)).match(/헬 50층에 들어왔다/g) || []).length === 2);
   check("staff: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
@@ -250,7 +251,7 @@ try {
   }));
   check("phone two fingers: holding ▶ and pressing jump runs right AND jumps (> 2 tiles up, moved right)", p0 && both && p0.y - both.y > 2 && both.x - p0.x > 1, JSON.stringify({ p0, both }));
   await page.locator("#tp-portal").tap(); await sleep(300);
-  check("phone: back in the lobby the normal pad returns (▲ visible, jump button not the big circle)", await page.evaluate(() => !!document.querySelector('#touch-pad [data-dir="0,-1"]').offsetParent && document.getElementById("tp-jump").getBoundingClientRect().width < 100));
+  check("phone: back in the town the pad switches (▲ 들어가기 shown, ▼ hidden, jump button stays big)", await page.evaluate(() => !!document.querySelector('#touch-pad [data-dir="0,-1"]').offsetParent && !document.querySelector('#touch-pad [data-dir="0,1"]').offsetParent && document.getElementById("tp-jump").getBoundingClientRect().width >= 100));
   check("phone two-finger map: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally {

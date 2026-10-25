@@ -8,8 +8,10 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
+import { goDoor } from "../test/town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const OUT = process.env.SHOTS_OUT || path.join(REPO, "blog/images");   // SHOTS_OUT: 다른 곳에 찍어 보기
+
 const require = createRequire((process.env.NODE_PATH || "/usr/lib/node_modules") + "/");
 const { chromium } = require("playwright");
 const local = createRequire(import.meta.url);
@@ -41,7 +43,7 @@ const json = (r, o, status = 200) => r.fulfill({ status, contentType: "applicati
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
 // touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false }) {
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null }) {
   const dev = "blogshot-device-1";
   const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage(); const errors = [];
@@ -53,6 +55,8 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.route("https://api.test/**", r => { const u = new URL(r.request().url()), route = u.searchParams.get("r");
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
     if (route === "ranking") return json(r, { type: u.searchParams.get("type") || "stage", season: "v4", seasonName: "v4 베타", current: true, total: 8, updatedAt: Date.now(), rows: rankingRows() });
+    // others: 마을에 함께 있는 사람 (게스트 번호만)
+    if (route === "lobby" && others) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950" }, players: others.map(([name, x]) => ({ id: name.slice(-6).padEnd(16, "0"), name, scene: "lobby", x, y: 10 })), mail: 0 });
     if (route === "geo") return json(r, { country: lang === "ja" ? "JP" : lang === "en" ? "US" : "KR" });
     if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: 8, enh: 0, id: it.id }; }) });
     return json(r, {}); });
@@ -131,7 +135,7 @@ const SCENES = [
   // 픽셀 그림: 게임 화면(캔버스)만 실제 픽셀로. 같은 층을 글자로 보기로도 한 장 더
   // pixel-dungeon·pixel-hell은 전체 지도(rl_view=full), pixel-zoom은 기본 시점(가까이 보기)
   ["pixel-dungeon", "픽셀 그림으로 바뀐 던전", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(7, "blog-px7", { hp: 180, mh: 230, a: 26, g: 410, l: 10 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 7) }, { dx: -1, dy: 1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 7) }] }),
-    shot: "#game", more: [["pixel-text", "같은 층을 예전 글자 화면으로 (글자로 보기)", (page) => page.click("#gfx-btn")]] })],
+    shot: "#game" })],
   ["pixel-hell", "헬 던전도 픽셀 그림으로: 네임드 보스 불가사리", async () => { const o = await explored({ dsf: 1.6, seed: { rl_view: "full", rl_save: save(10, "blog-pxhell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", "."], 150); return { ...o, shot: "#game" }; }],
   ["pixel-zoom", "가까이 보기: 플레이어 주변 방 하나 정도만 크게", async () => ({ ...await explored({ dsf: 1.6, seed: { rl_save: save(9, "blog-pxzoom", { hp: 200, mh: 260, a: 28, g: 520, l: 11 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } }, { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 9) }, { dx: -1, dy: -1, ...M.makeMonster(M.MONSTERS.find(m => m.id === "wolf"), "normal", 9) }] }), shot: "#game" })],
   // 플레이어 그림: 장비 없음(속옷만) / 장비를 낀 모습, 공격하는 순간 (몬스터가 앞으로 찌르고 붉게 번쩍)
@@ -176,14 +180,14 @@ const SCENES = [
       { add: [{ dx: 1, dy: 0, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", 20), hp: 1e9, maxHp: 1e9, atk: 1 }] });
     await sleep(700); await o.page.keyboard.press("ArrowRight"); await sleep(330);
     return { ...o, shot: "#stage", nowait: true }; }],
-  // 점프 던전 1층 (시험판): 던전에서 포탈(P)로 로비에 나와 왼쪽 아래 점프 던전 문으로. 화염·뇌전 세트 2개씩 + 장비
+  // 점프 던전 1층 (시험판): 던전에서 포탈(P)로 마을에 나와 점프 던전 문으로. 화염·뇌전 세트 2개씩 + 장비
   //   키를 정해진 시각에 누르고 떼며 바닥을 달리고 더블 점프 → 몬스터가 쫓아오고, 휘두르기·화염구·체인 라이트닝. 화면 전체를 3/8 크기로 60ms마다
   ["hunt-fight", "점프 던전: 휘두르기, 날아가는 화염구, 차례로 튕기는 체인 번개", async () => {
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
     const fire = [513, 806, 56, 464].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));   // 화염의 세트(투구·장화) + 뇌전의 세트(바지·갑옷): 파이어볼 + 체인 라이트닝
     const o = await open({ dsf: 1.6, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv([...fire, ...g40.filter(it => !fire.some(f => f.slot === it.slot))]) } });
     await press(o.page, ["p"], 300);
-    await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
+    await goDoor(o.page, "jumptower");
     await sleep(500);
     const plan = [["ArrowRight", 200, 1100], ["ArrowRight", 2400, 3000], [" ", 3700, 4000], [" ", 4050, 4350], ["ArrowLeft", 3750, 4400]];   // 끝에 더블 점프로 위 발판
     const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
@@ -199,11 +203,34 @@ const SCENES = [
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
     const o = await open({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
     await press(o.page, ["p"], 300);
-    await press(o.page, ["ArrowLeft", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", ...Array(10).fill("ArrowLeft"), "ArrowDown", "ArrowDown"], 70);
+    await goDoor(o.page, "jumptower");
     await sleep(1800);
     await o.page.evaluate(() => { const g = document.getElementById("stage") || document.getElementById("game"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
     await sleep(300);
     const shotPath = path.join(OUT, "hunt-phone.png");
+    const top = await o.page.evaluate(() => (document.getElementById("stage") || document.getElementById("game")).getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
+    await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
+    return { ...o, prebuilt: true }; }],
+  // 마을 (dc#90): 옆에서 보는 로비. 대장간 앞에서 오른쪽으로 걸으며 더블 점프, 다른 사람(게스트)도 보임. 화면 전체를 3/8 크기로 60ms마다
+  ["town-walk", "옆에서 보는 마을: 걷고 더블 점프하며 건물 문 앞으로", async () => {
+    const o = await open({ scene: "lobby", api: true, dsf: 1.6, others: [["게스트 #3fa2c1", 15], ["게스트 #a81d05", 19], ["게스트 #9b07de", 27]], seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "forge", { enter: false }); await sleep(1200);
+    const plan = [["ArrowRight", 200, 2600], [" ", 900, 1200], [" ", 1250, 1550], ["ArrowRight", 3300, 4300], [" ", 3500, 3800]];
+    const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
+      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
+      const out = [], t0 = performance.now(), fire = (type, key) => window.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true }));
+      for (const [key, a, b] of plan) { setTimeout(() => fire("keydown", key), a); setTimeout(() => fire("keyup", key), b); }
+      const grab = () => { cut.getContext("2d").drawImage(c, 0, 0, cut.width, cut.height); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, 60); else done(out); };
+      grab();
+    }), [plan, 5200]);
+    return { ...o, frames, delay: 6 }; }],
+  // 마을 휴대폰 화면: 왼손 ◀ ▶ · ▲ 들어가기, 오른손 큰 점프 버튼. 문 앞에 서 있을 때
+  ["town-phone", "휴대폰: 문 앞에서 ▲ 들어가기", async () => {
+    const o = await open({ scene: "lobby", touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "market", { enter: false }); await sleep(800);
+    await o.page.evaluate(() => { const g = document.getElementById("stage") || document.getElementById("game"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
+    await sleep(300);
+    const shotPath = path.join(OUT, "town-phone.png");
     const top = await o.page.evaluate(() => (document.getElementById("stage") || document.getElementById("game")).getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
     await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
     return { ...o, prebuilt: true }; }],

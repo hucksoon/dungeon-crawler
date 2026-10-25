@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -82,6 +83,8 @@ try {
   check("list: alice crown 2, bob crown 3", find("a***")?.crown === "랭킹 2위" && find("b***")?.crown === "랭킹 3위");
   check("list: carol (4th) no crown", find("c***") && !find("c***").crown);
   check("list: operator row shows 운영자 with GM badge", find("운영자")?.crown === "운영자", JSON.stringify(find("운영자")));
+  // 마을은 내 주변 16칸만 보임 → 운영자(x 20) 옆 우편함 앞으로 걸어감
+  await goDoor(pD.page, "mailbox", { enter: false }); await sleep(300);
   const staffPx = await pD.page.evaluate(() => {
     const c = document.querySelector("canvas"), g = c.getContext("2d");
     const d = g.getImageData(0, 0, c.width, c.height).data;

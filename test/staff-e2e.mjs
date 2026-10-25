@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -145,10 +146,10 @@ try {
   await D.page.screenshot({ path: `${OUT}/staff-gift.png` });
   check("gift: no page errors", D.errors.length === 0, D.errors.join("; "));
   await D.page.locator("#inv-close").click(); await sleep(100);
-  // 운영자 입구 (던전 입구 건물 오른쪽 19,11): 포탈로 나오면 (16,13) → 오른쪽 3, 위 2
+  // 운영자 입구 (마을 던전 입구 건물 오른쪽): 포탈로 나와서 걸어가 ↑
   await press(D.page, "p"); await sleep(300);
   await D.page.screenshot({ path: `${OUT}/staff-lobby.png` });
-  await press(D.page, "ArrowRight", 3); await press(D.page, "ArrowUp", 2); await sleep(400);
+  await goDoor(D.page, "staff"); await sleep(150);
   const lvl = await D.page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   check("operator door → the floor where the portal was taken (normal 5, not the older death on nightmare 37), new map", lvl?.d === 5 && (lvl?.z || "normal") === "normal" && lvl?.rid !== "rid" + DEV.sub && (await D.page.locator("#log").innerText()).includes("운영자 입구: 5층을(를) 새로 만들어 들어왔다"), JSON.stringify([lvl?.d, lvl?.z, lvl?.rid]));
   // 실제로 쓰러지면: 옆에 아주 센 몬스터를 두고 한 턴 → 쓰러진 창의 운영자 버튼 → 같은 층으로
@@ -167,7 +168,7 @@ try {
   check("operator revive → back on floor 5 (new map), gold/level kept", lvl3?.d === 5 && (lvl3?.z || "normal") === "normal" && lvl3?.rid !== lvl?.rid && await D.page.locator("#death-modal").isHidden() && (await D.page.locator("#gold").innerText()) === "0", JSON.stringify([lvl3?.d, lvl3?.z]));
   // 로비 → 대장간에서 0골드로 재련, 시간 상점 진열 바꾸기 4번
   await press(D.page, "p"); await sleep(300);
-  await press(D.page, "ArrowLeft"); await press(D.page, "ArrowDown", 5); await press(D.page, "ArrowRight"); await press(D.page, "ArrowDown"); await sleep(250);
+  await goDoor(D.page, "forge");
   await pick(D.page, L);
   check("operator: reforge enabled with 0 gold", await D.page.locator("#inv-detail button.reforge-btn").first().isEnabled());
   await D.page.locator("#inv-detail button.reforge-btn").first().click(); await sleep(150);
@@ -175,7 +176,7 @@ try {
   check("operator: every line still has a reforge button after reforging", (await D.page.locator("#inv-detail button.reforge-btn").count()) === L.lines.filter(([k]) => k !== "socket").length && (await D.page.locator("#inv-detail").innerText()).includes("운영자: 모든 줄을 재련할 수 있어요"));
   check("operator: reforged (rf saved), gold still 0", JSON.stringify(d.bag.find(x => x.id === L.id).rf) === "[0]" && (await D.page.locator("#gold").innerText()) === "0" && (await D.page.locator("#inv-detail").innerText()).includes("운영자 무료"));
   await D.page.locator("#inv-close").click(); await sleep(100);
-  await press(D.page, "ArrowUp"); await press(D.page, "ArrowLeft", 5); await press(D.page, "ArrowUp", 6); await sleep(200);
+  await goDoor(D.page, "hourshop");
   check("hour shop opened", !(await D.page.locator("#shop-modal").isHidden()), await D.page.locator("#shop-title").innerText().catch(() => ""));
   for (let k = 0; k < 4; k++) { await D.page.locator("#shop-reroll").click(); await sleep(120); }
   check("operator: hour-shop reroll past 3 times, free", (await D.page.locator("#shop-reroll").innerText()).includes("운영자: 횟수 제한 없음 · 4번 바꿈") && await D.page.locator("#shop-reroll").isEnabled() && (await D.page.locator("#gold").innerText()) === "0", await D.page.locator("#shop-reroll").innerText());
@@ -195,8 +196,8 @@ try {
   check("normal user: no gems → can't socket", await P.page.locator("#inv-detail button.gem-put").isDisabled());
   await P.page.locator("#inv-close").click(); await sleep(100);
   await press(P.page, "p"); await sleep(300);
-  await press(P.page, "ArrowRight", 3); await press(P.page, "ArrowUp", 2); await sleep(300);
-  check("normal user: operator door spot is just floor (stays in lobby)", await P.page.evaluate(() => document.body.classList.contains("in-lobby")));
+  await goDoor(P.page, "staff"); await sleep(150);
+  check("normal user: no operator door in the town (nothing to enter, stays in the lobby)", await P.page.evaluate(() => document.body.classList.contains("in-lobby") && window.RLTownPos().near === null));
   check("normal user: no page errors", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 } finally { await browser.close(); }

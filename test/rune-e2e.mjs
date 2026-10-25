@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn, execFileSync } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -93,8 +94,8 @@ async function portalOut(page) {
   const L = await page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   if (L?.tp) await page.keyboard.press(L.tp.x > L.px ? "ArrowRight" : L.tp.x < L.px ? "ArrowLeft" : L.tp.y > L.py ? "ArrowDown" : "ArrowUp"); await sleep(200);
 }
-// 로비 포탈 위 (16,13) → 오른쪽 12칸 (28,13) → 위로 두 번: 나이트메어 오른쪽 문 (28,11)
-async function walkToRuneDoor(page) { await portalOut(page); await press(page, "ArrowRight", 12); await press(page, "ArrowUp"); await page.keyboard.press("ArrowUp"); await sleep(300); }
+// 포탈로 마을에 나와서 나이트메어 오른쪽 문(50층)까지 걸어가 ↑
+async function walkToRuneDoor(page) { await portalOut(page); await goDoor(page, "nightmare50"); await sleep(100); }
 const v4 = I.generate("rnv4|shop|d70|s1", "golden", 70);
 try {
   // 1. 나이트메어 50층 보스 → 룬 2개 (무지개 ♦), 49층 보스는 없음
@@ -199,9 +200,9 @@ try {
   check("50층 door before clearing nightmare: closed", await inLobby(page) && (await logs(page)).includes("문은 나이트메어를 완료하면 열린다"), await logs(page));
   await ctx.close();
   ({ ctx, page, errors } = await open("runetest-f", { rl_save: save(30, "rnF", { nb: 50, nclr: 1 }, { z: "normal" }), rl_level: lv(30, "rnF", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) }));
-  await portalOut(page); await press(page, "ArrowRight", 12); await sleep(200);
+  await portalOut(page); await goDoor(page, "nightmare50", { enter: false }); await sleep(200);
   await page.screenshot({ path: `${OUT}/rune-lobby.png` });
-  await press(page, "ArrowUp"); await page.keyboard.press("ArrowUp"); await sleep(300);
+  await press(page, "ArrowUp"); await sleep(300);
   const S = await stored(page, "rl_save");
   check("50층 door after clearing: straight to nightmare 50 (boss floor)", !(await inLobby(page)) && (await page.locator("#zone").innerText()).includes("나이트메어") && (await page.locator("#depth").innerText()) === "50" && S.run.z === "nm" && S.run.d === 50
     && (await stored(page, "rl_level")).enemies.some(e => e.kind === "boss") && (await logs(page)).includes("룬 2개를 떨어뜨린다"), JSON.stringify(S.run));
