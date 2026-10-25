@@ -1,5 +1,5 @@
 // 예전 버전이 저장한 깨진 층(좌표 없는 보스) → 불러와도 플레이어가 보이고 보스는 빈 칸으로 옮겨짐
-// 플레이어 @를 흰 픽셀로 찾으므로 글자 모드(rl_gfx=text)로. 캔버스는 화면 좌표의 k배 (1.6)
+// 플레이어 @를 흰 픽셀로 찾으므로 글자 모드(rl_gfx=text)·전체 지도(rl_view=full)로. 캔버스는 화면 좌표의 k배 (1.6)
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
 const require = createRequire(process.env.NODE_PATH + "/");
@@ -31,7 +31,7 @@ try {
       r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
     await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
     await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_gfx", "text"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
+      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_gfx", "text"); localStorage.setItem("rl_view", "full"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
     await page.goto(ORIGIN); await page.waitForTimeout(500);
     check(`${name}: no page errors when loading the broken floor`, errors.length === 0, errors.join("; "));
     check(`${name}: HUD shows floor ${D} and HP (not --)`, (await page.locator("#depth").innerText()) === String(D) && !(await page.locator("#stats").innerText()).includes("--"), await page.locator("#stats").innerText());

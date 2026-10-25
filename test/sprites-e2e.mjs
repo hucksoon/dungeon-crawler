@@ -1,5 +1,6 @@
 // 픽셀 그림: 그림 모음(img/sprites.png + sprites.js)에 게임의 모든 몬스터·아이템·지형이 있는지,
 // 게임이 그림으로 그리고, 글자 모드 버튼이 기억되고, 그림을 못 받으면 글자로 그리는지
+// 던전 시점: 기본은 플레이어 가운데 2배 확대(16×12칸), M·버튼으로 전체 지도(기억)
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
 const require = createRequire(process.env.NODE_PATH + "/");
@@ -34,11 +35,12 @@ const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }
 map[9][13] = 2;
 const enemies = [{ x: 8, y: 5, ...M.makeMonster(M.MONSTERS.find(m => m.id === "goblin"), "normal", D) }];
 const items = [{ x: 4, y: 4, type: "gold", amount: 10 }, { x: 4, y: 6, type: "potion" }];
-const level = (z = "normal") => JSON.stringify({ rid: "spr-run", d: D, z, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 5, py: 5, shop: null, enemies, items });
+const level = (z = "normal", px = 5, py = 5) => JSON.stringify({ rid: "spr-run", d: D, z, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px, py, shop: null, enemies, items });
 const save = JSON.stringify({ v: 1, best: D, run: { d: D, hp: 500, mh: 500, a: 90, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "spr-run", k: 0, pp: 0 } });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-async function open(name, opts, { noSheet = false, gfx = null } = {}) {
+// 그림 칸을 지도 좌표로 보는 검사는 전체 지도(view = "full")로 엶
+async function open(name, opts, { noSheet = false, gfx = null, view = "full", lvl = level() } = {}) {
   const ctx = await browser.newContext(opts); const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
@@ -48,19 +50,20 @@ async function open(name, opts, { noSheet = false, gfx = null } = {}) {
     const type = { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".ico": "image/x-icon" }[path.extname(f)] || "text/html";
     r.fulfill({ contentType: type, body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await ctx.addInitScript(([s, l, gfx]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", "spr-dev-0001"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); if (gfx) localStorage.setItem("rl_gfx", gfx); }, [save, level(), gfx]);
+  await ctx.addInitScript(([s, l, gfx, view]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
+    localStorage.setItem("rl_device_id", "spr-dev-0001"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); if (gfx) localStorage.setItem("rl_gfx", gfx); if (view) localStorage.setItem("rl_view", view); }, [save, lvl, gfx, view]);
   await page.goto(ORIGIN); await page.waitForTimeout(800);
   return { ctx, page, errors };
 }
 // 칸 (x, y)의 서로 다른 색 수 (글자 화면의 벽·바닥은 1~2색, 그림은 무늬가 있어 여러 색)
 // colorful: 채도가 있는 픽셀 수 (흰 @ 글자는 0, 파란 갑옷 기사 그림은 많음)
-const colorsAt = (page, x, y, colorful = false) => page.evaluate(([x, y, colorful]) => {
-  const c = document.getElementById("game"), k = c.width / 640, d = c.getContext("2d").getImageData(Math.round(x * 20 * k), Math.round(y * 20 * k), Math.round(20 * k), Math.round(20 * k)).data;
+// cell: 화면에서 한 칸의 크기 (전체 지도 20, 가까이 보기 40)
+const colorsAt = (page, x, y, colorful = false, cell = 20) => page.evaluate(([x, y, colorful, cell]) => {
+  const c = document.getElementById("game"), k = c.width / 640, d = c.getContext("2d").getImageData(Math.round(x * cell * k), Math.round(y * cell * k), Math.round(cell * k), Math.round(cell * k)).data;
   const s = new Set(); let n = 0;
   for (let i = 0; i < d.length; i += 4) { s.add((d[i] >> 3) << 10 | (d[i + 1] >> 3) << 5 | d[i + 2] >> 3); if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 40) n++; }
   return colorful ? n : s.size;
-}, [x, y, colorful]);
+}, [x, y, colorful, cell]);
 
 try {
   for (const [name, opts] of [["desktop", { viewport: { width: 1100, height: 1000 } }], ["phone", { ...devices["iPhone 13"] }]]) {
@@ -93,6 +96,32 @@ try {
       check("hell floors use different (red) tiles", hellWall !== normalWall, `${normalWall} / ${hellWall}`);
     }
     await page.screenshot({ path: path.join(OUT, `sprites-${name}.png`) });
+    await ctx.close();
+  }
+  // 던전 시점: 기본은 가까이 보기. 플레이어(13,8)가 화면 가운데(16×12칸 중 7.5~8.5, 5.5~6.5)에 크게
+  {
+    const { ctx, page, errors } = await open("zoom", { viewport: { width: 1100, height: 1000 } }, { view: null, lvl: level("normal", 13, 8) });
+    check("zoom: no page errors", errors.length === 0, errors.join("; "));
+    check("zoom: map button shows 전체 지도 (M)", (await page.locator("#map-btn").innerText()).includes("전체 지도"));
+    const center = await colorsAt(page, 7.5, 5.5, true, 40);
+    check("zoom (default): player knight drawn 2× at the screen center", center >= 60, String(center));
+    const atFullSpot = await colorsAt(page, 13, 8, true);
+    check("zoom: the camera moved — nothing colorful where the player would be on the full map", atFullSpot < 5, String(atFullSpot));
+    await page.keyboard.press("m"); await page.waitForTimeout(150);
+    const full = { player: await colorsAt(page, 13, 8, true), wall: await colorsAt(page, 1, 1) };
+    check("M: full map — player at its map tile, map corner wall visible", full.player >= 20 && full.wall >= 5, JSON.stringify(full));
+    check("full map is remembered and the button says 가까이 보기", (await page.evaluate(() => localStorage.getItem("rl_view"))) === "full" && (await page.locator("#map-btn").innerText()).includes("가까이"));
+    await page.reload(); await page.waitForTimeout(800);
+    check("after reload still full map", (await colorsAt(page, 13, 8, true)) >= 20);
+    await page.click("#map-btn"); await page.waitForTimeout(150);
+    check("button: back to close view, setting cleared", (await page.evaluate(() => localStorage.getItem("rl_view"))) === null && (await colorsAt(page, 7.5, 5.5, true, 40)) >= 60);
+    // 피해 숫자는 확대된 화면에서 맞은 칸 위에: 오른쪽 칸을 공격 (몬스터를 옮겨 둠)
+    await page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies[0].x = 14; L.enemies[0].y = 8; localStorage.setItem("rl_level", JSON.stringify(L)); });
+    await page.reload(); await page.waitForTimeout(800);
+    await page.keyboard.press("ArrowRight"); await page.waitForTimeout(100);
+    const pop = await page.evaluate(() => { const d = document.querySelector("#popups .dmg"), c = document.getElementById("game").getBoundingClientRect(); if (!d) return null; const r = d.getBoundingClientRect(); return [(r.left + r.width / 2 - c.left) / c.width * 16, (r.top + r.height / 2 - c.top) / c.height * 12]; });
+    check("damage number appears over the hit monster in the zoomed view (screen tile ≈ 8.5~9.5)", pop && pop[0] > 8.3 && pop[0] < 9.7 && pop[1] > 4 && pop[1] < 7, JSON.stringify(pop));
+    await page.screenshot({ path: path.join(OUT, "sprites-zoom.png") });
     await ctx.close();
   }
   // 그림을 못 받으면 글자로
