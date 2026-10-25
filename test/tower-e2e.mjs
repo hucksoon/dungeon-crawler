@@ -21,8 +21,8 @@ const level = () => JSON.stringify({ rid: "tower-run", d: 3, turn: 3, map: Array
 const MAPS = {
   move: ["############", "#..........#", "#..........#", "#..........#", "#..........#", "#..====....#", "#S.........#", "############"],
   fight: ["##########", "#........#", "#........#", "#S..m...P#", "##########"],
-  // 높은 발판(바닥에서 4줄 위)의 몬스터: 휘둘러서는 못 닿고, 파이어볼(7칸)은 닿음
-  high: ["############", "#..........#", "#..........#", "#.....m....#", "#....===...#", "#..........#", "#..........#", "#S........P#", "############"],
+  // 4줄 위 돌벽 칸에 갇힌 몬스터 (몬스터도 오르내리니 못 나오게): 휘둘러서는 못 닿고, 파이어볼(7칸)은 닿음
+  high: ["############", "#..........#", "#....###...#", "#....#m#...#", "#....###...#", "#..........#", "#..........#", "#S........P#", "############"],
 };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -161,7 +161,7 @@ try {
   // ---- 스킬은 떨어진 몬스터에게도: 4줄 위 발판의 몬스터 ----
   ({ ctx, page, errors } = await open({ map: "high" }));
   await walkIn(page); await sleep(3500);
-  check("no skill: a monster 4 rows up can't be reached by the swing (still alive after 3.5 s)", !(await logs(page)).includes("처치!"));
+  check("no skill: a monster walled in 4 rows up can't be reached by the swing (still alive after 3.5 s)", !(await logs(page)).includes("처치!"));
   await ctx.close();
   ({ ctx, page, errors } = await open({ map: "high", inv: invOf(FIRE) }));
   await walkIn(page); await sleep(3500);
