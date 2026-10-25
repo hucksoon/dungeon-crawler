@@ -4,10 +4,12 @@
 //         S 시작 · m 몬스터 · P 포탈(몬스터를 다 잡으면 열림) · C 체크포인트 · G 깃발 · . 빈칸
 (function (root) {
   "use strict";
-  // 손맛: 점프 높이 약 2.7칸(꾹 누를 때), 한 번에 가로 약 4칸. 짧게 누르면 낮게 (떼면 올라가는 속도 절반). 공중에서 한 번 더 뛸 수 있음
+  // 손맛: 점프 높이 약 3.3칸(꾹 누를 때), 한 번에 가로 약 4.5칸. 짧게 누르면 낮게 (0.15초 뒤부터, 떼면 올라가는 속도 절반). 공중에서 한 번 더 뛸 수 있음
   const PHYS = {
-    gravity: 60, maxFall: 20, jumpVel: 18, cutJump: 0.5,
-    airJumps: 1, airJumpVel: 15.5,   // 더블 점프: 공중에서 한 번 더 (약 2칸 더, 둘 다 꾹 누르면 모두 약 4.5칸)
+    // dc#88: 점프를 높게 (18 → 20, 약 2.7 → 3.3칸), 더블 점프도 (15.5 → 17.5, 둘 다 꾹 누르면 모두 약 5.9칸)
+    gravity: 60, maxFall: 20, jumpVel: 20, cutJump: 0.5,
+    airJumps: 1, airJumpVel: 17.5,
+    minHold: 0.15,   // 뛰고 이만큼(초)은 손을 떼도 낮아지지 않음 (톡 쳐도 2칸 넘게: 휴대폰 버튼·공격 중 짧은 입력)
     run: 7.5, accel: 70, airAccel: 55, friction: 60,
     climb: 5,
     coyote: 0.09,     // 발판 끝을 지나고도 이만큼은 점프 가능 (초)
@@ -16,13 +18,13 @@
   };
   const SOLID = "#", PLANK = "=", LADDER = "H";
 
-  // 사냥터 1층 (dc#83 → dc#87): 폭 40 × 높이 25, 사다리 없이 발판 14개가 9층으로. 두 줄 차이는 보통 점프, 서너 줄 차이는 더블 점프로만
+  // 사냥터 1층 (dc#83 → dc#87 → dc#88): 폭 40 × 높이 25, 사다리 없이 발판 14개가 9층으로. 서너 줄 차이까지는 보통 점프, 네 줄 차이는 더블 점프로만 (맨 위 포함)
   // m 몬스터 10마리 (층마다 흩어 놓음), P 포탈(다 잡으면 열림), 맨 위 긴 발판 가운데는 보스 자리 (헬 50층)
   const HUNT1 = [
     "########################################",
     "#......................................#",
-    "#......................................#",
     "#.........=====================........#",
+    "#......................................#",
     "#......................................#",
     "#....................m.................#",
     "#.................=======..............#",
@@ -46,7 +48,7 @@
     "########################################",
   ];
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
-  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 20.5, y: 3 } } };
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 20.5, y: 2 } } };
   // crowd: 몬스터 수는 던전 그 층과 같게 (m 자리 대신 발판 곳곳에 흩어 놓음). boss: 보스가 서는 곳 (맨 위 발판 가운데)
 
   function parse(rows) {
@@ -128,10 +130,11 @@
 
     // 점프: 땅이거나 방금 떨어졌을 때(코요테)
     if (s.ground) s.coyote = P.coyote; else s.coyote = Math.max(0, s.coyote - dt);
-    if (s.buffer > 0 && s.coyote > 0) { s.vy = -P.jumpVel; s.buffer = 0; s.coyote = 0; s.ground = false; s.jumped++; }
+    if (s.buffer > 0 && s.coyote > 0) { s.vy = -P.jumpVel; s.buffer = 0; s.coyote = 0; s.ground = false; s.jumped++; s.jumpT = 0; }
     // 더블 점프: 공중에서 새로 누른 순간 (발판 근처에서 미리 누른 것은 내려앉은 뒤 보통 점프로 쓰지 않게 지움)
-    else if (input.jump && !s.ground && !s.noAirJump && s.airJumps < P.airJumps) { s.vy = -P.airJumpVel; s.buffer = 0; s.airJumps++; s.doubled++; if (dir) s.vx = dir * run; }
-    if (!input.jumpHeld && s.vy < 0) s.vy *= Math.pow(P.cutJump, dt * 30);   // 일찍 떼면 낮게
+    else if (input.jump && !s.ground && !s.noAirJump && s.airJumps < P.airJumps) { s.vy = -P.airJumpVel; s.buffer = 0; s.airJumps++; s.doubled++; s.jumpT = 0; if (dir) s.vx = dir * run; }
+    s.jumpT = (s.jumpT ?? 9) + dt;
+    if (!input.jumpHeld && s.vy < 0 && s.jumpT > P.minHold) s.vy *= Math.pow(P.cutJump, dt * 30);   // 일찍 떼면 낮게 (뛰고 minHold초 뒤부터)
 
     s.vy = Math.min(P.maxFall, s.vy + P.gravity * dt);
     moveX(map, s, s.vx * dt);

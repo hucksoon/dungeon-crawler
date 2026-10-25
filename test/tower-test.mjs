@@ -19,9 +19,9 @@ const st = (m, x, y) => ({ ...J.newState(m), x, y });
   const s = J.newState(m); run(m, s, {}, 0.5);
   check("stands still on the floor (start feet on the floor top)", s.ground && s.y === 7 && Math.abs(s.x - 1.5) < 1e-9, JSON.stringify([s.x, s.y]));
   let peak = s.y; run(m, s, (t) => ({ jump: t === 0, jumpHeld: true }), 1.2, (q) => { peak = Math.min(peak, q.y); return false; });
-  check("full jump ≈ 2.7 tiles high and lands again", 7 - peak > 2.5 && 7 - peak < 2.9 && s.ground && s.y === 7, `${(7 - peak).toFixed(2)}`);
+  check("full jump ≈ 3.25 tiles high and lands again", 7 - peak > 3.1 && 7 - peak < 3.4 && s.ground && s.y === 7, `${(7 - peak).toFixed(2)}`);
   const s2 = J.newState(m); let p2 = s2.y; run(m, s2, (t) => ({ jump: t === 0, jumpHeld: t < 0.06 }), 1.2, (q) => { p2 = Math.min(p2, q.y); return false; });
-  check("short tap = lower jump (release early)", 7 - p2 < (7 - peak) * 0.7 && 7 - p2 > 0.5, `${(7 - p2).toFixed(2)}`);
+  check("short tap = lower jump, but still 2+ tiles (the first 0.15 s always counts)", 7 - p2 < (7 - peak) - 0.4 && 7 - p2 > 2, `${(7 - p2).toFixed(2)}`);
   // 나무 발판 (4,5),(5,5) 윗면 y=5 (바닥에서 2칸 위): 밑에서 점프하면 뚫고 올라가 그 위에 섬
   const s3 = st(m, 4.9, 7); run(m, s3, (t) => ({ jump: t === 0, jumpHeld: true }), 1.2);
   check("plank: jump up through it from below and land on top", s3.ground && s3.y === 5, JSON.stringify([s3.x, s3.y]));
@@ -59,7 +59,10 @@ const st = (m, x, y) => ({ ...J.newState(m), x, y });
   const m = mini(["##########", "#........#", "#........#", "#........#", "#........#", "#........#", "#........#", "#........#", "#S.......#", "##########"]);
   const s = st(m, 4.5, 9); let peak = 9;
   run(m, s, (t) => ({ jump: Math.abs(t - 0) < DT / 2 || Math.abs(t - 0.3) < DT / 2 || Math.abs(t - 0.6) < DT / 2, jumpHeld: true }), 2, (q) => { peak = Math.min(peak, q.y); return false; });
-  check("double jump: a second press in the air goes ~2 tiles higher (> 4 tiles total); a third press does nothing", 9 - peak > 4 && 9 - peak < 5 && s.doubled === 1 && s.ground, `${(9 - peak).toFixed(2)} doubled ${s.doubled}`);
+  check("double jump: a second press in the air goes higher (> 5 tiles total); a third press does nothing", 9 - peak > 5 && 9 - peak < 6.2 && s.doubled === 1 && s.ground, `${(9 - peak).toFixed(2)} doubled ${s.doubled}`);
+  const q = st(m, 4.5, 9); let pq = 9;
+  run(m, q, (t) => ({ jump: t === 0 || Math.abs(t - 0.3) < DT / 2, jumpHeld: t < 0.03 || (t > 0.3 && t < 0.33) }), 2, (z) => { pq = Math.min(pq, z.y); return false; });
+  check("double jump with two quick taps still reaches 4 rows (≥ 4.2 tiles)", 9 - pq >= 4.2, `${(9 - pq).toFixed(2)}`);
   run(m, s, (t) => ({ jump: Math.abs(t - 0) < DT / 2 || Math.abs(t - 0.3) < DT / 2, jumpHeld: true }), 2);
   check("double jump comes back after landing", s.doubled === 2 && s.ground);
   const w = st(m, 4.5, 9); run(m, w, (t) => ({ jump: t === 0, jumpHeld: true }), 0.05);
@@ -127,7 +130,7 @@ const missed = segs.filter(g => g.y < m.h - 1 && !seen.has(g));
 check("hunt1: every floor (all 14 platforms + ground) is reachable from the start with real physics (jumps, double jumps)", !missed.length && segs.length === 15, `missed ${missed.map(label)}; reached ${[...seen.keys()].map(label).join(" ")}`);
 check("hunt1: the portal spot is reachable", seen.has(portalSeg));
 const djOnly = segs.filter(g => seen.has(g) && !seenNoDJ.has(g));
-check("hunt1: some floors need the double jump (unreachable with single jumps only), including the top", djOnly.length >= 4 && djOnly.some(g => g.y === 3), `${djOnly.map(label)} / single-jump reach ${[...seenNoDJ.keys()].map(label)}`);
+check("hunt1: some floors need the double jump (unreachable with single jumps only), including the top", djOnly.length >= 3 && djOnly.some(g => g.y === 2), `${djOnly.map(label)} / single-jump reach ${[...seenNoDJ.keys()].map(label)}`);
 {
   const top = segs.reduce((a, g) => (g.y < a.y ? g : a));
   check("hunt1: from the top floor you can get back down to the portal", bfs(top, next).has(portalSeg));
@@ -140,10 +143,10 @@ check("hunt1: some floors need the double jump (unreachable with single jumps on
   let r = chase({ x: 12.5, y: 24 }, { x: 19, y: 24 });
   check("chase: same floor 6.5 tiles → runs over (≥ 3 tiles/s) until touching", r.hit && 6.5 / r.t >= 2.8, JSON.stringify([r.t, r.q.x]));
   r = chase({ x: 20, y: 24 }, { x: 20, y: 20 });
-  check("chase up: a player 4 rows up → the monster double-jumps up to them", r.hit && r.q.doubled >= 1, JSON.stringify([r.t, r.q.x, r.q.y, r.q.doubled]));
+  check("chase up: a player 4 rows up → the monster jumps up to them (double jump if needed)", r.hit && r.q.jumped >= 1, JSON.stringify([r.t, r.q.x, r.q.y, r.q.doubled]));
   r = chase({ x: 17, y: 12 }, { x: 10, y: 8 });
   check("chase up across: walks under the next platform and double-jumps", r.hit, JSON.stringify([r.t, r.q.x, r.q.y]));
-  r = chase({ x: 20, y: 3 }, { x: 21, y: 6 });
+  r = chase({ x: 20, y: 2 }, { x: 21, y: 6 });
   check("chase down: drops through the plank (↓) to a player below", r.hit && r.q.y >= 5, JSON.stringify([r.t, r.q.x, r.q.y]));
   // 싸우는 중(닿음)이면 서서 싸움
   const f = J.newMob(m, { x: 12.5, y: 24 }, rand), fp = { x: 13.2, y: 24 }, fx = f.x;
@@ -160,10 +163,10 @@ check("hunt1: some floors need the double jump (unreachable with single jumps on
   const h = J.parse(J.MAPS.hell50.rows), spots = J.spawnSpots(h, 50, rand);
   const onFloor = spots.every(p => segs.some(g => g.y === p.y && p.x >= g.x0 && p.x <= g.x1 + 1));
   check("hell 50 spawns: 50 spots on standable floors, none within 6 tiles of the start, spread over 6+ floors, boss spot on the top platform",
-    spots.length === 50 && onFloor && !spots.some(p => p.y === h.start.y && Math.abs(p.x - h.start.x) < 5.7) && new Set(spots.map(p => p.y)).size >= 6 && segAt(J.MAPS.hell50.boss)?.y === 3,
+    spots.length === 50 && onFloor && !spots.some(p => p.y === h.start.y && Math.abs(p.x - h.start.x) < 5.7) && new Set(spots.map(p => p.y)).size >= 6 && segAt(J.MAPS.hell50.boss)?.y === 2,
     JSON.stringify(spots.slice(0, 5)));
   const big = J.newMob(h, J.MAPS.hell50.boss, rand, 1.2, 1.4);
-  check("a wide (boss) monster touches from farther", J.touching({ x: big.x + 1.0, y: 3 }, big) && !J.touching({ x: big.x + 1.0, y: 3 }, { ...big, w: undefined }));
+  check("a wide (boss) monster touches from farther", J.touching({ x: big.x + 1.0, y: 2 }, big) && !J.touching({ x: big.x + 1.0, y: 2 }, { ...big, w: undefined }));
   check("skill reach counts tiles (diagonal = 1)", J.reach({ x: 5, y: 10 }, { x: 7, y: 9 }) === 2 && J.reach({ x: 5, y: 10 }, { x: 5.5, y: 10 }) === 0.5);
 }
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);

@@ -1036,7 +1036,6 @@
     " (새 최고 기록!)": " (new best!)",
     "⏱ {0}초": "⏱ {0}s",
     "최고 {0}초": "Best {0}s",
-    "방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기": "Arrows move · Jump button · Portal = leave",
     "새 최고 기록!": "New best!",
     "점프 버튼: 다시 · 포탈: 나가기": "Jump: again · Portal: leave",
     "Space·Enter 다시 · Esc 로비로": "Space/Enter again · Esc to lobby",
@@ -1058,5 +1057,6 @@
     "분노": "Enraged",
     "점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (공격·스킬은 자동 · Esc로 나가기)": "You entered Jump Dungeon {0}. Defeat all {1} monsters to open the portal! (attacks and skills are automatic · Esc to leave)",
     "← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기": "← → move · Space jump (again in the air) · ↓ drop through · auto attack · R restart · Esc leave",
+    "◀ ▶ 이동 · 점프(공중에서 한 번 더) · ▼ 발판 아래로 · 포탈 = 나가기": "◀ ▶ move · Jump (again in the air) · ▼ drop through · Portal = leave",
   } });
 })(typeof self !== "undefined" ? self : this);
