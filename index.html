@@ -704,7 +704,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=85"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=86"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -4221,6 +4221,7 @@
     const tileVar = (x, y) => ((x * 7 + y * 13) ^ (x * y)) & 3;   // 바닥·벽 무늬 4가지 중 하나 (칸마다 고정)
     const secs = (t) => (Math.floor(t * 10) / 10).toFixed(1);
     const alive = () => mobs.filter(m => m.hp > 0);
+    const BOSS_W = 1.2, BOSS_SCALE = 1.6;   // 보스는 몸이 크고 그림도 1.6배
     const hell = () => J.MAPS[mapId].zone === "hell";
     const where = () => (hell() ? T("헬 {0}층", J.MAPS[mapId].depth) : T("{0}층", J.MAPS[mapId].depth));
     // 능력치: 지금 장비 그대로. 헬이면 원소 저항을 헬 기준(장비 합 −70 뒤 최대치)으로
@@ -4245,6 +4246,8 @@
       setScene("jump");
       updateStats();
       log(T("점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)", where(), mobs.length), "good");
+      const boss = mobs.find(m => m.boss);
+      if (boss) log(T("보스 {0}이(가) 맨 위 발판에서 기다린다!", boss.name), null, boss.named ? RLMonsters.NAMED_COLOR : BOSS_COLOR);
       last = 0; acc = 0;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(loop);
@@ -4256,7 +4259,14 @@
       // 헬: 던전 헬과 같은 몬스터 (나이트메어 종류, 원소, 정예 확률 그대로). 보스·네임드는 아직 없음
       const make = () => (hell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), Math.random() < RLMonsters.eliteChance(NM.base) ? "elite" : "normal", depth)
         : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), "normal", depth));
-      mobs = map.spawns.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1 }));
+      // crowd 맵(헬 50층): 몬스터 수를 던전 그 층과 같게 (헬 50층 47~53마리) 발판 곳곳에, 보스(네임드)는 맨 위 발판에
+      const M = J.MAPS[mapId], n = RLMonsters.nmMonsterCount(depth), spread = NM.monsters.spread;
+      const spots = M.crowd ? J.spawnSpots(map, between(n - spread, n + spread)) : map.spawns;
+      mobs = spots.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1 }));
+      if (M.boss) {
+        const b = (hell() && RLMonsters.makeNamedBoss(depth)) || (hell() ? RLMonsters.makeHellBoss(depth) : RLMonsters.makeBoss(depth));
+        mobs.push({ ...J.newMob(map, M.boss, Math.random, BOSS_W), ...b, boss: true, hitT: -1, deadT: -1 });
+      }
       maxHp = stats().maxHp; hp = maxHp;
       burn = null; slowTo = 0; iceFree = 0;
       turnAcc = 0; turnN = 0; cd = { fb: 0, nova: 0, chain: 0, whirl: 0 }; pops = []; fx = []; portalOpen = false;
@@ -4307,6 +4317,7 @@
     function kill(m, s) {
       m.deadT = performance.now();
       const left = alive().length;
+      if (m.boss) log(m.named ? T("네임드 보스 {0}을(를) 쓰러뜨렸다!", m.name) : T("보스를 쓰러뜨렸다! 계단이 열렸다."), "rainbow");
       log(T("{0} 처치! (남은 몬스터 {1}마리)", m.name, left), "good");
       if (s.killHeal) healHp(s.killHeal);
       if (!left && !portalOpen) { portalOpen = true; log(T("몬스터를 모두 잡았다! 포탈이 열렸다."), null, PORTAL_COLOR); }
@@ -4314,6 +4325,12 @@
     function combatTurn() {
       turnN++;
       const s = hstats();
+      // 염라대왕(헬 50층 네임드): judge.every턴마다 속성이 불 → 얼음 → 번개 (그 속성 저항이 높아짐), HP가 적으면 분노
+      for (const b of alive().filter(m => m.pattern === "judge")) {
+        const el = RLMonsters.judgeElement(turnN, b.judge.every);
+        if (el !== b.el) { b.el = el; b.res = RLMonsters.hellRes(b.named, el, true); log(T("{0}의 심판: 이제 {1} 속성이다! ({1} 저항 {2}%)", b.name, EL.names[el], b.res[el]), null, EL.colors[el]); }
+        if (enrageOn(b) && !b.enraged) { b.enraged = true; log(T("{0}이(가) 분노했다! 공격력 ×{1}", b.name, b.judge.enrageMul), null, RLMonsters.NAMED_COLOR); }
+      }
       // 화상: every턴마다 한 번씩 ticks번
       if (burn && turnN >= burn.next) { hp -= burn.dmg; hurtT = performance.now(); pop(st, burn.dmg, EL.colors.fire); burn.next += EL.burn.every; if (--burn.left <= 0) burn = null; }
       skills(s);
@@ -4339,7 +4356,7 @@
         if (m.hp <= 0 || hp <= 0) continue;
         if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) { pop(st, T("피함"), RLItems.RARITIES.unique.color); continue; }
         if (s.parry && Math.random() * 100 < s.parry) { pop(st, T("막음"), "#d0d4e0"); continue; }
-        const d = Math.max(1, Math.round(RLMonsters.damageToPlayer(m.atk + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
+        const d = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(m) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));   // 염라대왕 분노면 공격 ×2
         hp -= d;
         hurtT = performance.now();
         pop(st, d, "#ff5c5c");
@@ -4461,17 +4478,20 @@
       for (const m of mobs) {
         const fade = m.deadT < 0 ? 1 : 1 - (now - m.deadT) / 400;
         if (fade <= 0) continue;
-        const px = (m.x - 0.5) * TILE, py = (m.y - 1) * TILE, name = `mon_${m.id}`;
+        const px = (m.x - 0.5) * TILE, py = (m.y - 1) * TILE, name = `mon_${m.id}`, k = m.boss ? BOSS_SCALE : 1;
         const bob = m.deadT < 0 && m.wait <= 0 ? (Math.floor(now / 160 + m.x0) % 2) * -0.6 : 0;
         ctx.save();
         ctx.globalAlpha = fade;
-        ctx.translate(px + TILE / 2, 0); ctx.scale(m.dir > 0 ? -1 : 1, 1); ctx.translate(-px - TILE / 2, bob);
+        // 발끝 가운데를 축으로 뒤집고 (보스는) 키움
+        ctx.translate(m.x * TILE, m.y * TILE); ctx.scale((m.dir > 0 ? -1 : 1) * k, k); ctx.translate(-m.x * TILE, -m.y * TILE + bob);
         if (art && Sprites.has(name)) { Sprites.draw(name, px, py); drawFlash(Sprites.src(name), px, py, Math.max(0, 0.8 - (now - m.hitT) / 200)); }
         else drawGlyph(m.ch, px, py, m.color);
         ctx.restore();
-        if (m.deadT < 0 && m.hp < m.maxHp) {
-          ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(px + 2, py - 3, TILE - 4, 2.5);
-          ctx.fillStyle = "#e05555"; ctx.fillRect(px + 2, py - 3, (TILE - 4) * Math.max(0, m.hp / m.maxHp), 2.5);
+        if (m.deadT < 0 && (m.hp < m.maxHp || m.boss)) {
+          const top = m.y * TILE - TILE * k - 3, bw = (TILE - 4) * k;
+          ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(m.x * TILE - bw / 2, top, bw, 2.5);
+          ctx.fillStyle = m.boss ? RLMonsters.NAMED_COLOR : "#e05555"; ctx.fillRect(m.x * TILE - bw / 2, top, bw * Math.max(0, m.hp / m.maxHp), 2.5);
+          if (m.boss) { ctx.font = 'bold 5px "Courier New", monospace'; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillStyle = m.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR; ctx.fillText(m.name, m.x * TILE, top - 1); }
         }
       }
       // 플레이어: 발끝 (x, y), 보는 쪽으로 뒤집고, 뛸 때 늘어나고 내려앉을 때 눌림, 걸을 때 들썩, 맞으면 붉게
@@ -4522,6 +4542,15 @@
       hud(portalOpen ? T("포탈이 열렸다!") : T("남은 몬스터 {0}/{1}", alive().length, mobs.length), 8, 22, portalOpen ? PORTAL_COLOR : "#d0d4e0");
       hud(T("⏱ {0}초", secs(cleared ? cleared.time : st.time)) + (best != null ? "  " + T("최고 {0}초", secs(best)) : ""), 8, 38, "#ffcf5c");
       if (hell()) hud(where() + (burn ? "  " + T("🔥 화상") : "") + (turnN < slowTo ? "  " + T("❄ 느려짐") : ""), 8, 54, "#ff7a3d");
+      // 보스 HP: 화면 위 가운데 (이름 · 속성 · 분노)
+      const boss = mobs.find(m => m.boss && m.hp > 0);
+      if (boss) {
+        const bw = 220, bx = VIEW_W / 2 - bw / 2 + 60;
+        ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx, 8, bw, 8);
+        ctx.fillStyle = boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR; ctx.fillRect(bx, 8, bw * boss.hp / boss.maxHp, 8);
+        ctx.font = 'bold 11px "Courier New", monospace';
+        hud(`${boss.name}${boss.el ? " · " + EL.names[boss.el] : ""}${boss.enraged ? " · " + T("분노") : ""}  ${Math.round(boss.hp / boss.maxHp * 100)}%`, bx, 19, boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR);
+      }
       ctx.font = '11px "Courier New", monospace';
       hud(narrowScreen() ? T("방향 버튼 이동 · 점프 버튼 · 포탈 = 나가기") : T("← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {

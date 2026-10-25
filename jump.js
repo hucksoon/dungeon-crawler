@@ -38,7 +38,8 @@
     "########################################",
   ];
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
-  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1 } };
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 19.5, y: 5 } } };
+  // crowd: 몬스터 수는 던전 그 층과 같게 (m 자리 대신 발판 곳곳에 흩어 놓음). boss: 보스가 서는 곳 (맨 위 발판 가운데)
 
   function parse(rows) {
     const h = rows.length, w = rows[0].length;
@@ -178,15 +179,25 @@
   //        위아래 sense줄 안의 다른 발판이면 플레이어 바로 위·아래로 자리를 잡음 (발판 끝은 못 넘음)
   const MOB = { w: 0.8, h: 0.9, speed: 2, chase: 3.2, pauseMin: 0.3, pauseMax: 0.9, walkMin: 2, walkMax: 5, aggro: 8, sense: 4 };
   // 발판 끝: 발밑이 밟히고 몸 칸이 막히지 않은 데까지
-  function patrol(map, x, y) {
+  function patrol(map, x, y, w = MOB.w) {
     const ok = (tx) => { const c = map.cell(tx, y); return (c === SOLID || oneWayAt(map, tx, y)) && map.cell(tx, y - 1) !== SOLID; };
     let x0 = Math.floor(x), x1 = x0;
     while (ok(x0 - 1)) x0--;
     while (ok(x1 + 1)) x1++;
-    return { x0: x0 + MOB.w / 2, x1: x1 + 1 - MOB.w / 2 };
+    return { x0: x0 + w / 2, x1: x1 + 1 - w / 2 };
   }
-  function newMob(map, at, rand = Math.random) {
-    return { x: at.x, y: at.y, ...patrol(map, at.x, at.y), dir: rand() < 0.5 ? -1 : 1, wait: rand() * MOB.pauseMax, walk: 0 };
+  // w: 몸 너비 (보스는 더 큼)
+  function newMob(map, at, rand = Math.random, w = MOB.w) {
+    return { x: at.x, y: at.y, w, ...patrol(map, at.x, at.y, w), dir: rand() < 0.5 ? -1 : 1, wait: rand() * MOB.pauseMax, walk: 0 };
+  }
+  // 발판 곳곳에 n자리 (밟을 수 있는 칸마다 고르게, 시작 근처 avoid칸은 뺌). 칸 하나에 여러 마리도 됨
+  function spawnSpots(map, n, rand = Math.random, avoid = 6) {
+    const cells = [];
+    for (let y = 1; y < map.h; y++) for (let x = 1; x < map.w - 1; x++) {
+      const c = map.cell(x, y);
+      if ((c === SOLID || oneWayAt(map, x, y)) && map.cell(x, y - 1) !== SOLID && !ladderAt(map, x, y - 1) && !(y === map.start.y && Math.abs(x + 0.5 - map.start.x) < avoid)) cells.push({ x: x + 0.5, y });
+    }
+    return Array.from({ length: n }, () => { const c = cells[Math.floor(rand() * cells.length)]; return { x: c.x + (rand() - 0.5) * 0.6, y: c.y }; });
   }
   // 플레이어 쪽으로 갈지: 같은 발판이면 { x, chase: true }, 위아래 sense줄 안이면 { x, chase: false }, 아니면 null
   function aggroOf(s, m) {
@@ -216,11 +227,11 @@
   // 플레이어와 몬스터가 닿았는지 (몸이 조금이라도 겹치거나 바로 옆)
   // 플레이어가 몬스터와 같은 발판에 서 있는지 (발끝 높이가 같고 그 발판 범위 안)
   const sameFloor = (s, m) => s.ground && !s.climbing && Math.abs(s.y - m.y) < 1e-6 && s.x >= m.x0 - 0.6 && s.x <= m.x1 + 0.6;
-  const touching = (s, m) => Math.abs(s.x - m.x) < (PHYS.w + MOB.w) / 2 + 0.15 && Math.abs(s.y - m.y) < (PHYS.h + MOB.h) / 2;
+  const touching = (s, m) => Math.abs(s.x - m.x) < (PHYS.w + (m.w || MOB.w)) / 2 + 0.15 && Math.abs(s.y - m.y) < (PHYS.h + MOB.h) / 2;
   // 스킬 거리 (칸, 대각선도 1칸): 몸 가운데끼리
   const reach = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs((a.y - PHYS.h / 2) - (b.y - MOB.h / 2)));
 
-  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, mobStep, aggroOf, sameFloor, touching, reach };
+  const api = { PHYS, MOB, MAPS, parse, newState, step, standing, onLadder, patrol, newMob, spawnSpots, mobStep, aggroOf, sameFloor, touching, reach };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RLJump = api;
 })(typeof window !== "undefined" ? window : globalThis);
