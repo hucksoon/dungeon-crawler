@@ -1046,10 +1046,8 @@
     "HP {0}/{1}": "HP {0}/{1}",
     "포탈이 열렸다!": "Portal open!",
     "남은 몬스터 {0}/{1}": "Monsters left {0}/{1}",
-    "← → 이동 · Space 점프 · ↑↓ 사다리 · 닿으면 자동 공격 · R 다시 · Esc 나가기": "← → move · Space jump · ↑↓ ladder · touch to auto-attack · R restart · Esc leave",
     "점프 던전을 불러오지 못했어요. 페이지를 새로고침해 주세요.": "Couldn't load the Jump Dungeon. Please refresh the page.",
     "헬50": "Hell 50",
-    "점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (닿으면 자동으로 싸움 · Esc로 나가기)": "You entered Jump Dungeon {0}. Defeat all {1} monsters to open the portal! (touching fights automatically · Esc to leave)",
     "쓰러졌다! 점프 던전 {0}을 처음부터 다시 시작한다. (지금 판에는 영향 없음)": "You fell! Jump Dungeon {0} starts over. (Your current run is not affected)",
     "느려짐": "Slowed",
     "점프 던전 {0} 클리어! {1}초{2}": "Jump Dungeon {0} cleared! {1}s{2}",
@@ -1058,5 +1056,7 @@
     "🌀 {0} 클리어! {1}초": "🌀 {0} clear! {1}s",
     "보스 {0}이(가) 맨 위 발판에서 기다린다!": "The boss {0} is waiting on the top platform!",
     "분노": "Enraged",
+    "점프 던전 {0}에 들어왔다. 몬스터 {1}마리를 모두 잡으면 포탈이 열린다! (공격·스킬은 자동 · Esc로 나가기)": "You entered Jump Dungeon {0}. Defeat all {1} monsters to open the portal! (attacks and skills are automatic · Esc to leave)",
+    "← → 이동 · Space 점프(공중에서 한 번 더) · ↑↓ 사다리 · 공격은 자동 · R 다시 · Esc 나가기": "← → move · Space jump (again in the air) · ↑↓ ladder · auto attack · R restart · Esc leave",
   } });
 })(typeof self !== "undefined" ? self : this);
