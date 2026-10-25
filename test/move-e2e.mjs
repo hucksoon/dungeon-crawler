@@ -11,7 +11,8 @@ const OLD = "https://hucksoon.github.io/hucksoon/", NEW = "https://game.apacimte
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const waitFor = async (fn, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(150); } return false; };
+// 기다리는 시간은 넉넉히: 전체 회귀 테스트 중엔 기계가 바빠서 이동(2.5초 뒤)·새 주소 로딩이 10초를 넘기기도 함. 통과할 땐 조건이 맞는 즉시 끝남
+const waitFor = async (fn, ms = 30000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(150); } return false; };
 
 const find = (pred, tag) => { for (let n = 0; n < 200000; n++) { const it = RL.generate(`${tag}${n}|shop|d5|s${n % 6}`, "golden", 5); if (pred(it)) return it; } };
 const epic = find(x => x.rarity === "epic", "mv");
@@ -38,7 +39,11 @@ async function open({ oldStore = {}, newStore = {}, start = OLD }) {
   await page.goto(start);
   return { ctx, page, errors };
 }
-const onNew = (page) => waitFor(async () => page.url().startsWith(NEW) && await page.locator("#log").count() > 0, 10000);
+const onNew = (page) => waitFor(async () => page.url().startsWith(NEW) && await page.locator("#log").count() > 0);
+// 주소가 바로 바뀌어도 #import=… 지우기(history.replaceState)는 게임 스크립트가 돌아야 됨 → 바로 비교하지 말고 그렇게 될 때까지 기다림
+const urlIs = (page, u) => waitFor(() => page.url() === u);
+// 게임 스크립트가 끝까지 돌았는지 (가져오기·첫 기록은 시작할 때 한 번에 처리됨)
+const started = (page) => waitFor(() => page.evaluate(() => document.readyState === "complete"));
 const ls = (page, k) => page.evaluate(k => localStorage.getItem(k), k);
 
 try {
@@ -46,7 +51,7 @@ try {
   const A = await open({ oldStore: { rl_device_id: DEV, rl_save: save(777), [`rl_inv:g:${DEV}`]: inv([epic], 450), [`rl_dex:g:${DEV}`]: JSON.stringify({ seen: { rat: true }, kills: { rat: 9 } }), rl_level: "{}" } });
   check("old page shows notice and link", (await A.page.locator("#note").innerText()).includes("이 브라우저에서 하던"));
   check("auto-redirects to new address", await onNew(A.page), A.page.url());
-  check("hash removed from address after import", A.page.url() === NEW, A.page.url());
+  check("hash removed from address after import", await urlIs(A.page, NEW), A.page.url());
   const invA = JSON.parse(await ls(A.page, `rl_inv:g:${DEV}`));
   check("device id carried over (same guest)", await ls(A.page, "rl_device_id") === DEV);
   check("bag carried over (epic, stones)", invA.bag[0]?.id === epic.id && invA.stones === 5);
@@ -76,7 +81,7 @@ try {
   const L = await open({ oldStore: { rl_device_id: "old-acct-dev", rl_auth: tok(SUBX), rl_save: save(5), [`rl_inv:u:${SUBX}`]: inv([legend, epic], 500), [`rl_dex:u:${SUBX}`]: JSON.stringify({ seen: { bat: true }, kills: { bat: 4 } }) },
                          newStore: { rl_device_id: "new-acct-dev", rl_auth: tok(SUBX), [`rl_inv:u:${SUBX}`]: inv(many) } });
   check("logged-in old: notice mentions moving gear", (await L.page.locator("#note").innerText()).includes("장비도 함께"));
-  check("logged-in old: redirected with data (not login token)", await onNew(L.page) && L.page.url() === NEW);
+  check("logged-in old: redirected with data (not login token)", await onNew(L.page) && await urlIs(L.page, NEW), L.page.url());
   const invL = async () => JSON.parse(await ls(L.page, `rl_inv:u:${SUBX}`));
   const mailL = async () => JSON.parse(await ls(L.page, `rl_mail:u:${SUBX}`) || "[]");
   check("logged-in new: old account gear merged (bag full → box mail)", await waitFor(async () => (await mailL()).map(m => m.item.id).sort().join() === [legend.id, epic.id].sort().join()), JSON.stringify(await mailL()).slice(0, 200));
@@ -95,22 +100,22 @@ try {
 
   // 4. 옛 상점·랭킹 링크 → 새 주소의 같은 페이지
   const D = await open({ start: OLD + "shop.html" });
-  check("old shop link → new shop page", await waitFor(() => D.page.url() === NEW + "shop.html", 8000), D.page.url());
+  check("old shop link → new shop page", await urlIs(D.page, NEW + "shop.html"), D.page.url());
   const E = await open({ start: OLD + "ranking.html" });
-  check("old ranking link → new ranking page", await waitFor(() => E.page.url() === NEW + "ranking.html", 8000), E.page.url());
+  check("old ranking link → new ranking page", await urlIs(E.page, NEW + "ranking.html"), E.page.url());
 
   // 5. 처음 온 사람: 그냥 이동
   const F = await open({});
-  check("fresh visitor: plain redirect", await onNew(F.page) && F.page.url() === NEW);
+  check("fresh visitor: plain redirect", await onNew(F.page) && await urlIs(F.page, NEW), F.page.url());
 
   // 6. 이상한 #import는 무시
   const G = await open({ start: NEW + "#import=bm90LWpzb24" });
   const G2 = await open({ start: NEW + "#import=" + Buffer.from(JSON.stringify({ rl_device_id: "x", rl_auth: "evil" })).toString("base64url") });
-  await sleep(1000);
-  check("malformed import ignored", !(await G.page.locator("#log").innerText()).includes("옮겨 왔다") && G.page.url() === NEW);
+  await started(G.page); await started(G2.page);
+  check("malformed import ignored", !(await G.page.locator("#log").innerText()).includes("옮겨 왔다") && await urlIs(G.page, NEW), G.page.url());
   check("bad device id / extra keys ignored", await ls(G2.page, "rl_auth") === null && await ls(G2.page, "rl_device_id") !== "x");
   const H = await open({ start: NEW + "#import=" + Buffer.from(JSON.stringify({ rl_device_id: "valid-dev-123", rl_auth: "evil", rl_profile: "x", rl_save: save(3) })).toString("base64url") });
-  await sleep(1000);
+  await started(H.page);
   check("only game keys imported (no login token)", await ls(H.page, "rl_auth") === null && await ls(H.page, "rl_device_id") === "valid-dev-123");
 
   for (const [n, x] of Object.entries({ A, B, C, L, M, D, E, F, G, G2, H })) check(`${n}: no page errors`, x.errors.length === 0, x.errors.join("; "));
