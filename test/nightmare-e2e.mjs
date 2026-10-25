@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -64,12 +65,10 @@ async function portalOut(page) {
   const L = await page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   if (L?.tp) await page.keyboard.press(L.tp.x > L.px ? "ArrowRight" : L.tp.x < L.px ? "ArrowLeft" : L.tp.y > L.py ? "ArrowDown" : "ArrowUp"); await sleep(200);
 }
-// (16,13) → 오른쪽 10칸 (26,13) → 위로 두 번: 나이트메어 문 (26,11)
+// 마을 나이트메어 문까지 걸어가 ↑
 async function walkToNightmare(page) {
   await portalOut(page);
-  for (let i = 0; i < 10; i++) { await page.keyboard.press("ArrowRight"); await sleep(25); }
-  await page.keyboard.press("ArrowUp"); await sleep(40);
-  await page.keyboard.press("ArrowUp"); await sleep(300);
+  await goDoor(page, "nightmare"); await sleep(100);
 }
 try {
   // 1. 일반 던전 미완료: 입장 불가
@@ -125,7 +124,7 @@ try {
   await page.keyboard.press("Enter"); await sleep(3500);
   const nmBoard = await (await fetch("http://127.0.0.1:8101/api.php?r=ranking&type=stage&season=nm", { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
   check("server: nightmare board has 51 (= 50층 완료)", nmBoard.season === "nm" && nmBoard.rows?.[0]?.stage === 51, JSON.stringify(nmBoard.rows));
-  await page.keyboard.press("ArrowDown"); await sleep(300);  // 로비 포탈은 바로 아래
+  await page.keyboard.press("ArrowUp"); await sleep(300);  // 마을 파란 포탈 문 앞에서 ↑
   check("lobby portal → nightmare 50 again", !(await inLobby(page)) && (await page.locator("#zone").innerText()).includes("나이트메어") && (await page.locator("#depth").innerText()) === "50");
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
   await ctx.close();
@@ -133,9 +132,8 @@ try {
   // 7. 일반 던전 완료자: 던전 입구 오른쪽 문(최고 층 − 10)에서 65층부터
   ({ ctx, page, errors } = await open("nmtest-g", { rl_save: save(30, "nmG"), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) }));
   await portalOut(page);
-  // 로비 포탈 위(16,13) → 오른쪽 (17,13) → 위로 두 번: 오른쪽 문(17,11)
-  await page.keyboard.press("ArrowRight"); await sleep(40);
-  await page.keyboard.press("ArrowUp"); await sleep(40); await page.keyboard.press("ArrowUp"); await sleep(300);
+  // 마을 던전 입구 오른쪽 문(최고 − 10층)
+  await goDoor(page, "skip"); await sleep(100);
   check("cleared player: right door → starts on floor 65", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "65" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
   await ctx.close();
 

@@ -196,28 +196,32 @@
   body:not(.in-lobby) .lobby-only { display: none; }
   body.in-lobby .dungeon-only { display: none !important; }
   body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 던전: 포션·지도 없음 (점프·포탈(나가기)만) */
-  /* 점프 던전 휴대폰 배치 (dc#89): 왼손 엄지 ◀ ▶ (아래에 ▼ 발판 아래로) · 오른손 엄지 큰 점프 버튼 · 위에 작게 인벤토리·도감·포탈.
-     ▲는 쓰지 않음 (사다리 없음). 상자(.dpad·.actions)를 풀어 버튼을 한 격자에 바로 놓음 */
+  /* 옆에서 보는 화면(점프 던전 dc#89 · 마을 dc#90) 휴대폰 배치: 왼손 엄지 ◀ ▶ (아래에 점프 던전은 ▼ 발판 아래로, 마을은 ▲ 들어가기)
+     · 오른손 엄지 큰 점프 버튼 · 위에 작게 인벤토리·도감(·포탈). 상자(.dpad·.actions)를 풀어 버튼을 한 격자에 바로 놓음 */
+  #touch-pad .enter-label { display: none; }
   @media (pointer: coarse) {
-    body.in-tower #touch-pad {
+    body.side-view #touch-pad {
       display: grid; gap: 8px; align-items: center;
       grid-template-columns: 68px 68px minmax(0, 1fr) 120px;
       grid-template-areas: "inv dex . portal" "left right . jump" "down down . jump";
     }
-    body.in-tower #touch-pad .dpad, body.in-tower #touch-pad .actions { display: contents; }
-    body.in-tower #touch-pad .up { display: none; }
-    body.in-tower #touch-pad button { touch-action: none; }   /* 두 손가락으로 눌러도 화면이 움직이거나 커지지 않게 */
-    body.in-tower #touch-pad .left { grid-area: left; margin: 0; }
-    body.in-tower #touch-pad .right { grid-area: right; margin: 0; }
-    body.in-tower #touch-pad .down { grid-area: down; justify-self: center; width: 100px; height: 52px; margin: 0; }
-    body.in-tower #tp-inv { grid-area: inv; } body.in-tower #tp-dex { grid-area: dex; } body.in-tower #tp-portal { grid-area: portal; }
-    body.in-tower #tp-inv, body.in-tower #tp-dex, body.in-tower #tp-portal { padding: 6px 2px; font-size: 12px; }
-    body.in-tower #tp-jump { grid-area: jump; width: 120px; height: 120px; border-radius: 50%; font-size: 20px; font-weight: bold; justify-self: end; }
-    body.in-tower #tp-jump.held { background: var(--border); color: var(--accent); }
+    body.side-view #touch-pad .dpad, body.side-view #touch-pad .actions { display: contents; }
+    body.in-tower #touch-pad .up, body.in-lobby #touch-pad .down { display: none; }
+    body.side-view #touch-pad button { touch-action: none; }   /* 두 손가락으로 눌러도 화면이 움직이거나 커지지 않게 */
+    body.side-view #touch-pad .left { grid-area: left; margin: 0; }
+    body.side-view #touch-pad .right { grid-area: right; margin: 0; }
+    body.side-view #touch-pad .down, body.in-lobby.side-view #touch-pad .up { grid-area: down; justify-self: center; width: 100px; height: 52px; margin: 0; }
+    body.in-lobby.side-view #touch-pad .up { width: 136px; font-size: 16px; }
+    body.in-lobby.side-view #touch-pad .enter-label { display: inline; margin-left: 4px; font-size: 14px; }
+    body.side-view #tp-inv { grid-area: inv; } body.side-view #tp-dex { grid-area: dex; } body.side-view #tp-portal { grid-area: portal; }
+    body.side-view #tp-inv, body.side-view #tp-dex, body.side-view #tp-portal { padding: 6px 2px; font-size: 12px; }
+    body.side-view #tp-jump { grid-area: jump; width: 120px; height: 120px; border-radius: 50%; font-size: 20px; font-weight: bold; justify-self: end; }
+    body.in-lobby.side-view #tp-jump { display: block !important; }   /* 마을에서도 점프 (던전 전용 버튼이지만) */
+    body.side-view #tp-jump.held { background: var(--border); color: var(--accent); }
   }
   @media (pointer: coarse) and (max-width: 360px) {
-    body.in-tower #touch-pad { grid-template-columns: 62px 62px minmax(0, 1fr) 104px; }
-    body.in-tower #tp-jump { width: 104px; height: 104px; }
+    body.side-view #touch-pad { grid-template-columns: 62px 62px minmax(0, 1fr) 104px; }
+    body.side-view #tp-jump { width: 104px; height: 104px; }
   }
   #lobby-panel {
     width: 640px;
@@ -524,7 +528,6 @@
     <button id="account-btn" type="button"></button>
     <button id="inv-btn" type="button" data-t>인벤토리 (I)</button>
     <button id="dex-btn" type="button" data-t>도감 (B)</button>
-    <button id="gfx-btn" type="button" hidden></button>
     <button id="map-btn" class="dungeon-only" type="button"></button>
     <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
@@ -546,7 +549,7 @@
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 양손 엄지로 누르기 좋게: 왼쪽 ▲◀, 가운데 기능 버튼, 오른쪽 ▶▼ -->
     <div class="dpad dpad-left">
-      <button type="button" class="up" data-dir="0,-1" aria-label="위로" data-t-aria>▲</button>
+      <button type="button" class="up" data-dir="0,-1" aria-label="위로" data-t-aria>▲<span class="enter-label" data-t>들어가기</span></button>
       <button type="button" class="left" data-dir="-1,0" aria-label="왼쪽으로" data-t-aria>◀</button>
     </div>
     <div class="actions">
@@ -571,7 +574,7 @@
   <span class="touch-only" data-t>방향 버튼을 누르고 있으면 계속 움직여요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 <b>*</b>로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br></span>
+  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br></span>
   <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
@@ -727,7 +730,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=88"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=89"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -1647,7 +1650,7 @@
 
   // ---- 스폰 ----
   const isShop = (x, y) => !!shop && shop.x === x && shop.y === y;
-  const PORTAL_COLOR = "#4fa3ff";  // 로비의 파란 포탈(*)
+  const PORTAL_COLOR = "#4fa3ff";  // 로비의 파란 포탈
 
   function randomFloor(exclude) {
     for (let tries = 0; tries < 500; tries++) {
@@ -1791,7 +1794,7 @@
 
   // ---- 플레이어 액션 ----
   function tryMove(dx, dy) {
-    if (scene === "lobby") { lobbyMove(dx, dy); return; }
+    if (scene === "lobby") return;   // 마을은 Town (← → 걷기, ↑ 들어가기)
     if (gameOver) return;
     if (jumpAim) { jump(dx, dy); return; }   // 점프를 고른 뒤의 방향 (키보드·터치 모두)
     Anim.newTurn();
@@ -2344,13 +2347,13 @@
     updateStats();
     if (first) showNotice(T("일반 던전 완료!"), [
       T("{0}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 \"완료\"로 기록돼요.", depth),
-      T("{0}층이 마지막 층이에요. 로비의 파란 포탈(*)로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 던전 입구 오른쪽 문으로는 {1}층부터 다시 내려갈 수 있어요.", depth, skipFloor()),
+      T("{0}층이 마지막 층이에요. 로비의 파란 포탈로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 던전 입구 오른쪽 문으로는 {1}층부터 다시 내려갈 수 있어요.", depth, skipFloor()),
       T("골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요."),
     ]);
     else showNotice(T("{0}층 클리어!", depth), [
       T("{0}층 보스를 {1}쓰러뜨리고 로비로 돌아왔어요.", depth, counts ? T("또 ") : ""),
       ...(counts ? [] : [T("이번 판은 예전(v3까지) 장비를 써서 v4 베타 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요.")]),
-      T("로비의 파란 포탈(*)로 {0}층의 새 구역에 다시 들어갈 수 있어요.", depth),
+      T("로비의 파란 포탈로 {0}층의 새 구역에 다시 들어갈 수 있어요.", depth),
     ]);
   }
 
@@ -2367,7 +2370,7 @@
       goldNM()
         ? T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드 × {3}, 나이트메어 난이도)", reward.toLocaleString(), itemLevel(), GD.rewardRolls, RLItems.NM_SHOP.priceMul)
         : T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드)", reward.toLocaleString(), GD.floor, GD.rewardRolls),
-      T("로비의 파란 포탈(*)이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요."),
+      T("로비의 파란 포탈이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요."),
     ]);
   }
 
@@ -2386,8 +2389,8 @@
     updateStats();
     showNotice(first ? T("나이트메어 완료!") : T("{0} 클리어!", floorName()), first ? [
       T("{0} 보스를 쓰러뜨려 나이트메어를 완료했어요. 나이트메어 랭킹에 \"완료\"로 기록돼요.", floorName()),
-      T("로비의 파란 포탈(*)로 들어가면 {0}의 새 구역에서 계속 파밍할 수 있어요.", floorName()),
-    ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈(*)로 다시 들어갈 수 있어요.", floorName())]);
+      T("로비의 파란 포탈로 들어가면 {0}의 새 구역에서 계속 파밍할 수 있어요.", floorName()),
+    ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈로 다시 들어갈 수 있어요.", floorName())]);
   }
 
   // 헬 50층 보스를 쓰러뜨리고 계단을 밟음: 헬 완료 (최종 목적지) → 로비로, 포탈 문으로 50층 새 구역
@@ -2405,7 +2408,7 @@
     updateStats();
     showNotice(first ? T("헬 완료!") : T("{0} 클리어!", floorName()), first ? [
       T("{0} 보스를 쓰러뜨려 헬 던전을 완료했어요. 이 게임의 마지막 던전이에요! 헬 랭킹에 \"완료\"로 기록돼요.", floorName()),
-      T("로비의 파란 포탈(*)이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요."),
+      T("로비의 파란 포탈이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요."),
     ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요.", floorName())]);
   }
 
@@ -2826,7 +2829,7 @@
             apply(res.data, res.rev);
             lastSent = JSON.stringify(res.data);
             log(T("다른 기기에서 저장한 진행 상황으로 바꿨다."), "info");
-            if (scene === "lobby") renderLobby();
+            if (scene === "lobby") render();
           } else if (res.conflict) setMeta({ rev: res.rev, dirty: true });
         } catch (e) {
           if (!warned) log(T("계정에 저장하지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
@@ -3166,52 +3169,8 @@
   // 로비에서는 턴 없이 자유롭게 걸어다니고, 같이 접속한 사람들의 위치와 이름이 보임
   let scene = "lobby";                // "lobby" | "dungeon"
   const SCENE_KEY = "rl_scene";       // 새로고침·상점에 다녀오면 있던 곳으로 (새로 접속하면 로비부터)
-  const LOBBY = (() => {
-    const gate = { x: 16, y: 11 };    // 던전 입구 건물 아래쪽 가운데
-    // 문 두 개: 왼쪽은 1층부터, 오른쪽은 최고 층 − 10층부터. 던전에서 연 포탈로 나오면 아래쪽 파란 포탈(*)로 떠난 자리로
-    const doors = { start: { x: gate.x - 1, y: gate.y }, skip: { x: gate.x + 1, y: gate.y } };
-    const portal = { x: gate.x, y: gate.y + 3 };
-    // 운영자 입구: 던전 입구 건물 바로 오른쪽. 운영자 기기에서만 보이고 열림 (다른 사람에게는 그냥 바닥)
-    const staffDoor = { x: gate.x + 3, y: gate.y };
-    // 운영자 시험 입구: 점프 던전 건물 오른쪽 위 모서리 (헬 50층 몬스터). 운영자 기기에서만 보이고 열림
-    const towerHell = { x: 7, y: 19 };
-    const deco = new Map();           // "x,y" → 막힌 칸 종류
-    const put = (x, y, kind) => deco.set(`${x},${y}`, kind);
-    for (let x = 0; x < MAP_W; x++) { put(x, 0, "edge"); put(x, MAP_H - 1, "edge"); }
-    for (let y = 0; y < MAP_H; y++) { put(0, y, "edge"); put(MAP_W - 1, y, "edge"); }
-    // 던전 입구 건물: 5×3, 아래쪽에 문 두 개
-    for (let y = gate.y - 2; y <= gate.y; y++) for (let x = gate.x - 2; x <= gate.x + 2; x++) put(x, y, "gate");
-    for (const d of Object.values(doors)) deco.delete(`${d.x},${d.y}`);
-    for (const x of [gate.x - 2, gate.x + 2]) put(x, gate.y + 1, "torch");
-    for (const [x, y] of [[6, 5], [25, 5], [6, 18], [25, 18], [11, 20], [20, 20]]) put(x, y, "pillar");
-    for (const [x, y] of [[9, 3], [23, 3]]) put(x, y, "brazier");   // 헬 입구 양쪽 화로
-    // 왼쪽 거래소(건물)와 바로 옆 작은 우편함(상자 한 칸), 그 옆 시간 상점(매 시간 정각에 진열이 바뀜): 걸어 들어가면 창이 열림
-    // 오른쪽은 골드 던전과 나이트메어 입구 (일반 던전을 완료하면 열림)
-    const shops = [
-      { kind: "market", label: T("거래소"), x0: 3, x1: 7, door: { x: 5, y: gate.y }, glyph: "$", tab: "buy" },
-      { kind: "mailbox", label: T("우편함"), door: { x: 8, y: gate.y }, tab: "mail" },
-      { kind: "hourshop", label: T("시간 상점"), x0: 10, x1: 12, door: { x: 11, y: gate.y }, glyph: "&", tab: null },
-      // 골드 던전: 왼쪽 문 75층 난이도, 오른쪽 문 나이트메어 최고 층 난이도
-      { kind: "golddungeon", label: T("골드 던전"), x0: 20, x1: 22, door: { x: 20, y: gate.y }, glyph: "▼", tab: null },
-      { kind: "golddungeonNM", door: { x: 22, y: gate.y }, glyph: "▼", tab: null },
-      { kind: "nightmare", label: T("나이트메어"), x0: 24, x1: 28, door: { x: 26, y: gate.y }, glyph: "▼", tab: null },
-      // 나이트메어 오른쪽 문: 완료한 사람만 50층(룬이 나오는 보스 층)에 바로
-      { kind: "nightmare50", door: { x: 28, y: gate.y }, glyph: "▼", tab: null },
-      // 맨 위 헬 던전 (최종 목적지, 나이트메어를 완료하면 열림): 왼쪽 문 1층부터, 오른쪽 문 완료한 10·20·30·40·50층 골라서
-      { kind: "hell", label: T("헬 던전"), x0: 10, x1: 22, y0: 1, y1: 3, door: { x: 14, y: 3 }, glyph: "▼", tab: null },
-      { kind: "hellPick", door: { x: 18, y: 3 }, glyph: "▼", tab: null },
-      // 아래쪽 가운데 대장간 (문이 위쪽): 옵션 재련·홈 초기화 — 인벤토리를 대장간 모드로 엶
-      { kind: "forge", label: T("대장간"), x0: 14, x1: 18, y0: 19, y1: 21, door: { x: 16, y: 19 }, glyph: "⚒", tab: null },
-      // 왼쪽 아래 점프 던전 (문이 위쪽): 옆에서 보는 사냥 맵 (시험판, 1층)
-      { kind: "jumptower", label: T("점프 던전"), x0: 3, x1: 7, y0: 19, y1: 21, door: { x: 5, y: 19 }, glyph: "▲", tab: null },
-    ];
-    for (const s of shops) if (s.x0 != null) for (let y = s.y0 ?? gate.y - 2; y <= (s.y1 ?? gate.y); y++) for (let x = s.x0; x <= s.x1; x++) put(x, y, s.kind);
-    for (const s of shops) deco.delete(`${s.door.x},${s.door.y}`);
-    const shopAt = (x, y) => shops.find(s => s.door.x === x && s.door.y === y) || null;
-    const doorAt = (x, y) => Object.keys(doors).find(k => doors[k].x === x && doors[k].y === y) || null;
-    return { gate, doors, portal, staffDoor, towerHell, deco, shops, shopAt, doorAt, blocked: (x, y) => x < 0 || y < 0 || x >= MAP_W || y >= MAP_H || deco.has(`${x},${y}`) };
-  })();
-  let lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
+  // 마을에서 내 자리 (서버에 알리는 칸: x 0~63, y 바닥 10). 움직임은 Town (아래)
+  let lobbyPos = { x: 30, y: 10 };
 
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
   const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold() || inHell()) ? depth : 0);
@@ -3220,15 +3179,16 @@
     scene = s;
     document.body.classList.toggle("in-lobby", s === "lobby");
     document.body.classList.toggle("in-tower", s === "jump");
+    document.body.classList.toggle("side-view", s === "jump" || s === "lobby");   // 옆에서 보는 화면 (마을·점프 던전): 휴대폰 버튼 배치
+    if (s === "lobby") Town.start();
     try { sessionStorage.setItem(SCENE_KEY, s === "jump" ? "lobby" : s); } catch {}   // 점프 던전은 새로고침하면 로비로
     Lobby.ping();
   }
 
   // 처음 들어올 때는 광장 아래쪽 아무 데나, 포탈로 돌아오면 로비 포탈 바로 위(1층에서 탔으면 1층 문 앞), 쓰러져서 새로 시작하면 1층 문 앞
   function enterLobby({ from = "start" } = {}) {
-    if ((from === "portal" || from === "clear") && resumeFloor()) lobbyPos = { x: LOBBY.portal.x, y: LOBBY.portal.y - 1 };
-    else if (from === "portal" || from === "death") lobbyPos = { x: LOBBY.doors.start.x, y: LOBBY.gate.y + 1 };
-    else do { lobbyPos = { x: between(10, 22), y: between(16, 20) }; } while (LOBBY.blocked(lobbyPos.x, lobbyPos.y));
+    // 마을: 포탈로 돌아오면 파란 포탈 앞, 쓰러져 새로 시작하면 1층 문 앞, 처음에는 광장 가운데 아무 데나
+    Town.place((from === "portal" || from === "clear") && resumeFloor() ? "portal" : from === "portal" || from === "death" ? "start" : "random");
     closeShop();
     closeDeath();
     // 포탈·완료로 로비에 오면 HP를 가득 채우고 포션 쿨타임·화상·느려짐도 풀림 (살기 위해 타는 포탈)
@@ -3242,10 +3202,10 @@
       updateStats();
     }
     setScene("lobby");
-    const backTo = () => (resumeFloor() ? T(" 파란 포탈(*)로 {0}에 돌아갈 수 있다.", floorName()) : "");
+    const backTo = () => (resumeFloor() ? T(" 파란 포탈로 {0}에 돌아갈 수 있다.", floorName()) : "");
     const msg = {
-      portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 아래 파란 포탈(*)로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
-      clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 아래 파란 포탈(*)로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
+      portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
+      clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
       death: [T("로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다."), "info"],
       start: [(skipFloor() >= 2 ? T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}", skipFloor(), backTo())
         : T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}", backTo())), "info"],
@@ -3427,7 +3387,7 @@
   }
 
   // 포탈(P): 쓰러지지 않았으면 골드·레벨·장비를 그대로 들고 바로 로비로 (턴이 들지 않음). 로비에 오면 HP·포션 회복.
-  // 로비에 파란 포탈(*)이 생기고, 들어가면 떠난 자리로 돌아옴
+  // 로비에 파란 포탈이 생기고, 들어가면 떠난 자리로 돌아옴
   // (옆 칸에 포탈을 열고 걸어 들어가는 방식도 해 봤지만, 여는 턴에 맞아 쓰러지는 경우가 늘어서 바로 가는 방식으로)
   function portal() {
     if (scene === "jump") { Tower.exit(); return; }
@@ -3438,33 +3398,6 @@
     markLastSpot();   // 운영자 입구가 이 층을 새로 만들어 다시 들어감
     saveGame(true);
     enterLobby({ from: "portal" });
-  }
-
-  function lobbyMove(dx, dy) {
-    const nx = lobbyPos.x + dx, ny = lobbyPos.y + dy;
-    if (resumeFloor() && nx === LOBBY.portal.x && ny === LOBBY.portal.y) { enterDungeon("resume"); return; }
-    const door = LOBBY.doorAt(nx, ny);
-    if (door) { enterDungeon(door); return; }
-    if (isStaff() && nx === LOBBY.staffDoor.x && ny === LOBBY.staffDoor.y) { enterStaffDoor(); return; }
-    if (isStaff() && nx === LOBBY.towerHell.x && ny === LOBBY.towerHell.y) { Tower.enter("hell50"); return; }   // 점프 던전 오른쪽 운영자 문 (다른 사람에게는 그냥 벽)
-    const shopDoor = LOBBY.shopAt(nx, ny);
-    if (shopDoor) {
-      if (shopDoor.tab) openMarket(shopDoor.tab);
-      else if (shopDoor.kind === "nightmare") enterNightmare();
-      else if (shopDoor.kind === "nightmare50") enterNightmare(NM.floors);
-      else if (shopDoor.kind === "hourshop") openHourShop();
-      else if (shopDoor.kind === "forge") openForge();
-      else if (shopDoor.kind === "jumptower") Tower.enter("hunt1");
-      else if (shopDoor.kind === "hell") enterHell(1);
-      else if (shopDoor.kind === "hellPick") openHellPick();
-      else if (shopDoor.kind === "golddungeon") enterGoldDungeon(false);
-      else if (shopDoor.kind === "golddungeonNM") enterGoldDungeon(true);
-      return;
-    }
-    if (LOBBY.blocked(nx, ny)) return;
-    lobbyPos = { x: nx, y: ny };
-    render();
-    Lobby.moved();
   }
 
   // 같이 접속한 사람들: 랭킹 서버에 내 위치를 알리고 다른 사람들 위치를 받음
@@ -3562,8 +3495,7 @@
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
-    if (scene === "lobby" && !document.hidden) { Lobby.step(dt); render(); }
-    else if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight())) render();
+    if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight())) render();
   }
 
   // 헬 건물 장식: 둘레의 붉은 빛, 지붕 위 불꽃, 가운데 큰 이름 (나이트메어를 완료하기 전에는 어둡게)
@@ -3596,161 +3528,6 @@
   }
   // 헬 오른쪽 문으로 골라 들어갈 수 있는 층: 완료한 10·20·30·40·50층 (그 층 보스를 쓰러뜨리고 다음 층에 내려감, 50층은 헬 완료)
   const hellMilestones = () => HELL.milestones.filter(m => (m === HELL.floors ? hellCleared : hellBest > m));
-
-  function renderLobby() {
-    const t = performance.now() / 1000;
-    const { gate, doors, deco } = LOBBY;
-    for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
-        const px = x * TILE, py = y * TILE;
-        const kind = deco.get(`${x},${y}`);
-        if (kind === "edge") { ctx.fillStyle = "#2a2e3d"; ctx.fillRect(px, py, TILE, TILE); continue; }
-        // 광장 바닥: 바둑판 돌
-        ctx.fillStyle = (x + y) % 2 ? "#191c26" : "#1d212c";
-        ctx.fillRect(px, py, TILE, TILE);
-        if (kind === "gate") {
-          ctx.fillStyle = "#4a3a2a";
-          ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = "#2e241a";  // 벽돌 줄눈
-          ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
-          ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
-        } else if (kind === "pillar") {
-          ctx.fillStyle = "#3a3f52";
-          ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
-          ctx.fillStyle = "#555b72";
-          ctx.fillRect(px + 3, py + 3, TILE - 6, 3);
-        } else if (kind === "hell") {
-          // 헬 던전 건물: 검붉은 벽돌, 줄눈이 용암처럼 일렁이며 빛남
-          const glow = 0.55 + 0.45 * Math.sin(t * 2.2 + x * 0.7 + y * 1.3);
-          ctx.fillStyle = reduceMotion ? "#4a0f0a" : `rgb(${58 + Math.round(30 * glow)}, ${12 + Math.round(8 * glow)}, 10)`;
-          ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = `rgba(255, ${90 + Math.round(80 * glow)}, 30, ${0.55 + 0.4 * glow})`;
-          ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
-          ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
-        } else if (kind === "brazier") {
-          // 화로: 받침 + 크게 일렁이는 불꽃
-          ctx.fillStyle = "#3a2a22";
-          ctx.fillRect(px + 4, py + TILE - 7, TILE - 8, 6);
-          ctx.save();
-          ctx.shadowColor = "#ff5a2e";
-          ctx.shadowBlur = reduceMotion ? 8 : 10 + 8 * Math.abs(Math.sin(t * 5 + x));
-          drawGlyph("♨", px, py - 2, `rgb(255, ${120 + Math.round(70 * Math.sin(t * 9 + x))}, 40)`);
-          ctx.restore();
-        } else if (kind === "torch") {
-          drawGlyph("*", px, py, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + x))}, 60, 1)`);
-        } else if (BUILDING_COLORS[kind]) {
-          ctx.fillStyle = BUILDING_COLORS[kind][0];
-          ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = BUILDING_COLORS[kind][1];
-          ctx.fillRect(px, py + TILE / 2 - 1, TILE, 2);
-          ctx.fillRect(px + ((y % 2) ? TILE / 2 : 0), py, 2, TILE / 2);
-        }
-      }
-    }
-    // 거래소 문, 우편함 상자, 준비 중 건물
-    for (const s of LOBBY.shops) {
-      const sx = s.door.x * TILE, sy = s.door.y * TILE;
-      if (s.kind === "mailbox") {
-        // 작은 빨간 우편함: 몸통, 뚜껑, 넣는 구멍. 받을 우편이 있으면 깃발을 세움
-        const mails = Market.mailCount;
-        ctx.fillStyle = "#c0392b";
-        ctx.fillRect(sx + 5, sy + 6, 10, 13);
-        ctx.fillStyle = "#e74c3c";
-        ctx.fillRect(sx + 4, sy + 3, 12, 4);
-        ctx.fillStyle = "#2a0c08";
-        ctx.fillRect(sx + 7, sy + 9, 6, 2);
-        if (mails) {
-          ctx.fillStyle = "#ffcf5c";
-          ctx.fillRect(sx + 16, sy + 1, 2, 9);
-          ctx.fillRect(sx + 16, sy + 1, 4, 3);
-        }
-        drawLabel(mails ? `${s.label} (${mails})` : s.label, sx + TILE / 2, sy - 1, mails ? "#ffcf5c" : "#ff9b8a", 10);
-        continue;
-      }
-      ctx.fillStyle = "#050608";
-      ctx.fillRect(sx, sy, TILE, TILE);
-      // 골드 던전 문 두 개: 문 위에 난이도, 이름은 건물 가운데 위에
-      if (s.kind === "golddungeon" || s.kind === "golddungeonNM") {
-        const open = cleared && (s.kind === "golddungeon" || nmBest >= 1);
-        const c = open ? "#ffcf5c" : "#7a6a3a";
-        drawGlyph(open ? s.glyph : "×", sx, sy, c);
-        drawLabel(s.kind === "golddungeon" ? T("{0}층", GD.floor) : nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
-        if (s.label) drawLabel(s.label, (s.x0 + s.x1 + 1) / 2 * TILE, (s.door.y - 2) * TILE - 4, cleared ? "#ffcf5c" : "#7a6a3a", 12);
-        continue;
-      }
-      // 나이트메어 50층 문 (룬): 완료하면 무지개색으로 열림
-      if (s.kind === "nightmare50") {
-        const c = nmCleared ? (reduceMotion ? "#ff6bd3" : rainbowColor(s.door.x)) : "#7a5a8a";
-        drawGlyph(nmCleared ? s.glyph : "×", sx, sy, c);
-        drawLabel(nmCleared ? T("{0}층 룬", NM.floors) : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
-        continue;
-      }
-      // 헬 던전: 문 두 개 + 건물 둘레의 붉은 빛·위쪽 불꽃·큰 이름 (가장 화려하게)
-      if (s.kind === "hell" || s.kind === "hellPick") {
-        const open = s.kind === "hell" ? nmCleared : nmCleared && hellMilestones().length > 0;
-        const fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + s.door.x)))}, 30)`;
-        const c = open ? fire : "#6a3a30";
-        drawGlyph(open ? s.glyph : "×", sx, sy, c);
-        drawLabel(s.kind === "hell" ? (nmCleared ? T("1층") : T("닫힘")) : open ? T("층 고르기") : T("닫힘"), sx + TILE / 2, sy - 2, c, 9);
-        if (s.kind === "hell") drawHellFacade(s, t);
-        continue;
-      }
-      const color = s.kind === "market" ? "#5ee7c8" : s.kind === "hourshop" ? SHOP_COLOR : s.kind === "forge" ? FORGE_COLOR : s.kind === "jumptower" ? "#8fd3ff"
-        : (cleared ? "#d07bff" : "#7a5a8a");
-      drawGlyph(s.glyph, sx, sy, color);
-      if (s.kind === "nightmare") drawLabel(T("1층"), sx + TILE / 2, sy - 2, color, 9);   // 오른쪽 문은 50층 (룬)
-      // 시간 상점은 다음 갱신까지 남은 분을 이름 옆에
-      const label = s.kind === "hourshop" ? T("{0} {1}분", s.label, HourShop.minutesLeft()) : s.label;
-      // 이름은 건물 맨 윗줄 바로 위 (대장간처럼 문이 위쪽에 있는 건물은 y0)
-      drawLabel(label, sx + TILE / 2, (s.y0 ?? s.door.y - 2) * TILE - 4, color, 12);
-    }
-    // 던전 입구: 왼쪽 문(1층부터, 금색 ▼), 오른쪽 문(최고 층 − 10층부터, 보라색 ▼ · 12층 전에는 닫힘). 그 아래 파란 포탈(*)
-    const pulse = Math.sin(t * 3);
-    // below: 이름을 문 아래(빛나는 칸 아래)에 — 운영자 입구는 옆 골드 던전 문 이름과 겹치지 않게
-    const drawDoor = (d, glyph, rgb, label, open, below = false) => {
-      const dx = d.x * TILE, dy = d.y * TILE;
-      ctx.fillStyle = "#050608";
-      ctx.fillRect(dx, dy, TILE, TILE);
-      if (open) {
-        ctx.fillStyle = `rgba(${rgb}, ${0.12 + 0.1 * pulse})`;
-        ctx.fillRect(dx, dy + TILE, TILE, TILE);
-      }
-      drawGlyph(glyph, dx, dy, open ? `rgba(${rgb}, ${0.65 + 0.35 * pulse})` : "#3a3f52");
-      drawLabel(label, dx + TILE / 2, below ? dy + TILE * 2 + 9 : dy - 2, open ? `rgb(${rgb})` : "#6b7080", 10);
-    };
-    const floor = resumeFloor(), skip = skipFloor();
-    drawDoor(doors.start, "▼", "255, 207, 92", T("1층"), true);
-    drawDoor(doors.skip, skip >= 2 ? "▼" : "×", "190, 140, 255", skip >= 2 ? T("{0}층", skip) : T("닫힘"), skip >= 2);
-    if (isStaff()) drawDoor(LOBBY.staffDoor, "▼", "95, 212, 255", T("운영자"), true, true);
-    if (isStaff()) {   // 점프 던전 운영자 문 (헬 50층): 문 위에 작은 이름
-      const d = LOBBY.towerHell, c = `rgba(255, 90, 46, ${0.65 + 0.35 * pulse})`;
-      ctx.fillStyle = "#050608"; ctx.fillRect(d.x * TILE, d.y * TILE, TILE, TILE);
-      drawGlyph("▼", d.x * TILE, d.y * TILE, c);
-      drawLabel(T("헬50"), d.x * TILE + TILE / 2 + 4, d.y * TILE - 2, "#ff7a3d", 9);
-    }
-    if (floor) {
-      drawPortal(LOBBY.portal.x * TILE, LOBBY.portal.y * TILE);
-      drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(floor, inNM()))), LOBBY.portal.x * TILE + TILE / 2, (LOBBY.portal.y + 1) * TILE + 11, PORTAL_COLOR, 10);  // 이름표와 겹치지 않게 아래에
-    }
-    drawLabel(T("던전 입구"), gate.x * TILE + TILE / 2, (gate.y - 2) * TILE - 4, "#ffcf5c", 12);
-
-    // 다른 사람들 → 나 (내가 맨 위에 보이게). 이름 위에 그 사람이 포탈을 타고 나온 층(◎N층),
-    // 층 랭킹 1~3위는 이름 왼쪽에 금·은·동 왕관
-    const person = (x, y, name, color, portal, crown, staff, self = false) => {
-      const cx = x * TILE + TILE / 2, by = y * TILE - 2;
-      if (self) drawHero(x * TILE, y * TILE, color);   // 나는 지금 낀 장비 그림, 다른 사람은 기사 그림
-      else drawArt("player", "@", x * TILE, y * TILE, color);
-      drawLabel(name, cx, by, staff ? STAFF_COLOR : color, 11);
-      ctx.font = `bold 11px "Courier New", monospace`;
-      const left = cx - ctx.measureText(name).width / 2;
-      if (staff) drawStaffBadge(left - 13, by);
-      else if (crown) drawCrown(left - 12, by, crown);
-      if (portal) drawLabel(`◎${presenceLabel(portal)}`, cx, y * TILE - 14, "#be8cff", 10);
-    };
-    for (const p of Lobby.people()) person(p.x, p.y, who(p.name), p.color, p.portal, p.crown, p.staff);
-    const me = Lobby.me();
-    person(lobbyPos.x, lobbyPos.y, me ? who(me.name) : T("나"), "#ffffff", presenceFloor(resumeFloor(), inNM()), me?.crown, me?.staff, true);
-  }
 
   // 캐릭터 머리 위 이름 (검은 테두리로 바닥 위에서도 잘 보이게)
   // 랭킹 왕관: 1위 금, 2위 은, 3위 동. 가운데에 순위 숫자. (cx, by) = 왕관 가운데 아래
@@ -3820,26 +3597,17 @@
 
   // ---- 렌더링 ----
   // ---- 픽셀 그림 (img/sprites.png, 만들기: tools/sprites-build.mjs) ----
-  // 그림을 아직 못 받았거나 못 받으면, 또는 글자 모드를 고르면 예전처럼 글자로 그림
-  const GFX_KEY = "rl_gfx";
+  // 늘 그림으로 (dc#90에서 글자로 보기 버튼을 없앰, 예전 설정 rl_gfx도 지움). 그림을 아직 못 받았거나 못 받으면 글자로 대신 그림
   const Sprites = (() => {
     const S = window.RLSprites, sheet = new Image();
-    let ready = false, text = store.get(GFX_KEY) === "text";
-    const btn = document.getElementById("gfx-btn");
-    const label = () => { btn.textContent = text ? T("그림으로 보기") : T("글자로 보기"); };
+    let ready = false;
+    store.del("rl_gfx");
     if (S) {
-      sheet.onload = () => { ready = true; btn.hidden = false; label(); try { render(); } catch {} };
+      sheet.onload = () => { ready = true; try { render(); } catch {} };
       sheet.src = S.src;
-      btn.addEventListener("click", () => {
-        text = !text;
-        if (text) store.set(GFX_KEY, "text"); else store.del(GFX_KEY);
-        label();
-        render();
-        btn.blur();   // 방향키·단축키가 버튼으로 가지 않게
-      });
     }
     return {
-      get on() { return ready && !text; },
+      get on() { return ready; },
       has: (name) => !!S?.map[name],
       // 화면 글(도감 등)에 넣을 그림 칸: 그림 모드가 아니거나 없으면 null
       icon(name) {
@@ -4274,7 +4042,7 @@
       map = J.parse(J.MAPS[mapId].rows);
       restart();
       best = Number(store.get(bestKey())) || null;
-      lobbyPos = { x: id === "hell50" ? 7 : 5, y: 18 };   // 나오면 들어간 문 앞
+      Town.place(id === "hell50" ? "towerHell" : "jumptower");   // 나오면 들어간 문 앞
       closeShop();
       setScene("jump");
       updateStats();
@@ -4701,6 +4469,299 @@
     };
   })();
 
+  // ---- 마을 (dc#90): 옆에서 보는 로비. 지도·건물·문 자리는 jump.js (RLJump.TOWN), 물리는 점프 던전과 같음 ----
+  // ← → 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑(또는 Enter) 들어가기. 휴대폰은 왼손 ◀ ▶ · ▲ 들어가기, 오른손 점프
+  // 다른 사람은 받은 x 자리의 바닥에 (기사 그림), 나는 낀 장비 그림. 서버에는 x(0~63칸)·y(바닥 10)로 알림
+  const Town = (() => {
+    const J = window.RLJump, TW = J?.TOWN, STEP = 1 / 120, ZT = 2, G = TW?.ground ?? 10;
+    let map = null, st = null, raf = 0, last = 0, acc = 0, lastDraw = 0, landT = -1, lastLanded = 0, lastDoubled = 0, fx = [];
+    const held = { left: false, right: false, up: false, down: false, jump: false };
+    let jumpTap = false;
+    const seen = new Map();   // 다른 사람이 보는 쪽 (지난 x와 비교)
+    const ok = () => { if (!map && TW) { map = J.parse(TW.rows); st = { ...J.newState({ start: { x: 30.5, y: G }, checkpoints: [] }), checkpoints: [] }; } return !!map; };
+    const door = (id) => TW.doors.find(d => d.id === id);
+    // 문이 보이고 쓸 수 있는지 (운영자 문은 운영자 기기에서만, 포탈은 돌아갈 층이 있을 때만)
+    const shown = (d) => (!d.staff || isStaff()) && (d.id !== "resume" || !!resumeFloor());
+    // 지금 서 있는 문 (바닥에 서서 문 가운데에서 0.6칸 안)
+    const nearDoor = () => (st && st.ground && Math.abs(st.y - G) < 1e-6 ? TW.doors.find(d => shown(d) && Math.abs(st.x - d.x) < 0.6) : null);
+    // where: "portal" · "start" · "random" · 문 id · x
+    function place(where) {
+      if (!ok()) return;
+      const x = typeof where === "number" ? where : where === "portal" ? door("resume").x : where === "start" ? door("start").x
+        : where === "random" ? TW.spawn[0] + Math.random() * (TW.spawn[1] - TW.spawn[0]) : door(where)?.x ?? door("start").x;
+      Object.assign(st, { x, y: G, vx: 0, vy: 0, ground: true, climbing: false, face: 1 });
+      sync();
+    }
+    // 서버에 알릴 자리 (칸 번호). 바뀌면 바로 알림
+    function sync() {
+      const x = Math.max(0, Math.min(63, Math.floor(st.x)));
+      if (lobbyPos.x !== x || lobbyPos.y !== G) { lobbyPos = { x, y: G }; if (scene === "lobby") Lobby.moved(); }
+    }
+    function start() {
+      if (!ok()) return;
+      cancelAnimationFrame(raf);
+      last = 0; acc = 0; release();
+      raf = requestAnimationFrame(loop);
+    }
+    const blocked = () => !!document.querySelector(".overlay:not([hidden])");   // 창이 열려 있으면 움직이지 않음
+    function input() { const i = { ...held, up: false, down: false, jumpHeld: held.jump, jump: jumpTap }; jumpTap = false; return i; }
+    function loop(t) {
+      if (scene !== "lobby") { raf = 0; return; }
+      raf = requestAnimationFrame(loop);
+      const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
+      last = t;
+      if (document.hidden) return;
+      if (blocked()) release();
+      acc += dt;
+      while (acc >= STEP) { J.step(map, st, input(), STEP); acc -= STEP; }
+      if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
+      if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; fx.push({ x: st.x, y: st.y, t0: performance.now() }); }
+      sync();
+      Lobby.step(dt);
+      // 움직이는 중이면 매 프레임, 서 있으면 초당 20번 (불빛·다른 사람 움직임) — 휴대폰 배터리
+      const moving = Math.abs(st.vx) > 0.01 || !st.ground || held.left || held.right || fx.length;
+      if (moving || t - lastDraw > 48) { lastDraw = t; render(); }
+    }
+    // 문에 들어가기 (예전 로비에서 문 칸을 밟을 때와 같은 일)
+    function enterDoor() {
+      const d = nearDoor();
+      if (!d || blocked()) return false;
+      release();
+      switch (d.id) {
+        case "start": case "skip": enterDungeon(d.id); break;
+        case "resume": enterDungeon("resume"); break;
+        case "staff": enterStaffDoor(); break;
+        case "towerHell": Tower.enter("hell50"); break;
+        case "jumptower": Tower.enter("hunt1"); break;
+        case "market": openMarket("buy"); break;
+        case "mailbox": openMarket("mail"); break;
+        case "hourshop": openHourShop(); break;
+        case "forge": openForge(); break;
+        case "nightmare": enterNightmare(); break;
+        case "nightmare50": enterNightmare(NM.floors); break;
+        case "hell": enterHell(1); break;
+        case "hellPick": openHellPick(); break;
+        case "golddungeon": enterGoldDungeon(false); break;
+        case "golddungeonNM": enterGoldDungeon(true); break;
+      }
+      return true;
+    }
+    const KEYS = { arrowleft: "left", a: "left", arrowright: "right", d: "right", " ": "jump", j: "jump", k: "jump" };
+    // 키를 누르고 뗄 때. 쓴 키면 true (나머지 I·B 등은 원래대로)
+    function key(e, down) {
+      const k = e.key.toLowerCase();
+      if (k === "arrowup" || k === "w" || k === "enter") { if (down && !e.repeat) enterDoor(); return true; }
+      if (k === "arrowdown" || k === "s") return true;
+      const name = KEYS[k];
+      if (!name) return false;
+      hold(name, down, e.repeat);
+      return true;
+    }
+    function hold(name, on, repeat = false) {
+      if (name === "jump" && on && !held.jump && !repeat) jumpTap = true;
+      held[name] = on;
+    }
+    function release() { for (const k in held) held[k] = false; }
+
+    // ---- 그리기 ----
+    const tileVar = (x, y) => ((x * 7 + y * 13) ^ (x * y)) & 3;
+    // 하늘의 별 (늘 같은 자리)
+    const STARS = Array.from({ length: 70 }, (_, i) => ({ x: (i * 97.13) % 1, y: ((i * 53.71) % 1) * 0.45, r: i % 7 ? 0.6 : 1.1, p: i * 1.7 }));
+    // 건물 하나: 벽돌 벽 · 지붕 · 간판 · 불 켜진 창 (헬은 용암 벽돌과 불꽃, 던전 입구는 성벽)
+    function building(b, t) {
+      const x0 = b.x0 * TILE, x1 = (b.x1 + 1) * TILE, top = (G - b.h) * TILE, bot = G * TILE, w = x1 - x0;
+      const hell = b.id === "hell", gate = b.id === "gate";
+      const [wall, mortar] = hell ? ["#4a0f0a", "#ff6a2a"] : gate ? ["#4a3a2a", "#2e241a"] : BUILDING_COLORS[b.id] || ["#2a3040", "#1c2030"];
+      ctx.fillStyle = wall; ctx.fillRect(x0, top, w, bot - top);
+      // 벽돌 줄눈 (헬은 용암처럼 일렁임)
+      for (let r = 0, y = top; y < bot; r++, y += TILE / 2) {
+        const glow = hell ? 0.5 + 0.5 * Math.sin(t * 2.2 + r * 1.3) : 1;
+        ctx.fillStyle = hell ? `rgba(255, ${90 + Math.round(80 * glow)}, 30, ${0.45 + 0.4 * glow})` : mortar;
+        ctx.fillRect(x0, y, w, 1.5);
+        for (let x = x0 + (r % 2 ? TILE / 2 : 0); x < x1; x += TILE) ctx.fillRect(x, y, 1.5, TILE / 2);
+      }
+      if (gate) {   // 성벽: 위에 톱니, 양옆 횃불
+        ctx.fillStyle = wall;
+        for (let x = x0; x < x1; x += TILE) ctx.fillRect(x + 2, top - 6, TILE / 2, 6);
+        for (const tx of [x0 - 4, x1 + 1]) { ctx.fillStyle = "#3a2a22"; ctx.fillRect(tx, bot - TILE * 1.6, 3, TILE * 0.7); drawGlyph("*", tx - TILE / 2 + 1.5, bot - TILE * 2.2, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + tx))}, 60, 1)`); }
+      } else if (hell) {
+        drawHellFacade({ x0: b.x0, x1: b.x1, y0: G - b.h, y1: G - 1, label: T("헬 던전") }, t);
+      } else {   // 지붕: 처마가 조금 튀어나온 삼각 지붕
+        ctx.fillStyle = mortar;
+        ctx.beginPath(); ctx.moveTo(x0 - 5, top + 1); ctx.lineTo(x0 + w / 2, top - TILE * 0.9); ctx.lineTo(x1 + 5, top + 1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(x0 - 5, top - 1, w + 10, 2);
+      }
+      // 불 켜진 창 (문 자리는 피해서 윗줄에)
+      if (!hell && b.h >= 4) for (let x = b.x0 + 1; x < b.x1; x += 2) {
+        if (TW.doors.some(d => Math.abs(d.x - (x + 0.5)) < 0.8)) continue;
+        const lit = 0.75 + 0.25 * Math.sin(t * 1.3 + x);
+        ctx.fillStyle = `rgba(255, 210, 120, ${0.55 * lit})`; ctx.fillRect(x * TILE + 4, top + TILE * 0.9, TILE - 8, TILE * 0.7);
+        ctx.fillStyle = mortar; ctx.fillRect(x * TILE + TILE / 2 - 0.5, top + TILE * 0.9, 1, TILE * 0.7);
+      }
+      // 간판 (건물 이름)
+      const name = { jumptower: T("점프 던전"), forge: T("대장간"), market: T("거래소"), hourshop: T("{0} {1}분", T("시간 상점"), HourShop.minutesLeft()), gate: T("던전 입구"), golddungeon: T("골드 던전"), nightmare: T("나이트메어") }[b.id];
+      const color = { jumptower: "#8fd3ff", forge: FORGE_COLOR, market: "#5ee7c8", hourshop: SHOP_COLOR, gate: "#ffcf5c", golddungeon: cleared ? "#ffcf5c" : "#7a6a3a", nightmare: cleared ? "#d07bff" : "#7a5a8a" }[b.id];
+      if (name) {
+        ctx.font = 'bold 9px "Courier New", monospace';
+        const tw = ctx.measureText(name).width + 10, sy = top + 3;
+        ctx.fillStyle = "rgba(8, 10, 16, 0.85)"; ctx.fillRect(x0 + w / 2 - tw / 2, sy, tw, 11);
+        ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.strokeRect(x0 + w / 2 - tw / 2 + 0.5, sy + 0.5, tw - 1, 10);
+        drawLabel(name, x0 + w / 2, sy + 10.5, color, 9);
+      }
+    }
+    // 문 하나: 아치 모양 입구 (열렸으면 빛), 위에 작은 안내 (층·닫힘)
+    function doorInfo(d, t) {
+      const nmOpen = nmCleared, skip = skipFloor(), fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + d.x)))}, 30)`;
+      switch (d.id) {
+        case "start": return { open: true, color: "#ffcf5c", label: T("1층") };
+        case "skip": return { open: skip >= 2, color: "#be8cff", label: skip >= 2 ? T("{0}층", skip) : T("닫힘") };
+        case "staff": return { open: true, color: STAFF_COLOR, label: T("운영자") };
+        case "towerHell": return { open: true, color: "#ff7a3d", label: T("헬50") };
+        case "golddungeon": return { open: cleared, color: cleared ? "#ffcf5c" : "#7a6a3a", label: cleared ? T("{0}층", GD.floor) : T("닫힘") };
+        case "golddungeonNM": return { open: cleared && nmBest >= 1, color: nmBest >= 1 ? "#ffcf5c" : "#7a6a3a", label: nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘") };
+        case "nightmare": return { open: cleared, color: cleared ? "#d07bff" : "#7a5a8a", label: cleared ? T("1층") : T("닫힘") };
+        case "nightmare50": return { open: nmOpen, color: nmOpen ? (reduceMotion ? "#ff6bd3" : rainbowColor(d.x)) : "#7a5a8a", label: nmOpen ? T("{0}층 룬", NM.floors) : T("닫힘") };
+        case "hell": return { open: nmOpen, color: nmOpen ? fire : "#6a3a30", label: nmOpen ? T("1층") : T("닫힘") };
+        case "hellPick": { const o = nmOpen && hellMilestones().length > 0; return { open: o, color: o ? fire : "#6a3a30", label: o ? T("층 고르기") : T("닫힘") }; }
+        case "jumptower": return { open: true, color: "#8fd3ff" };
+        case "forge": return { open: true, color: FORGE_COLOR };
+        case "market": return { open: true, color: "#5ee7c8" };
+        case "hourshop": return { open: true, color: SHOP_COLOR };
+      }
+      return { open: true, color: "#d0d4e0" };
+    }
+    function doorArt(d, t) {
+      const cx = d.x * TILE, bot = G * TILE;
+      if (d.id === "resume") {   // 파란 포탈 (떠난 층으로)
+        drawPortal(cx - TILE / 2, bot - TILE);
+        drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(resumeFloor(), inNM()))), cx, bot - TILE - 2, PORTAL_COLOR, 8);
+        return;
+      }
+      if (d.id === "mailbox") {   // 빨간 우편함 (받을 우편이 있으면 깃발)
+        const mails = Market.mailCount, x = cx - 6, y = bot - 15;
+        ctx.fillStyle = "#3a2a22"; ctx.fillRect(cx - 1, bot - 6, 2, 6);
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(x, y, 12, 10); ctx.fillStyle = "#e74c3c"; ctx.fillRect(x - 1, y - 3, 14, 4); ctx.fillStyle = "#2a0c08"; ctx.fillRect(x + 3, y + 3, 6, 2);
+        if (mails) { ctx.fillStyle = "#ffcf5c"; ctx.fillRect(x + 12, y - 8, 2, 9); ctx.fillRect(x + 12, y - 8, 4, 3); }
+        drawLabel(mails ? `${T("우편함")} (${mails})` : T("우편함"), cx, y - 5, mails ? "#ffcf5c" : "#ff9b8a", 8);
+        return;
+      }
+      const info = doorInfo(d, t), w = TILE * 0.9, h = TILE * 1.45, x = cx - w / 2, y = bot - h;
+      const pulse = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * 3 + d.x);
+      if (info.open) { ctx.save(); ctx.shadowColor = info.color; ctx.shadowBlur = 6 + 6 * pulse; }
+      ctx.fillStyle = "#050608";
+      ctx.beginPath(); ctx.moveTo(x, bot); ctx.lineTo(x, y + w / 2); ctx.arc(cx, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, bot); ctx.closePath(); ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = info.open ? info.color : "#3a3f52"; ctx.stroke();
+      if (info.open) ctx.restore();
+      if (info.open) { ctx.fillStyle = `rgba(255, 240, 200, ${0.08 + 0.08 * pulse})`; ctx.fillRect(x + 2, y + w / 2, w - 4, h - w / 2); }
+      else drawLabel("×", cx, bot - 4, "#6b7080", 10);
+      if (info.label) drawLabel(info.label, cx, y - 2, info.open ? info.color : "#6b7080", 8);
+    }
+    // 사람 하나: 나는 낀 장비 그림, 다른 사람은 기사 그림. 이름 · 포탈 층(◎) · 왕관·운영자 표시
+    function person(x, y, name, color, portalFloor, crown, staff, face, self, lift = 0) {
+      const px = x * TILE - TILE / 2, py = y * TILE - TILE;
+      ctx.save();
+      ctx.translate(x * TILE, 0); ctx.scale(face < 0 ? -1 : 1, 1); ctx.translate(-x * TILE, 0);
+      if (self) {
+        const now = performance.now(), squash = Math.max(0, 1 - (now - landT) / 140);
+        const sy = st.ground ? 1 - 0.18 * squash : st.vy < 0 ? 1.08 : 1, sx = 2 - sy;
+        const bob = st.ground && Math.abs(st.vx) > 0.5 ? (Math.floor(now / 110) % 2) * -0.7 : 0;
+        ctx.translate(x * TILE, y * TILE + bob); ctx.scale(sx, sy); ctx.translate(-x * TILE, -y * TILE);
+        if (Sprites.on) ctx.drawImage(Doll.canvas(), px, py, TILE, TILE); else drawGlyph("@", px, py, "#ffffff");
+      } else drawArt("player", "@", px, py, color);
+      ctx.restore();
+      const by = py - 1 - lift;
+      drawLabel(name, x * TILE, by, staff ? STAFF_COLOR : color, 8);
+      ctx.font = 'bold 8px "Courier New", monospace';
+      const left = x * TILE - ctx.measureText(name).width / 2;
+      if (staff) drawStaffBadge(left - 9, by); else if (crown) drawCrown(left - 8, by, crown);
+      if (portalFloor) drawLabel(`◎${presenceLabel(portalFloor)}`, x * TILE, by - 9, "#be8cff", 7);
+    }
+    function draw() {
+      // jump.js를 못 받았으면 (네트워크·예전 캐시) 빈 화면 대신 새로고침 안내
+      if (!ok()) {
+        ctx.setTransform(PX, 0, 0, PX, 0, 0); ctx.fillStyle = "#0a0f24"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = "#c8cde0"; ctx.font = '13px "Courier New", monospace'; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(T("마을을 불러오지 못했어요. 페이지를 새로고침해 주세요."), VIEW_W / 2, VIEW_H / 2);
+        return;
+      }
+      const t = performance.now() / 1000, now = performance.now(), vw = MAP_W / ZT, vh = MAP_H / ZT;
+      const cx = Math.max(0, Math.min(map.w - vw, st.x - vw / 2)), cy = Math.max(0, Math.min(map.h - vh, 0));
+      // 하늘: 밤하늘 → 지평선 쪽 보라, 별, 달, 먼 산 (천천히 따라옴)
+      const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      sky.addColorStop(0, "#0a0f24"); sky.addColorStop(0.6, "#1b1838"); sky.addColorStop(1, "#2a1d3a");
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      for (const s of STARS) { const a = 0.45 + 0.35 * Math.sin(t * 1.5 + s.p); ctx.fillStyle = `rgba(255, 255, 255, ${a})`; ctx.fillRect(((s.x * VIEW_W * 2 - cx * 4) % VIEW_W + VIEW_W) % VIEW_W, s.y * VIEW_H, s.r, s.r); }
+      ctx.fillStyle = "#f4efd2"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2, VIEW_H * 0.14, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1b1838"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2 + 6, VIEW_H * 0.14 - 4, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#151329";
+      ctx.beginPath(); ctx.moveTo(0, VIEW_H);
+      for (let i = 0; i <= 40; i++) { const x = i * VIEW_W / 40, wx = x / VIEW_W * 8 + cx * 0.25; ctx.lineTo(x, VIEW_H * (0.52 + 0.08 * Math.sin(wx * 1.3) + 0.05 * Math.sin(wx * 3.1))); }
+      ctx.lineTo(VIEW_W, VIEW_H); ctx.closePath(); ctx.fill();
+      // 세상 (2배)
+      const z = PX * ZT;
+      ctx.setTransform(z, 0, 0, z, -cx * TILE * z, -cy * TILE * z);
+      const art = Sprites.on, x0 = Math.floor(cx), x1 = Math.min(map.w - 1, x0 + vw + 1);
+      for (const b of TW.buildings) if (b.x1 >= x0 - 1 && b.x0 <= x1 + 1) building(b, t);
+      // 가로등 (건물 사이)
+      for (const lx of [8.5, 14.5, 22.5, 27.5, 38.5, 44.5, 51.5, 62]) {
+        if (lx < x0 - 1 || lx > x1 + 1) continue;
+        const px = lx * TILE, bot = G * TILE;
+        ctx.fillStyle = "#2a2e3a"; ctx.fillRect(px - 1, bot - TILE * 2.2, 2, TILE * 2.2);
+        const g = 0.7 + 0.3 * Math.sin(t * 3 + lx);
+        ctx.save(); ctx.shadowColor = "#ffcf7a"; ctx.shadowBlur = reduceMotion ? 6 : 6 + 4 * g;
+        ctx.fillStyle = `rgba(255, 220, 140, ${0.75 + 0.25 * g})`; ctx.fillRect(px - 3, bot - TILE * 2.45, 6, 5);
+        ctx.restore();
+      }
+      for (const d of TW.doors) if (shown(d) && d.x >= x0 - 1 && d.x <= x1 + 1) doorArt(d, t);
+      // 땅·옆 벽
+      for (let y = 0; y < map.h; y++) for (let x = x0; x <= x1; x++) {
+        if (map.rows[y][x] !== "#") continue;
+        const px = x * TILE, py = y * TILE;
+        if (y === G && x > 0 && x < map.w - 1) { if (!(art && Sprites.draw("tower_tile", px, py))) { ctx.fillStyle = "#565d70"; ctx.fillRect(px, py, TILE, TILE); ctx.fillStyle = "#a8b0c6"; ctx.fillRect(px, py, TILE, 2); } }
+        else if (!(art && Sprites.draw(`wall_normal_${tileVar(x, y)}`, px, py))) { ctx.fillStyle = "#3a3f52"; ctx.fillRect(px, py, TILE, TILE); }
+      }
+      // 사람들: 다른 사람 → 나 (내가 맨 위). 이름 글자가 겹치면 위 줄로 (왼쪽부터 차례로 빈 줄에)
+      const me = Lobby.me(), myFloor = presenceFloor(resumeFloor(), inNM());
+      const crowd = Lobby.people().map(p => ({ p, x: Math.max(1, Math.min(62, p.x)) + 0.5, name: who(p.name), floor: p.portal, badge: p.staff || p.crown }));
+      crowd.push({ self: true, x: st.x, name: me ? who(me.name) : T("나"), floor: myFloor, badge: me?.staff || me?.crown });
+      ctx.font = 'bold 8px "Courier New", monospace';
+      const lanes = [];
+      for (const c of [...crowd].sort((a, b) => a.x - b.x)) {
+        const tw = ctx.measureText(c.name).width, l = c.x * TILE - tw / 2 - 4 - (c.badge ? 18 : 0), r = c.x * TILE + tw / 2 + 4;   // 왕관·운영자 표시는 이름 왼쪽
+        let k = lanes.findIndex(e => e <= l); if (k < 0) k = lanes.length;
+        lanes[k] = r; c.lift = k * (c.floor ? 24 : 15);
+      }
+      for (const c of crowd) {
+        if (c.self) continue;
+        const prev = seen.get(c.p.id), face = prev && Math.abs(prev.x - c.x) > 0.02 ? Math.sign(c.x - prev.x) : prev?.face || 1;
+        seen.set(c.p.id, { x: c.x, face });
+        person(c.x, G, c.name, c.p.color, c.p.portal, c.p.crown, c.p.staff, face, false, c.lift);
+      }
+      const mine = crowd[crowd.length - 1];
+      person(st.x, st.y, mine.name, "#ffffff", myFloor, me?.crown, me?.staff, st.face, true, mine.lift);
+      // 더블 점프 고리
+      fx = fx.filter(f => now - f.t0 < 320);
+      for (const f of fx) { const p = (now - f.t0) / 320; ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, 0.7 * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      // 문 앞이면: ↑ 들어가기 (내 이름·포탈 층 글자 위에)
+      const d = nearDoor();
+      if (d) {
+        const by = G * TILE - TILE - 12 - (myFloor ? 9 : 0) - mine.lift, bob = reduceMotion ? 0 : Math.sin(t * 5) * 1.2;
+        drawLabel(narrowScreen() ? T("▲ 들어가기") : T("↑ 들어가기"), d.x * TILE, by + bob, "#ffffff", 8);
+      }
+      // 화면 글자: 조작 안내
+      ctx.setTransform(PX, 0, 0, PX, 0, 0);
+      ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.font = '11px "Courier New", monospace';
+      const hint = narrowScreen() ? T("◀ ▶ 걷기 · 점프(공중에서 한 번 더) · 문 앞에서 ▲ 들어가기") : T("← → 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑ 들어가기 · I 인벤토리 · B 도감");
+      ctx.fillStyle = "rgba(8, 10, 20, 0.7)"; ctx.fillRect(0, VIEW_H - 21, VIEW_W, 21);   // 땅 무늬 위에서도 읽히게
+      ctx.fillStyle = "#c8cde0"; ctx.fillText(hint, 8, VIEW_H - 17);
+    }
+    return {
+      start, place, draw, key, hold, release, enterDoor,
+      pos: () => (st ? { x: st.x, y: st.y, vx: st.vx, ground: st.ground, near: nearDoor()?.id || null } : null),
+    };
+  })();
+  window.RLTownPos = () => Town.pos();   // 테스트·도움말용 (읽기만): 마을에서 내 자리와 앞에 있는 문
+
   // 기울여 그리기 (걷기 뒤뚱): 발끝(칸 아래 가운데)을 축으로 rot만큼
   function posed(rot, px, py, draw) {
     if (!rot) { draw(); return; }
@@ -4752,7 +4813,7 @@
     ctx.setTransform(PX, 0, 0, PX, 0, 0);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    if (scene === "lobby") { renderLobby(); return; }
+    if (scene === "lobby") { Town.draw(); return; }
     if (scene === "jump") { Tower.draw(); return; }
     // 시점: 아래는 모두 지도 좌표로 그리고, 가까이 보기면 확대·이동
     const cam = camera(), z = PX * cam.z;
@@ -4958,7 +5019,7 @@
       : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? T("포션 ({0}턴)", player.potCd) : T("포션 (준비됨)");
     const jumpBtn = document.getElementById("tp-jump");
-    jumpBtn.textContent = scene === "jump" ? T("점프") : jumpAim ? T("방향 ▲▼◀▶") : player.jumpCd > 0 ? T("점프 ({0}턴)", player.jumpCd) : T("점프");
+    jumpBtn.textContent = scene !== "dungeon" ? T("점프") : jumpAim ? T("방향 ▲▼◀▶") : player.jumpCd > 0 ? T("점프 ({0}턴)", player.jumpCd) : T("점프");
     jumpBtn.classList.toggle("aiming", jumpAim);
     const st = [
       ...(skillHud()),
@@ -6858,13 +6919,15 @@
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       if (scene === "jump") { btn.classList.add("held"); Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", true); return; }
+      // 마을: ◀ ▶ 누르고 있는 동안 걷기, ▲ 문 앞이면 들어가기
+      if (scene === "lobby") { if (anyModalOpen()) return; btn.classList.add("held"); if (dx) Town.hold(dx < 0 ? "left" : "right", true); else if (dy < 0) Town.enterDoor(); return; }
       stopHold();
       btn.classList.add("held");
       step();
       holdTimer = setTimeout(() => { holdTimer = setInterval(step, 130); }, 300);
     });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
-      btn.addEventListener(ev, () => { btn.classList.remove("held"); stopHold(); if (scene === "jump") Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", false); });
+      btn.addEventListener(ev, () => { btn.classList.remove("held"); stopHold(); if (scene === "jump") Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", false); else if (scene === "lobby" && dx) Town.hold(dx < 0 ? "left" : "right", false); });
     }
   }
   pad.addEventListener("contextmenu", (e) => e.preventDefault());  // 길게 눌러도 메뉴가 뜨지 않게
@@ -6874,8 +6937,9 @@
   // 점프 던전: 점프 버튼은 누르고 있는 동안 (짧게 누르면 낮게)
   const tpJump = document.getElementById("tp-jump");
   // 누르는 동안 버튼이 눌린 색, 지원하는 폰이면 아주 짧게 진동 (눌렸다는 느낌)
-  tpJump.addEventListener("pointerdown", (e) => { if (scene === "jump") { e.preventDefault(); tpJump.classList.add("held"); try { navigator.vibrate?.(12); } catch {} Tower.hold("jump", true); } });
-  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tpJump.addEventListener(ev, () => { if (scene === "jump") { tpJump.classList.remove("held"); Tower.hold("jump", false); } });
+  const SV = () => (scene === "jump" ? Tower : scene === "lobby" ? Town : null);   // 옆에서 보는 화면 (점프 던전·마을)
+  tpJump.addEventListener("pointerdown", (e) => { const v = SV(); if (v && !(scene === "lobby" && anyModalOpen())) { e.preventDefault(); tpJump.classList.add("held"); try { navigator.vibrate?.(12); } catch {} v.hold("jump", true); } });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tpJump.addEventListener(ev, () => { const v = SV(); if (v) { tpJump.classList.remove("held"); v.hold("jump", false); } });
   document.getElementById("tp-inv").addEventListener("click", openInventory);
   document.getElementById("tp-dex").addEventListener("click", openDex);
   document.getElementById("tp-portal").addEventListener("click", portal);
@@ -6955,7 +7019,7 @@
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: T("업데이트: ") }),
-        T("🎨 픽셀 그래픽·움직임·스킬 이펙트가 생겼어요 (글자로 보기·전체 지도(M) 버튼). 🦘 Space + 방향으로 몬스터를 넘는 2칸 점프 (5턴마다), 제자리 대기는 이제 마침표(.) 키예요. 🔍 아이템 발견에 최대치가 없어졌어요. ") +
+        T("🎨 픽셀 그래픽·움직임·스킬 이펙트가 생겼어요 (전체 지도(M) 버튼). 🦘 Space + 방향으로 몬스터를 넘는 2칸 점프 (5턴마다), 제자리 대기는 이제 마침표(.) 키예요. 🔍 아이템 발견에 최대치가 없어졌어요. ") +
         T("🛡 내 속성 저항이 나이트메어 −40 · 헬 −70으로 바뀌었어요: 장비 저항 합에서 먼저 빼고 그 뒤 최대 75% — 나이트메어는 115%, 헬은 145%를 모아야 75%예요 (추천 탭의 저항 줄도 늘었어요). 나이트메어·헬 몬스터 방어력이 공격력만큼 올라가고, 그만큼 HP·공격력은 조금 내려갔어요. ") +
         T("⚔ 장검 기본 공격 피해 ×2 (보조 단검 두 번째 공격 대신) — 헬 50층 유니크 없는 최고 조합 1~3위가 장검이에요. 여의주 검: 주변에 다른 몬스터가 없으면 번개가 같은 몬스터를 다시 침. 업경대: 막아도 반사. 룬워드 치유는 없어졌어요 (예전 치유 투구는 룬 효과만 남아요). ") +
         T("🔍 아이템 발견 %가 생겼어요: 처치마다 보너스 아이템(레어 이상), 네임드 유니크 확률도 올라요 (최대치 없이 모은 만큼: 기억·몰래 룬워드, 송곳니, 쇠이빨 목걸이, 여의 반지). ✦ 룬워드는 홈이 룬보다 많아도 돼요 (완성하면 남는 홈은 없어져요). ⚔ 장검·방패 룬워드가 파밍용으로: 선견지명 회전 베기·카리스마 처치 폭발·도원결의 반격 (흡혈 됨) + 아이템 발견 +25% — 기억·몰래와 합치면 100%. 🌳 나무 상향 (공격력 +30%·치명타 피해 +30%), 헬 초반엔 송곳니 추천 — 🏆 최고 조합 페이지에 헬 초반·파밍 탭. ") +
@@ -7113,8 +7177,8 @@
 
   // ---- 입력 ----
   // 점프 던전: 키를 떼면 멈춤 (창이 가려지면 모두 뗀 것으로)
-  window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); });
-  window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); });
+  window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); else if (scene === "lobby") Town.key(e, false); });
+  window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); else if (scene === "lobby") Town.release(); });
   window.addEventListener("keydown", (e) => {
     if (Ads.isOpen()) return;  // 광고를 보는 중
     if (!noticeModal.hidden) {
@@ -7153,6 +7217,7 @@
     }
     if (!modal.hidden || e.target instanceof HTMLInputElement) return;
     if (scene === "jump") { if (Tower.key(e, true)) e.preventDefault(); return; }   // 점프 던전: 누르고 있는 동안 움직임
+    if (scene === "lobby" && Town.key(e, true)) { e.preventDefault(); return; }   // 마을: ← → 걷기 · Space 점프 · ↑ 들어가기 (나머지 I·B 등은 아래로)
     const k = e.key.toLowerCase();
     let handled = true;
     switch (k) {

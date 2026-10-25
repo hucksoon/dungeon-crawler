@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -56,10 +57,11 @@ const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], st
 
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
 const saveB = (d, rid, best, g) => JSON.stringify({ v: 1, season: 4, best, run: { d, hp: 900, mh: 1000, a: 30, g, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
-// 포탈로 로비(16,13)에 온 뒤 시간 상점 문(11,11)으로
+// 포탈로 마을에 온 뒤 시간 상점 문으로 걸어가 ↑
 async function toHourShop(page) {
-  await press(page, "p"); await sleep(200);
-  await press(page, "ArrowLeft", 5); await press(page, "ArrowUp", 2); await sleep(150);
+  // 새로고침 직후에는 키를 아직 안 받을 수 있음 → 마을에 올 때까지 P
+  for (let i = 0; i < 10 && !(await page.evaluate(() => document.body.classList.contains("in-lobby"))); i++) { await press(page, "p"); await sleep(300); }
+  await goDoor(page, "hourshop");
 }
 // 새로고침은 던전에서 하고 (로비 시작 자리는 무작위라) 다시 포탈로 나와서 상점으로
 async function reloadToShop(page) {

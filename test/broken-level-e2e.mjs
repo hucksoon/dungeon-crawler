@@ -1,5 +1,5 @@
 // 예전 버전이 저장한 깨진 층(좌표 없는 보스) → 불러와도 플레이어가 보이고 보스는 빈 칸으로 옮겨짐
-// 플레이어 @를 흰 픽셀로 찾으므로 글자 모드(rl_gfx=text)·전체 지도(rl_view=full)로. 캔버스는 화면 좌표의 k배 (1.6)
+// 플레이어 @를 흰 픽셀로 찾으므로 글자 화면(그림 파일을 404로 막음)·전체 지도(rl_view=full)로. 캔버스는 화면 좌표의 k배 (1.6)
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
 const require = createRequire(process.env.NODE_PATH + "/");
@@ -26,12 +26,13 @@ try {
     const ctx = await browser.newContext(opts); const page = await ctx.newPage(); const errors = [];
     page.on("pageerror", e => errors.push(e.message));
     await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
+    if (f === "img/sprites.png") return r.fulfill({ status: 404, body: "" });   // 글자로 그리게 (그림 파일을 못 받았을 때와 같음)
       if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: 'window.RANKING_API = "";' });
       const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
       r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
     await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
     await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_gfx", "text"); localStorage.setItem("rl_view", "full"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
+      localStorage.setItem("rl_device_id", "brk-dev-0001"); localStorage.setItem("rl_view", "full"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save, level]);
     await page.goto(ORIGIN); await page.waitForTimeout(500);
     check(`${name}: no page errors when loading the broken floor`, errors.length === 0, errors.join("; "));
     check(`${name}: HUD shows floor ${D} and HP (not --)`, (await page.locator("#depth").innerText()) === String(D) && !(await page.locator("#stats").innerText()).includes("--"), await page.locator("#stats").innerText());

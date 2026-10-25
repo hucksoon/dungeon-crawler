@@ -28,17 +28,18 @@ async function open(d, lvl, opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 1000 }, ...opts }); const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
+    if (f === "img/sprites.png") return r.fulfill({ status: 404, body: "" });   // 글자로 그리게 (그림 파일을 못 받았을 때와 같음)
     if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: 'window.RANKING_API = "";' });
     const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await ctx.addInitScript(([s, l]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", "dungeon");
-    localStorage.setItem("rl_device_id", "drop-dev-0001"); localStorage.setItem("rl_gfx", "text"); localStorage.setItem("rl_view", "full"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save(d), lvl]);
+    localStorage.setItem("rl_device_id", "drop-dev-0001"); localStorage.setItem("rl_view", "full"); localStorage.setItem("rl_save", s); localStorage.setItem("rl_level", l); }, [save(d), lvl]);
   await page.goto(ORIGIN); await page.waitForTimeout(400);
   return { page, errors };
 }
 const L = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
-// 캔버스에서 그 칸 가운데 근처의 가장 밝은 픽셀 색 (글자 색을 보므로 글자 모드 rl_gfx=text, 전체 지도 rl_view=full로 염)
+// 캔버스에서 그 칸 가운데 근처의 가장 밝은 픽셀 색 (글자 색을 보므로 글자 화면(그림 파일 404), 전체 지도 rl_view=full로 염)
 const tileColor = (page, x, y) => page.evaluate(([x, y, T]) => {
   const c = document.querySelector("canvas"); const g = c.getContext("2d");
   const k = c.width / 640, d = g.getImageData((x * T + 4) * k, (y * T + 4) * k, (T - 8) * k, (T - 8) * k).data;   // 캔버스는 화면 좌표의 k배

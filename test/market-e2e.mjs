@@ -6,6 +6,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], SHOTS = process.argv[3];
@@ -86,19 +87,10 @@ const user = (sub, email, gold, bag) => ({ rl_device_id: sub + "-dev", rl_auth: 
 const bagOf = (page, sub) => page.evaluate(k => JSON.parse(localStorage.getItem(k)).bag, `rl_inv:u:${sub}`);
 const msg = (page) => page.locator("#market-msg").innerText();
 const db = () => new DatabaseSync(DB);
-// 로비에서 걸어가서 열기: 거래소 문 (5,11) / 우편함 상자 (8,11). 서버에 기록된 내 위치를 보고 13번째 줄로 가서 x를 맞춘 뒤 위로
-// 시작 위치가 로비 포탈 줄(x=16)이면 위로 가다가 파란 포탈(16,14)에 들어가 던전으로 가 버림 → 먼저 옆으로 한 칸
+// 마을에서 걸어가서 열기: 거래소 문 / 우편함
 async function walkOpen(page, display, target) {
   if (await page.locator("#market-modal").isVisible()) { await page.keyboard.press("Escape"); }
-  await sleep(1300);
-  const pos = db().prepare("SELECT x, y FROM presence WHERE display = ?").get(display);
-  const tx = target === "mail" ? 8 : 5;
-  const press = async (k, n) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(20); } };
-  let { x, y } = pos;
-  if (x === 16 && y > 13) { await press("ArrowLeft", 1); x = 15; }
-  if (y < 13) await press("ArrowDown", 13 - y); else if (y > 13) await press("ArrowUp", y - 13);
-  await press(x < tx ? "ArrowRight" : "ArrowLeft", Math.abs(tx - x));
-  await press("ArrowUp", 2);
+  await goDoor(page, target === "mail" ? "mailbox" : "market");
   await page.locator("#market-modal").waitFor({ timeout: 3000 });
 }
 
@@ -247,23 +239,12 @@ try {
 
   // ---- 로비에서 걸어서 거래소 문으로 ----
   await A.page.keyboard.press("Escape");
-  const pos = () => db().prepare("SELECT x, y FROM presence WHERE display = 'a***@example.com'").get();
-  await waitFor(() => pos());
-  let { x, y } = pos();
-  const press = async (k, n) => { for (let i = 0; i < n; i++) { await A.page.keyboard.press(k); await sleep(25); } };
-  if (y > 13) await press("ArrowUp", y - 13); else if (y < 13) await press("ArrowDown", 13 - y);
-  await press(x > 5 ? "ArrowLeft" : "ArrowRight", Math.abs(x - 5));
-  await press("ArrowUp", 2);
+  await goDoor(A.page, "market");
   check("walking into the 거래소 door opens the market", await A.page.locator("#market-modal").isVisible());
   // 오른쪽 건물은 나이트메어 입구: 일반 던전을 완료하지 않았으면 안내만
   {
     await A.page.keyboard.press("Escape");
-    await sleep(1300);
-    const p0 = db().prepare("SELECT x, y FROM presence WHERE display = 'a***@example.com'").get();
-    const press = async (k, n) => { for (let i = 0; i < n; i++) { await A.page.keyboard.press(k); await sleep(20); } };
-    if (p0.y < 13) await press("ArrowDown", 13 - p0.y);
-    await press("ArrowRight", 26 - p0.x);
-    await press("ArrowUp", 2);
+    await goDoor(A.page, "nightmare");
     check("right building = nightmare entrance, refused before a 75 clear", await A.page.locator("#market-modal").isHidden() && (await A.page.locator("#log").innerText()).includes("75층을 완료해야 들어갈 수 있다"));
   }
   await A.page.keyboard.press("Escape");

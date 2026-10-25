@@ -58,14 +58,9 @@ const st = (page) => page.evaluate(() => window.__t.s());
 const logText = (page) => page.locator("#log").innerText();
 const info = (page) => page.locator("#entry-info").innerText();
 const press = async (page, k, n) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(15); } };
-// 로비에서 (tx, 11) 문으로: 13번째 줄로 가서 x를 맞춘 뒤 위로 두 칸
-async function walkTo(page, tx) {
-  let s = await st(page);
-  if (s.ly < 13) await press(page, "ArrowDown", 13 - s.ly); else if (s.ly > 13) await press(page, "ArrowUp", s.ly - 13);
-  s = await st(page);
-  await press(page, s.lx < tx ? "ArrowRight" : "ArrowLeft", Math.abs(tx - s.lx));
-  await press(page, "ArrowUp", 2);
-}
+// 마을 문까지 걸어가 ↑ (예전 칸 x: 5 = 거래소, 15 = 1층 문)
+import { goDoor } from "./town.mjs";
+const walkTo = (page, tx) => goDoor(page, { 5: "market", 15: "start" }[tx]);
 const user = (sub, email, gold, extra = {}) => ({ rl_device_id: sub + "-dev", rl_auth: JSON.stringify({ access: jwt(sub, email), refresh: "r", exp: Date.now() + 7200_000 }),
   rl_save: JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: 300, mh: 300, a: 50, g: gold, p: 2, l: 5, x: 0, xn: 1e9, rid: "ads-" + sub, k: 0, pp: 0 } }), ...extra });
 async function call(route, token, body) {

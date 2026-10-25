@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -87,7 +88,7 @@ try {
 
   ({ ctx, page, errors } = await open("gdtest-b00", { rl_save: saveG(20, "gdB", 100, { best: 40, clr: 0 }), rl_level: lv(20, "gdB", "normal"), "rl_inv:g:DEV": inv() }));
   await press(page, "p"); await sleep(200);
-  await press(page, "ArrowRight", 4); await press(page, "ArrowUp", 2); await sleep(150);
+  await goDoor(page, "golddungeon"); await sleep(150);
   check("not cleared: gold dungeon closed", await inLobby(page) && (await logs(page)).includes("골드 던전은 일반 던전 75층을 완료해야"));
   await page.screenshot({ path: path.join(OUT, "gd-lobby-closed.png") });
   await ctx.close();
@@ -96,7 +97,7 @@ try {
   ({ ctx, page, errors } = await open("gdtest-c00", { rl_save: saveG(20, "gdC", 1000), rl_level: lv(20, "gdC", "normal"), "rl_inv:g:DEV": inv() }, { api: true }));
   await press(page, "p"); await sleep(200);
   await page.screenshot({ path: path.join(OUT, "gd-lobby.png") });
-  await press(page, "ArrowRight", 4); await press(page, "ArrowUp", 2); await sleep(300);
+  await goDoor(page, "golddungeon"); await sleep(300);
   const L = await level(page);
   const sv = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save")));
   check("cleared: enters the gold dungeon (zone gold, floor 75 monsters + boss)", !(await inLobby(page)) && L.z === "gold" && L.d === 75 && sv.run.z === "gold" && sv.run.d === 75
@@ -130,11 +131,11 @@ try {
   // 로비 포탈로 새 골드 던전 (새 지도)
   const sv2 = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save")));
   check("after clear: run stays in the gold zone with a new map", sv2.run.z === "gold" && sv2.run.g === 300 + REWARD && (await level(page)).enemies.some(e => e.kind === "boss"));
-  await press(page, "ArrowDown"); await sleep(200);
+  await press(page, "ArrowUp"); await sleep(200);   // 마을 파란 포탈 문 앞에서 ↑
   check("lobby portal goes into the new gold dungeon", !(await inLobby(page)) && (await level(page)).z === "gold" && (await logs(page)).includes("골드 던전의 떠난 자리로"));
   // 1층 문으로 들어가면 일반 던전
   await press(page, "p"); await sleep(200);
-  await press(page, "ArrowLeft"); await press(page, "ArrowUp", 2); await sleep(300);
+  await goDoor(page, "start"); await sleep(300);
   check("left door: back to the normal dungeon", (await level(page)).z !== "gold" && (await page.locator("#depth").innerText()) === "1" && !(await page.locator("#zone").innerText()).includes("골드"));
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
   await ctx.close();
@@ -142,13 +143,13 @@ try {
   // ---- 나이트메어 난이도 (오른쪽 문) ----
   ({ ctx, page, errors } = await open("gdtest-f00", { rl_save: saveG(20, "gdF", 100, { nb: 0 }), rl_level: lv(20, "gdF", "normal"), "rl_inv:g:DEV": inv() }));
   await press(page, "p"); await sleep(200);
-  await press(page, "ArrowRight", 6); await press(page, "ArrowUp", 2); await sleep(200);
+  await goDoor(page, "golddungeonNM"); await sleep(200);
   check("right door closed without nightmare progress", await inLobby(page) && (await logs(page)).includes("나이트메어에 들어가 본 뒤에 열린다"));
   await ctx.close();
   ({ ctx, page, errors } = await open("gdtest-g00", { rl_save: saveG(20, "gdG", 100, { nb: 10 }), rl_level: lv(20, "gdG", "normal"), "rl_inv:g:DEV": inv() }));
   await press(page, "p"); await sleep(200);
   await page.screenshot({ path: path.join(OUT, "gd-lobby-doors.png") });
-  await press(page, "ArrowRight", 6); await press(page, "ArrowUp", 2); await sleep(300);
+  await goDoor(page, "golddungeonNM"); await sleep(300);
   const LN = await level(page), svN = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save")));
   const boss = LN.enemies.find(e => e.kind === "boss");
   check("right door: nightmare floor 10 difficulty (nightmare monsters + boss on floor 10)", !(await inLobby(page)) && LN.z === "gold" && LN.d === 10 && svN.run.gn === 10

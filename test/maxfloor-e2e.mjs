@@ -70,8 +70,8 @@ try {
   ({ ctx, page, errors } = await open({ dev: "mf-dev-a", sv: save(75, "mfrun1"), lv: level(75, "mfrun1"), inv: { bag: [v4item], equip: emptyEq(), log: [], stones: 0 } }));
   await page.keyboard.press("ArrowRight"); await sleep(300);
   const inLobby = () => page.evaluate(() => document.body.classList.contains("in-lobby"));
-  check("stairs on 75 → 일반 던전 완료 log and back in the lobby (no boss warning)", !(await logs(page)).includes("계단을 지키고") && (await logs(page)).includes("일반 던전 완료!") && await inLobby() && (await logs(page)).includes("파란 포탈(*)로 75층의 새 구역"), await logs(page));
-  check("completion notice shown (mentions the blue portal)", await noticeOpen(page) && (await page.locator("#notice-title").innerText()) === "일반 던전 완료!" && (await page.locator("#notice-body").innerText()).includes("파란 포탈(*)"));
+  check("stairs on 75 → 일반 던전 완료 log and back in the lobby (no boss warning)", !(await logs(page)).includes("계단을 지키고") && (await logs(page)).includes("일반 던전 완료!") && await inLobby() && (await logs(page)).includes("파란 포탈로 75층의 새 구역"), await logs(page));
+  check("completion notice shown (mentions the blue portal)", await noticeOpen(page) && (await page.locator("#notice-title").innerText()) === "일반 던전 완료!" && (await page.locator("#notice-body").innerText()).includes("파란 포탈"));
   await page.screenshot({ path: path.join(OUT, "clear-lobby.png") });
   check("best shows 완료", (await page.locator("#best").innerText()) === "75 완료", await page.locator("#best").innerText());
   const sv2 = await stored(page, "rl_save"), L2 = await stored(page, "rl_level");
@@ -83,7 +83,7 @@ try {
   const rk = await (await fetch("http://127.0.0.1:8096/api.php?r=ranking&type=stage", { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
   check("server ranking stores 76 (= 75층 완료)", rk.rows?.[0]?.stage === 76, JSON.stringify(rk.rows?.slice(0, 2)));
   // 로비에서 바로 위가 포탈 문: 들어가면 그 새 구역
-  await page.keyboard.press("ArrowDown"); await sleep(300);  // 로비 포탈은 바로 아래
+  await page.keyboard.press("ArrowUp"); await sleep(300);  // 마을 파란 포탈 문 앞에서 ↑
   const L3 = await stored(page, "rl_level");
   check("lobby portal → floor 75 new area (same map as saved)", !(await inLobby()) && (await page.locator("#depth").innerText()) === "75" && (await logs(page)).includes("포탈을 타고 75층의 떠난 자리로 돌아왔다") && L3.map === L2.map, await logs(page));
   check("no page errors (complete)", errors.length === 0, errors.join("; "));

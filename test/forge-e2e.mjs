@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { spawn, execFileSync } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
+import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -81,9 +82,9 @@ const e10 = { ...findN("fge|d60", it => it.rarity === "epic"), enh: 10 };
 try {
   const { ctx, page, errors } = await open("forgetest-a", { rl_save: sv(5, "fgA", 500000), rl_level: lv(5, "fgA", "normal"),
     "rl_inv:g:DEV": JSON.stringify({ bag: [L, gemmed, e10], equip: eqOf(), log: [], stones: 100, nmStones: 100 }) });
-  // 포탈(P)로 로비에 나오면 포탈 바로 위(16,13). 포탈을 피해 왼쪽으로 돌아 대장간 문(16,19)까지
+  // 포탈(P)로 마을에 나와서 대장간 문까지 걸어가 ↑
   await press(page, "p"); await sleep(250);
-  await press(page, "ArrowLeft"); await press(page, "ArrowDown", 5); await press(page, "ArrowRight"); await press(page, "ArrowDown"); await sleep(250);
+  await goDoor(page, "forge");
   check("walking into the forge door opens the inventory as 대장간", !(await page.locator("#inv-modal").isHidden()) && (await page.locator("#inv-title").innerText()) === "대장간", await page.locator("#inv-title").innerText());
   const pick = async (it) => { await page.locator(".bag-item", { hasText: I.itemName(it) }).first().click(); await sleep(120); };
   await pick(L);

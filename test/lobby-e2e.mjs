@@ -61,15 +61,9 @@ async function open(storage, opts = { viewport: { width: 1280, height: 1000 } })
   await page.goto(ORIGIN); return { ctx, page, errors };
 }
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
-// 서버에 기록된 내 위치를 보고 1층 문(15,11)까지 걸어감: 아래쪽 줄에서 x=15로 맞춘 뒤 위로
-async function walkToDoor(page, name) {
-  let r; await waitFor(() => (r = row(name)) && r.scene === "lobby");
-  let { x, y } = r;
-  const press = async (k, n) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(30); } };
-  if (y >= 19) { await press("ArrowUp", y - 18); y = 18; }   // 아래쪽 대장간(19~21줄)을 피해서
-  await press(x < 15 ? "ArrowRight" : "ArrowLeft", Math.abs(15 - x));
-  await press("ArrowUp", y - 11);
-}
+// 마을(옆에서 보는 로비)에서 1층 문까지 걸어가 ↑로 들어감
+import { goDoor } from "./town.mjs";
+const walkToDoor = (page) => goDoor(page, "start");
 
 try {
   // ---- API ----
@@ -107,12 +101,13 @@ try {
 
   // A 움직임 → 서버
   const before = row("게스트 #aaaaaa");
-  await A.page.keyboard.press(before.y > 16 ? "ArrowUp" : "ArrowDown");
-  check("A's move reaches the server quickly", await waitFor(() => row("게스트 #aaaaaa").y !== before.y, 2000));
+  const walk = before.x < 32 ? "ArrowRight" : "ArrowLeft";
+  await A.page.keyboard.down(walk); await sleep(400); await A.page.keyboard.up(walk);
+  check("A's move reaches the server quickly (town x, ground row 10)", await waitFor(() => row("게스트 #aaaaaa").x !== before.x && row("게스트 #aaaaaa").y === 10, 2000));
   check("potion/space do nothing in lobby (no turn)", await (async () => { await A.page.keyboard.press("q"); await A.page.keyboard.press("."); return (await A.page.locator("#log").innerText()).includes("로비에 들어왔다") && !(await A.page.locator("#log").innerText()).includes("포션"); })());
 
   // A → 던전 입구
-  await walkToDoor(A.page, "게스트 #aaaaaa");
+  await walkToDoor(A.page);
   check("walking into the door enters the dungeon", await waitFor(async () => !(await inLobby(A.page))), await A.page.locator("#log").innerText());
   check("dungeon log line", (await A.page.locator("#log").innerText()).includes("던전 1층에 발을 들였다"));
   check("server: A in dungeon floor 1", await waitFor(() => row("게스트 #aaaaaa")?.scene === "dungeon" && row("게스트 #aaaaaa").depth === 1));
@@ -126,7 +121,7 @@ try {
   await A.page.keyboard.press("l");
   await stepIntoPortal(A.page);
   check("L opens a portal, stepping in returns to the village", await inLobby(A.page) && (await A.page.locator("#log").innerText()).includes("포탈을 타고 로비로 돌아왔다"));
-  check("server: A back in the village in front of the floor-1 door (portal from floor 1)", await waitFor(() => { const r = row("게스트 #aaaaaa"); return r.scene === "lobby" && r.x === 15 && r.y === 12; }));
+  check("server: A back in the village in front of the floor-1 door (portal from floor 1)", await waitFor(() => { const r = row("게스트 #aaaaaa"); return r.scene === "lobby" && r.x === 30 && r.y === 10; }));
   await A.page.keyboard.press("ArrowUp");
   check("one step up enters the dungeon again", await waitFor(async () => !(await inLobby(A.page))));
   check("game: no page errors (A, B)", A.errors.length + B.errors.length === 0, [...A.errors, ...B.errors].join("; "));
@@ -139,7 +134,7 @@ try {
   const dead = JSON.stringify({ v: 1, best: 4, run: null, dead: { d: 4, hp: 0, mh: 30, a: 5, g: 10, p: 0, l: 3, x: 0, xn: 30, rid: "deadrun", k: 0, pp: 0 } });
   const D = await open({ rl_device_id: GD, rl_save: dead });
   check("dead run: lobby first, no death modal", await inLobby(D.page) && await D.page.locator("#death-modal").isHidden());
-  await walkToDoor(D.page, "게스트 #dddddd");
+  await walkToDoor(D.page);
   check("dead run: door opens the death modal", await waitFor(() => D.page.locator("#death-modal").isVisible()));
   check("death modal stays over the village", await inLobby(D.page));
   await D.page.locator("#death-restart").click();
@@ -176,7 +171,7 @@ try {
     check("Y sees X at 7층, own row shows 3층", await waitFor(async () => { const t = await Y.page.locator("#lobby-list").innerText(); return t.includes("게스트 #aaaa77\n로비 · 포탈 7층") && t.includes("(나)\n로비 · 포탈 3층"); }), await Y.page.locator("#lobby-list").innerText());
     check("server presence keeps each portal floor", db().prepare("SELECT depth FROM presence WHERE display = '게스트 #aaaa77'").get()?.depth === 7 && db().prepare("SELECT depth FROM presence WHERE display = '게스트 #bbbb33'").get()?.depth === 3);
     // Y가 1층 문으로 들어가면 포탈 층이 사라짐 → X 화면에서 탐험 중으로
-    await walkToDoor(Y.page, "게스트 #bbbb33");
+    await walkToDoor(Y.page);
     check("Y enters floor 1 → X sees '1층 탐험 중'", await waitFor(async () => (await X.page.locator("#lobby-list").innerText()).includes("게스트 #bbbb33\n1층 탐험 중")));
     await sleep(500);
     await X.page.screenshot({ path: path.join(SHOTS, "village-portal-floors.png") });
@@ -191,13 +186,12 @@ try {
   check("phone: lobby touch buttons = inventory + bestiary only", await P.page.locator("#tp-inv").isVisible() && await P.page.locator("#tp-dex").isVisible() && !(await P.page.locator("#tp-potion").isVisible()) && !(await P.page.locator("#tp-portal").isVisible()));
   await waitFor(async () => (await P.page.locator("#lobby-list").innerText()).includes("게스트 #ffffff"));
   const pb = row("게스트 #eeeeee");
-  await P.page.locator("#touch-pad .left").tap();
-  check("phone: d-pad moves in the lobby", await waitFor(() => row("게스트 #eeeeee").x === pb.x - 1 || row("게스트 #eeeeee").x === pb.x, 2000));
+  await P.page.locator("#touch-pad .left").dispatchEvent("pointerdown"); await sleep(400); await P.page.locator("#touch-pad .left").dispatchEvent("pointerup");
+  check("phone: holding ◀ walks left in the town", await waitFor(() => row("게스트 #eeeeee").x < pb.x, 2000));
+  check("phone: big jump button and ▲ 들어가기 in the town", await P.page.locator("#tp-jump").isVisible() && (await P.page.locator("#touch-pad .up").innerText()).includes("들어가기") && !(await P.page.locator("#touch-pad .down").isVisible()));
   check("phone: no horizontal scroll", await P.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await P.page.screenshot({ path: path.join(SHOTS, "lobby-phone.png") });
-  // 던전에서는 로비 버튼 (서버 목록의 위치가 d-pad로 움직인 뒤로 바뀔 때까지 기다림 — 늦게 오면 한 칸 어긋나 문을 지나침)
-  await waitFor(() => row("게스트 #eeeeee").x === pb.x - 1, 4000);
-  await walkToDoor(P.page, "게스트 #eeeeee");
+  await walkToDoor(P.page);
   check("phone: in dungeon, 포탈 button", await waitFor(async () => !(await inLobby(P.page))) && await P.page.locator("#tp-portal").isVisible() && await P.page.locator("#tp-potion").isVisible());
   check("phone dungeon: no horizontal overflow", await P.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll("#touch-pad button")].every(b => !b.offsetParent || b.getBoundingClientRect().right <= innerWidth)));
   await P.page.screenshot({ path: path.join(SHOTS, "lobby-phone-dungeon.png") });
