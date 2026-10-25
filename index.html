@@ -3826,23 +3826,26 @@
   // ---- 움직임 (그림만 움직이고 게임 규칙·좌표는 그대로, 움직임 줄이기 설정이면 모두 끔) ----
   // 걷기: 칸 사이를 미끄러짐 · 공격: 상대 쪽으로 찔렀다 돌아옴 · 맞음: 흔들리고 붉게 번쩍 · 피함: 옆으로 비켜섬
   // 막음: 방패 쪽이 하얗게 번쩍 · 쓰러짐: 붉게 물들며 가라앉아 사라짐 · 서 있을 때: 한 칸씩 숨쉬듯 들썩
+  // 걷기는 한 걸음마다 살짝 뛰어오르고(통통), 발끝을 축으로 좌우로 번갈아 기울며(뒤뚱), 떠난 칸에 먼지가 일어남
   const Anim = (() => {
     const fx = new Map();          // 대상(몬스터·플레이어) → 효과 목록 { kind, t0, dur, dx, dy }
     const last = new WeakMap();    // 대상 → 지난번 그린 칸 (걸으면 그 사이를 미끄러짐)
     const phase = new WeakMap();   // 대상 → 숨쉬기 박자 (모두 같이 들썩이지 않게)
     let dying = [];                // 쓰러진 몬스터를 잠깐 남겨서 사라지게
+    let dust = [];                 // 걸을 때 발밑 먼지
+    const stride = new WeakMap();  // 대상 → 다음 걸음이 왼발(-1)/오른발(1)
     let seq = 0;                   // 한 턴 안 몬스터 공격 순서 (하나씩 차례로 보이게)
     let idleTick = -1;
     const now = () => performance.now();
     const add = (who, kind, dur, d = {}, delay = 0) => {
       if (reduceMotion || !who) return;
       const list = (fx.get(who) || []).filter(f => f.kind !== kind && now() < f.t0 + f.dur);
-      list.push({ kind, t0: now() + delay, dur, dx: d.dx || 0, dy: d.dy || 0 });
+      list.push({ kind, t0: now() + delay, dur, dx: d.dx || 0, dy: d.dy || 0, side: d.side || 0 });
       fx.set(who, list);
     };
     const toward = (a, b) => ({ dx: Math.sign(b.x - a.x), dy: Math.sign(b.y - a.y) });
     const ease = (p) => 1 - (1 - p) * (1 - p);
-    const ZERO = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null };
+    const ZERO = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null, rot: 0 };
     return {
       // 플레이어가 행동할 때마다: 이번 턴 몬스터 공격 순서를 처음부터
       newTurn() { seq = 0; },
@@ -3865,9 +3868,14 @@
         const t = now(), prev = last.get(who);
         if (!prev || prev.x !== who.x || prev.y !== who.y) {
           last.set(who, { x: who.x, y: who.y });
-          if (prev && Math.abs(prev.x - who.x) <= 1 && Math.abs(prev.y - who.y) <= 1) add(who, "walk", 120, { dx: prev.x - who.x, dy: prev.y - who.y });
+          if (prev && Math.abs(prev.x - who.x) <= 1 && Math.abs(prev.y - who.y) <= 1) {
+            const side = -(stride.get(who) || -1);   // 걸음마다 왼발·오른발 번갈아
+            stride.set(who, side);
+            add(who, "walk", 150, { dx: prev.x - who.x, dy: prev.y - who.y, side });
+            if (Sprites.on) dust.push({ x: prev.x, y: prev.y, dx: who.x - prev.x, side, t0: t, dur: 320 });
+          }
         }
-        const o = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null };
+        const o = { x: 0, y: 0, walkX: 0, walkY: 0, alpha: 1, flash: 0, spark: null, rot: 0 };
         let busy = false;
         for (const f of fx.get(who) || []) {
           const p = (t - f.t0) / f.dur;
@@ -3875,7 +3883,11 @@
           busy = true;
           if (p < 0) { if (f.kind === "walk") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
           const arc = Math.sin(p * Math.PI);
-          if (f.kind === "walk") { o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p)); }
+          if (f.kind === "walk") {
+            o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
+            o.y -= arc * TILE * 0.13;          // 통통: 걸음 가운데에서 가장 높이
+            o.rot += f.side * arc * 0.16;     // 뒤뚱: 약 9도
+          }
           else if (f.kind === "lunge") { o.x += f.dx * TILE * 0.38 * arc; o.y += f.dy * TILE * 0.38 * arc; }
           else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
           else if (f.kind === "dodge") { o.x += f.dx * TILE * 0.42 * arc; o.y += f.dy * TILE * 0.42 * arc; o.alpha = Math.min(o.alpha, 1 - 0.45 * arc); }
@@ -3891,6 +3903,23 @@
         }
         o.x += o.walkX; o.y += o.walkY;
         return o;
+      },
+      // 걸을 때 떠난 칸 발밑의 먼지 (작은 회색 구름 두세 개가 퍼지며 사라짐)
+      drawDust() {
+        const t = now();
+        dust = dust.filter(d => t < d.t0 + d.dur);
+        for (const d of dust) {
+          const p = (t - d.t0) / d.dur, fx0 = d.x * TILE + TILE / 2, fy = d.y * TILE + TILE - 3 - p * 2;
+          ctx.save();
+          ctx.globalAlpha = 0.55 * (1 - p);
+          ctx.fillStyle = "#cdbfa6";
+          for (const [ox, r] of [[-4, 1.6], [0, 2.2], [4, 1.6]]) {
+            ctx.beginPath();
+            ctx.arc(fx0 + ox * (1 + p) - d.dx * p * 4, fy - Math.abs(ox) * p * 0.5, r * (1 + p * 1.4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
       },
       // 쓰러지는 중인 몬스터 그리기
       drawDying() {
@@ -3908,7 +3937,7 @@
       // 짧은 움직임이 남아 있으면 true (그동안은 매 프레임 다시 그림)
       busy() {
         const t = now();
-        if (dying.length) return true;
+        if (dying.length || dust.length) return true;
         for (const list of fx.values()) if (list.some(f => t < f.t0 + f.dur)) return true;
         return false;
       },
@@ -3951,6 +3980,16 @@
     ctx.beginPath();
     ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.42, ang - 0.9, ang + 0.9);   // 플레이어 칸 안, 공격이 온 쪽 가장자리
     ctx.stroke();
+    ctx.restore();
+  }
+  // 기울여 그리기 (걷기 뒤뚱): 발끝(칸 아래 가운데)을 축으로 rot만큼
+  function posed(rot, px, py, draw) {
+    if (!rot) { draw(); return; }
+    ctx.save();
+    ctx.translate(px + TILE / 2, py + TILE - 1);
+    ctx.rotate(rot);
+    ctx.translate(-(px + TILE / 2), -(py + TILE - 1));
+    draw();
     ctx.restore();
   }
   // 플레이어 (그림 모드면 장비를 입은 그림)
@@ -4074,6 +4113,8 @@
       else drawArt(name, "$", px, py, "#ffcf5c");
     }
 
+    Anim.drawDust();
+
     // 적
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
@@ -4086,13 +4127,13 @@
         // 황금 고블린은 금빛 칸으로 표시. 정예는 금색, 왕은 빨간 테두리를 더함
         ctx.fillStyle = "rgba(255, 215, 0, 0.3)";
         ctx.fillRect(px, py, TILE, TILE);
-        if (pic) Sprites.draw(`mon_${e.id}`, px, py);
+        if (pic) posed(o.rot, px, py, () => Sprites.draw(`mon_${e.id}`, px, py));
         if (e.rank === "elite" || e.rank === "king") {
           ctx.strokeStyle = e.rank === "king" ? BOSS_COLOR : ELITE_COLOR;
           ctx.lineWidth = 2;
           ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         }
-      } else if (pic) Sprites.draw(`mon_${e.id}`, px, py);
+      } else if (pic) posed(o.rot, px, py, () => Sprites.draw(`mon_${e.id}`, px, py));
       if (e.kind !== "normal" && e.kind !== "golden") {
         // 정예는 금색, 보스는 빨간 테두리로 구분
         // 헬 네임드 보스는 분홍 테두리 두 겹 (분신은 분홍 한 겹)
@@ -4101,9 +4142,9 @@
         ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
         if (e.named) ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
       }
-      if (pic) drawFlash(Sprites.src(`mon_${e.id}`), px, py, o.flash);
+      if (pic) posed(o.rot, px, py, () => drawFlash(Sprites.src(`mon_${e.id}`), px, py, o.flash));
       drawStatus(e, px, py);
-      if (!pic) drawGlyph(e.ch, px, py, o.flash > 0.3 ? "#ff5a5a" : e.color);
+      if (!pic) posed(o.rot, px, py, () => drawGlyph(e.ch, px, py, o.flash > 0.3 ? "#ff5a5a" : e.color));
       ctx.restore();
       if (o.spark) drawSpark(px, py, o.spark);
       // 속성 몬스터: 오른쪽 위에 속성 색 점
@@ -4120,8 +4161,10 @@
     drawStatus(player, ppx, ppy);
     ctx.save();
     ctx.globalAlpha = po.alpha;
-    drawHero(ppx, ppy, po.flash > 0.3 ? "#ff5a5a" : "#ffffff");
-    if (Sprites.on) drawFlash(Doll.canvas(), ppx, ppy, po.flash);
+    posed(po.rot, ppx, ppy, () => {
+      drawHero(ppx, ppy, po.flash > 0.3 ? "#ff5a5a" : "#ffffff");
+      if (Sprites.on) drawFlash(Doll.canvas(), ppx, ppy, po.flash);
+    });
     ctx.restore();
     if (po.spark) drawSpark(ppx, ppy, po.spark);
 

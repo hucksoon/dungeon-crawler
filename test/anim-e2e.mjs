@@ -54,6 +54,18 @@ const measure = (page, x, y, key = null, ms = 0) => page.evaluate(([x, y, key, m
   }, ms);
 }), [x, y, key, ms]);
 
+// 칸 영역(x0..x1, y0..y1)의 살색 픽셀 무게중심 (캔버스 px). 걸음 중간에 몸이 위로 뜨는지(통통) 봄
+const skinCenter = (page, [x0, y0, x1, y1], key = null, ms = 0) => page.evaluate(([x0, y0, x1, y1, key, ms]) => new Promise(done => {
+  if (key) window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  setTimeout(() => {
+    const c = document.getElementById("game"), k = c.width / 640, T = 20 * k, w = (x1 - x0 + 1) * T, h = (y1 - y0 + 1) * T;
+    const d = c.getContext("2d").getImageData(x0 * T, y0 * T, w, h).data;
+    let n = 0, sx = 0, sy = 0;
+    for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2]; if (r > 180 && g > 120 && g < 200 && b > 80 && b < 170 && r > g && g > b) { n++; sx += (i / 4) % w; sy += Math.floor(i / 4 / w); } }
+    done(n ? { n, x: sx / n, y: sy / n } : null);
+  }, ms);
+}), [x0, y0, x1, y1, key, ms]);
+
 try {
   // ---- 플레이어 그림 ----
   let o = await open();
@@ -86,6 +98,12 @@ try {
   await o.page.waitForTimeout(500);
   const walkEnd = await measure(o.page, 5, 6);
   check("walk: the player slides between tiles, then stands on the new tile", walkMid.skin < walkEnd.skin * 0.85 && walkEnd.skin >= 60, `${walkMid.skin} → ${walkEnd.skin}`);
+  // 걷는 느낌: 걸음 가운데(75ms)에서 몸이 위로 뜨고, 옆으로 반쯤 와 있음 (왼쪽으로 한 칸). 숨쉬기(약 1.3px)와 타이머 흔들림만큼 여유
+  const box = [2, 4, 8, 8], rest = await skinCenter(o.page, box);
+  const hop = await skinCenter(o.page, box, "ArrowLeft", 75);
+  await o.page.waitForTimeout(500);
+  const land = await skinCenter(o.page, box);
+  check("walk: mid-step the body hops up and is halfway to the next tile, then lands level", rest && hop && land && hop.y < Math.min(rest.y, land.y) - 1.5 && Math.abs(land.y - rest.y) < 2 && hop.x < rest.x - 4 && hop.x > land.x + 2, JSON.stringify({ rest, hop, land }));
   check("no page errors during animations", o.errors.length === 0, o.errors.join("; "));
   await o.ctx.close();
 
@@ -123,6 +141,8 @@ try {
   check("reduced motion: no red flash on hit", rf.red <= rb.red + 5, `${rb.red} → ${rf.red}`);
   const rw = await measure(o.page, 5, 6, "ArrowDown", 35);
   check("reduced motion: the player is on the new tile right away", rw.skin >= 60, JSON.stringify(rw));
+  const rr = await skinCenter(o.page, [2, 5, 8, 8]), rh = await skinCenter(o.page, [2, 5, 8, 8], "ArrowLeft", 75);
+  check("reduced motion: no hop (body already level on the next tile)", rr && rh && Math.abs(rh.y - rr.y) < 1.5 && rh.x < rr.x - 20, JSON.stringify({ rr, rh }));
   await o.ctx.close();
 } finally {
   await browser.close();

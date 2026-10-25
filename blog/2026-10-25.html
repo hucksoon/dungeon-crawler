@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>몬스터가 움직이고, 기사가 장비를 입다 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="가만히 서 있던 몬스터와 플레이어에 공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<meta name="description" content="가만히 서 있던 몬스터와 플레이어에 걷기·공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-25.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
@@ -12,7 +12,7 @@
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="몬스터가 움직이고, 기사가 장비를 입다 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="가만히 서 있던 몬스터와 플레이어에 공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
+<meta property="og:description" content="가만히 서 있던 몬스터와 플레이어에 걷기·공격·막기·피하기·쓰러짐 움직임을 넣었어요. 플레이어는 낀 장비를 등급 색 그대로 입고, 아무것도 없으면 속옷만 입어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-25.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/anim-fight.gif">
 
@@ -56,6 +56,11 @@
 <p>로그라이크는 턴제라서 키 하나에 플레이어 행동과 몬스터들의 행동이 한꺼번에 계산돼요. 그래서 게임 규칙은 그대로 두고, <strong>그림만 짧게 움직이는</strong> 층을 따로 만들었어요.</p>
 <ul><li><strong>걷기</strong>: 칸 사이를 0.12초 동안 미끄러지듯 이동해요. 가까이 보기 화면도 플레이어를 따라 부드럽게 미끄러져요</li><li><strong>공격</strong>: 상대 쪽으로 몸을 쑥 내밀었다 돌아와요. 몬스터들은 플레이어가 움직인 뒤에 한 마리씩 차례로 공격해요</li><li><strong>맞음</strong>: 살짝 밀리며 흔들리고, 그림 모양대로 붉게 번쩍해요</li><li><strong>피하기</strong>: 공격 방향과 직각으로 몸을 비켜서요</li><li><strong>막기</strong>: 방패로 막으면 공격이 온 쪽에 하얀 빛이 번쩍해요</li><li><strong>쓰러짐</strong>: 붉게 물들며 가라앉아 사라져요</li><li><strong>숨쉬기</strong>: 가만히 서 있을 때도 저마다 다른 박자로 한 픽셀씩 들썩여요</li></ul>
 <p>움직임이 있는 짧은 순간에만 화면을 자주 다시 그리고, 숨쉬기는 박자가 바뀔 때만 그려서 휴대폰 배터리를 아꼈어요. 기기에서 &quot;동작 줄이기&quot;를 켠 분께는 움직임을 모두 꺼요.</p>
+<h3>걷는 느낌까지</h3>
+<p>처음에는 칸 사이를 미끄러지기만 해서, 걷는다기보다 스케이트를 타는 것 같았어요. 그래서 걸음마다 몸 전체로 걷는 느낌을 더했어요.</p>
+<figure><img src="images/anim-walk.gif" alt="걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지" loading="lazy"><figcaption>걷기: 한 걸음마다 통통 뛰고 좌우로 뒤뚱, 발밑에 먼지</figcaption></figure>
+<ul><li><strong>통통</strong>: 걸음 가운데에서 살짝 뛰어올랐다가 내려앉아요</li><li><strong>뒤뚱</strong>: 발끝을 축으로 몸이 왼쪽·오른쪽으로 번갈아 기울어요</li><li><strong>먼지</strong>: 떠난 자리 발밑에 작은 흙먼지가 일었다 사라져요</li></ul>
+<p>다리를 따로 움직이는 그림은 쓰고 있는 무료 그림 모음에 없어서, 몸 전체의 움직임으로 걷는 느낌을 냈어요. 몬스터도 똑같이 걸어요.</p>
 <h2>장비를 입는 기사</h2>
 <p>지금까지 플레이어는 늘 같은 파란 기사 그림이었어요. 이제는 <strong>실제로 낀 장비만</strong> 겹쳐 입어요.</p>
 <figure><img src="images/doll-naked.png" alt="장비가 하나도 없으면 속옷만" loading="lazy"><figcaption>장비가 하나도 없으면 속옷만</figcaption></figure>
