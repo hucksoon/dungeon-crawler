@@ -234,6 +234,28 @@ const SCENES = [
     const top = await o.page.evaluate(() => (document.getElementById("stage") || document.getElementById("game")).getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
     await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
     return { ...o, prebuilt: true }; }],
+  // 친구 피드백 반영 (dc#91): 처음 온 사람 안내 말풍선 (마을)
+  ["newbie-intro", "처음 온 사람에게 보이는 안내 말풍선", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: {} });
+    await sleep(500);
+    return { ...o, shot: "#stage" }; }],
+  // 장비 비교: 가방의 더 좋은 무기를 고르면 지금 낀 것과 비교 (▲ 초록 · ▼ 빨강), 가방·장착 칸에 장비 그림
+  ["newbie-compare", "장비 비교와 장비 그림", async () => {
+    const eq = gear(25, "golden", "blogcmp0"), better = gear(45, "golden", "blogcmp1").filter(it => ["weapon", "head", "chest"].includes(it.slot));
+    const o = await open({ seed: { rl_save: save(30, "blog-cmp"), "rl_inv:g:DEV": inv(eq, [...better, ...gear(20, "drop", "blogcmp2").slice(0, 4)]) } });
+    await press(o.page, ["i"]); await sleep(300);
+    await o.page.locator(".bag-item:has(.better)").first().click(); await sleep(300);   // ▲가 붙은(끼면 더 강한) 아이템
+    return { ...o, shot: "#inv-modal .modal" }; }],
+  // 휴대폰 던전: 왼손 십자, 오른손 큰 포션(HP가 적으면 빨갛게 깜빡임)·점프, 위 줄 메뉴. 머리 위 HP 막대
+  ["newbie-phone", "휴대폰 던전: 왼손 방향, 오른손 포션·점프", async () => {
+    const o = await explored({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(8, "blog-nbphone", { hp: 200, mh: 1200 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "lowhp", "gear", "intro"]) } });
+    await sleep(500);
+    await o.page.evaluate(() => { const g = document.getElementById("stage"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
+    await sleep(300);
+    const shotPath = path.join(OUT, "newbie-phone.png");
+    const top = await o.page.evaluate(() => document.getElementById("stage").getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
+    await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
+    return { ...o, prebuilt: true }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 

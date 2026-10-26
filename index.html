@@ -68,6 +68,15 @@
   .lvl { color: #6bd3ff; }
   /* 캔버스 위에 피해 숫자를 띄우는 층 (캔버스 크기에 맞춰 늘고 줄어듦) */
   #stage { position: relative; max-width: 100%; line-height: 0; }
+  /* 처음 하는 사람 안내 말풍선 (dc#91): 게임 위에 떠 있지만 막지 않음 (키·버튼은 그대로) */
+  #tip { position: absolute; left: 8px; right: 8px; top: 8px; line-height: 1.55; font-size: 13px; white-space: pre-line;
+    background: rgba(10, 14, 28, 0.93); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 34px 8px 10px; color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+  #tip-close { position: absolute; top: 4px; right: 4px; padding: 2px 8px; font-size: 16px; line-height: 1.2; }
+  /* HP가 적을 때 (30% 이하): 위쪽 HP 숫자 빨갛게, 포션 버튼 깜빡임 */
+  #hp.low { color: #ff5a4a; }
+  #tp-potion.urgent { border-color: #ff5a4a; color: #ff9a8a; animation: urgent 0.8s ease-in-out infinite alternate; }
+  @keyframes urgent { to { background: #4a1612; } }
+  @media (prefers-reduced-motion: reduce) { #tp-potion.urgent { animation: none; background: #4a1612; } }
   #popups { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   .dmg {
     position: absolute; transform: translate(-50%, -50%); line-height: 1;
@@ -223,6 +232,29 @@
     body.side-view #touch-pad { grid-template-columns: 62px 62px minmax(0, 1fr) 104px; }
     body.side-view #tp-jump { width: 104px; height: 104px; }
   }
+  /* 던전 휴대폰 배치 (dc#91): 마을·점프 던전처럼 왼손 = 방향(십자), 오른손 = 행동(큰 포션 · 점프), 위 줄에 작게 인벤토리·도감·포탈.
+     어느 화면이든 방향은 왼쪽 아래, 큰 버튼은 오른쪽 아래, 메뉴는 위 */
+  @media (pointer: coarse) {
+    body:not(.side-view) #touch-pad {
+      display: grid; gap: 6px; align-items: center;
+      grid-template-columns: 58px 58px 58px minmax(0, 1fr) 112px;
+      grid-template-areas: "inv inv dex . portal" ". up . . potion" "left . right . potion" ". down . . jump";
+    }
+    body:not(.side-view) #touch-pad .dpad, body:not(.side-view) #touch-pad .actions { display: contents; }
+    body:not(.side-view) #touch-pad .dpad button { width: 58px; height: 58px; margin: 0; font-size: 22px; }
+    body:not(.side-view) #touch-pad .up { grid-area: up; } body:not(.side-view) #touch-pad .down { grid-area: down; }
+    body:not(.side-view) #touch-pad .left { grid-area: left; } body:not(.side-view) #touch-pad .right { grid-area: right; }
+    body:not(.side-view) #tp-inv { grid-area: inv; } body:not(.side-view) #tp-dex { grid-area: dex; } body:not(.side-view) #tp-portal { grid-area: portal; }
+    body:not(.side-view) #tp-inv, body:not(.side-view) #tp-dex, body:not(.side-view) #tp-portal { padding: 6px 2px; font-size: 12px; }
+    body:not(.side-view) #tp-potion { grid-area: potion; width: 112px; height: 112px; border-radius: 50%; justify-self: end; white-space: normal; font-size: 15px; font-weight: bold; }
+    body:not(.side-view) #tp-jump { grid-area: jump; width: 112px; height: 52px; justify-self: end; }
+  }
+  @media (pointer: coarse) and (max-width: 360px) {
+    body:not(.side-view) #touch-pad { grid-template-columns: 52px 52px 52px minmax(0, 1fr) 100px; }
+    body:not(.side-view) #touch-pad .dpad button { width: 52px; height: 52px; }
+    body:not(.side-view) #tp-potion { width: 100px; height: 100px; }
+    body:not(.side-view) #tp-jump { width: 100px; }
+  }
   #lobby-panel {
     width: 640px;
     max-width: 100%;
@@ -272,6 +304,8 @@
   #update-note[hidden] { display: none; }
   #update-note b { color: var(--accent); }
   #update-note button { flex: none; padding: 0 6px; font-size: 12px; }
+  /* 긴 업데이트 안내는 두 줄만 보이고 "더 보기"로 펼침 (dc#91: 글이 많다는 피드백) */
+  #update-text:not(.open) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   #guest-note { flex-basis: 100%; text-align: center; font-size: 12px; color: var(--accent); opacity: 0.85; }
   button, a.btn {
     font: inherit;
@@ -375,7 +409,15 @@
   .summary .off { opacity: 0.4; }
   .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; align-content: start; max-height: 210px; overflow-y: auto; padding: 2px; }
   #inv-bag { flex: 1; min-height: 120px; max-height: none; }
-  .bag-item { text-align: left; font-size: 12px; padding: 6px 8px; }
+  .bag-item { text-align: left; font-size: 12px; padding: 6px 8px; min-height: 46px; }
+  /* 장비 그림 (dc#91): 등급 색 테두리, 왼쪽에 띄워 이름이 옆으로 감김 */
+  .item-icon { float: left; width: 32px; height: 32px; margin: 0 6px 0 0; border: 2px solid; border-radius: 5px; background: #0b0e16; font-style: normal; line-height: 0; }
+  .item-icon .pix { width: 32px; height: 32px; }
+  .bag-item .better { color: #6fdc6f; font-weight: bold; } .bag-item .worse { color: #ff7a6b; font-weight: bold; }
+  /* 끼면 바뀌는 능력치: 오르면 초록, 내리면 빨강 */
+  .cmp { margin: 6px 0; padding: 6px 8px; border: 1px dashed var(--border); border-radius: 6px; }
+  .cmp .chip { display: inline-block; margin: 2px 4px 2px 0; padding: 1px 6px; border-radius: 10px; font-size: 12px; background: var(--bg); }
+  .cmp .chip.up { color: #6fdc6f; } .cmp .chip.down { color: #ff7a6b; }
   .bag-item small { opacity: 0.55; }
   .bag-empty { font-size: 12px; opacity: 0.6; padding: 8px 2px; }
   #inv-sell-all, #inv-staff-gift { width: 100%; font-size: 12px; flex: none; }
@@ -533,7 +575,7 @@
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
     <select id="lang-select" aria-label="Language" hidden></select>
     <button id="portal-btn" class="keys-only dungeon-only" type="button" data-t>포탈 (P)</button>
-    <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-close" aria-label="안내 닫기" data-t-aria>✕</button></div>
+    <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-more" data-t>더 보기</button><button type="button" id="update-close" aria-label="안내 닫기" data-t-aria>✕</button></div>
     <span id="guest-note" hidden data-t>게스트는 이 기기에만 저장돼요. 계정을 연결하면 가방과 진행 상황이 서버에 보존돼요.</span>
   </div>
   <div id="stats">
@@ -545,9 +587,9 @@
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)</span>
     <span id="status" hidden></span>
   </div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><button id="tip-close" type="button" aria-label="닫기" data-t-aria>×</button></div></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
-    <!-- 양손 엄지로 누르기 좋게: 왼쪽 ▲◀, 가운데 기능 버튼, 오른쪽 ▶▼ -->
+    <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
       <button type="button" class="up" data-dir="0,-1" aria-label="위로" data-t-aria>▲<span class="enter-label" data-t>들어가기</span></button>
       <button type="button" class="left" data-dir="-1,0" aria-label="왼쪽으로" data-t-aria>◀</button>
@@ -804,6 +846,28 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
     del(k) { try { localStorage.removeItem(k); } catch {} },
   };
+  // ---- 처음 하는 사람 안내 (dc#91): 게임 위의 말풍선 (창처럼 막지 않음). 종류마다 이 기기에서 한 번 ----
+  //   intro(처음 온 사람, 마을) · dungeon(처음 던전) · gear(처음 장비 줍기) · lowhp(처음 HP 30% 이하) — 뒤의 셋은 아직 10층 전인 사람만
+  const LOW_HP = 0.3;
+  const Tips = (() => {
+    const box = document.getElementById("tip"), text = document.getElementById("tip-text");
+    let timer = 0, current = null;
+    const seen = () => { try { return JSON.parse(store.get("rl_tips")) || []; } catch { return []; } };
+    function hide(id) { if (id && id !== current) return; box.hidden = true; current = null; clearTimeout(timer); }
+    document.getElementById("tip-close").addEventListener("click", () => hide());
+    // ms: 저절로 사라지는 시간 (0이면 닫을 때까지)
+    function show(id, msg, ms = 10000) {
+      const s = seen();
+      if (s.includes(id)) return false;
+      if (current && current !== "intro" && !box.hidden) return false;   // 다른 말풍선을 읽는 중이면 다음 기회에 (봤다고 치지 않음)
+      store.set("rl_tips", JSON.stringify([...s, id]));
+      text.textContent = msg; box.hidden = false; current = id;
+      clearTimeout(timer);
+      if (ms) timer = setTimeout(() => hide(id), ms);
+      return true;
+    }
+    return { show, hide, current: () => current, newbie: () => bestDepth < 10 && !cleared };
+  })();
   const randomId = () => (crypto.randomUUID ? crypto.randomUUID()
     : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""));
 
@@ -1534,9 +1598,9 @@
   // 유니크: 바닥에서 금빛으로 크게 빛남 (이름은 금색 + .unique-glow)
   const isUnique = (item) => item?.rarity === "unique";
 
-  // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과
-  function stats() {
-    const TT = Inv.totals(), g = TT.stats;
+  // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과. TT: 다른 장비 조합의 합계 (장비 비교, dc#91)
+  function stats(TT = Inv.totals()) {
+    const g = TT.stats;
     const pct = (v, p) => Math.round(v * (1 + p / 100));
     const maxHp = pct(player.maxHp + g.hp, g.hpPct);
     return {
@@ -2241,7 +2305,10 @@
   function takeGear(gear) {
     const result = Inv.add(gear.item, { depth, from: gear.from });
     if (result === "full") { log(T("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요."), "bad"); return false; }
-    if (result === "ok") gearLog(T("{0}을(를) 주웠다.", RLItems.itemName(gear.item)), gear.item);
+    if (result === "ok") {
+      gearLog(T("{0}을(를) 주웠다.", RLItems.itemName(gear.item)), gear.item);
+      if (Tips.newbie()) Tips.show("gear", T("🎒 장비를 주웠어요! 인벤토리(휴대폰은 인벤토리 버튼)에서 ▲ 표시가 붙은 장비를 끼면 더 강해져요. 누르면 지금 낀 것과 비교해 줘요."));
+    }
     const rw = RLItems.runewordsFor(gear.item);
     if (result === "ok" && RLItems.runewordHighlight(gear.item)) log(T("✦ 룬워드 재료! 홈 {0}개 커먼 — {1}을(를) 만들 수 있다. (인벤토리에서 확인)", RLItems.socketCount(gear.item), rw.map(w => w.label).join(", ")), "rainbow");
     return true;
@@ -3181,6 +3248,10 @@
     document.body.classList.toggle("in-tower", s === "jump");
     document.body.classList.toggle("side-view", s === "jump" || s === "lobby");   // 옆에서 보는 화면 (마을·점프 던전): 휴대폰 버튼 배치
     if (s === "lobby") Town.start();
+    if (s !== "lobby") Tips.hide("intro");
+    if (s === "dungeon" && Tips.newbie()) Tips.show("dungeon", matchMedia("(max-width: 899px)").matches
+      ? T("⚔ 몬스터 쪽으로 이동하면 공격해요. 계단(>)을 밟으면 다음 층.\n❤ 내 머리 위 막대가 HP예요. 빨개지면 포션 버튼, 또는 포탈로 마을에 가면 다 차요.")
+      : T("⚔ 몬스터 쪽으로 이동하면 공격해요. 계단(>)을 밟으면 다음 층. 전체 지도는 M.\n❤ 내 머리 위 막대가 HP예요. 빨개지면 포션(Q), 또는 포탈(P)로 마을에 가면 다 차요."));
     try { sessionStorage.setItem(SCENE_KEY, s === "jump" ? "lobby" : s); } catch {}   // 점프 던전은 새로고침하면 로비로
     Lobby.ping();
   }
@@ -3488,6 +3559,8 @@
   const rainbowInSight = () => !reduceMotion && items?.some(it => (it.type === "rune" || (it.type === "gear" && (isRainbow(it.item) || isUnique(it.item)))) && visible?.[it.y]?.[it.x]);
   // 로비·무지개 아이템 애니메이션: 초당 LOBBY_FPS번만 다시 그림 (매 프레임 그리면 로비에서 CPU 약 21% → 휴대폰 배터리)
   const LOBBY_FPS = 20;
+  // HP 30% 이하면 머리 위 HP 막대가 깜빡이도록 다시 그림
+  const lowBlink = () => !reduceMotion && player && !gameOver && player.hp > 0 && player.hp <= stats().maxHp * LOW_HP;
   function lobbyLoop(t) {
     requestAnimationFrame(lobbyLoop);
     // 던전의 짧은 움직임(걷기·공격 등, 0.1~0.4초)은 매 프레임 부드럽게
@@ -3495,7 +3568,7 @@
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
-    if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight())) render();
+    if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight() || lowBlink())) render();
   }
 
   // 헬 건물 장식: 둘레의 붉은 빛, 지붕 위 불꽃, 가운데 큰 이름 (나이트메어를 완료하기 전에는 어둡게)
@@ -4568,6 +4641,16 @@
     // 하늘의 별 (늘 같은 자리)
     const STARS = Array.from({ length: 70 }, (_, i) => ({ x: (i * 97.13) % 1, y: ((i * 53.71) % 1) * 0.45, r: i % 7 ? 0.6 : 1.1, p: i * 1.7 }));
     // 건물 하나: 벽돌 벽 · 지붕 · 간판 · 불 켜진 창 (헬은 용암 벽돌과 불꽃, 던전 입구는 성벽)
+    // 횃불 불꽃: 바깥 주황 + 안쪽 노랑, 살짝 일렁임
+    function torchFlame(x, y, t) {
+      const f = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(t * 9 + x);
+      ctx.save(); ctx.shadowColor = "#ff8a2a"; ctx.shadowBlur = 6;
+      ctx.fillStyle = `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + x))}, 60, 1)`;
+      ctx.beginPath(); ctx.ellipse(x, y, 3 * f, 5 * f, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.fillStyle = "#fff1a8";
+      ctx.beginPath(); ctx.ellipse(x, y + 1.5, 1.4 * f, 2.6 * f, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
     function building(b, t) {
       const x0 = b.x0 * TILE, x1 = (b.x1 + 1) * TILE, top = (G - b.h) * TILE, bot = G * TILE, w = x1 - x0;
       const hell = b.id === "hell", gate = b.id === "gate";
@@ -4583,7 +4666,7 @@
       if (gate) {   // 성벽: 위에 톱니, 양옆 횃불
         ctx.fillStyle = wall;
         for (let x = x0; x < x1; x += TILE) ctx.fillRect(x + 2, top - 6, TILE / 2, 6);
-        for (const tx of [x0 - 4, x1 + 1]) { ctx.fillStyle = "#3a2a22"; ctx.fillRect(tx, bot - TILE * 1.6, 3, TILE * 0.7); drawGlyph("*", tx - TILE / 2 + 1.5, bot - TILE * 2.2, `rgba(255, ${150 + Math.round(40 * Math.sin(t * 7 + tx))}, 60, 1)`); }
+        for (const tx of [x0 - 4, x1 + 1]) { ctx.fillStyle = "#3a2a22"; ctx.fillRect(tx, bot - TILE * 1.6, 3, TILE * 0.7); torchFlame(tx + 1.5, bot - TILE * 1.6 - 4, t); }
       } else if (hell) {
         drawHellFacade({ x0: b.x0, x1: b.x1, y0: G - b.h, y1: G - 1, label: T("헬 던전") }, t);
       } else {   // 지붕: 처마가 조금 튀어나온 삼각 지붕
@@ -4958,6 +5041,14 @@
     });
     ctx.restore();
     if (po.spark) drawSpark(ppx, ppy, po.spark);
+    // 내 HP 막대 (dc#91): 머리 위, 초록 → 노랑(절반) → 빨강(30% 이하, 깜빡임)
+    if (!gameOver && player.hp > 0) {
+      const frac = Math.min(1, player.hp / stats().maxHp), bw = TILE - 4, bx = ppx + 2, by = ppy - 5;
+      const blink = frac <= LOW_HP && !reduceMotion && Math.floor(performance.now() / 260) % 2;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(bx - 1, by - 1, bw + 2, 5);
+      ctx.fillStyle = frac > 0.5 ? "#4fd16a" : frac > LOW_HP ? "#f0c43a" : blink ? "#ffb0a4" : "#ff4a3a";
+      ctx.fillRect(bx, by, Math.max(1, bw * frac), 3);
+    }
     Fx.draw();
 
     // 세트 스킬 칸 (잠깐 번쩍임)
@@ -5008,6 +5099,11 @@
     document.getElementById("depth").textContent = depth;
     const s = stats();
     document.getElementById("hp").textContent = `${Math.max(0, player.hp)}/${s.maxHp}`;
+    // HP가 적을 때 (dc#91): 숫자 빨갛게, 포션이 준비됐으면 포션 버튼 깜빡임, 처음 한 번은 말풍선
+    const low = scene === "dungeon" && !gameOver && player.hp > 0 && player.hp <= s.maxHp * LOW_HP;
+    document.getElementById("hp").classList.toggle("low", low);
+    document.getElementById("tp-potion").classList.toggle("urgent", low && player.potCd <= 0);
+    if (low && Tips.newbie()) Tips.show("lowhp", T("❤ HP가 얼마 안 남았어요! 포션(Q)을 마시거나, 포탈(P)을 타고 마을에 가면 HP가 다 차요. 떠난 층에는 파란 포탈로 다시 들어가요."));
     document.getElementById("atk").textContent = s.atk;
     document.getElementById("def").textContent = s.def;
     document.getElementById("gold").textContent = player.gold;
@@ -5309,6 +5405,41 @@
     ];
   }
 
+  // ---- 장비 비교 (dc#91): 가방 아이템을 끼면 능력치가 어떻게 바뀌는지 (장착 규칙은 Inv.equip과 같음) ----
+  const itemIcon = (item) => el("i", { className: "item-icon", style: { borderColor: rarityColor(item) } }, Sprites.icon(itemArt({ item })));
+  function previewTotals(item, at) {
+    const eq = { ...Inv.equipped() };
+    eq[Inv.equipKey(item, at)] = item;
+    if (RLItems.isShieldOnly(item) && eq.offhand && RLItems.isWeaponLike(eq.offhand)) eq.offhand = null;
+    else if (item.slot === "offhand" && RLItems.isWeaponLike(item) && RLItems.isShieldOnly(eq.weapon)) eq.weapon = null;
+    return RLItems.totals(Object.values(eq));
+  }
+  // 바뀌는 능력치 [{ name, d, unit }] + 생기거나 없어지는 스킬 [{ name, skill: ±1 }]
+  function statDiff(item, at) {
+    if (!player) return [];
+    const a = stats(), b = stats(previewTotals(item, at));
+    const rows = [["atk", T("공격력")], ["def", T("방어력")], ["maxHp", T("최대 HP")], ["crit", T("치명타"), "%"], ["critPct", T("치명타 피해"), "%"],
+      ["lifesteal", T("흡혈"), "%"], ["parry", T("패링"), "%"], ["dmgReduce", T("받는 피해 감소"), "%"], ["gold", T("골드 획득"), "%"], ["xp", T("경험치"), "%"], ["mf", T("아이템 발견"), "%"],
+      ...EL.list.map(e => [`el:${e}`, T("{0} 피해", EL.names[e]), "%"]), ...EL.list.map(e => [`res:${e}`, T("{0} 저항", EL.names[e]), "%"])];
+    const val = (s, k) => (k === "critPct" ? Math.round(s.critMul * 100) : k.startsWith("el:") ? s.elem[k.slice(3)] : k.startsWith("res:") ? s.res[k.slice(4)] : s[k]);
+    const out = rows.map(([k, name, unit = ""]) => ({ name, unit, d: val(b, k) - val(a, k) })).filter(x => x.d);
+    for (const [k, name] of [["fireball", T("파이어볼")], ["nova", T("프로스트 노바")], ["chain", T("체인 라이트닝")]]) if (a[k] !== b[k]) out.push({ name, skill: b[k] ? 1 : -1 });
+    return out;
+  }
+  // 가방 목록의 ▲▼: 공격력 위주로 대략 (방어력·HP는 절반, 치명타·흡혈 조금)
+  function gearScore(item) {
+    if (!player) return 0;
+    const a = stats(), b = stats(previewTotals(item)), r = (x, y) => (y - x) / Math.max(1, x);
+    return r(a.atk, b.atk) + 0.5 * r(a.def, b.def) + 0.5 * r(a.maxHp, b.maxHp) + (b.crit - a.crit + b.lifesteal - a.lifesteal) / 100;
+  }
+  function diffBox(item, at, title) {
+    const d = statDiff(item, at);
+    return el("div", { className: "cmp" }, el("div", { className: "meta" }, ...[title].flat()),
+      ...(d.length ? d.map(x => el("span", { className: `chip ${(x.skill ?? x.d) > 0 ? "up" : "down"}` },
+        x.skill ? `${x.name} ${x.skill > 0 ? T("생김") : T("없어짐")}` : `${x.name} ${x.d > 0 ? "+" : "−"}${Math.abs(x.d).toLocaleString()}${x.unit} ${x.d > 0 ? "▲" : "▼"}`))
+        : [el("span", { className: "meta" }, T("능력치 변화 없음"))]));
+  }
+
   function selectedItem() {
     if (!selected) return null;
     if (selected.from === "equip") return Inv.equipped()[selected.slot];
@@ -5338,7 +5469,7 @@
         onclick: () => { if (item) pickItem({ from: "equip", slot }); },
         title: item ? RLItems.itemName(item) : "",
       }, el("small", {}, RLItems.SLOT_NAMES[slot], item && recommendFit(item) ? el("span", { className: "fit" }, T(" · 추천 {0}/{1}", recommendFit(item).got, recommendFit(item).of)) : null),
-        item?.lock ? "🔒 " : "", rwTag(item), item ? itemLabel(item) : T("비어 있음"));
+        item ? itemIcon(item) : null, item?.lock ? "🔒 " : "", rwTag(item), item ? itemLabel(item) : T("비어 있음"));
     }));
 
     // 능력치 합계와 세트 효과
@@ -5396,11 +5527,12 @@
     const isRw = (it) => (RLItems.runewordHighlight(it) ? 1 : 0);
     const bag = Inv.bag().slice().sort((a, b) => (b.ancient ? 1 : 0) - (a.ancient ? 1 : 0) || isRw(b) - isRw(a) ||
       RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || b.lvl - a.lvl);
-    invBag.replaceChildren(...(bag.length ? bag.map(item => el("button", {
+    invBag.replaceChildren(...(bag.length ? bag.map(item => { const sc = gearScore(item); return el("button", {
       type: "button",
       className: `bag-item${selected?.from === "bag" && selected.id === item.id ? " sel" : ""}${item.ancient ? " ancient" : ""}${rwTag(item) ? " rw-base" : ""}`,
       onclick: () => pickItem({ from: "bag", id: item.id }),
-    }, item.lock ? "🔒 " : "", rwTag(item), itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)))
+    }, itemIcon(item), sc > 0.005 ? el("span", { className: "better", title: T("끼면 더 강해져요 (대략)") }, "▲ ") : sc < -0.005 ? el("span", { className: "worse", title: T("지금 낀 것이 더 강해요 (대략)") }, "▼ ") : null,
+      item.lock ? "🔒 " : "", rwTag(item), itemLabel(item), el("small", {}, ` · ${RLItems.SLOT_NAMES[item.slot]} Lv${item.lvl}`)); })
       : [el("div", { className: "bag-empty" }, T("가방이 비어 있어요. 던전에서 몬스터를 쓰러뜨리면 장비를 얻을 수 있어요."))]));
 
     const sellAllBtn = document.getElementById("inv-sell-all");
@@ -5888,7 +6020,7 @@
     const rows = [];
     if (invMsg) rows.push(el("div", { className: `msg-${invMsg.cls}` }, invMsg.text));
     rows.push(
-      el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
+      el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, itemIcon(item), RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
       ...(item.ancient ? [el("div", { className: "ancient-note" }, T("고대 아이템 · 모든 능력치가 최대치예요!"))] : []),
       ...(RLItems.isBought(item) ? [el("div", { className: "meta" }, T("💰 고대 유니크 선택 상자에서 고른 아이템 (현금 구매) · 랭킹에 \"구매 아이템\"으로 표시돼요"))] : []),
@@ -5944,12 +6076,16 @@
     }, !canPay(arCost) ? T("고대 굴리기 ({0}골드 · 골드 부족)", arCost.toLocaleString()) : T("고대 굴리기 ({0}골드)", arCost.toLocaleString()))
       : arOver ? el("button", { type: "button", className: "ancient-done", disabled: true }, T("고대 굴리기 {0}/{0}번 실패", AR.max)) : null;
 
-    const actions = el("div", { className: "row" });
+    const actions = el("div", { className: "row" }), cmpRows = [];
     if (selected.from === "bag") {
       // 반지: 두 칸이 다 차 있으면 어느 반지와 바꿀지 고름
       const keys = RLItems.equipKeysFor(item), eqd = Inv.equipped();
-      for (const k of keys) if (eqd[k]) rows.push(el("div", { className: "meta" }, T("장착 중") + (keys.length > 1 ? ` (${RLItems.SLOT_NAMES[k]})` : "") + ": ", itemLabel(eqd[k])));
       const both = keys.length > 1 && keys.every(k => eqd[k]);
+      // 장비 비교: 끼면 바뀌는 능력치 (반지 두 칸이 다 차 있으면 칸마다), 지금 낀 것의 능력치는 접어서
+      for (const k of both ? keys : [Inv.equipKey(item)]) {
+        cmpRows.push(diffBox(item, k, eqd[k] ? [T("끼면 (지금 낀 것과 비교)") + (both ? ` · ${RLItems.SLOT_NAMES[k]}` : "") + ": ", itemLabel(eqd[k])] : T("끼면 (빈 칸)")));
+        if (eqd[k]) cmpRows.push(fold(`cmp:${k}`, [T("지금 낀 것") + (both ? ` (${RLItems.SLOT_NAMES[k]})` : "") + ": ", itemLabel(eqd[k])], statLines(eqd[k]), true));
+      }
       actions.append(
         ...(both ? keys.map(k => el("button", { type: "button", className: "primary", onclick: () => equipItem(item, k) }, T("{0} 자리에 끼기", RLItems.SLOT_NAMES[k])))
           : [el("button", { type: "button", className: "primary", onclick: () => equipItem(item) }, T("장착"))]),
@@ -5972,7 +6108,7 @@
     } }, T("고대로 만들기 (운영자)")));
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
     const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isDeepItem(item) ? 1 : 0);
-    invDetail.replaceChildren(...rows.slice(0, head), actions, ...rows.slice(head));
+    invDetail.replaceChildren(...rows.slice(0, head), actions, ...cmpRows, ...rows.slice(head));
   }
 
   // 장비가 바뀌면 최대 HP를 넘는 HP를 잘라내고 화면과 저장을 갱신
@@ -6161,7 +6297,7 @@
       const sold = bought.includes(i);
       const kind = RLItems.kindName(item);
       return el("div", { className: `shop-card${sold ? " sold" : ""}${item.ancient ? " ancient" : ""}` },
-        el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, RLItems.itemName(item)),
+        el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, itemIcon(item), RLItems.itemName(item)),
         el("span", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
         ...statLines(item, "span"),
         el("span", { className: "price" }, sold ? T("판매 완료") : T("{0} 골드", price)),
@@ -7015,7 +7151,15 @@
     const old = Inv.items().filter(isLegacy).length;
     if (!old || store.get(key)) {
       // 처음 온 사람(가방도 기록도 없음)에게는 바뀐 걸 알릴 필요가 없음. 게임을 막지 않게 창 대신 위쪽 안내 줄로
-      if (store.get(floorKey) || (!Inv.items().length && bestDepth <= 1)) return;  // 새 판은 1층부터 최고 층 1
+      if (!Inv.items().length && bestDepth <= 1) {   // 새 판은 1층부터 최고 층 1
+        if (scene === "lobby") Tips.show("intro", [T("👋 처음 오셨나요? 이렇게 해요"),
+          matchMedia("(max-width: 899px)").matches ? T("① 마을 가운데 던전 입구로 걸어가 문 앞에서 ▲ 들어가기") : T("① 마을 가운데 던전 입구로 걸어가 문 앞에서 ↑ (← → 걷기)"),
+          T("② 던전에서 몬스터 쪽으로 이동하면 공격, 계단(>)을 밟으면 다음 층"),
+          T("③ 몬스터가 떨어뜨린 장비를 끼면 강해져요 (인벤토리에서 ▲ 표시가 더 좋은 것)"),
+          T("🏆 더 깊이 내려갈수록 좋은 장비 → 랭킹에 도전!")].join("\n"), 0);
+        return;
+      }
+      if (store.get(floorKey)) return;
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: T("업데이트: ") }),
@@ -7041,6 +7185,9 @@
       const note = document.getElementById("update-note");
       note.hidden = false;
       document.getElementById("update-close").onclick = () => { note.hidden = true; store.set(floorKey, "1"); };
+      const more = document.getElementById("update-more"), text = document.getElementById("update-text");
+      text.classList.remove("open"); more.textContent = T("더 보기");
+      more.onclick = () => { more.textContent = text.classList.toggle("open") ? T("접기") : T("더 보기"); };
       return;
     }
     store.set(key, "1");
