@@ -256,6 +256,29 @@ const SCENES = [
     const top = await o.page.evaluate(() => document.getElementById("stage").getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
     await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
     return { ...o, prebuilt: true }; }],
+  // 지도 겹쳐 보기 (dc#92): 탐험한 층에서 Tab → 가 본 곳의 벽 윤곽이 반투명 선으로
+  ["walk-overlay", "디아블로처럼 화면 위에 겹쳐 보는 지도 (Tab · 휴대폰 지도 버튼)", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(12, "blog-overlay", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "gear", "lowhp", "intro"]) } });
+    await o.page.keyboard.press("Tab"); await sleep(300);
+    return { ...o, shot: "#game" }; }],
+  // 칸을 누르면 자동으로 걸어감: 탐험한 층에서 멀리 있는 바닥 칸을 클릭 → 길을 찾아 걸어감 (노란 ×가 목표)
+  ["walk-tap", "가고 싶은 칸을 누르면 거기까지 자동으로", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(12, "blog-tap", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "gear", "lowhp", "intro"]) } });
+    await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies = []; localStorage.setItem("rl_level", JSON.stringify(L)); });   // 몬스터가 보이면 멈추므로 비움
+    await o.page.reload(); await sleep(900);
+    // 지금 화면 안의 가장 먼 바닥 칸 (가 본 곳)
+    const t = await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), W = 32; let best = null;
+      for (let y = Math.max(1, L.py - 5); y <= Math.min(22, L.py + 5); y++) for (let x = Math.max(1, L.px - 7); x <= Math.min(30, L.px + 7); x++)
+        if (L.map[y * W + x] === "1" && L.seen[y * W + x] === "1" && !L.enemies.some(e => e.x === x && e.y === y)) { const d = Math.abs(x - L.px) + Math.abs(y - L.py); if (!best || d > best.d) best = { x, y, d }; }
+      return best; });
+    const frames = await o.page.evaluate(([tx, ty, ms]) => new Promise(done => {
+      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
+      const out = [], t0 = performance.now();
+      setTimeout(() => { const s = window.RLWalk.screenOf(tx, ty); for (const type of ["pointerdown", "pointerup"]) c.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: s.x, clientY: s.y, pointerType: "mouse", button: 0, isPrimary: true })); }, 500);
+      const grab = () => { cut.getContext("2d").drawImage(c, 0, 0, cut.width, cut.height); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, 60); else done(out); };
+      grab();
+    }), [t.x, t.y, 3600]);
+    return { ...o, frames, delay: 6 }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 

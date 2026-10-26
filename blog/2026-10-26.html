@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>친구들의 첫 플레이 피드백, 바로 고치기 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 바로 고쳤어요.">
+<meta name="description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-26.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
@@ -12,7 +12,7 @@
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="친구들의 첫 플레이 피드백, 바로 고치기 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 바로 고쳤어요.">
+<meta property="og:description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-26.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/newbie-intro.png">
 
@@ -72,9 +72,18 @@
 <figure><img src="images/newbie-phone.png" alt="휴대폰 던전: 왼손 방향, 오른손 포션·점프" loading="lazy"><figcaption>휴대폰 던전: 왼손 방향, 오른손 포션·점프</figcaption></figure>
 <p>&quot;글이 많다&quot;는 이야기도 있어서, 위쪽의 긴 업데이트 안내는 두 줄만 보이고 <strong>더 보기</strong>로 펼치게 했어요.</p>
 <h2>테스트로 확인한 것</h2>
-<ul><li>처음 온 사람에게 말풍선이 뜨고, 걷기를 막지 않는지</li><li>던전에 들어가면 다음 말풍선으로 바뀌고, 한 번 본 말풍선은 다시 뜨지 않는지</li><li>HP가 적으면 막대가 빨개지는지</li><li>비교 화면에 &quot;공격력 +N ▲&quot;으로 나온 만큼 실제로 끼면 공격력이 정확히 N 오르는지</li><li>휴대폰 버튼이 왼쪽 십자, 오른쪽 큰 포션 자리에 있는지</li></ul>
-<h2>다음에는</h2>
-<p>전체 맵을 늘 보고 싶다는 이야기도 있었어요. 디아블로처럼 게임 화면 위에 반투명 선으로 지도를 겹쳐 보여 주는 방식과, 휴대폰에서 화면을 밀거나 칸을 눌러 움직이는 방식을 다음에 붙여 볼 거예요. 친구들, 피드백 고마워요!</p>
+<ul><li>처음 온 사람에게 말풍선이 뜨고, 걷기를 막지 않는지</li><li>던전에 들어가면 다음 말풍선으로 바뀌고, 한 번 본 말풍선은 다시 뜨지 않는지</li><li>HP가 적으면 막대가 빨개지는지</li><li>비교 화면에 &quot;공격력 +N ▲&quot;으로 나온 만큼 실제로 끼면 공격력이 정확히 N 오르는지</li><li>휴대폰 버튼이 왼쪽 십자, 오른쪽 큰 포션 자리에 있는지</li><li>칸을 누르면 벽을 돌아서 도착하는지, 계단을 누르면 다음 층으로 가는지, 새 몬스터가 보이면 멈추는지</li></ul>
+<h2>디아블로처럼 겹쳐 보는 지도</h2>
+<p>&quot;전체 맵을 알고 싶다(왔던 곳을 또 안 가게)&quot;는 이야기도 있었어요. 디아블로2의 자동 지도처럼, 게임 화면을 가리지 않고 <strong>위에 반투명 선으로 지도를 겹쳐</strong> 보여 주게 했어요. PC는 <strong>Tab</strong>, 휴대폰은 <strong>지도</strong> 버튼으로 켜고 꺼요.</p>
+<figure><img src="images/walk-overlay.png" alt="디아블로처럼 화면 위에 겹쳐 보는 지도" loading="lazy"><figcaption>디아블로처럼 화면 위에 겹쳐 보는 지도</figcaption></figure>
+<ul><li>가 본 바닥과 벽 사이가 선으로 그려져서 어디가 막혔고 어디로 이어지는지 한눈에 보여요</li><li>지도의 내 점(흰 점과 하늘색 고리)이 화면의 내 캐릭터 위에 오도록 맞춰요</li><li>계단(&gt;), 상점, 떨어진 장비도 점으로 표시돼요</li><li>켜 둔 채로 계속 플레이할 수 있고, 다음에 들어와도 켜져 있어요</li></ul>
+<h2>밀어서 움직이고, 눌러서 걸어가기</h2>
+<p>&quot;방향키가 너무 선진적&quot;이라는 이야기에 두 가지 방법을 더했어요.</p>
+<ul><li><strong>화면 밀기(휴대폰)</strong>: 던전 화면을 밀면 그 방향으로 한 칸, 손가락을 떼지 않으면 계속 걸어요</li><li><strong>칸 누르기(휴대폰 톡 · PC 클릭)</strong>: 가 본 바닥을 누르면 길을 찾아 거기까지 <strong>자동으로 걸어가요</strong>. 누른 칸에는 노란 ×가 떠요</li></ul>
+<figure><img src="images/walk-tap.gif" alt="가고 싶은 칸을 누르면 거기까지 자동으로" loading="lazy"><figcaption>가고 싶은 칸을 누르면 거기까지 자동으로</figcaption></figure>
+<ul><li>계단을 누르면 거기까지 가서 다음 층으로 내려가요</li><li>몬스터를 누르면 따라가서 옆에서 공격해요</li></ul>
+<p>자동으로 걷다가 위험해지면 알아서 멈춰요. 맞았을 때, 새 몬스터가 보일 때, 가는 길을 몬스터가 막을 때, 다른 버튼을 누를 때예요. 처음 오는 사람에게 보이는 안내 말풍선에도 이 두 가지를 넣었어요.</p>
+<p>친구들, 피드백 고마워요!</p>
 </article>
 <nav class="pager"><span><a href="2026-10-25.html">← 몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
