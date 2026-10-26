@@ -131,6 +131,9 @@ try {
     await page.goto(ORIGIN); await sleep(700); return { ctx, page, errors }; })();
   const intro = await o.page.locator("#tip-text").innerText();
   check("intro tip mentions click-to-walk and the Tab map overlay", intro.includes("클릭하면 거기까지 자동으로 걸어가요") && intro.includes("Tab: 지나온 길"), intro);
+  await o.page.keyboard.press("Tab"); await sleep(200);
+  check("Tab in the town: focus stays on the game (doesn't jump to the menu), note that the map is for the dungeon",
+    await o.page.evaluate(() => document.activeElement === document.body) && (await o.page.locator("#log").innerText()).includes("지도 겹쳐 보기(Tab)는 던전에서 써요"));
   await o.ctx.close();
 } finally {
   await browser.close();

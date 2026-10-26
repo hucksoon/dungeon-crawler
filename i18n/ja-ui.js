@@ -1094,5 +1094,6 @@
     "🗺 지도 버튼: 지나온 길이 화면 위에 겹쳐 보여요": "🗺 マップボタン: 通った道が画面に重ねて表示されます",
     "🗺 Tab: 지나온 길이 화면 위에 겹쳐 보여요 (디아블로처럼)": "🗺 Tab: 通った道が画面に重ねて表示されます(ディアブロのように)",
     "이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br>": "移動: 矢印キー / WASD &nbsp;·&nbsp; その場で待機: . (ピリオド) &nbsp;·&nbsp; ポーション: Q (10ターンごと) &nbsp;·&nbsp; インベントリ: I &nbsp;·&nbsp; 図鑑: B &nbsp;·&nbsp; 全体マップ: M &nbsp;·&nbsp; マップ重ね表示: Tab &nbsp;·&nbsp; マスをクリック: 自動移動 &nbsp;·&nbsp; ジャンプ: Space + 方向 &nbsp;·&nbsp; ポータル (ロビーへ): P<br>",
+    "🗺 지도 겹쳐 보기(Tab)는 던전에서 써요. 던전 입구로 들어가 보세요.": "🗺 マップ重ね表示(Tab)はダンジョンで使えます。ダンジョン入口から入ってみてください。",
   } });
 })(typeof self !== "undefined" ? self : this);

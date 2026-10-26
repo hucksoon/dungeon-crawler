@@ -7535,7 +7535,10 @@
     let handled = true;
     if (k !== "tab") Walk.stop();   // 자동 걷기 중에 다른 키를 누르면 멈춤
     switch (k) {
-      case "tab":                  if (scene === "dungeon") toggleOverlay(); else handled = false; break;   // 지도 겹쳐 보기
+      // 지도 겹쳐 보기. 마을에서는 안내만 (버튼에 포커스가 있을 때는 원래처럼 다음 버튼으로)
+      case "tab":                  if (scene === "dungeon") toggleOverlay();
+                                   else if (document.activeElement === document.body || document.activeElement === canvas) log(T("🗺 지도 겹쳐 보기(Tab)는 던전에서 써요. 던전 입구로 들어가 보세요."), "info");
+                                   else handled = false; break;
       case "i":                    openInventory(); break;
       case "b":                    openDex(); break;
       case "m":                    if (scene === "dungeon") toggleMap(); else handled = false; break;

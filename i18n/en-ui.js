@@ -1094,5 +1094,6 @@
     "🗺 지도 버튼: 지나온 길이 화면 위에 겹쳐 보여요": "🗺 Map button: the paths you've explored appear over the screen",
     "🗺 Tab: 지나온 길이 화면 위에 겹쳐 보여요 (디아블로처럼)": "🗺 Tab: the paths you've explored appear over the screen (like Diablo)",
     "이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br>": "Move: Arrow keys / WASD &nbsp;·&nbsp; Wait: . (period) &nbsp;·&nbsp; Potion: Q (every 10 turns) &nbsp;·&nbsp; Inventory: I &nbsp;·&nbsp; Codex: B &nbsp;·&nbsp; Full map: M &nbsp;·&nbsp; Map overlay: Tab &nbsp;·&nbsp; Click a tile: auto-walk &nbsp;·&nbsp; Jump: Space + direction &nbsp;·&nbsp; Portal (to lobby): P<br>",
+    "🗺 지도 겹쳐 보기(Tab)는 던전에서 써요. 던전 입구로 들어가 보세요.": "🗺 The map overlay (Tab) works in the dungeon. Head through the dungeon gate.",
   } });
 })(typeof self !== "undefined" ? self : this);
