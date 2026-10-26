@@ -103,16 +103,17 @@ try {
   await P.ctx.close();
 
   // ---- 쓰러지면 로비에서 새로 시작 ----
-  const D = await open({ rl_device_id: "dier", rl_save: save(4, 210) }, { scene: "dungeon" });
+  // Lv 5 (필요 경험치 49), 경험치 20: 새로 시작하면 4를 잃고 Lv 5 그대로 (dc#95)
+  const D = await open({ rl_device_id: "dier", rl_save: JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: 36, mh: 36, a: 7, g: 210, p: 2, l: 5, x: 20, xn: 49, rid: "portal-run", k: 0, pp: 0 } }) }, { scene: "dungeon" });
   await D.page.evaluate(() => window.__t.die());
-  check("death modal with village restart", await D.page.locator("#death-modal").isVisible() && (await D.page.locator("#death-restart").innerText()) === "로비에서 새로 시작 (R)" && (await D.page.locator("#death-modal").innerText()).includes("골드와 레벨은 처음으로"));
+  check("death modal with village restart", await D.page.locator("#death-modal").isVisible() && (await D.page.locator("#death-restart").innerText()) === "로비에서 새로 시작 (R)" && (await D.page.locator("#death-modal").innerText()).includes("골드는 처음으로 돌아가고, 경험치를 4 잃어요"));
   check("old 로비로 나가기 button removed", (await D.page.locator("#death-lobby").count()) === 0);
   await D.page.keyboard.press("p");
   check("portal while dead does nothing but keep the death modal", (await st(D.page)).scene === "dungeon" && await D.page.locator("#death-modal").isVisible());
   await D.page.locator("#death-restart").click();
   s = await st(D.page);
-  check("로비에서 새로 시작 → village, gold 0, Lv 1, floor 1", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.depth === 1 && !s.gameOver && (await near(D.page)) === "start");
-  check("death restart log", (await logText(D.page)).includes("로비에서 새로 시작한다"));
+  check("로비에서 새로 시작 → village, gold 0, Lv 5 kept, floor 1", s.scene === "lobby" && s.gold === 0 && s.plvl === 5 && s.depth === 1 && !s.gameOver && (await near(D.page)) === "start");
+  check("death restart log (level kept, lost 4 XP)", (await logText(D.page)).includes("레벨과 장비는 그대로다") && (await logText(D.page)).includes("경험치 4을(를) 잃었다. (Lv 5)"));
   check("no portal floor after death", s.resume === 0);
   check("dier: no page errors", D.errors.length === 0, D.errors.join("; "));
   await D.ctx.close();

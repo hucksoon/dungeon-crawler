@@ -186,7 +186,8 @@ try {
   const carolRow = st2.rows.find(r => r.name === "car***@gmail.com");
   const p1 = (await call("GET", "player", { query: `&id=${carolRow.id}` })).body;
   const t = RL.totals([{ ...H5, enh: 2 }, { ...W5, enh: 4 }]).stats;
-  const expAtk = Math.round((3 + 6 + t.atk) * (1 + t.atkPct / 100)), expHp = Math.round((20 + 24 + t.hp) * (1 + t.hpPct / 100));
+  const lv = 6 * 2;   // Lv 7 레벨 보너스 +12% (dc#95)
+  const expAtk = Math.round((3 + 6 + t.atk) * (1 + (t.atkPct + lv) / 100)), expHp = Math.round((20 + 24 + t.hp) * (1 + (t.hpPct + lv) / 100));
   check("gear: stats computed by server match the game formula", p1.gear?.stats.atk === expAtk && p1.gear.stats.maxHp === expHp && p1.gear.stats.level === 7, JSON.stringify(p1.gear?.stats));
   check("gear: 2 items in slot order, names by server", p1.gear.items.map(i => i.slot).join(",") === "head,weapon" && p1.gear.items[1].name === RL.itemName({ ...W5, enh: 4 }));
   check("gear: rejected count = 2 (duplicate slot + fake)", p1.gear.rejected === 2);

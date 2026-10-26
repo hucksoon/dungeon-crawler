@@ -947,11 +947,12 @@ function r_kind_name(array $item): string {
 function r_player_stats(int $plvl, array $totals): array {
     $g = $totals['stats'];
     $pct = function (float $v, float $p): int { return r_round($v * (1 + $p / 100)); };
-    $maxHp = $pct(20 + 4 * ($plvl - 1) + $g['hp'], $g['hpPct']);
+    $lv = ($plvl - 1) * 2;   // 레벨 보너스: 레벨마다 최대 HP·공격력 +2% (게임 LEVEL.pct와 같게, dc#95)
+    $maxHp = $pct(20 + 4 * ($plvl - 1) + $g['hp'], $g['hpPct'] + $lv);
     return [
         'level' => $plvl,
         'maxHp' => $maxHp,
-        'atk' => $pct(3 + ($plvl - 1) + $g['atk'], $g['atkPct']),
+        'atk' => $pct(3 + ($plvl - 1) + $g['atk'], $g['atkPct'] + $lv),
         'def' => $pct($g['def'], $g['defPct']),
         'crit' => min(75, $g['crit']),
         'critMul' => 2 + $g['critDmg'] / 100,

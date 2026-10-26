@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>친구들의 첫 플레이 피드백, 바로 고치기 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요.">
+<meta name="description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요. 레벨도 오를수록 강해지고, 쓰러져도 레벨이 그대로 남게 바꿨어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-26.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
@@ -12,7 +12,7 @@
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="친구들의 첫 플레이 피드백, 바로 고치기 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요.">
+<meta property="og:description" content="처음 해 본 친구들이 &quot;뭘 해야 할지 모르겠다&quot;, &quot;몇 대 맞고 죽는지 안 보인다&quot;, &quot;장비 비교가 있었으면&quot; 했어요. 처음 하는 사람 안내, 내 HP 막대, 장비 비교와 그림, 휴대폰 버튼 배치를 고치고, 디아블로처럼 겹쳐 보는 지도와 눌러서 자동으로 걷기를 더했어요. 레벨도 오를수록 강해지고, 쓰러져도 레벨이 그대로 남게 바꿨어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-26.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/newbie-intro.png">
 
@@ -85,6 +85,12 @@
 <figure><img src="images/walk-tap.gif" alt="가고 싶은 칸을 누르면 거기까지 자동으로" loading="lazy"><figcaption>가고 싶은 칸을 누르면 거기까지 자동으로</figcaption></figure>
 <ul><li>계단을 누르면 거기까지 가서 다음 층으로 내려가요</li><li>몬스터를 누르면 따라가서 옆에서 공격해요</li></ul>
 <p>자동으로 걷다가 위험해지면 알아서 멈춰요. 맞았을 때, 새 몬스터가 보일 때, 가는 길을 몬스터가 막을 때, 다른 버튼을 누를 때예요. 처음 오는 사람에게 보이는 안내 말풍선에도 이 두 가지를 넣었어요.</p>
+<h2>레벨이 오를수록 강해지게, 쓰러져도 레벨은 그대로</h2>
+<p>&quot;레벨이 오르면 뭐가 좋아져?&quot;라는 질문을 받고 확인해 보니, 레벨마다 최대 HP +4·공격력 +1뿐이었어요. 깊은 층에서는 장비 능력치에 비해 너무 작아서 거의 느껴지지 않았고, 쓰러져서 새로 시작하면 Lv 1로 돌아가 쌓이지도 않았어요.</p>
+<p>그래서 두 가지를 바꿨어요.</p>
+<ul><li><strong>레벨 보너스</strong>: 레벨마다 최대 HP·공격력 <strong>+2%</strong>가 붙어요. Lv 11이면 +20%, Lv 21이면 +40%예요. 위 능력치 줄의 레벨 옆에 지금 보너스가 보여요</li><li><strong>쓰러지면 경험치만 조금</strong>: 로비에서 새로 시작해도 레벨은 그대로예요. 대신 지금 레벨에 필요한 경험치의 <strong>10%</strong>를 잃어요. 경험치가 모자라면 레벨이 하나 내려갈 수 있어요</li></ul>
+<figure><img src="images/level-death.png" alt="쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요" loading="lazy"><figcaption>쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요</figcaption></figure>
+<p>부활하면 경험치를 잃지 않아요. 골드는 전처럼 처음으로 돌아가고, 장비는 그대로예요. 이제 레벨이 &quot;쌓이는&quot; 성장이 됐어요.</p>
 <p>친구들, 피드백 고마워요!</p>
 </article>
 <nav class="pager"><span><a href="2026-10-25.html">← 몬스터가 움직이고, 기사가 장비를 입고, 마법이 터지다</a></span><span></span></nav>
