@@ -29,7 +29,10 @@ async function open(storage = {}, { scene = null, opts = { viewport: { width: 11
 const find = (pred, tag) => { for (let n = 0; n < 50000; n++) { const it = I.generate(`${tag}${n}|shop|d20|s${n % 6}`, "golden", 20); if (pred(it)) return it; } throw new Error("no item " + tag); };
 const W = 32, H = 24;
 const floor = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x === 0 || y === 0 || x === W - 1 || y === H - 1 ? 0 : 1)));
-const level = (items = []) => { const m = floor.map(r => r.slice()); m[20][28] = 2; return JSON.stringify({ rid: "nb", d: 3, turn: 1, map: m.map(r => r.join("")).join(""), seen: "1".repeat(W * H), px: 10, py: 12, shop: null, enemies: [], items }); };
+const level = (items = [], enemies = [], stairs = [28, 20]) => { const m = floor.map(r => r.slice()); m[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid: "nb", d: 3, turn: 1, map: m.map(r => r.join("")).join(""), seen: "1".repeat(W * H), px: 10, py: 12, shop: null, enemies, items }); };
+const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
+const rat = (x, y) => ({ ...M.makeMonster(M.MONSTERS.find(m => m.id === "rat"), "normal", 3), x, y, hp: 1, maxHp: 1, atk: 0 });
+const tipText = (page) => page.locator("#tip-text").innerText();
 const save = (d, hp, extra = {}) => JSON.stringify({ v: 1, season: 4, best: d, ...extra, run: { d, hp, mh: 300, a: 20, g: 100, p: 1, l: 5, x: 0, xn: 100, rid: "nb", k: 0, pp: 0 } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])); for (const it of its) e[it.slot === "ring" ? "ring1" : it.slot] = it; return e; };
 const dagger = find(x => x.slot === "weapon" && x.type === "dagger" && x.rarity === "rare", "nd");
@@ -46,15 +49,42 @@ try {
   check("new player: intro tip in the town (how to play in 4 lines)", await tip().isVisible() && (await o.page.locator("#tip-text").innerText()).includes("처음 오셨나요") && (await o.page.locator("#tip-text").innerText()).includes("던전 입구"));
   check("intro tip doesn't block: no modal open, walking still works", await o.page.evaluate(() => !document.querySelector(".overlay:not([hidden])")) && await (async () => { const x0 = (await o.page.evaluate(() => window.RLTownPos().x)); await o.page.keyboard.down("ArrowRight"); await sleep(300); await o.page.keyboard.up("ArrowRight"); return (await o.page.evaluate(() => window.RLTownPos().x)) > x0 + 1; })());
   await o.page.screenshot({ path: path.join(SHOTS, "newbie-intro.png") });
+  await o.page.reload(); await sleep(700);
+  check("tutorial not done yet: the intro is still there after a reload", await tip().isVisible() && (await tipText(o.page)).includes("☐ ① 마을 가운데 던전 입구"));
   await goDoor(o.page, "start");
-  check("entering the dungeon: intro goes away, dungeon tip (attack by moving, stairs, HP bar)", (await o.page.locator("#tip-text").innerText()).includes("몬스터 쪽으로 이동하면 공격") && (await o.page.locator("#tip-text").innerText()).includes("머리 위 막대가 HP"));
+  let tt = await tipText(o.page);
+  check("entering the dungeon completes the intro; dungeon tutorial lists 4 steps to try (☐) and the HP bar",
+    !tt.includes("처음 오셨나요") && tt.includes("던전에서 해 볼 것") && (tt.match(/☐/g) || []).length === 4 && tt.includes("몬스터 쪽으로 이동해서 공격하기") && tt.includes("머리 위 막대가 HP"), tt);
+  await sleep(11000);
+  check("the tutorial does not disappear by itself (still there after 11 s)", await tip().isVisible() && (await tipText(o.page)).includes("던전에서 해 볼 것"));
   await o.page.locator("#tip-close").click();
-  check("× closes the tip", await tip().isHidden());
+  check("건너뛰기 × skips it", await tip().isHidden());
   check("HP bar above the player: full = green", (await px(o.page, [0x4f, 0xd1, 0x6a])) > 20);
   await o.page.keyboard.press("p"); await sleep(300);
   await o.page.reload(); await sleep(700);
-  check("tips show once per device (not again after reload)", await tip().isHidden());
+  check("a skipped tutorial doesn't come back after reload", await tip().isHidden());
   check("new player: no page errors", o.errors.length === 0, o.errors.join("; "));
+  await o.ctx.close();
+
+  // ---- 던전 튜토리얼: 해 본 단계에 ✓, 새로고침해도 이어서, 다 하면 "잘했어요!" 뒤에 닫힘 ----
+  o = await open({ rl_save: save(3, 300), rl_level: level([], [rat(11, 12)], [13, 12]), ["rl_inv:g:" + DEV]: JSON.stringify({ bag: [], equip: eqOf(dagger), log: [], stones: 0 }), rl_tips: JSON.stringify(["gear"]) }, { scene: "dungeon" });   // 쥐가 장비를 떨어뜨려도 장비 안내는 이미 본 걸로
+  check("dungeon tutorial: 4 steps to do", ((await tipText(o.page)).match(/☐/g) || []).length === 4, await tipText(o.page));
+  await o.page.keyboard.press("ArrowRight"); await sleep(300);   // 쥐 공격
+  check("attacking ticks the attack step (✓), the others stay", (await tipText(o.page)).includes("✓ 몬스터 쪽으로 이동해서 공격하기") && ((await tipText(o.page)).match(/☐/g) || []).length === 3);
+  await o.page.reload(); await sleep(700);
+  check("after a reload the tutorial continues with the ✓ kept", await o.page.locator("#tip").isVisible() && (await tipText(o.page)).includes("✓ 몬스터 쪽으로 이동해서 공격하기"));
+  await o.page.keyboard.press("Tab"); await sleep(200);
+  check("Tab (map overlay) ticks the map step", (await tipText(o.page)).includes("✓ Tab으로 지나온 길 겹쳐 보기"));
+  await o.page.keyboard.press("Tab"); await sleep(100);
+  const sp = await o.page.evaluate(() => window.RLWalk.screenOf(12, 12)); await o.page.mouse.click(sp.x, sp.y); await sleep(600);
+  check("clicking a tile to walk ticks the walk step", (await tipText(o.page)).includes("✓ 가고 싶은 칸을 클릭해 자동으로 걸어가기") && ((await tipText(o.page)).match(/☐/g) || []).length === 1, await tipText(o.page));
+  await o.page.keyboard.press("ArrowRight"); await sleep(400);   // 계단 (13,12)
+  check("stairs: last step done → \"잘했어요!\"", (await o.page.locator("#depth").innerText()) === "4" && (await tipText(o.page)).includes("잘했어요"), await tipText(o.page));
+  await sleep(1700);
+  check("then the tutorial closes for good", await o.page.locator("#tip").isHidden());
+  await o.page.reload(); await sleep(700);
+  check("finished tutorial stays closed after reload", await o.page.locator("#tip").isHidden());
+  check("dungeon tutorial: no page errors", o.errors.length === 0, o.errors.join("; "));
   await o.ctx.close();
 
   // ---- HP가 적을 때: 빨간 막대, HP 숫자 빨강, 처음 한 번 말풍선 ----
@@ -64,7 +94,7 @@ try {
   check("low HP: red HP bar above the player", (await px(o.page, [0xff, 0x4a, 0x3a])) + (await px(o.page, [0xff, 0xb0, 0xa4])) > 20);
   check("low HP: tip says potion or portal", (await o.page.locator("#tip-text").innerText()).includes("HP가 얼마 안 남았어요"), await o.page.locator("#tip-text").innerText());
   await o.page.keyboard.press("q"); await sleep(250);
-  check("after a potion: HP number back to normal", !(await o.page.locator("#hp").evaluate(e => e.classList.contains("low"))));
+  check("after a potion: HP number back to normal, the HP tutorial says well done", !(await o.page.locator("#hp").evaluate(e => e.classList.contains("low"))) && (await tipText(o.page)).includes("잘했어요"));
   check("low HP: no page errors", o.errors.length === 0, o.errors.join("; "));
   await o.ctx.close();
 
@@ -72,6 +102,13 @@ try {
   o = await open({ rl_save: save(3, 300), rl_level: level([{ x: 11, y: 12, type: "gear", item: strong }]), ["rl_inv:g:" + DEV]: JSON.stringify({ bag: [], equip: eqOf(dagger), log: [], stones: 0 }), rl_tips: JSON.stringify(["dungeon"]) }, { scene: "dungeon" });
   await o.page.keyboard.press("ArrowRight"); await sleep(300);
   check("first gear pickup: tip about ▲ in the inventory", (await o.page.locator("#tip-text").innerText()).includes("장비를 주웠어요"), await o.page.locator("#tip-text").innerText());
+  await o.page.keyboard.press("i"); await sleep(200); await o.page.keyboard.press("i"); await sleep(200);
+  check("opening the inventory ticks a step; the gear tutorial stays until something is equipped", await o.page.locator("#tip").isVisible() && (await tipText(o.page)).includes("✓ 인벤토리 열기 (I)") && (await tipText(o.page)).includes("☐ ▲ 표시가 붙은 장비"));
+  await o.page.keyboard.press("i"); await sleep(200);
+  await o.page.locator(".bag-item").first().click(); await sleep(150);
+  await o.page.locator("#inv-detail button.primary", { hasText: "장착" }).click(); await sleep(150);
+  await o.page.keyboard.press("i"); await sleep(1800);
+  check("equipping finishes the gear tutorial", await o.page.locator("#tip").isHidden());
   await o.ctx.close();
 
   // ---- 장비 비교 · 장비 그림 ----
