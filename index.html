@@ -66,6 +66,7 @@
   .hp { color: #ff6b6b; }
   .gold { color: #ffcf5c; }
   .lvl { color: #6bd3ff; }
+  #lvb { color: #9fe0ff; font-size: 0.85em; }
   /* 캔버스 위에 피해 숫자를 띄우는 층 (캔버스 크기에 맞춰 늘고 줄어듦) */
   #stage { position: relative; max-width: 100%; line-height: 0; }
   /* 처음 하는 사람 안내 말풍선 (dc#91): 게임 위에 떠 있지만 막지 않음 (키·버튼은 그대로) */
@@ -593,7 +594,7 @@
     <span data-t>공격 <b id="atk">--</b></span>
     <span data-t>방어 <b id="def">0</b></span>
     <span class="gold" data-t>골드 <b id="gold">0</b></span>
-    <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)</span>
+    <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)<small id="lvb"></small></span>
     <span id="status" hidden></span>
   </div>
   <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><button id="tip-close" type="button" data-t>건너뛰기 ×</button></div></div>
@@ -1674,14 +1675,33 @@
   // 유니크: 바닥에서 금빛으로 크게 빛남 (이름은 금색 + .unique-glow)
   const isUnique = (item) => item?.rarity === "unique";
 
+  // 레벨 (dc#95): 레벨마다 최대 HP +4·공격력 +1에 더해 최대 HP·공격력 +2%.
+  // 쓰러진 뒤 로비에서 새로 시작하면 지금 레벨 필요 경험치의 10%를 잃음 (모자라면 레벨이 내려감)
+  const LEVEL = { pct: 2, deathXp: 0.1 };
+  const xpFor = (lvl) => { let n = 10; for (let i = 1; i < lvl; i++) n = Math.floor(n * 1.5); return n; };
+  const levelPct = () => ((player.plvl || 1) - 1) * LEVEL.pct;
+  function loseDeathXp() {
+    const loss = Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp)), before = player.plvl;
+    player.xp -= loss;
+    while (player.xp < 0 && player.plvl > 1) {
+      player.plvl--;
+      player.maxHp -= 4;
+      player.atk -= 1;
+      player.xpNext = xpFor(player.plvl);
+      player.xp += player.xpNext;
+    }
+    player.xp = Math.max(0, player.xp);
+    return { loss, down: before - player.plvl };
+  }
+
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과. TT: 다른 장비 조합의 합계 (장비 비교, dc#91)
   function stats(TT = Inv.totals()) {
     const g = TT.stats;
     const pct = (v, p) => Math.round(v * (1 + p / 100));
-    const maxHp = pct(player.maxHp + g.hp, g.hpPct);
+    const maxHp = pct(player.maxHp + g.hp, g.hpPct + levelPct());
     return {
       maxHp,
-      atk: pct(player.atk + g.atk, g.atkPct + (player.reap || 0)),   // 사자의 낫: 처치할 때마다 +%
+      atk: pct(player.atk + g.atk, g.atkPct + (player.reap || 0) + levelPct()),   // 사자의 낫: 처치할 때마다 +%
       def: Math.round(pct(g.def, g.defPct + (player.iron || 0)) * (1 - (player.shred || 0) / 100)),   // 쇠비늘 갑옷 +%, 불가사리에게 갉아먹힌 만큼 −%
       crit: Math.min(75, g.crit),
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
@@ -2400,7 +2420,7 @@
       player.maxHp += 4;
       player.atk += 1;
       player.hp = stats().maxHp;
-      log(T("레벨 업! Lv {0} — 최대 HP/공격력 증가, HP 회복!", player.plvl), "good");
+      log(T("레벨 업! Lv {0} — 최대 HP/공격력 증가 (레벨 보너스 +{1}%), HP 회복!", player.plvl, levelPct()), "good");
     }
   }
 
@@ -3354,7 +3374,7 @@
     const msg = {
       portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
       clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
-      death: [T("로비에서 새로 시작한다. 골드와 레벨은 처음으로 돌아갔고, 장비는 그대로다."), "info"],
+      death: [T("로비에서 새로 시작한다. 골드는 처음으로 돌아갔고, 레벨과 장비는 그대로다."), "info"],
       start: [(skipFloor() >= 2 ? T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}", skipFloor(), backTo())
         : T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}", backTo())), "info"],
     }[from];
@@ -5347,6 +5367,9 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
+    const lvb = document.getElementById("lvb");   // 레벨 보너스 (dc#95)
+    lvb.textContent = levelPct() ? ` +${levelPct()}%` : "";
+    lvb.parentElement.title = T("레벨 보너스: 최대 HP·공격력 +{0}%", levelPct());
     document.getElementById("zone").textContent = inHell() ? T("헬 ") : inNM() ? T("나이트메어 ") : goldNM() ? T("골드 던전 · 나이트메어 ") : inGold() ? T("골드 던전 ") : "";
     document.getElementById("best").textContent = inHell() ? (hellCleared ? T("{0} 완료", hellBest) : (hellBest || "-")) : inNM() ? (nmCleared ? T("{0} 완료", nmBest) : (nmBest || "-"))
       : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
@@ -5365,7 +5388,8 @@
   }
 
   // ---- 초기화 ----
-  function newGame() {
+  // keep: 이어 가는 레벨 (쓰러진 뒤 새로 시작, dc#95). 없으면 Lv 1부터
+  function newGame(keep) {
     depth = 1;
     gameOver = false;
     player = {
@@ -5375,6 +5399,7 @@
       gold: 0,
       potCd: 0, jumpCd: 0,
       plvl: 1, xp: 0, xpNext: 10,
+      ...(keep ? { plvl: keep.plvl, xp: keep.xp, xpNext: keep.xpNext, maxHp: keep.maxHp, atk: keep.atk } : {}),
       rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false, zone: "normal",
     };
     shopBought = [];
@@ -7440,7 +7465,7 @@
 
   async function openDeath() {
     deathModal.hidden = false;
-    document.getElementById("death-sub").textContent = T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드와 레벨은 처음으로 돌아가요. 장비는 그대로 남아요.", floorName());
+    document.getElementById("death-sub").textContent = T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드는 처음으로 돌아가고, 경험치를 {1} 잃어요 (모자라면 레벨이 내려가요). 장비는 그대로 남아요.", floorName(), Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp)));
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
     // 운영자 기기: 되살아나 쓰러진 층으로 바로 (테스트용)
@@ -7551,10 +7576,12 @@
     saveGame(true);
   }
 
-  // 쓰러진 화면의 "로비에서 새로 시작": 골드·레벨을 처음으로 되돌리고 로비로. 1층은 입구 왼쪽 문으로
+  // 쓰러진 화면의 "로비에서 새로 시작": 골드는 처음으로, 레벨은 경험치 10%를 잃고 이어 감 (dc#95). 1층은 입구 왼쪽 문으로
   function startOver() {
-    newGame();
+    const { loss, down } = loseDeathXp();
+    newGame({ plvl: player.plvl, xp: player.xp, xpNext: player.xpNext, maxHp: player.maxHp, atk: player.atk });
     enterLobby({ from: "death" });
+    log(down ? T("경험치 {0}을(를) 잃고 레벨이 내려갔다. Lv {1}", loss, player.plvl) : T("경험치 {0}을(를) 잃었다. (Lv {1})", loss, player.plvl), "bad");
   }
   document.getElementById("death-restart").addEventListener("click", startOver);
 

@@ -41,6 +41,10 @@ for (let i = 0; i < sets.length; i++) {
   const eq = sets[i].items.map(js), t = I2.totals(eq);
   if (JSON.stringify(t.stats) !== JSON.stringify(php.tot[i].t.stats)) { if (bad++ < 5) console.log("DIFF totals", i, JSON.stringify(t.stats), JSON.stringify(php.tot[i].t.stats)); }
   if (JSON.stringify(t.sets.map(s => [s.name, s.count, s.full, s.bonuses.map(b => b.on)])) !== JSON.stringify(php.tot[i].t.sets.map(s => [s.name, s.count, s.full, s.bonuses.map(b => b.on)]))) { if (bad++ < 5) console.log("DIFF sets", i); }
+  // 랭킹 스냅샷 능력치 = 게임 stats(): 레벨마다 +4 HP·+1 공격력, 그리고 레벨 보너스 +2% (dc#95)
+  const L = sets[i].plvl, g = t.stats, lv = (L - 1) * 2, pct = (v, p) => Math.round(v * (1 + p / 100));
+  const want = { maxHp: pct(20 + 4 * (L - 1) + g.hp, g.hpPct + lv), atk: pct(3 + (L - 1) + g.atk, g.atkPct + lv) }, ps = php.tot[i].ps;
+  if (ps.maxHp !== want.maxHp || ps.atk !== want.atk) { if (bad++ < 5) console.log("DIFF player stats", i, L, JSON.stringify(want), ps.maxHp, ps.atk); }
 }
 const anc = php.items.filter(x => x.item.ancient).length, rar = {}, slots = {};
 for (const x of php.items) slots[x.item.slot + (x.item.set ? ':' + x.item.set : '')] = (slots[x.item.slot + (x.item.set ? ':' + x.item.set : '')] || 0) + 1;
