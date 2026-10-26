@@ -234,6 +234,51 @@ const SCENES = [
     const top = await o.page.evaluate(() => (document.getElementById("stage") || document.getElementById("game")).getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
     await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
     return { ...o, prebuilt: true }; }],
+  // 친구 피드백 반영 (dc#91): 처음 온 사람 안내 말풍선 (마을)
+  ["newbie-intro", "처음 온 사람에게 보이는 안내 말풍선", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: {} });
+    await sleep(500);
+    return { ...o, shot: "#stage" }; }],
+  // 장비 비교: 가방의 더 좋은 무기를 고르면 지금 낀 것과 비교 (▲ 초록 · ▼ 빨강), 가방·장착 칸에 장비 그림
+  ["newbie-compare", "장비 비교와 장비 그림", async () => {
+    const eq = gear(25, "golden", "blogcmp0"), better = gear(45, "golden", "blogcmp1").filter(it => ["weapon", "head", "chest"].includes(it.slot));
+    const o = await open({ seed: { rl_save: save(30, "blog-cmp"), "rl_inv:g:DEV": inv(eq, [...better, ...gear(20, "drop", "blogcmp2").slice(0, 4)]) } });
+    await press(o.page, ["i"]); await sleep(300);
+    await o.page.locator(".bag-item:has(.better)").first().click(); await sleep(300);   // ▲가 붙은(끼면 더 강한) 아이템
+    return { ...o, shot: "#inv-modal .modal" }; }],
+  // 휴대폰 던전: 왼손 십자, 오른손 큰 포션(HP가 적으면 빨갛게 깜빡임)·점프, 위 줄 메뉴. 머리 위 HP 막대
+  ["newbie-phone", "휴대폰 던전: 왼손 방향, 오른손 포션·점프", async () => {
+    const o = await explored({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(8, "blog-nbphone", { hp: 200, mh: 1200 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "lowhp", "gear", "intro"]) } });
+    await sleep(500);
+    await o.page.evaluate(() => { const g = document.getElementById("stage"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
+    await sleep(300);
+    const shotPath = path.join(OUT, "newbie-phone.png");
+    const top = await o.page.evaluate(() => document.getElementById("stage").getBoundingClientRect().top), pad = await o.page.evaluate(() => document.getElementById("touch-pad").getBoundingClientRect().bottom);
+    await o.page.screenshot({ path: shotPath, clip: { x: 0, y: Math.max(0, top - 6), width: 390, height: Math.min(844, pad + 8) - Math.max(0, top - 6) } });
+    return { ...o, prebuilt: true }; }],
+  // 지도 겹쳐 보기 (dc#92): 탐험한 층에서 Tab → 가 본 곳의 벽 윤곽이 반투명 선으로
+  ["walk-overlay", "디아블로처럼 화면 위에 겹쳐 보는 지도 (Tab · 휴대폰 지도 버튼)", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(12, "blog-overlay", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "gear", "lowhp", "intro"]) } });
+    await o.page.keyboard.press("Tab"); await sleep(300);
+    return { ...o, shot: "#game" }; }],
+  // 칸을 누르면 자동으로 걸어감: 탐험한 층에서 멀리 있는 바닥 칸을 클릭 → 길을 찾아 걸어감 (노란 ×가 목표)
+  ["walk-tap", "가고 싶은 칸을 누르면 거기까지 자동으로", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(12, "blog-tap", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40), rl_tips: JSON.stringify(["dungeon", "gear", "lowhp", "intro"]) } });
+    await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); L.enemies = []; localStorage.setItem("rl_level", JSON.stringify(L)); });   // 몬스터가 보이면 멈추므로 비움
+    await o.page.reload(); await sleep(900);
+    // 지금 화면 안의 가장 먼 바닥 칸 (가 본 곳)
+    const t = await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), W = 32; let best = null;
+      for (let y = Math.max(1, L.py - 5); y <= Math.min(22, L.py + 5); y++) for (let x = Math.max(1, L.px - 7); x <= Math.min(30, L.px + 7); x++)
+        if (L.map[y * W + x] === "1" && L.seen[y * W + x] === "1" && !L.enemies.some(e => e.x === x && e.y === y)) { const d = Math.abs(x - L.px) + Math.abs(y - L.py); if (!best || d > best.d) best = { x, y, d }; }
+      return best; });
+    const frames = await o.page.evaluate(([tx, ty, ms]) => new Promise(done => {
+      const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
+      const out = [], t0 = performance.now();
+      setTimeout(() => { const s = window.RLWalk.screenOf(tx, ty); for (const type of ["pointerdown", "pointerup"]) c.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: s.x, clientY: s.y, pointerType: "mouse", button: 0, isPrimary: true })); }, 500);
+      const grab = () => { cut.getContext("2d").drawImage(c, 0, 0, cut.width, cut.height); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, 60); else done(out); };
+      grab();
+    }), [t.x, t.y, 3600]);
+    return { ...o, frames, delay: 6 }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 

@@ -53,7 +53,7 @@ try {
     localStorage.setItem("rl_device_id", "anc-dev-0001"); localStorage.setItem("rl_inv:g:anc-dev-0001", inv); }, [JSON.stringify({ bag: [ancItem, oldV4], equip: eq, log: [], stones: 0 })]);
   await page.goto(ORIGIN); await sleep(400);
   await page.keyboard.press("i"); await sleep(200);
-  check("game: ancient item listed first with 고대 name and highlight", (await page.locator(".bag-item").first().getAttribute("class")).includes("ancient") && (await page.locator(".bag-item").first().innerText()).startsWith("고대 "));
+  check("game: ancient item listed first with 고대 name and highlight", (await page.locator(".bag-item").first().getAttribute("class")).includes("ancient") && (await page.locator(".bag-item").first().innerText()).replace(/^[▲▼] /, "").startsWith("고대 "));
   await page.locator(".bag-item").first().click(); await sleep(100);
   const det = await page.locator("#inv-detail").innerText();
   check("game: detail says all stats max, every line ▲", det.includes("모든 능력치가 최대치") && (await page.locator("#inv-detail .stat-line.max").count()) === ancItem.main.length + ancItem.lines.length + (ancItem.parry != null ? 1 : 0), det);

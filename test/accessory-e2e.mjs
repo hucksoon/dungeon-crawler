@@ -114,7 +114,7 @@ try {
   check("equip: neck → 목걸이, rings fill 반지 1 then 반지 2", inv.equip.neck?.id === neck.id && inv.equip.ring1?.id === r1.id && inv.equip.ring2?.id === r2.id, JSON.stringify(Object.fromEntries(Object.entries(inv.equip).map(([k, v]) => [k, v?.id]))));
   await pickB(r3);
   const det = await page.locator("#inv-detail").innerText();
-  check("third ring: choose 반지 1 / 반지 2 to swap, both shown as worn", det.includes("반지 1 자리에 끼기") && det.includes("반지 2 자리에 끼기") && det.includes("장착 중 (반지 1)") && det.includes("장착 중 (반지 2)"), det.slice(0, 400));
+  check("third ring: choose 반지 1 / 반지 2 to swap, both shown as worn", det.includes("반지 1 자리에 끼기") && det.includes("반지 2 자리에 끼기") && det.includes("지금 낀 것 (반지 1)") && det.includes("지금 낀 것 (반지 2)") && det.includes("지금 낀 것과 비교) · 반지 1"), det.slice(0, 400));
   await page.locator("#inv-detail button", { hasText: "반지 2 자리에 끼기" }).click(); await sleep(150);
   inv = await page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k => k.startsWith("rl_inv:")))));
   check("swap into 반지 2: r2 back to bag, r1 stays", inv.equip.ring2?.id === r3.id && inv.equip.ring1?.id === r1.id && inv.bag.some(x => x.id === r2.id));
