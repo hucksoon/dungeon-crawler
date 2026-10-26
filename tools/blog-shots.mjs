@@ -279,6 +279,11 @@ const SCENES = [
       grab();
     }), [t.x, t.y, 3600]);
     return { ...o, frames, delay: 6 }; }],
+  // 튜토리얼 (dc#94): 해 본 단계에 ✓, 다 할 때까지 남아 있음
+  ["tutorial-steps", "튜토리얼: 해 본 단계에 ✓, 다 해야 닫혀요", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-tut", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)), rl_tut_on: JSON.stringify(["dungeon"]), rl_tut: JSON.stringify(["enter", "attack", "map"]), rl_tips: JSON.stringify(["intro"]) } });
+    await sleep(300);
+    return { ...o, shot: "#stage" }; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
 ];
 
