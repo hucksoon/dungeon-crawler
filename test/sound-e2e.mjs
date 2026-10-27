@@ -97,6 +97,12 @@ try {
   // ---- 장면마다 곡: 마을 · 나이트메어 · 헬 · 골드 ----
   ({ ctx, page, errors } = await open({ sv: save(12), lv: null, scene: "lobby" }));
   check("town → town music", (await st(page)).track === "town" && (await st(page)).scene === "lobby");
+  // 마을에서 점프: 마리오처럼 '뿅', 공중에서 한 번 더 = 더블 점프 소리 (dc#100)
+  await page.keyboard.down(" "); await sleep(120); await page.keyboard.up(" "); await sleep(200);
+  check("town jump → jump sound", (await st(page)).recent.includes("jump"), (await st(page)).recent.join());
+  await page.keyboard.down(" "); await sleep(120); await page.keyboard.up(" "); await sleep(160);
+  await page.keyboard.down(" "); await sleep(120); await page.keyboard.up(" "); await sleep(200);
+  check("double jump in the air → jump2 sound", (await st(page)).recent.includes("jump2"), (await st(page)).recent.join());
   await ctx.close();
   for (const [z, want] of [["nm", "nightmare"], ["hell", "hell"], ["gold", "gold"]]) {
     const d = z === "gold" ? 75 : 3;

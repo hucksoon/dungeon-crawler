@@ -42,6 +42,8 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
       // stale: 예전(점프 탑) jump.js가 캐시에 남은 경우 — hunt1 맵이 없음
       body = src.replace(from, map === "stale" ? 'tower1: { name: "t", rows: HUNT1 }' : `hunt1: { name: "t", depth: 1, staff: true, rows: ${JSON.stringify(MAPS[map])} }`);
     }
+    // 점프 던전 1층은 dc#100부터 마을 문이 없음 (운영자 문은 헬 50층만) → 시험에서는 바로 들어감
+    if (f === "index.html") body = body.toString().replace("  // ---- 시작 ----", "  window.__tower = (id) => Tower.enter(id); window.__staff = () => isStaff();\n  // ---- 시작 ----");
     r.fulfill({ contentType: { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp" }[path.extname(f)] || "text/html", body }); });
   await ctx.route(API + "**", r => { const route = new URL(r.request().url()).searchParams.get("r");
     if (route === "lobby") return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ me: { id: "g-staff", staff: true, unlimited: true }, players: [], mail: 0 }) });
@@ -58,8 +60,13 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
 }
 const logs = (page) => page.evaluate(() => window.__log.join("\n"));
 const press = async (page, key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await sleep(70); } };
-// 던전에서 포탈(P) → 마을, 점프 던전 문까지 걸어가 ↑
-const walkIn = async (page) => { await press(page, "p"); await sleep(300); await goDoor(page, "jumptower"); await sleep(100); };
+// 던전에서 포탈(P) → 마을 → 점프 던전 1층 (문이 없어져서 바로, dc#100)
+const walkIn = async (page) => {
+  await press(page, "p"); await sleep(300);
+  // 운영자인지는 마을의 로비 응답을 받은 뒤에 앎: 받은 뒤 잠깐 (예전에 문까지 걸어가던 시간) 기다렸다가 들어감
+  await page.waitForFunction(() => window.__staff(), null, { timeout: 8000 }).catch(() => {});
+  await page.evaluate(() => window.__tower("hunt1")); await sleep(100);
+};
 // 살색(밝은 쪽) 픽셀 무게중심 (화면 칸 = 캔버스 64px: 20 × 1.6 × 2배). 나무 발판의 갈색은 안 셈
 const skin = (page) => page.evaluate(() => {
   const c = document.getElementById("game"), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
@@ -144,9 +151,12 @@ try {
   ({ ctx, page, errors } = await open({ map: "fight" }));
   const before = await page.evaluate(() => localStorage.getItem("rl_save"));
   await walkIn(page);
-  await page.keyboard.down("ArrowRight"); await sleep(5000); await page.keyboard.up("ArrowRight"); await sleep(300);
+  // 오른쪽으로 달리다가 몬스터를 지나치면 등 뒤라 안 맞음 → 한 번 돌아봤다가 다시 오른쪽(포탈)으로
+  await page.keyboard.down("ArrowRight"); await sleep(1500); await page.keyboard.up("ArrowRight");
+  await page.keyboard.down("ArrowLeft"); await sleep(600); await page.keyboard.up("ArrowLeft");
+  await page.keyboard.down("ArrowRight"); await sleep(3000); await page.keyboard.up("ArrowRight"); await sleep(300);
   let L = await logs(page);
-  check("touching the monster fights it automatically (kill log, 0 left)", /처치! \(남은 몬스터 0마리\)/.test(L), L.slice(-300));
+  check("touching the monster fights it automatically (kill log, 0 left)", /처치! \(남은 몬스터 0마리\)/.test(L), L.slice(-300).replace(/\n/g, " | "));
   check("all monsters down → the portal opens", L.includes("몬스터를 모두 잡았다! 포탈이 열렸다."));
   const m = L.match(/점프 던전 1층 클리어! ([\d.]+)초 \(새 최고 기록!\)/);
   const best = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.startsWith("rl_hunt_best:")));
@@ -180,13 +190,12 @@ try {
   check("knock-out: no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
-  // ---- 운영자: 마을 점프 던전 건물 오른쪽에 헬 50층 문. 다른 사람에게는 문이 없음 ----
+  // ---- 운영자: 마을 왼쪽 끝 한 칸 문 = 헬 50층 (dc#100). 다른 사람에게는 문이 없음 ----
   ({ ctx, page, errors } = await open({ staff: false }));
   await press(page, "p"); await sleep(300);
-  // 점프 던전도 운영자만 (dc#96): 다른 사람은 건물·문이 없고, 그 자리에서 ↑ 해도 안 들어감
-  check("not staff: the jump dungeon door is hidden", await page.evaluate(() => { const d = window.RLJump.TOWN.doors.find(q => q.id === "jumptower"); return d.staff === true; }));
-  await goDoor(page, "jumptower"); await sleep(100);
-  check("not staff: ↑ where the jump dungeon was does nothing", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("점프 던전 1층") && await page.evaluate(() => window.RLTownPos().near === null));
+  // 점프 던전 건물·1층 문은 없음 (dc#100). 운영자 문은 왼쪽 끝 한 칸 헬 50층 하나
+  check("town: no jump dungeon building or floor-1 door; one staff door (hell 50) at the far left", await page.evaluate(() => { const T = window.RLJump.TOWN, h = T.doors.find(q => q.id === "towerHell");
+    return !T.buildings.some(b => b.id === "jumptower") && !T.doors.some(q => q.id === "jumptower") && h.staff === true && h.x < 2 && Math.min(...T.doors.filter(q => q !== h).map(q => q.x)) > 3; }));
   await page.screenshot({ path: path.join(OUT, "tower-hidden.png") });
   await goDoor(page, "towerHell"); await sleep(100);
   check("not staff: no hell-50 door there (stays in the lobby)", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("헬 50층") && await page.evaluate(() => window.RLTownPos().near === null));
@@ -233,7 +242,10 @@ try {
     JB.w >= 100 && JB.h >= 100 && JB.r > W * 0.75 && JB.x > BR.r + 20 && INV.b <= BL.y + 1, JSON.stringify({ JB, INV, BL, W }));
   check("phone: jump button says 점프, buttons fit on screen", (await page.locator("#tp-jump").innerText()) === "점프" && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll("#touch-pad button")].every(b => !b.offsetParent || b.getBoundingClientRect().right <= innerWidth)));
   const right = page.locator('#touch-pad [data-dir="1,0"]');
-  await right.dispatchEvent("pointerdown"); await sleep(5000); await right.dispatchEvent("pointerup"); await sleep(200);
+  const left = page.locator('#touch-pad [data-dir="-1,0"]');   // 몬스터를 지나치면 한 번 돌아봄 (위 싸움과 같음)
+  await right.dispatchEvent("pointerdown"); await sleep(1500); await right.dispatchEvent("pointerup");
+  await left.dispatchEvent("pointerdown"); await sleep(600); await left.dispatchEvent("pointerup");
+  await right.dispatchEvent("pointerdown"); await sleep(3000); await right.dispatchEvent("pointerup"); await sleep(200);
   check("phone: holding ▶ fights through and clears", (await logs(page)).includes("점프 던전 1층 클리어!"));
   await page.locator("#tp-jump").dispatchEvent("pointerdown"); await page.locator("#tp-jump").dispatchEvent("pointerup"); await sleep(150);
   const sk = await skin(page);

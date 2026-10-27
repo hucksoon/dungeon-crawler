@@ -16,6 +16,8 @@ async function stepIntoPortal(page) {
   return true;
 }
 const require = createRequire(process.env.NODE_PATH + "/");
+// 마을 문 자리 (jump.js TOWN): 1층 문 앞 칸 (서버는 칸 번호로 받음)
+const START_X = Math.floor(createRequire(import.meta.url)(path.join(process.argv[2], "jump.js")).TOWN.doors.find(d => d.id === "start").x);
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], SHOTS = process.argv[3];
 const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
@@ -121,7 +123,7 @@ try {
   await A.page.keyboard.press("l");
   await stepIntoPortal(A.page);
   check("L opens a portal, stepping in returns to the village", await inLobby(A.page) && (await A.page.locator("#log").innerText()).includes("포탈을 타고 로비로 돌아왔다"));
-  check("server: A back in the village in front of the floor-1 door (portal from floor 1)", await waitFor(() => { const r = row("게스트 #aaaaaa"); return r.scene === "lobby" && r.x === 30 && r.y === 10; }));
+  check("server: A back in the village in front of the floor-1 door (portal from floor 1)", await waitFor(() => { const r = row("게스트 #aaaaaa"); return r.scene === "lobby" && r.x === START_X && r.y === 10; }));
   await A.page.keyboard.press("ArrowUp");
   check("one step up enters the dungeon again", await waitFor(async () => !(await inLobby(A.page))));
   check("game: no page errors (A, B)", A.errors.length + B.errors.length === 0, [...A.errors, ...B.errors].join("; "));

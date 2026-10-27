@@ -191,7 +191,7 @@ const SCENES = [
     const fire = [513, 806, 56, 464].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));   // 화염의 세트(투구·장화) + 뇌전의 세트(바지·갑옷): 파이어볼 + 체인 라이트닝
     const o = await open({ dsf: 1.6, api: true, staff: true, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv([...fire, ...g40.filter(it => !fire.some(f => f.slot === it.slot))]) } });
     await sleep(1200); await press(o.page, ["p"], 300);
-    await goDoor(o.page, "jumptower");
+    await goDoor(o.page, "towerHell");   // dc#100부터 점프 던전은 왼쪽 끝 한 칸 문(헬 50층)만
     await sleep(500);
     const plan = [["ArrowRight", 200, 1100], ["ArrowRight", 2400, 3000], [" ", 3700, 4000], [" ", 4050, 4350], ["ArrowLeft", 3750, 4400]];   // 끝에 더블 점프로 위 발판
     const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
@@ -207,7 +207,7 @@ const SCENES = [
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
     const o = await open({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, api: true, staff: true, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
     await sleep(1200); await press(o.page, ["p"], 300);
-    await goDoor(o.page, "jumptower");
+    await goDoor(o.page, "towerHell");   // dc#100부터 점프 던전은 왼쪽 끝 한 칸 문(헬 50층)만
     await sleep(1800);
     await o.page.evaluate(() => { const g = document.getElementById("stage") || document.getElementById("game"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
     await sleep(300);
@@ -291,7 +291,12 @@ const SCENES = [
   // 점프 던전을 내린 마을 (dc#96): 왼쪽 끝 건물 자리가 빈 거리
   ["town-nojump", "점프 던전 건물이 있던 마을 왼쪽 끝", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
-    await goDoor(o.page, "jumptower", { enter: false }); await sleep(800);
+    await goDoor(o.page, "towerHell", { enter: false }); await sleep(800);
+    return { ...o, shot: "#stage" }; }],
+  // 마을 정가운데 웨이포인트 (dc#100): 왼쪽 던전 입구, 오른쪽 골드 던전
+  ["town-center", "마을 정가운데의 웨이포인트", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-towncenter", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "waypoint", { enter: false }); await sleep(800);
     return { ...o, shot: "#stage" }; }],
   // 웨이포인트·묘비·튜토리얼 (dc#97)
   ["wp-picker", "마을 웨이포인트: 활성화한 층부터 바로", async () => {

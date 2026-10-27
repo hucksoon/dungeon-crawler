@@ -26,7 +26,7 @@ const record = (name, script, ms) => page.evaluate(async ([script, ms]) => {
 
 const files = [];
 // 효과음 모음: 이름 순서대로 0.9초 간격
-const SFX = [["swing"], ["hit"], ["crit"], ["fire"], ["ice"], ["bolt"], ["fireball", 0.17], ["nova"], ["chain", 3, 0.07], ["whirl"], ["blast"], ["block"], ["dodge"], ["hurt"], ["kill"], ["bossKill"], ["gold"], ["drop", "rare"], ["drop", "epic"], ["drop", "legendary"], ["drop", "set"], ["drop", "unique"], ["potion"], ["levelup"], ["stairs"], ["portal"], ["waypoint"], ["tomb"], ["buy"], ["enhance"], ["death"]];
+const SFX = [["jump"], ["jump2"], ["swing"], ["hit"], ["crit"], ["fire"], ["ice"], ["bolt"], ["fireball", 0.17], ["nova"], ["chain", 3, 0.07], ["whirl"], ["blast"], ["block"], ["dodge"], ["hurt"], ["kill"], ["bossKill"], ["gold"], ["drop", "rare"], ["drop", "epic"], ["drop", "legendary"], ["drop", "set"], ["drop", "unique"], ["potion"], ["levelup"], ["stairs"], ["portal"], ["waypoint"], ["tomb"], ["buy"], ["enhance"], ["death"]];
 files.push(await record("00-sfx", `S.music(null); ${JSON.stringify(SFX)}.forEach((a, i) => setTimeout(() => S.play(...a), 300 + i * 900));`, 300 + SFX.length * 900 + 1500));
 for (const [i, t] of ["town", "dungeon", "nightmare", "hell", "gold", "boss"].entries()) {
   files.push(await record(`${i + 1}-${t}`, `S.music(${JSON.stringify(t)});`, SECS * 1000));
