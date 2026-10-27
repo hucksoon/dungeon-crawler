@@ -291,6 +291,21 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
     await goDoor(o.page, "jumptower", { enter: false }); await sleep(800);
     return { ...o, shot: "#stage" }; }],
+  // 웨이포인트·묘비·튜토리얼 (dc#97)
+  ["wp-picker", "마을 웨이포인트: 활성화한 층부터 바로", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-wp", {}, { wp: { n: [25, 50], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "waypoint");
+    await sleep(300);
+    return { ...o, shot: ".wp-modal" }; }],
+  ["wp-grave", "25층: 시작 자리 옆 웨이포인트(◎)와 내 묘비(†)", async () => {
+    const o = await open({ dsf: 1.6, seed: { rl_save: save(25, "blog-grave", { hp: 900, mh: 1200 }, { wp: { n: [25] }, tb: { d: 25, z: "normal", x: 14, y: 11, g: 12340 } }),
+      rl_level: level(25, "blog-grave", undefined, [], { wp: { x: 11, y: 12 }, grave: { x: 14, y: 11 } }), "rl_inv:g:DEV": inv(g40) } });
+    await sleep(400);
+    return { ...o, shot: "#stage" }; }],
+  ["tutorial-one", "튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓", async () => {
+    const o = await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-tut1", { hp: 300, mh: 300, a: 30 }, { best: 3, clr: 0, nb: 0, nclr: 0, hb: 0 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)), rl_tut: JSON.stringify(["enter", "attack", "map"]) } });
+    await sleep(300);
+    return { ...o, shot: "#stage" }; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };

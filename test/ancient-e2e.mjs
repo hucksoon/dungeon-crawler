@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const ORIGIN = "https://game.apacimtest.com/";
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -79,13 +81,13 @@ try {
   await call("score", { stage: 60, plvl: 20, item: ref(ancItem), gear: [ref(ancItem), ref(oldV4)] });
   const rk = await call("ranking&type=item");
   const p = await call(`player&id=${rk.rows[0].id}`);
-  check("server: r1 ancient verified, item board shows 고대 name", rk.rows[0].item?.name === I.itemName(ancItem) && I.itemName(ancItem).startsWith("고대 "), JSON.stringify(rk.rows[0]));
+  check("server: r1 ancient verified, item board shows 고대 name", nameOf(rk.rows[0].item) === I.itemName(ancItem) && I.itemName(ancItem).startsWith("고대 "), JSON.stringify(rk.rows[0]));
   check("server: old v4 (no r) still verifies as gear, nothing rejected", !p.gear.rejected && p.gear.items.length === 2, JSON.stringify(p.gear.rejected));
   check("server view: ancient flag and all lines max", p.bestItem.ancient === true && [...p.bestItem.main, ...p.bestItem.lines].every(l => l.max));
   // 위조: r을 빼거나 다른 값으로 바꾸면 ID가 안 맞음, v3에 r 붙이기·r 2는 거부
   const forged = await call("score", { stage: 60, plvl: 20, item: { ...ref(ancItem), r: undefined }, gear: [{ ...ref(oldV4), r: 2 }, { ...ref(I.generate("q|d5|k1", "drop", 5, 3)), r: 1 }] });
   const p2 = await call(`player&id=${rk.rows[0].id}`);
-  check("server: wrong r rejected (id mismatch / r2 / v3+r)", forged.ok && (await call("me")).item?.name === I.itemName(ancItem));
+  check("server: wrong r rejected (id mismatch / r2 / v3+r)", forged.ok && nameOf((await call("me")).item) === I.itemName(ancItem));
   const l = await call("market_list", { item: ref(ancItem), gold: 10, cash: 1, stage: 60 });
   check("market: new item listed, ref keeps its r and id", l.listing?.ref?.r === ancItem.r && l.listing.ref.id === ancItem.id && I.generate(l.listing.ref.seed, l.listing.ref.src, l.listing.ref.lvl, l.listing.ref.v, l.listing.ref.r).id === ancItem.id, JSON.stringify(l.listing?.ref));
   const l0 = await call("market_list", { item: ref(oldV4), gold: 10, cash: 0, stage: 60 });

@@ -107,10 +107,11 @@ try {
   await post("srv-guest-0001", { stage: 6, plvl: 10, item: ref(sockLeg, { g: [["ruby", 1]] }), gear: [ref(setItem), ref(sockLeg, { g: [["ruby", 1]] })] });
   const board = await getJ("?r=ranking&type=stage");
   const row = board.rows[0];
-  check("ranking row: item has ref (seed·id) + Korean name kept", row?.item?.ref?.id === sockLeg.id && row.item.ref.g?.[0]?.[0] === "ruby" && /[가-힣]/.test(row.item.name), JSON.stringify(row?.item));
+  check("ranking row: item has ref (seed·id), no name text (values only, dc#97)", row?.item?.ref?.id === sockLeg.id && row.item.ref.g?.[0]?.[0] === "ruby" && !("name" in row.item), JSON.stringify(row?.item));
   const pl = await getJ(`?r=player&id=${row.id}`);
   const gi = pl.gear.items;
   check("player view: lines carry k·v, setId, ref; sets carry id", gi.every(x => x.ref && x.main.every(l => l.k && Number.isInteger(l.v)) && x.lines.every(l => l.k)) && gi.some(x => x.setId === setItem.set) && pl.gear.sets[0]?.id === setItem.set, JSON.stringify(gi.map(x => [x.setId, x.main.map(l => l.k)])));
+  check("player view: no Korean text sent (names, lines, gems, set name/bonuses) — the page builds them (dc#97)", !/[가-힣]/.test(JSON.stringify({ gi, sets: pl.gear.sets, best: pl.bestItem })), JSON.stringify(gi).match(/.{0,40}[가-힣].{0,40}/)?.[0]);
   // 예전 기록(키·참조 없음)도 보여줄 때 k·v·세트 id를 채움
   const d = db(); const r0 = d.prepare("SELECT pkey, stage_gear FROM players_v4 LIMIT 1").get();
   const old = JSON.parse(r0.stage_gear);
@@ -143,7 +144,7 @@ try {
     const modalT = await page.locator("#player-modal").innerText();
     await page.screenshot({ path: `${SHOTS}/srvi18n-ranking-${lang}.png` });
     if (lang === "ko") {
-      check("ko: ranking shows the server's Korean name/lines unchanged", modalT.includes(RL.itemName({ ...sockLeg, enh: 3 })) && modalT.includes("게스트 #") && boardT.includes(row.item.name), modalT.slice(0, 300));
+      check("ko: ranking shows Korean names built from values (old record: the server's name)", modalT.includes(RL.itemName({ ...sockLeg, enh: 3 })) && modalT.includes("게스트 #") && boardT.includes(RL.itemName(RL.fromRef(row.item.ref, { gems: true }))), modalT.slice(0, 300));
     } else {
       const L = lang === "en" ? "en" : "ja";
       const nm = await page.evaluate(([r]) => { const x = RLItems.fromRef(r, { gems: true }); return RLItems.itemName(x); }, [row.item.ref]);

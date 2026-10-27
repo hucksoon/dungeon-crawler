@@ -194,7 +194,7 @@ function market_expire(): void {
 function listing_out(array $l, ?string $me): array {
     return [
         'id' => $l['id'],
-        'item' => json_decode($l['item_view'], true),
+        'item' => view_out(json_decode($l['item_view'], true) + ['ref' => json_decode($l['item_ref'], true)]),   // 글자 없이 값만 (dc#97)
         'ref' => json_decode($l['item_ref'], true),
         'seller' => $l['seller_display'],
         'mine' => $me !== null && $l['seller_key'] === $me,
@@ -210,10 +210,14 @@ function listing_out(array $l, ?string $me): array {
     ];
 }
 
+// 아이템 이름은 참조가 없는 우편만 (dc#97). 판매 우편의 참조는 받을 아이템이 아니라 이름을 보여줄 것이라 show로
 function mail_out(array $m): array {
+    $ref = $m['item_ref'] ? json_decode($m['item_ref'], true) : null;
+    $sale = $m['kind'] === 'sale';
     return [
-        'id' => $m['id'], 'kind' => $m['kind'], 'itemName' => $m['item_name'], 'rarity' => $m['rarity'],
-        'ref' => $m['item_ref'] ? json_decode($m['item_ref'], true) : null,
+        'id' => $m['id'], 'kind' => $m['kind'], 'rarity' => $m['rarity'],
+        'ref' => $sale ? null : $ref,
+    ] + ($sale && $ref ? ['show' => $ref] : []) + (ref_drawable($ref) ? [] : ['itemName' => $m['item_name']]) + [
         'gold' => (int)$m['gold'], 'cash' => (int)$m['cash'], 'note' => $m['note'], 'createdAt' => (int)$m['created_at'],
         // 메모의 다른 언어 (운영자 선물): 게임이 고른 언어로 보여주고, 없으면 note(한국어)
         'notes' => !empty($m['notes']) && is_array($n = json_decode($m['notes'], true)) ? $n : null,
@@ -408,7 +412,7 @@ function finish_sale(array $l): string {
             'note' => "{$l['seller_display']}에게서 산 아이템",
         ], $now);
         add_mail($l['seller_key'], 'sale', [
-            'listing_id' => $l['id'], 'item_name' => $l['item_name'], 'rarity' => $l['rarity'],
+            'listing_id' => $l['id'], 'item_ref' => $l['item_ref'], 'item_name' => $l['item_name'], 'rarity' => $l['rarity'],   // 참조: 판 아이템 이름을 보여주려고 (dc#97)
             'gold' => (int)$l['price_gold'], 'cash' => (int)$l['price_cash'], 'note' => "{$l['buyer_display']}에게 판매",
         ], $now);
         set_owner($l['item_id'], $l['buyer_key'], $now);

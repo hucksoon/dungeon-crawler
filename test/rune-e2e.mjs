@@ -220,7 +220,7 @@ try {
   await post("runes-guest-01", { stage: 70, plvl: 40, gear: [ref(c2, [["rune", 10], ["ruby", 2]])] });
   const p = await player("runes-guest-01");
   const c = p.gear?.items?.find(x => x.slot === "chest");
-  check("server: rune in a socket accepted, shown with name/effect, stats include it", p.gear?.rejected === 0 && c?.gems?.[0]?.name === "카 룬" && c.gems[0].text === "받는 피해 감소 +4%" && c.gems[0].rune === true && p.gear.stats.dmgReduce === 4, JSON.stringify([p.gear?.rejected, c?.gems, p.gear?.stats?.dmgReduce]));
+  check("server: rune in a socket accepted, shown with name/effect, stats include it", p.gear?.rejected === 0 && JSON.stringify(c?.gems?.[0]?.g) === JSON.stringify(["rune", 10]) && I.runeName(10) === "카 룬" && !("name" in c.gems[0]) && c.gems[0].rune === true && p.gear.stats.dmgReduce === 4, JSON.stringify([p.gear?.rejected, c?.gems, p.gear?.stats?.dmgReduce]));
   await post("runes-guest-02", { stage: 70, plvl: 40, gear: [ref(c2, [["rune", 14]])] });
   check("server: unknown rune rejected", (await player("runes-guest-02")).gear?.rejected === 1);
   const pv = (inv) => execFileSync("php", ["-r", `require "${path.join(REPO, "ranking-php/profile.php")}"; echo profile_valid(json_decode($argv[1], true)) ? "ok" : "bad";`, JSON.stringify({ inv })]).toString();

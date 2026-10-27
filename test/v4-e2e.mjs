@@ -160,9 +160,9 @@ try {
   check("server: record with old v3 gear stays off the v4 floor board", ((await call("ranking")).rows || []).length === 0);
   check("server totals equal the game's (old item capped)", p.gear.stats.crit === Math.min(75, I.totals([legW, legArms, oldV3]).stats.crit) && p.gear.stats.atk > 0, JSON.stringify(p.gear.stats));
   const oldView = p.gear.items.find(i => i.slot === oldV3.slot);
-  check("server view: old item shows (적용) value", oldView.main.some(m => m.text === `치명타 확률 +${oldV3crit}%` && m.eff === "10%") && oldView.lines.some(l => l.eff === "25%"), JSON.stringify(oldView));
+  check("server view: old item shows (적용) value", oldView.main.some(m => m.k === "crit" && m.v === oldV3crit && m.eff === "10%") && oldView.lines.some(l => l.eff === "25%"), JSON.stringify(oldView));
   const wView = p.gear.items.find(i => i.slot === "weapon");
-  check("server view: v4 weapon fixed ranges, no eff", wView.lines.some(l => l.text.startsWith("치명타 피해") && l.range === "12~15%") && [...wView.main, ...wView.lines].every(l => !l.eff), JSON.stringify(wView));
+  check("server view: v4 weapon fixed ranges, no eff", wView.lines.some(l => l.k === "critDmg" && l.range === "12~15%") && [...wView.main, ...wView.lines].every(l => !l.eff), JSON.stringify(wView));
   const l4 = await call("market_list", { item: ref(newLeg), gold: 10, cash: 1, stage: 120 });
   check("market: v4 item can be listed and keeps v4", l4.listing?.id && l4.listing.ref.v === 4 && l4.listing.ref.id === newLeg.id, JSON.stringify(l4));
   const fake = await call("score", { stage: 120, plvl: 30, item: { ...ref(legW), id: "0000000000000000" }, gear: [] });

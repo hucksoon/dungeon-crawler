@@ -169,12 +169,12 @@ try {
   const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: 4, enh: 0, id: it.id, r: it.r });
   await post("fire-guest-0001", { stage: 76, nm: 6, plvl: 40, gear: ARMOR.map(sl => ref(fire[sl])) });
   const p = await player("fire-guest-0001", "nm");
-  const fs5 = p.gear?.sets?.find(s => s.name === "화염의 세트");
+  const fs5 = p.gear?.sets?.find(s => s.id === "inferno" && !("name" in s));
   check("server: r4 fire set items verify, set 5/5 with bonuses", p.gear && !p.gear.rejected && p.gear.items.length === 5 && fs5?.count === 5 && fs5.bonuses.every(b => b.on), JSON.stringify(p.gear?.sets));
   const findSet2 = (slot, id) => { for (let i = 0; i < 400000; i++) { const it = I.generate(`fire|n5|k${i}`, "boss", 80); if (it.slot === slot && it.set === id) return it; } };
   await post("fire-guest-0003", { stage: 76, nm: 6, plvl: 40, gear: [...["head", "chest", "arms"].map(sl => ref(findSet2(sl, "frost"))), ...["pants", "boots"].map(sl => ref(findSet2(sl, "storm")))] });
   const p3 = await player("fire-guest-0003", "nm");
-  check("server: frost 3 + storm 2 verify, both sets listed", !p3.gear.rejected && p3.gear.sets.find(x => x.name === "서리의 세트")?.count === 3 && p3.gear.sets.find(x => x.name === "뇌전의 세트")?.count === 2, JSON.stringify(p3.gear.sets));
+  check("server: frost 3 + storm 2 verify, both sets listed", !p3.gear.rejected && p3.gear.sets.find(x => x.id === "frost")?.count === 3 && p3.gear.sets.find(x => x.id === "storm")?.count === 2, JSON.stringify(p3.gear.sets));
   await post("fire-guest-0002", { stage: 76, nm: 6, plvl: 40, gear: [{ ...ref(fire.head), r: 3 }] });
   check("server: same seed as r3 is a different item → rejected (id mismatch)", (await player("fire-guest-0002", "nm")).gear.rejected === 1);
 } finally { php.kill(); }

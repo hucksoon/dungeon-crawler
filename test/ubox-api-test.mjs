@@ -9,6 +9,9 @@ import path from "node:path";
 const REPO = process.argv[2];
 const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
 const RL = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) && !("itemName" in v) ? RL.itemName(RL.fromRef(v.ref, { gems: true })) : null);
 const DB = path.join(DIR, "ubox.sqlite");
 for (const f of [DB, DB + "-wal", DB + "-shm"]) fs.rmSync(f, { force: true });
 fs.writeFileSync(path.join(DIR, "config.ubox.php"), `<?php
@@ -85,7 +88,7 @@ try {
   const o1 = await call("POST", "mail_claim", A, { id: m1.id, pick: "robe" });
   const ref1 = o1.body?.mail?.ref;
   const local = ref1 && RL.generateUnique(ref1.seed, ref1.lvl);
-  check("open → ancient 염라의 관복, same item as the game makes", o1.status === 200 && ref1.seed === `buy|m${m1.id}|robe` && ref1.lvl === 175 && local.id === ref1.id && local.ancient && local.uq === "robe" && o1.body.mail.itemName === RL.itemName(local), o1.text);
+  check("open → ancient 염라의 관복, same item as the game makes", o1.status === 200 && ref1.seed === `buy|m${m1.id}|robe` && ref1.lvl === 175 && local.id === ref1.id && local.ancient && local.uq === "robe" && nameOf(o1.body.mail) === RL.itemName(local), o1.text);
   check("open twice → not_found", (await call("POST", "mail_claim", A, { id: m1.id, pick: "mirror" })).body?.error === "not_found");
   const o2 = await call("POST", "mail_claim", A, { id: m2.id, pick: "eopgyeong" });
   const it2 = RL.generateUnique(o2.body.mail.ref.seed, o2.body.mail.ref.lvl);

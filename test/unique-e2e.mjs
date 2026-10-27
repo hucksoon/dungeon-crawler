@@ -7,6 +7,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -147,7 +149,7 @@ try {
   const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v, enh: 10, id: it.id, r: it.r });
   await post("uq-guest-01", { stage: 76, plvl: 40, nm: 51, hell: 11, item: ref(fang) });
   let m = await me("uq-guest-01", "hell");
-  check("server: unique 송곳니 accepted as best item (name, rarity unique)", m.item?.rarity === "unique" && m.item?.name === "+10 송곳니", JSON.stringify(m.item || m).slice(0, 300));
+  check("server: unique 송곳니 accepted as best item (name, rarity unique)", m.item?.rarity === "unique" && nameOf(m.item) === "+10 송곳니", JSON.stringify(m.item || m).slice(0, 300));
   // 위조: 유니크가 안 나오는 처치 순번 / 네임드가 아닌 층
   let miss = null; for (let i = 0; !miss; i++) if (!I.rollUnique(`uqt6|j10|u${i}`, 135, I.FIND.max)) miss = `uqt6|j10|u${i}`;   // 아이템 발견 최대에서도 안 나오는 순번
   await post("uq-guest-02", { stage: 76, plvl: 40, nm: 51, hell: 11, item: { ...ref(fang), seed: miss, id: undefined } });

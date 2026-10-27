@@ -50,7 +50,8 @@
   // ---- 마을 (dc#90): 옆에서 보는 로비. 폭 64 × 높이 12, 바닥 윗면 y=10 (서버는 로비 위치를 0~63칸으로 받음) ----
   // 건물은 왼쪽부터 점프 던전 · 대장간 · 거래소(+우편함) · 시간 상점 · 던전 입구 · 골드 던전 · 나이트메어 · 헬. 문 앞에서 ↑로 들어감
   // doors: id(하는 일), x(문 가운데), staff(운영자만 보이고 열림). buildings: x0~x1칸, h(바닥에서 몇 칸 높이), staff(운영자만 보임)
-  // 점프 던전은 운영자만 (dc#96: 평가가 좋지 않아 다른 사람에게는 건물·문을 숨김)
+  // 점프 던전은 운영자만 (dc#96: 평가가 좋지 않아 다른 사람에게는 건물·문을 숨김). 왼쪽 끝은 웨이포인트 (dc#97)
+  // 던전 입구의 오른쪽 문(최고 층 − 10층)·운영자 문은 웨이포인트가 생기면서 없앰 (dc#97)
   const TOWN_ROWS = [
     "#..............................................................#",
     "#..............................................................#",
@@ -68,14 +69,14 @@
   const TOWN = {
     rows: TOWN_ROWS, ground: 10,
     buildings: [
-      { id: "jumptower", x0: 2, x1: 7, h: 5, staff: true }, { id: "forge", x0: 9, x1: 13, h: 4 }, { id: "market", x0: 15, x1: 19, h: 4 },
+      { id: "jumptower", x0: 4, x1: 7, h: 5, staff: true }, { id: "forge", x0: 9, x1: 13, h: 4 }, { id: "market", x0: 15, x1: 19, h: 4 },
       { id: "hourshop", x0: 23, x1: 26, h: 4 }, { id: "gate", x0: 28, x1: 36, h: 6 }, { id: "golddungeon", x0: 39, x1: 43, h: 4 },
       { id: "nightmare", x0: 45, x1: 50, h: 5 }, { id: "hell", x0: 52, x1: 61, h: 6 },
     ],
     doors: [
-      { id: "jumptower", x: 4.5, staff: true }, { id: "towerHell", x: 6.5, staff: true }, { id: "forge", x: 11.5 },
+      { id: "waypoint", x: 2.5 }, { id: "jumptower", x: 5, staff: true }, { id: "towerHell", x: 7, staff: true }, { id: "forge", x: 11.5 },
       { id: "market", x: 17.5 }, { id: "mailbox", x: 21.5 }, { id: "hourshop", x: 24.5 },
-      { id: "start", x: 30.5 }, { id: "resume", x: 32.5 }, { id: "skip", x: 34.5 }, { id: "staff", x: 37.5, staff: true },
+      { id: "start", x: 30.5 }, { id: "resume", x: 33 },
       { id: "golddungeon", x: 40.5 }, { id: "golddungeonNM", x: 42.5 }, { id: "nightmare", x: 46.5 }, { id: "nightmare50", x: 49.5 },
       { id: "hell", x: 54.5 }, { id: "hellPick", x: 59.5 },
     ],

@@ -102,8 +102,8 @@ try {
   const p = await player("nmp-guest-0001", "nm");
   const w = p.gear?.items?.find(x => x.slot === "weapon"), a = p.gear?.items?.find(x => x.slot === "chest");
   const r = I.statRange(nmWeapon, "main", "atk");
-  check("server view: nightmare weapon attack ×3 with ×3 range, plus 0", w && w.main[0].text === `공격력 +${3 * main(nmWeapon, "atk")}` && w.main[0].range === `${3 * r[0]}~${3 * r[1]}` && w.main[0].plus === 0, JSON.stringify(w?.main));
-  check("server view: chest def/hp ×3", a && a.main.some(m => m.text === `방어력 +${3 * main(nmArmor, "def")}`) && a.main.some(m => m.text === `최대 HP +${3 * main(nmArmor, "hp")}`), JSON.stringify(a?.main));
+  check("server view: nightmare weapon attack ×3 with ×3 range, plus 0", w && w.main[0].k === "atk" && w.main[0].v === 3 * main(nmWeapon, "atk") && w.main[0].range === `${3 * r[0]}~${3 * r[1]}` && w.main[0].plus === 0, JSON.stringify(w?.main));
+  check("server view: chest def/hp ×3", a && a.main.some(m => m.k === "def" && m.v === 3 * main(nmArmor, "def")) && a.main.some(m => m.k === "hp" && m.v === 3 * main(nmArmor, "hp")), JSON.stringify(a?.main));
   const T = I.totals([nmWeapon, nmArmor]).stats;
   check("server stats use the ×3 values (def = JS totals, atk ≥ item atk)", p.gear.stats.def === T.def && p.gear.stats.atk >= T.atk, JSON.stringify([p.gear.stats, T.atk, T.def]));
 } finally { php.kill(); }

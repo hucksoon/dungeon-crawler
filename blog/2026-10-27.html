@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>점프 던전을 잠시 내렸어요 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="옆에서 보는 실시간 사냥 맵인 점프 던전을 해 본 사람들의 평가가 좋지 않아서, 마을에서 잠시 내렸어요. 코드는 남겨 두고 더 다듬을 수 있게 했어요.">
+<title>점프 던전은 쉬고, 웨이포인트와 묘비가 생겼어요 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-27.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="점프 던전을 잠시 내렸어요 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="옆에서 보는 실시간 사냥 맵인 점프 던전을 해 본 사람들의 평가가 좋지 않아서, 마을에서 잠시 내렸어요. 코드는 남겨 두고 더 다듬을 수 있게 했어요.">
+<meta property="og:title" content="점프 던전은 쉬고, 웨이포인트와 묘비가 생겼어요 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-27.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/town-nojump.png">
 
@@ -48,8 +48,8 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>점프 던전을 잠시 내렸어요</h1>
-<p class="meta">2026년 10월 27일 (화) · 개발일기 · 피드백 · 점프 던전 · Claude Code</p>
+<h1>점프 던전은 쉬고, 웨이포인트와 묘비가 생겼어요</h1>
+<p class="meta">2026년 10월 27일 (화) · 개발일기 · 피드백 · 웨이포인트 · 튜토리얼 · Claude Code</p>
 <p>며칠 전 마을 왼쪽 끝에 &quot;점프 던전&quot;을 열었어요. 던전을 옆에서 보며 실시간으로 뛰어다니고 더블 점프로 발판을 오르내리며 몬스터를 잡는 시험판이었어요.</p>
 <p>그런데 해 본 사람들의 평가가 좋지 않았어요.</p>
 <h2>마을에서 점프 던전 건물을 치웠어요</h2>
@@ -58,6 +58,20 @@
 <h2>지우지 않고 남겨 둔 이유</h2>
 <p>점프 던전의 물리, 몬스터 움직임, 스킬 효과는 코드에 그대로 남겨 뒀어요. 피드백을 반영해 더 다듬으면 다시 열 수 있도록요.</p>
 <p>Claude Code와 함께 마을 건물마다 보이는 조건을 하나 붙이고, 자동 테스트로 문이 정말 사라졌는지까지 확인했어요.</p>
+<h2>웨이포인트: 깊은 층부터 바로</h2>
+<p>쓰러져서 새로 시작하면 1층부터 다시 내려가야 했어요. 깊이 내려간 사람일수록 이게 큰 부담이었죠. 그래서 디아블로처럼 웨이포인트를 만들었어요.</p>
+<ul><li>일반 던전 25·50·75층, 나이트메어와 헬은 10층마다, 그 층에 들어온 자리 바로 옆에 웨이포인트(◎)가 있어요</li><li>밟으면 활성화돼요. 하늘색 빛기둥이 올라와요</li><li>마을 왼쪽 끝, 점프 던전 건물이 있던 자리에 마을 웨이포인트가 생겼어요. 들어가면 활성화한 층 중에서 골라 그 층부터 바로 시작해요</li><li>웨이포인트는 꼭 밟고 지나가야 그 층 계단이 열려요. 한 칸 옆이라 금방이에요</li><li>예전에 던전 입구 오른쪽에 있던 &quot;최고 층 − 10층&quot; 문은 웨이포인트로 바꾸면서 없앴어요. 이미 던전을 완료한 사람은 그 던전의 웨이포인트가 모두 켜져 있어요</li></ul>
+<figure><img src="images/wp-picker.png" alt="마을 웨이포인트: 활성화한 층부터 바로" loading="lazy"><figcaption>마을 웨이포인트: 활성화한 층부터 바로</figcaption></figure>
+<h2>묘비: 쓰러진 자리에 골드가 남아요</h2>
+<p>쓰러진 뒤 새로 시작하면 골드가 처음으로 돌아가요. 이제는 쓰러진 자리에 묘비(†)가 남아요. 그 층에 다시 가서 묘비를 밟으면 쓰러질 때 가지고 있던 골드의 90%를 돌려받아요.</p>
+<ul><li>웨이포인트로 가까운 층부터 가면 묘비까지 금방이에요</li><li>묘비는 하나만 남아요. 찾기 전에 또 쓰러지면 예전 묘비는 사라지니 조심하세요 (쓰러진 창에서 미리 알려 줘요)</li></ul>
+<figure><img src="images/wp-grave.png" alt="25층: 시작 자리 옆 웨이포인트와 내 묘비" loading="lazy"><figcaption>25층: 시작 자리 옆 웨이포인트와 내 묘비</figcaption></figure>
+<h2>튜토리얼은 왼쪽 위에서 하나씩</h2>
+<p>처음 하는 사람을 위한 안내도 다시 다듬었어요. 처음엔 모든 안내를 한 번에 펼쳐 보게 했는데, 펼치면 게임 화면을 가려서 게임하면서 볼 수가 없었어요. 그래서 이렇게 바꿨어요.</p>
+<ul><li>왼쪽 위 작은 상자에 튜토리얼이 하나씩 나와요: 던전에 들어가기 → 던전 탐험 → 장비 끼기 → HP 회복 → 웨이포인트</li><li>직접 해 본 단계에는 ✓가 붙고, 다 하면 &quot;잘했어요!&quot;와 함께 다음 튜토리얼로 넘어가요. HP가 적으면 HP 회복을 먼저 알려 줘요</li><li>상자 위를 눌러도 게임은 그대로 움직여요. 접으면 한 줄로 줄어들어요</li><li>일반 던전 25층까지 보여요</li></ul>
+<figure><img src="images/tutorial-one.png" alt="튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓" loading="lazy"><figcaption>튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓</figcaption></figure>
+<h2>아이템 이름은 내 언어로</h2>
+<p>랭킹과 거래소에 보이는 아이템 이름과 능력치는 서버가 한국어 글자로 만들어 보내고 있었어요. 이제 서버는 아이템의 값만 보내고, 게임과 랭킹 화면이 그 값으로 아이템을 다시 만들어 내가 고른 언어로 이름과 능력치를 보여 줘요.</p>
 <p>솔직한 평가 고마워요!</p>
 </article>
 <nav class="pager"><span><a href="2026-10-26.html">← 친구들의 첫 플레이 피드백, 바로 고치기</a></span><span></span></nav>

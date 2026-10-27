@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const B = createRequire(import.meta.url)(path.join(REPO, "builds.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
@@ -170,7 +172,7 @@ try {
   const body = (item) => ({ stage: 76, plvl: 40, nm: 51, hell: 11, item });
   await post("find-guest-01", body(ref(bonusItem || want)));
   let m = await me("find-guest-01", "hell");
-  check("server: accepts bonus item from |f seed (golden, r8)", m.item && m.item.name === I.itemName(want), JSON.stringify(m.item || m).slice(0, 300));
+  check("server: accepts bonus item from |f seed (golden, r8)", m.item && nameOf(m.item) === I.itemName(want), JSON.stringify(m.item || m).slice(0, 300));
   let miss = null; for (let i = 0; !miss; i++) { const s = `${rid}|j5|f${i + 2}`; if (I.rngFrom(`v4|drop?|${s}`)() >= 0.1) miss = s; }
   await post("find-guest-02", body({ seed: miss, src: "golden", lvl: 130, v: 4, enh: 0, r: 8 }));
   m = await me("find-guest-02", "hell");

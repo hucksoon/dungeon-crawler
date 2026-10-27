@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -126,10 +128,10 @@ try {
   const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}) });
   await post("longsword-guest-01", { stage: 70, plvl: 40, gear: [ref(L), ref(offDg)] });
   const p = await player("longsword-guest-01");
-  check("server accepts r5 longsword, ignores the off-hand weapon (no dual)", p.gear?.rejected === 0 && p.gear?.items?.some(x => x.name?.includes("장검")) && p.gear?.stats?.dual === false, JSON.stringify(p.gear?.stats) + JSON.stringify(p.gear?.items?.map(x => x.name)));
+  check("server accepts r5 longsword, ignores the off-hand weapon (no dual)", p.gear?.rejected === 0 && p.gear?.items?.some(x => nameOf(x)?.includes("장검")) && p.gear?.stats?.dual === false, JSON.stringify(p.gear?.stats) + JSON.stringify(p.gear?.items?.map(nameOf)));
   await post("longsword-guest-02", { stage: 70, plvl: 40, gear: [ref(oldSt)] });
   const p2 = await player("longsword-guest-02");
-  check("server: old sturdy ref shows as 견고의 장검", p2.gear?.items?.[0]?.name === "견고의 장검", JSON.stringify(p2.gear?.items?.[0]));
+  check("server: old sturdy ref shows as 견고의 장검", nameOf(p2.gear?.items?.[0]) === "견고의 장검", JSON.stringify(p2.gear?.items?.[0]));
 } finally { php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 const pass = results.filter(Boolean).length;

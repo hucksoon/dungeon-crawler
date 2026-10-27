@@ -119,7 +119,8 @@ try {
   check("server: lifesteal capped at 20", (await player("bal-guest-0001")).gear.stats.lifesteal === 20);
   await post("bal-guest-0002", { stage: 40, plvl: 20, gear: trial.map(ref) });
   const pg = await player("bal-guest-0002");
-  check("server: trial 5-set → dmgReduce 10, new text", pg.gear.stats.dmgReduce === 10 && JSON.stringify(pg.gear.sets).includes("받는 피해 −10%"));
+  // 세트 효과 글자는 서버가 보내지 않음 (dc#97): 세트 id로 화면이 지금 규칙의 문구를 그림
+  check("server: trial 5-set → dmgReduce 10, set id only (page shows the new text)", pg.gear.stats.dmgReduce === 10 && pg.gear.sets.some(s => s.id === "trial") && !/[가-힣]/.test(JSON.stringify(pg.gear.sets)) && I.SETS.trial.bonuses[2].text.includes("받는 피해 −10%"));
   // 5. 예전에 저장된 장비 기록(흡혈 26%, 5세트 흡혈 +8% 설명)도 보여줄 때 지금 규칙으로
   {
     const { DatabaseSync } = await import("node:sqlite");
@@ -131,7 +132,7 @@ try {
     db.prepare("UPDATE players_v4 SET stage_gear = ? WHERE pkey = ?").run(JSON.stringify(g), row.pkey);
     db.close();
     const old = await player("bal-guest-0002");
-    check("old ranking snapshot shown with the new rules (26 − 8 = 18%, 받는 피해 −10%, new text)", old.gear.stats.lifesteal === 18 && old.gear.stats.dmgReduce === 10 && JSON.stringify(old.gear.sets).includes("받는 피해 −10%") && !JSON.stringify(old.gear.sets).includes("흡혈 +8%"), JSON.stringify(old.gear.stats));
+    check("old ranking snapshot shown with the new rules (26 − 8 = 18%, 받는 피해 −10%, new text)", old.gear.stats.lifesteal === 18 && old.gear.stats.dmgReduce === 10 && old.gear.sets.some(s => s.id === "trial") && !JSON.stringify(old.gear.sets).includes("흡혈 +8%"), JSON.stringify(old.gear.stats));
   }
 } finally { await browser.close(); php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));

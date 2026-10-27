@@ -53,8 +53,7 @@ try {
   let s = await st(N.page);
   check("new player starts in the village (lobby), no portal floor", s.scene === "lobby" && s.resume === 0);
   check("dungeon buttons: 포탈 only (no 재시작/로비로)", !(await N.page.locator("#portal-btn").isVisible()) && (await N.page.locator("#restart-btn").count()) === 0 && (await N.page.locator("#lobby-btn").count()) === 0);
-  await goDoor(N.page, "skip");
-  check("right door (best − 10) closed for a new player", (await st(N.page)).scene === "lobby" && (await logText(N.page)).includes("12층까지 내려가면 열린다"));
+  check("no right door (best − 10) anymore: waypoints instead (dc#97)", await N.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "skip") && window.RLJump.TOWN.doors.some(d => d.id === "waypoint")));
   await goDoor(N.page, "start");
   s = await st(N.page);
   check("left door → floor 1", s.scene === "dungeon" && s.depth === 1 && (await logText(N.page)).includes("던전 1층에 발을 들였다"));
