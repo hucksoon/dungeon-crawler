@@ -368,6 +368,10 @@
   .hellpick-list button { border-color: #ff5a2e; color: #ffb38a; }
   .hellpick-list button:disabled { border-color: #444; color: #666; }
   /* 웨이포인트 (dc#97) */
+  .snd-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .snd-row span { flex: 0 0 34%; }
+  .snd-row input[type=range] { flex: 1; accent-color: var(--accent, #ffcf5c); }
+  .snd-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent, #ffcf5c); }
   .modal.wp-modal h2 { color: #5fd4ff; text-shadow: 0 0 10px rgba(95, 212, 255, 0.6); }
   .wp-list { display: grid; gap: 8px; margin: 8px 0; }
   .wp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -595,6 +599,7 @@
     <button id="map-btn" class="dungeon-only" type="button"></button>
     <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
+    <button id="sound-btn" type="button" aria-label="소리 설정" data-t-aria>🔊</button>
     <select id="lang-select" aria-label="Language" hidden></select>
     <button id="portal-btn" class="keys-only dungeon-only" type="button" data-t>포탈 (P)</button>
     <div id="update-note" role="status" hidden><span id="update-text"></span><button type="button" id="update-more" data-t>더 보기</button><button type="button" id="update-close" aria-label="안내 닫기" data-t-aria>✕</button></div>
@@ -708,6 +713,17 @@
   </div>
 </div>
 
+<div id="sound-modal" class="overlay" hidden>
+  <div class="modal notice sound-modal" role="dialog" aria-modal="true" aria-labelledby="sound-title">
+    <h2 id="sound-title" data-t>🔊 소리</h2>
+    <label class="snd-row"><input type="checkbox" id="sfx-on"><span data-t>효과음</span><input type="range" id="sfx-vol" min="0" max="100" step="5" aria-label="효과음 크기" data-t-aria></label>
+    <label class="snd-row"><input type="checkbox" id="bgm-on"><span data-t>배경 음악</span><input type="range" id="bgm-vol" min="0" max="100" step="5" aria-label="배경 음악 크기" data-t-aria></label>
+    <p class="meta" data-t>공격·속성·스킬·처치·좋은 장비마다 효과음이 나고, 마을·던전·나이트메어·헬·골드 던전·보스마다 배경 음악이 달라요. 설정은 이 기기에 저장돼요.</p>
+    <button id="sound-test" type="button" data-t>효과음 들어 보기</button>
+    <button id="sound-close" type="button" data-t>닫기</button>
+  </div>
+</div>
+
 <div id="wp-modal" class="overlay" hidden>
   <div class="modal notice wp-modal" role="dialog" aria-modal="true" aria-labelledby="wp-title">
     <h2 id="wp-title" data-t>◎ 웨이포인트</h2>
@@ -804,7 +820,8 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=98"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=98"></script>
+<script src="sound.js"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -828,6 +845,8 @@
   const ZOOM = 2, CAM_W = MAP_W / ZOOM, CAM_H = MAP_H / ZOOM;
   const canvas = document.getElementById("game");
   const popups = document.getElementById("popups");
+  // 소리 (dc#99, sound.js): 효과음 이름으로 내기. 소리를 못 내는 환경이면 아무 일 없음
+  const Sfx = (name, ...args) => window.RLSound?.play(name, ...args);
 
   // 피해 숫자: 맞은 칸 위에 떠올랐다 사라짐. 치명타는 굵고 크게
   // color: 속성 피해(화상·번개 튕김)는 그 속성 색
@@ -2073,6 +2092,7 @@
     if (!z || waypoints[z].includes(depth)) return;
     waypoints[z] = [...waypoints[z], depth].sort((a, b) => a - b);
     log(T("◎ 웨이포인트 활성화! 이제 마을 왼쪽 끝 웨이포인트에서 언제든 {0}부터 시작할 수 있다.", floorName()), "rainbow");
+    Sfx("waypoint");
     Tips.step("wp");
     showDamage(player, T("웨이포인트"), true, WP_COLOR);
     saveGame(true);
@@ -2085,6 +2105,7 @@
     tomb = null;
     grave = null;
     log(T("† 묘비에서 골드 {0}을(를) 되찾았다!", g.toLocaleString()), "good");
+    Sfx("tomb");
     showDamage(player, `+${g.toLocaleString()}G`, true, "#ffcf5c");
     updateStats();
     saveGame(true);
@@ -2131,6 +2152,9 @@
       // 장검은 한 번에 ×LONGSWORD.hitMul (보조 단검 두 번째 공격을 못 쓰는 대신)
       const hits = s.dual ? [1, RLItems.DUAL_WIELD.secondHit] : [s.longsword ? RLItems.LONGSWORD.hitMul : 1];
       const elemPct = s.elem.fire + s.elem.ice + s.elem.bolt;
+      Sfx("swing");
+      // 속성 공격이면 가장 센 속성 소리도 같이 (불 지글 · 얼음 찡 · 번개 지직)
+      if (elemPct) Sfx(["fire", "ice", "bolt"].reduce((a, b) => (s.elem[b] > s.elem[a] ? b : a)));
       hits.forEach((mul, i) => {
         if (target.hp <= 0 || !enemies.includes(target)) return;
         const crit = Math.random() * 100 < s.crit;
@@ -2150,6 +2174,7 @@
       if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
         showDamage(target, T("피함"), false, RLItems.RARITIES.unique.color);
         Anim.dodge(target, attacker, at);
+        Sfx("dodge");
         log(T("{0}의 공격을 피했다! (홀림)", attacker.name), "good");
         return;
       }
@@ -2157,6 +2182,7 @@
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, T("막음"), false);
         Anim.block(target, attacker, at);
+        Sfx("block");
         log(T("{0}의 공격을 방패로 막아냈다! (패링)", attacker.name), "good");
         // 업경대: 막아도 받을 피해의 %를 되돌림
         if (s.uq.reflect && attacker.hp > 0) {
@@ -2179,6 +2205,7 @@
       const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
       const took = hurtPlayer(dmg);
       Anim.hit(target, attacker, at);
+      Sfx("hurt");
       log(T("{0}에게 {1} 피해를 입음.{2}", attacker.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
       if (target.hp <= 0) { death(); return; }
       // 쇠비늘 갑옷: 맞을 때마다 방어력 +% (이 층에서, 최대치까지)
@@ -2321,11 +2348,12 @@
       if (next.hp <= 0) killEnemy(next);
       at = next;
     }
-    if (path.length > 1) Fx.chain(path, true);   // 무기 번개: 가는 번개
+    if (path.length > 1) { Fx.chain(path, true); Sfx("chain", path.length - 1, Fx.CHAIN_STEP / 1000); }   // 무기 번개: 가는 번개
   }
   // 속성 몬스터에게 맞은 뒤: 들어간 피해(dealt)를 기준으로, 저항만큼 줄어듦
   function monsterElement(m, s, dealt) {
     const cut = (k) => 1 - s.res[k] / 100;
+    Sfx(m.el);
     if (m.el === "fire") burnOn(player, Math.round(dealt * EL.burn.mul * cut("fire")));
     else if (m.el === "ice") {
       if (chill(player, EL.ice.chance * cut("ice"))) log(T("몸이 얼어붙었다! {0}턴 동안 느려진다 (2턴에 한 번만 움직임).", EL.ice.turns), "bad");
@@ -2346,6 +2374,7 @@
     target.hp -= dmg;
     showDamage(target, dmg, crit);
     Anim.hit(target, player);
+    Sfx(crit ? "crit" : "hit");
     let left = target.kind !== "normal" ? T(" (남은 HP {0}/{1}", Math.max(0, target.hp), target.maxHp) : "";
     if (target.kind === "golden" && target.fleeAt != null) left += T(", 도망까지 {0}턴", Math.max(0, target.fleeAt - turn));
     if (left) left += ")";
@@ -2360,6 +2389,7 @@
   function killEnemy(e) {
     enemies = enemies.filter(x => x !== e);
     Anim.die(e);
+    Sfx(e.kind === "boss" || e.named ? "bossKill" : "kill");
     // 구미호의 분신: 경험치·골드·장비 없음
     if (e.clone) { log(T("{0}이(가) 연기처럼 사라졌다.", e.name), null, RLMonsters.NAMED_COLOR); return; }
     Dex.kill(e.id);
@@ -2378,15 +2408,28 @@
     if (e.kind === "golden") log(T("{0}을(를) 잡았다! 보물이 쏟아진다!", e.name), null, RLMonsters.GOLDEN.color);
     if (s.killHeal) heal(s.killHeal);
     if (s.uq.reap && (player.reap || 0) < UQ_FX.reap.max) player.reap = Math.min(UQ_FX.reap.max, (player.reap || 0) + s.uq.reap);   // 사자의 낫
+    const n0 = items.length;
     dropLoot(e);
+    dropSound(items.slice(n0));
     gainXp(xp);
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
   }
   // 카리스마 처치 폭발: 쓰러진 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로).
   // 폭발로 쓰러진 몬스터도 터짐 (분신은 이미 위에서 사라져 여기 오지 않음)
+  // 떨어진 것 중 가장 좋은 것에 맞춰 한 번 (레어 이상 장비 · 룬은 레전더리처럼)
+  const DROP_RANK = { rare: 1, epic: 2, legendary: 3, set: 3, unique: 4 };
+  function dropSound(dropped) {
+    let best = null;
+    for (const d of dropped) {
+      const r = d.type === "rune" ? "legendary" : d.type === "gear" ? d.item.rarity : null;
+      if (DROP_RANK[r] && (!best || DROP_RANK[r] > DROP_RANK[best])) best = r;
+    }
+    if (best) Sfx("drop", best);
+  }
   function corpseBlast(e, s) {
     const near = enemies.filter(x => x.hp > 0 && near8(x, e) === 1);
     if (!near.length) return;
+    Sfx("blast");
     const d = Math.max(1, Math.round(e.maxHp * s.rw.blast / 100));
     const cells = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ x: e.x + dx, y: e.y + dy });
@@ -2515,6 +2558,7 @@
       player.atk += 1;
       player.hp = stats().maxHp;
       log(T("레벨 업! Lv {0} — 최대 HP/공격력 증가 (레벨 보너스 +{1}%), HP 회복!", player.plvl, levelPct()), "good");
+      Sfx("levelup");
     }
   }
 
@@ -2522,8 +2566,10 @@
     for (const it of items.filter(i => i.x === player.x && i.y === player.y)) {
       if (it.type === "gear") {
         if (!takeGear(it)) continue;
+        Sfx("pickup");
       } else if (it.type === "treasure" || it.type === "potion") {
         treasureLoot();
+        Sfx("gold");
       } else if (it.type === "gem") {
         if (!RLItems.GEMS[it.gem]) continue;
         Inv.addGem(it.gem, it.grade);
@@ -2535,6 +2581,7 @@
       } else if (it.type === "gold") {
         const amount = Math.round(it.amount * (1 + stats().gold / 100));
         player.gold += amount;
+        Sfx("gold");
         log(T("골드 +{0}", amount), "info");
       }
       items = items.filter(x => x !== it);
@@ -2552,6 +2599,7 @@
     const before = player.hp;
     Tips.step("heal");
     heal(amount);
+    Sfx("potion");
     log(T("포션 사용. HP +{0}", player.hp - before), "good");
     endTurn();
   }
@@ -2568,6 +2616,7 @@
 
   function descend() {
     Tips.step("stairs");
+    Sfx("stairs");
     if (inNM() || inHell()) nmFloorReward();
     depth++;
     shopBought = [];
@@ -2690,6 +2739,7 @@
       log(T("✦ 천하무적: 쓰러질 피해를 버텨냈다! HP 1 (이 층에서는 한 번만)"), "rainbow");
       return;
     }
+    Sfx("death");
     gameOver = true;
     markLastSpot();
     player.deathAt = { x: player.x, y: player.y };   // 새로 시작하면 여기에 묘비 (dc#97)
@@ -3219,6 +3269,7 @@
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
         flash(cells, "rgba(255, 210, 127, 0.35)");
         log(T("🌀 회전 베기! {0}마리{1}", hit.length, crit ? T(" (치명타)") : ""), null, RLItems.RUNEWORD_COLOR);
+        Sfx("whirl");
         for (const e of hit) if (e.hp > 0 && enemies.includes(e)) hitEnemy(e, raw, crit, s, T("회전 베기: "));
       }
     }
@@ -3237,6 +3288,7 @@
         for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
         if (reduceMotion) flash(cells, "rgba(255, 122, 61, 0.38)");
         else Fx.fireball(player, center, FB.radius);
+        Sfx("fireball", Fx.FB_FLY / 1000);
         log(T("🔥 파이어볼! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", s.fireballBurn ? T(" · 화상") : ""), null, EL.colors.fire);
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.fire, s, Fx.FB_FLY) && s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
       }
@@ -3251,6 +3303,7 @@
         for (let dy = -NOVA.radius; dy <= NOVA.radius; dy++) for (let dx = -NOVA.radius; dx <= NOVA.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
         if (reduceMotion) flash(cells, "rgba(111, 211, 255, 0.4)");
         else Fx.nova(player, NOVA.radius);
+        Sfx("nova");
         let slowed = 0;
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice, s, 90) && s.novaSlow && chill(e, 1)) slowed++;
         log(T("❄ 프로스트 노바! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", slowed ? T(" · {0}마리 느려짐", slowed) : ""), null, EL.colors.ice);
@@ -3278,6 +3331,7 @@
         }
         if (reduceMotion) flash(cells, "rgba(255, 225, 77, 0.45)");
         else Fx.chain([player, ...cells]);
+        Sfx("chain", n, Fx.CHAIN_STEP / 1000);
         log(T("⚡ 체인 라이트닝! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
       }
     }
@@ -3721,6 +3775,7 @@
     markLastSpot();   // 운영자 입구가 이 층을 새로 만들어 다시 들어감
     saveGame(true);
     Tips.step("heal");
+    Sfx("portal");
     enterLobby({ from: "portal" });
   }
 
@@ -5342,7 +5397,19 @@
     ctx.restore();
   }
 
+  // 배경 음악 (dc#99): 마을 · 던전 · 나이트메어 · 헬 · 골드 던전, 보스(네임드)를 마주치면 쓰러뜨릴 때까지 보스 음악
+  let bossTune = null;
+  function musicKey() {
+    if (scene !== "dungeon") return "town";
+    if (inGold()) return "gold";
+    const boss = enemies.find(e => (e.kind === "boss" || e.named) && e.hp > 0 && !e.clone);
+    if (!boss) bossTune = null;
+    else if (visible[boss.y]?.[boss.x]) bossTune = floorKey();
+    if (bossTune === floorKey()) return "boss";
+    return inHell() ? "hell" : inNM() ? "nightmare" : "dungeon";
+  }
   function render() {
+    window.RLSound?.music(musicKey());
     ctx.setTransform(PX, 0, 0, PX, 0, 0);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -6629,7 +6696,7 @@
     const r = Inv.enhance(item.id);
     if (!r.error && gold) { pay(gold); saveGame(true); }
     if (r.error) invMsg = { cls: "bad", text: r.error };
-    else if (r.ok) invMsg = { cls: "good", text: T("강화 성공! {0} → +{1}", before, r.to) };
+    else if (r.ok) { invMsg = { cls: "good", text: T("강화 성공! {0} → +{1}", before, r.to) }; Sfx("enhance"); }
     else invMsg = { cls: "bad", text: T("강화 실패… (+{0} 성공 확률 {1}%) 아이템은 그대로예요.", r.to, Math.round(r.chance * 100)) };
     if (!r.error) log(invMsg.text, invMsg.cls);
     afterGearChange();
@@ -6808,6 +6875,7 @@
     shopCtx.markBought(i);
     shopMsg.className = "msg-good";
     shopMsg.textContent = T("{0}을(를) {1} 골드에 샀어요.", RLItems.itemName(item), price);
+    Sfx("buy");
     gearLog(T("{0}에서 {1}을(를) 샀다. (-{2} 골드)", shopCtx.title, RLItems.itemName(item), price), item);
     updateStats();
     shopCtx.save();
@@ -6946,6 +7014,33 @@
   function closeDex() { dexModal.hidden = true; }
 
   document.getElementById("dex-btn").addEventListener("click", (e) => { e.currentTarget.blur(); openDex(); });
+
+  // 소리 설정 (dc#99): 효과음·배경 음악 켜기와 크기. 바꾸면 바로 저장 (sound.js)
+  const soundModal = document.getElementById("sound-modal"), soundBtn = document.getElementById("sound-btn");
+  const sfxOn = document.getElementById("sfx-on"), sfxVol = document.getElementById("sfx-vol"), bgmOn = document.getElementById("bgm-on"), bgmVol = document.getElementById("bgm-vol");
+  function syncSound() {
+    const c = window.RLSound?.settings;
+    if (!c) { soundBtn.hidden = true; return; }
+    sfxOn.checked = c.sfxOn; bgmOn.checked = c.bgmOn;
+    sfxVol.value = Math.round(c.sfx * 100); bgmVol.value = Math.round(c.bgm * 100);
+    sfxVol.disabled = !c.sfxOn; bgmVol.disabled = !c.bgmOn;
+    soundBtn.textContent = c.sfxOn || c.bgmOn ? "🔊" : "🔇";
+  }
+  const openSound = () => { syncSound(); soundModal.hidden = false; sfxOn.focus(); };
+  const closeSound = () => { soundModal.hidden = true; };
+  soundBtn.addEventListener("click", (e) => { e.currentTarget.blur(); openSound(); });
+  document.getElementById("sound-close").addEventListener("click", closeSound);
+  soundModal.addEventListener("click", (e) => { if (e.target === soundModal) closeSound(); });
+  sfxOn.addEventListener("change", () => { window.RLSound.set({ sfxOn: sfxOn.checked }); syncSound(); });
+  bgmOn.addEventListener("change", () => { window.RLSound.set({ bgmOn: bgmOn.checked }); syncSound(); });
+  sfxVol.addEventListener("input", () => window.RLSound.set({ sfx: sfxVol.value / 100 }));
+  bgmVol.addEventListener("input", () => window.RLSound.set({ bgm: bgmVol.value / 100 }));
+  document.getElementById("sound-test").addEventListener("click", () => {
+    window.RLSound.unlock();
+    ["swing", "crit", "fire", "ice", "bolt"].forEach((n, i) => setTimeout(() => Sfx(n), i * 260));
+    setTimeout(() => Sfx("drop", "legendary"), 1400);
+  });
+  syncSound();
   document.getElementById("dex-close").addEventListener("click", closeDex);
   dexModal.addEventListener("click", (e) => { if (e.target === dexModal) closeDex(); });
 
@@ -7815,6 +7910,10 @@
     }
     if (!wpModal.hidden) {
       if (e.key === "Escape") { e.preventDefault(); closeWaypoints(); }
+      return;
+    }
+    if (!soundModal.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); closeSound(); }
       return;
     }
     if (!deathModal.hidden && modal.hidden) {

@@ -308,6 +308,11 @@ const SCENES = [
     const o = await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-tut1", { hp: 300, mh: 300, a: 30 }, { best: 3, clr: 0, nb: 0, nclr: 0, hb: 0 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)), rl_tut: JSON.stringify(["enter", "attack", "map"]) } });
     await sleep(300);
     return { ...o, shot: "#stage" }; }],
+  // 소리 (dc#99): 🔊 버튼 → 효과음·배경 음악 켜기와 크기
+  ["sound-settings", "🔊 소리 설정: 효과음과 배경 음악", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-snd"), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.locator("#sound-btn").click(); await sleep(300);
+    return { ...o, shot: ".sound-modal" }; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };
