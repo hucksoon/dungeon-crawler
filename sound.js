@@ -45,16 +45,23 @@
   // 첫 누르기에 소리 켜기 (그 전에는 만들지 않음: 브라우저 경고 막기)
   function unlock() {
     if (!init()) return;
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (ctx.state === "suspended" && !paused) ctx.resume().catch(() => {});
     unlocked = true;
     if (want) startMusic(want);
   }
   for (const ev of ["keydown", "pointerdown", "touchstart"]) root.addEventListener?.(ev, unlock, { capture: true, passive: true });
   // 다른 탭으로 가면 멈춤 (배터리)
+  let paused = false;   // 포털 광고를 보는 동안 (pause)
   root.document?.addEventListener("visibilitychange", () => {
     if (!ctx) return;
-    if (document.hidden) ctx.suspend().catch(() => {}); else if (unlocked) ctx.resume().catch(() => {});
+    if (document.hidden) ctx.suspend().catch(() => {}); else if (unlocked && !paused) ctx.resume().catch(() => {});
   });
+  // 광고 동안 모든 소리 멈춤 (dc#102, 포털 빌드)
+  function pause(on) {
+    paused = !!on;
+    if (!ctx) return;
+    if (paused) ctx.suspend().catch(() => {}); else if (unlocked && !document.hidden) ctx.resume().catch(() => {});
+  }
 
   // ---- 소리 조각 ----
   const ready = () => ctx && unlocked && ctx.state !== "closed";
@@ -327,7 +334,7 @@
   function set(patch) { cfg = { ...cfg, ...patch }; cfg.sfx = Math.min(1, Math.max(0, +cfg.sfx || 0)); cfg.bgm = Math.min(1, Math.max(0, +cfg.bgm || 0)); save(); applyVolumes(); }
 
   root.RLSound = {
-    play, music, set, unlock,
+    play, music, set, unlock, pause,
     get settings() { return { ...cfg }; },
     state: () => ({ ...cfg, track: want, playing, running: !!ctx && ctx.state === "running", unlocked }),
     recent: () => recent.slice(),

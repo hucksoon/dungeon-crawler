@@ -645,7 +645,7 @@
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
   로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 가운데 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
-  <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
+  <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
 <div id="inv-modal" class="overlay" hidden>
@@ -721,6 +721,14 @@
     <p class="meta" data-t>공격·속성·스킬·처치·좋은 장비마다 효과음이 나고, 마을·던전·나이트메어·헬·골드 던전·보스마다 배경 음악이 달라요. 설정은 이 기기에 저장돼요.</p>
     <button id="sound-test" type="button" data-t>효과음 들어 보기</button>
     <button id="sound-close" type="button" data-t>닫기</button>
+  </div>
+</div>
+
+<div id="ask-modal" class="overlay" hidden>
+  <div class="modal notice" role="dialog" aria-modal="true" aria-labelledby="ask-text">
+    <p id="ask-text" style="white-space: pre-line; margin: 0; line-height: 1.6"></p>
+    <button id="ask-yes" type="button" class="primary" data-t>확인</button>
+    <button id="ask-no" type="button" data-t>취소</button>
   </div>
 </div>
 
@@ -820,8 +828,8 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=100"></script>
-<script src="sound.js"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=100"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -888,6 +896,16 @@
     redirectUri: new URL("./", location.href).href,
   };
   const LOGIN_API = "https://login.xsolla.com/api";
+  // 포털 빌드 (dc#102, Poki·CrazyGames): dungeon-crawler-html5 저장소의 빌드가 window.RL_PORTAL을 먼저 넣어 줌
+  //   혼자 하는 버전: 로그인·결제·상점·캐시·랭킹·거래소·우편함·바깥 링크 없음, 저장은 이 기기. 광고는 포털 SDK로 (중간 광고·보상 광고)
+  //   RL_PORTAL = { name, gameplay(on), commercialBreak(), rewardedBreak() → true/false, loadingDone() }
+  const PORTAL = window.RL_PORTAL || null;
+  let portalAd = false;   // 포털 광고를 보는 중 (키 입력·소리 멈춤)
+  if (PORTAL && window.RLJump?.TOWN) {   // 서버가 있어야 하는 거래소·우편함, 운영자 문은 마을에서 뺌
+    const TW0 = window.RLJump.TOWN;
+    TW0.doors = TW0.doors.filter(d => !["market", "mailbox", "towerHell"].includes(d.id));
+    TW0.buildings = TW0.buildings.filter(b => b.id !== "market");
+  }
   const SAVE_KEY = "rl_save";          // 로컬 저장 키
   const SAVE_ATTR = "roguelike_save";  // 계정 속성(attribute) 키
 
@@ -1038,7 +1056,7 @@
     let state = null;  // 인증 요청 1회분의 CSRF state
     try { auth = JSON.parse(store.get(AUTH_KEY)); } catch {}
 
-    const configured = () => !!(XSOLLA.loginProjectId && XSOLLA.clientId);
+    const configured = () => !PORTAL && !!(XSOLLA.loginProjectId && XSOLLA.clientId);
 
     // 게스트 식별용 기기 ID: 처음 접속 때 만든 무작위 UUID
     function deviceId() {
@@ -3580,7 +3598,7 @@
     } else {
       const from = which === "wp" ? wpFloor : 1;
       if (which === "wp" && !waypoints.normal.includes(from)) return;
-      if (resumeFloor() && !confirm(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
+      if (resumeFloor() && !(await ask(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
       entering = true;
       let ok = false;
       try { ok = await allowEntry(); } finally { entering = false; }
@@ -3646,7 +3664,7 @@
     if (from > 1 && !wp && !nmCleared) { log(T("나이트메어 {0}층 문은 나이트메어를 완료하면 열린다 ({0}층 보스가 룬을 떨어뜨림).", NM.floors), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
-    if (resumeFloor() && !confirm(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
+    if (resumeFloor() && !(await ask(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3678,7 +3696,7 @@
     if (from > 1 && !wp && !hellMilestones().includes(from)) { log(T("헬 {0}층은 그 층을 완료해야 골라서 들어갈 수 있다.", from), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
-    if (resumeFloor() && !confirm(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
+    if (resumeFloor() && !(await ask(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3741,7 +3759,7 @@
     if (entering) return;
     if (!cleared) { log(T("골드 던전은 일반 던전 {0}층을 완료해야 들어갈 수 있다.", RLMonsters.MAX_FLOOR), "bad"); return; }
     if (nm && nmBest < 1) { log(T("골드 던전 오른쪽 문은 나이트메어에 들어가 본 뒤에 열린다 (나이트메어 최고 층 난이도)."), "bad"); return; }
-    if (resumeFloor() && !confirm(T("새 골드 던전에 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라져요. 골드·레벨·장비는 그대로예요.", floorName()))) return;
+    if (resumeFloor() && !(await ask(T("새 골드 던전에 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라져요. 골드·레벨·장비는 그대로예요.", floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -6092,7 +6110,7 @@
   let sellAsk = false;  // 레전더리·세트를 같이 팔지 묻는 중
   // 가방 전부 판매에 들어가는 아이템 (잠긴 아이템과 보석을 넣은 아이템은 빼고)
   const sellable = () => Inv.bag().filter(item => !item.gems?.length && !item.lock);
-  function sellAll() {
+  async function sellAll() {
     const bag = sellable();
     if (!bag.length) return;
     if (bag.some(isPrecious)) { sellAsk = true; renderInventory(); return; }
@@ -6100,7 +6118,7 @@
     const detail = valuable.length
       ? T(" 레어 이상 {0}개({1})도 포함돼요.", valuable.length, valuable.map(RLItems.itemName).slice(0, 5).join(", ") + (valuable.length > 5 ? " …" : ""))
       : "";
-    if (!confirm(T("가방의 아이템 {0}개를 모두 판매하고 {1}개를 받을까요?{2} 장착 중인 아이템, 잠긴 아이템, 보석·룬을 넣은 아이템은 판매되지 않아요.", bag.length, stonesText(bag, ""), detail))) return;
+    if (!(await ask(T("가방의 아이템 {0}개를 모두 판매하고 {1}개를 받을까요?{2} 장착 중인 아이템, 잠긴 아이템, 보석·룬을 넣은 아이템은 판매되지 않아요.", bag.length, stonesText(bag, ""), detail)))) return;
     doSellAll(() => false);
   }
   function doSellAll(keep) {
@@ -6161,11 +6179,11 @@
     } else if (RLItems.socketCount(item)) out.push(el("div", { className: "meta" }, T("홈 초기화: 넣은 보석이 없어요.")));
     return out;
   }
-  function reforgeItem(item, i) {
+  async function reforgeItem(item, i) {
     const cost = RLItems.reforgeCost(item);
     // 처음 재련할 때: 이 줄로 정해지면 다른 줄은 재련할 수 없음 (운영자는 빼고)
     if (!isStaff() && RLItems.reforgeLineOf(item) == null && item.lines.filter((_, j) => RLItems.reforgeableLine(item, j)).length > 1
-      && !confirm(T("{0} 줄을 재련할까요?\n이 아이템은 앞으로 이 줄만 재련할 수 있어요.", RLItems.formatStat(...item.lines[i])))) return;
+      && !(await ask(T("{0} 줄을 재련할까요?\n이 아이템은 앞으로 이 줄만 재련할 수 있어요.", RLItems.formatStat(...item.lines[i]))))) return;
     if (!canPay(cost)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", cost.toLocaleString()) }; renderInventory(); return; }
     const before = RLItems.formatStat(...item.lines[i]);
     const line = Inv.reforge(item.id, i);
@@ -6176,10 +6194,10 @@
     saveGame(true);
     afterGearChange();
   }
-  function resetSockets(item) {
+  async function resetSockets(item) {
     const cost = RLItems.socketResetCost(item);
     if (!canPay(cost)) { invMsg = { cls: "bad", text: T("골드가 부족해요. (필요 {0}골드)", cost.toLocaleString()) }; renderInventory(); return; }
-    if (!confirm(T("{0}의 홈을 초기화할까요? 넣은 보석·룬 {1}개가 사라져요. ({2}골드)", RLItems.itemName(item), item.gems.length, cost.toLocaleString()))) return;
+    if (!(await ask(T("{0}의 홈을 초기화할까요? 넣은 보석·룬 {1}개가 사라져요. ({2}골드)", RLItems.itemName(item), item.gems.length, cost.toLocaleString())))) return;
     if (!Inv.resetSockets(item.id)) return;
     pay(cost);
     invMsg = { cls: "good", text: T("⚒ 홈을 초기화했어요. 다시 보석·룬을 넣을 수 있어요. ({0})", costText(cost)) };
@@ -6286,7 +6304,7 @@
       T("{0}: {1} · {2} · 넣으면 뺄 수 없어요 (로비 대장간에서 홈 초기화)", pickName(), fxText(fx), pickPlanText(plan))));
     return out;
   }
-  function putGem(item) {
+  async function putGem(item) {
     const plan = pickPlan(), name = pickName();
     const how = pickPlanText(plan);
     // 룬워드 재료인데 순서에 안 맞는 걸 넣으면 룬워드를 못 만들게 됨 → 알려줌
@@ -6296,7 +6314,7 @@
     const lost = done ? [] : before.filter(w => !after.includes(w));
     const warn = lost.length ? "\n" + T("⚠ 이걸 넣으면 룬워드({0})를 만들 수 없게 돼요.", lost.map(w => w.label).join(", "))
       : done ? "\n" + T("✦ 룬워드 {0} 완성!", done.label) + (cut ? T(" 남는 홈 {0}개는 없어져요.", cut) : "") : "";
-    if (!plan || !confirm(T("{0}의 홈에 {1}을(를) 넣을까요?", RLItems.itemName(item), name) + `\n${how}${warn}\n` + T("한 번 넣으면 뺄 수 없어요."))) return;
+    if (!plan || !(await ask(T("{0}의 홈에 {1}을(를) 넣을까요?", RLItems.itemName(item), name) + `\n${how}${warn}\n` + T("한 번 넣으면 뺄 수 없어요.")))) return;
     if (!(pickIsRune() ? Inv.socketRune(item.id, gemPick.grade) : Inv.socketGem(item.id, gemPick.kind, gemPick.grade))) return;
     invMsg = { cls: "good", text: T("{0}을(를) 홈에 넣었어요. ({1})", name, how) };
     log(invMsg.text, pickIsRune() ? "rainbow" : "good");
@@ -6669,11 +6687,11 @@
     afterGearChange();
   }
 
-  function sellItem(item) {
+  async function sellItem(item) {
     const rank = RARITY_ORDER.indexOf(item.rarity);
     const gain = RLItems.sellStones(item), stone = RLItems.STONE_NAMES[RLItems.stoneKey(item)];
     const gemNote = item.gems?.length ? T(" 넣은 보석·룬 {0}개도 함께 사라져요.", item.gems.length) : "";
-    if ((rank <= RARITY_ORDER.indexOf("rare") || gemNote) && !confirm(T("{0}을(를) {1} {2}개에 판매할까요? 되돌릴 수 없어요.", RLItems.itemName(item), stone, gain) + gemNote)) return;
+    if ((rank <= RARITY_ORDER.indexOf("rare") || gemNote) && !(await ask(T("{0}을(를) {1} {2}개에 판매할까요? 되돌릴 수 없어요.", RLItems.itemName(item), stone, gain) + gemNote))) return;
     Inv.sell(item.id);
     const gold = sellGoldIn(RLItems.sellGold(item));
     selected = null;
@@ -7580,7 +7598,17 @@
   })();
 
   // 1층 문으로 새로 시작: 오늘 무료 입장이 남았으면 쓰고, 다 썼으면 광고를 보고 입장. 서버에 연결할 수 없으면 막지 않음
+  // 포털 광고 (dc#102): 중간 광고(새로 들어갈 때·쓰러져서 새로 시작할 때)와 보상 광고(부활). 보는 동안 키·소리 멈춤
+  async function portalAdBreak(rewarded) {
+    if (!PORTAL) return false;
+    portalAd = true;
+    window.RLSound?.pause(true);
+    try { return rewarded ? !!(await PORTAL.rewardedBreak?.()) : (await PORTAL.commercialBreak?.(), true); }
+    catch { return false; }
+    finally { portalAd = false; window.RLSound?.pause(false); }
+  }
   async function allowEntry() {
+    if (PORTAL) { await portalAdBreak(false); return true; }   // 포털: 하루 입장 제한 없이, 들어갈 때 중간 광고
     if (!RANKING_API) return true;
     try {
       const r = await marketCall("entry", { body: {} });
@@ -7686,6 +7714,20 @@
 
   // ---- 안내 창 (일반 던전 완료, 예전 장비 안내) ----
   const noticeModal = document.getElementById("notice-modal");
+  // 확인 창 (dc#102): 보통은 브라우저 confirm, 포털 빌드에서는 게임 안의 창 (포털의 iframe에서는 confirm이 막힐 수 있음)
+  const askModal = document.getElementById("ask-modal");
+  let askDone = null;
+  function ask(text) {
+    if (!PORTAL) return Promise.resolve(confirm(text));
+    return new Promise((resolve) => {
+      document.getElementById("ask-text").textContent = text;
+      askDone = (v) => { askModal.hidden = true; askDone = null; resolve(v); };
+      askModal.hidden = false;
+      document.getElementById("ask-yes").focus();
+    });
+  }
+  document.getElementById("ask-yes").addEventListener("click", () => askDone?.(true));
+  document.getElementById("ask-no").addEventListener("click", () => askDone?.(false));
   function showNotice(title, lines) {
     document.getElementById("notice-title").textContent = title;
     document.getElementById("notice-body").replaceChildren(...lines.map(t => Object.assign(document.createElement("li"), { textContent: t })));
@@ -7781,6 +7823,13 @@
       document.getElementById("death-restart").focus();
       return;
     }
+    // 포털: 보상 광고를 보고 부활 (한 판에 한 번)
+    if (PORTAL) {
+      deathRevive.replaceChildren(
+        el("button", { type: "button", className: "primary ad-revive", id: "revive-ad-btn", textContent: T("광고 보고 부활"), onclick: reviveByPortalAd }),
+        el("p", { className: "note", textContent: T("이 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 몬스터도 새로 나와요. 한 판에 한 번만 쓸 수 있어요.") }));
+      return;
+    }
     // 광고로 부활 (하루 1회, 계정 없이도): 서버에서 오늘 남은 횟수를 받으면 채움. 서버가 느리거나 없어도 나머지는 바로 보임
     const adSlot = el("div");
     Ads.loadStatus().then(st => {
@@ -7865,6 +7914,18 @@
     }
   }
 
+  async function reviveByPortalAd() {
+    if (reviving || !gameOver || player.revived) return;
+    reviving = true;
+    setDeathMsg(T("광고를 불러오는 중…"));
+    try {
+      if (await portalAdBreak(true)) { doRevive(); log(T("광고를 보고 부활했다."), "good"); }
+      else setDeathMsg(T("광고를 끝까지 보지 않았거나 지금은 광고를 불러올 수 없어요."), "bad");
+    } finally {
+      reviving = false;
+    }
+  }
+
   function doRevive() {
     gameOver = false;
     player.revived = true;
@@ -7891,6 +7952,7 @@
     log(down ? T("경험치 {0}을(를) 잃고 레벨이 내려갔다. Lv {1}", loss, player.plvl) : T("경험치 {0}을(를) 잃었다. (Lv {1})", loss, player.plvl), "bad");
     if (g > 0 && tomb) log(T("† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다. (웨이포인트로 가까운 층부터 갈 수 있다)", tombFloorName(tomb), g.toLocaleString()), null, TOMB.color);
     if (lost) log(T("예전 묘비(골드 {0})는 사라졌다.", lost.toLocaleString()), "bad");
+    if (PORTAL) portalAdBreak(false);   // 쓰러져서 새로 시작: 중간 광고
   }
   document.getElementById("death-restart").addEventListener("click", startOver);
 
@@ -7899,7 +7961,12 @@
   window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); else if (scene === "lobby") Town.key(e, false); });
   window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); else if (scene === "lobby") Town.release(); });
   window.addEventListener("keydown", (e) => {
-    if (Ads.isOpen()) return;  // 광고를 보는 중
+    if (Ads.isOpen() || portalAd) return;  // 광고를 보는 중
+    if (!askModal.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); askDone?.(false); }
+      else if (e.key === "Enter" && e.target?.id !== "ask-no") { e.preventDefault(); askDone?.(true); }
+      return;
+    }
     if (!noticeModal.hidden) {
       if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); closeNotice(); }
       return;
@@ -7994,6 +8061,17 @@
     history.replaceState(null, "", location.pathname);
     if (Account.loggedIn()) location.replace("shop.html");
     else if (Account.configured()) { loginReturn = "shop.html"; openLogin(); }
+  }
+  // 포털 빌드 (dc#102): 계정·상점·랭킹·바깥 링크·같이 접속한 사람 칸을 숨기고, 플레이 중인지 포털에 알림
+  if (PORTAL) {
+    document.body.classList.add("portal");
+    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "lobby-panel"]) {
+      const e = document.getElementById(id);
+      if (e) e.style.display = "none";
+    }
+    const playing = () => !gameOver && !portalAd && !document.querySelector(".overlay:not([hidden])") && ["dungeon", "lobby", "jump"].includes(scene);
+    setInterval(() => PORTAL.gameplay?.(playing()), 500);
+    PORTAL.loadingDone?.();
   }
 })();
 </script>

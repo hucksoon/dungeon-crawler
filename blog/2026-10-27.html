@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리 — 던전 크롤러 개발 블로그</title>
+<title>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 소리, 그리고 게임 포털 준비 — 던전 크롤러 개발 블로그</title>
 <meta name="description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했고, 드디어 소리가 생겼어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-27.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리 — 던전 크롤러 개발 블로그">
+<meta property="og:title" content="점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 소리, 그리고 게임 포털 준비 — 던전 크롤러 개발 블로그">
 <meta property="og:description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했고, 드디어 소리가 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-27.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/town-nojump.png">
@@ -48,7 +48,7 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리</h1>
+<h1>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 소리, 그리고 게임 포털 준비</h1>
 <p class="meta">2026년 10월 27일 (화) · 개발일기 · 피드백 · 웨이포인트 · 튜토리얼 · 정식 v1 · 사운드 · Claude Code</p>
 <p>며칠 전 마을 왼쪽 끝에 &quot;점프 던전&quot;을 열었어요. 던전을 옆에서 보며 실시간으로 뛰어다니고 더블 점프로 발판을 오르내리며 몬스터를 잡는 시험판이었어요.</p>
 <p>그런데 해 본 사람들의 평가가 좋지 않았어요.</p>
@@ -87,6 +87,12 @@
 <p>위쪽 🔊 버튼으로 효과음과 배경 음악을 따로 켜고 끄거나 크기를 바꿀 수 있어요.</p>
 <figure><img src="images/sound-settings.png" alt="🔊 소리 설정: 효과음과 배경 음악" loading="lazy"><figcaption>🔊 소리 설정: 효과음과 배경 음악</figcaption></figure>
 <p>Claude Code와 함께 소리를 만들고, 브라우저에서 실제로 나는 소리를 녹음해 들어 보며 다듬었어요.</p>
+<h2>게임 포털에도 올려 보려고요</h2>
+<p>정식 v1을 만들고 나니, 더 많은 사람이 해 봤으면 좋겠다는 생각이 들었어요. 그래서 Poki나 CrazyGames 같은 브라우저 게임 포털에 올릴 수 있는 버전을 준비하고 있어요.</p>
+<p>포털 버전은 계정 없이 혼자 하는 버전이에요.</p>
+<ul><li>로그인·상점·랭킹·거래소 없이, 진행 상황은 그 기기에 저장돼요</li><li>쓰러지면 광고를 보고 한 번 부활할 수 있어요</li><li>포털 화면 안에서 스크롤 없이 한눈에 보이게 배치를 바꿨어요. 휴대폰 가로·세로도 맞췄어요</li></ul>
+<figure><img src="images/portal-death.png" alt="포털 버전: 쓰러지면 광고를 보고 부활" loading="lazy"><figcaption>포털 버전: 쓰러지면 광고를 보고 부활</figcaption></figure>
+<p>게임 코드는 그대로 두고, 포털용으로 바꾸는 작업만 따로 모아 두었어요. 그래서 게임을 고치면 포털 버전도 다시 만들기만 하면 돼요.</p>
 <p>솔직한 평가 고마워요!</p>
 </article>
 <nav class="pager"><span><a href="2026-10-26.html">← 친구들의 첫 플레이 피드백, 바로 고치기</a></span><span></span></nav>
