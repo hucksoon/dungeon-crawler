@@ -199,7 +199,8 @@
     town:      { bpm: 92,  seed: 11, chords: ["C", "G", "Am", "F", "C", "G", "F", "G"], key: 60, scale: [0, 2, 4, 7, 9], lead: "triangle", arp: "triangle", bass: "triangle", drums: "k.....h.k.h...h.", density: 0.55, leadVol: 0.11, arpVol: 0.035 },
     dungeon:   { bpm: 80,  seed: 23, chords: ["Am", "F", "G", "Em", "Am", "F", "Dm", "E"], key: 57, scale: [0, 2, 3, 7, 8], lead: "triangle", arp: "square", bass: "triangle", drums: "k.......k...s...", density: 0.32, leadVol: 0.08, arpVol: 0.022 },
     nightmare: { bpm: 96,  seed: 37, chords: ["Dm", "A#", "Gm", "A", "Dm", "A#", "C", "A"], key: 62, scale: [0, 1, 3, 5, 7, 8], lead: "square", arp: "square", bass: "sawtooth", drums: "k...s..hk.k.s..h", density: 0.4, leadVol: 0.06, arpVol: 0.025 },
-    hell:      { bpm: 124, seed: 53, chords: ["Em", "F", "Em", "D", "Em", "F", "G", "F#"], key: 64, scale: [0, 1, 4, 5, 7, 8], lead: "sawtooth", arp: "square", bass: "sawtooth", drums: "k.hkk.h.s.hkk.hs", density: 0.5, leadVol: 0.05, arpVol: 0.025, eighthBass: true },
+    // 헬 (dc#101): 정신없던 빠른 곡 → 느리고 웅장하게. 다단조 i–VI–III–VII, 합창 같은 화음(pad)·낮은 베이스·팀파니·금관 같은 긴 멜로디 (epic)
+    hell:      { bpm: 66,  seed: 53, chords: ["Cm", "G#", "D#", "A#", "Cm", "G#", "F", "G"], key: 60, scale: [0, 2, 3, 7, 8], lead: "sawtooth", bass: "triangle", drums: "t.......t...t.tt", density: 0.55, leadVol: 0.07, epic: true },
     gold:      { bpm: 112, seed: 71, chords: ["D", "A", "Bm", "G", "D", "A", "G", "A"], key: 62, scale: [0, 2, 4, 7, 9], lead: "square", arp: "triangle", bass: "triangle", drums: "k...s...k.k.s..h", density: 0.6, leadVol: 0.06, arpVol: 0.03 },
     boss:      { bpm: 136, seed: 89, chords: ["Am", "Am", "F", "G", "Am", "Am", "A#", "E"], key: 57, scale: [0, 1, 3, 5, 7, 8], lead: "sawtooth", arp: "square", bass: "sawtooth", drums: "k.hsk.hsk.hsk.ss", density: 0.6, leadVol: 0.05, arpVol: 0.03, eighthBass: true },
   };
@@ -208,6 +209,7 @@
   // 곡을 칸(16분음표) 단위 악보로 미리 만듦
   function compose(tr) {
     const r = rng(tr.seed), steps = [];
+    if (tr.epic) return composeEpic(tr, r);
     tr.chords.forEach((cn) => {
       const c = chordOf(cn);
       for (let i = 0; i < 16; i++) {
@@ -228,10 +230,40 @@
     });
     return steps;
   }
+  // 웅장한 곡: 마디마다 화음을 길게(합창), 베이스는 마디 내내, 멜로디는 박자마다 길게 (금관), 팀파니
+  function composeEpic(tr, r) {
+    const steps = [];
+    tr.chords.forEach((cn, bar) => {
+      const c = chordOf(cn);
+      for (let i = 0; i < 16; i++) {
+        const st = { bass: null, arp: null, lead: null, dur: 1, drum: tr.drums[i], pad: null };
+        if (i === 0) { st.pad = [48 + c.tones[0], 48 + c.tones[1], 48 + c.tones[2], 60 + c.tones[0]]; st.bass = 36 + c.root; }
+        // 멜로디: 박자(4칸)마다, 화음 음 위주로 길게. 마지막 마디는 쉬어서 숨 고르기
+        if (i % 4 === 0 && bar % 4 !== 3 && r() < tr.density) {
+          const near = r() < 0.7 ? c.tones[Math.floor(r() * 3)] : (tr.key % 12) + tr.scale[Math.floor(r() * tr.scale.length)];
+          st.lead = 60 + (near % 12) + (near % 12 < 5 ? 12 : 0);
+          st.dur = r() < 0.5 ? 8 : 4;
+        }
+        steps.push(st);
+      }
+    });
+    return steps;
+  }
   const SCORES = {};
   let want = null, playing = null, step = 0, nextAt = 0, timer = null, trackGain = null;
 
   function drum(kind, t, out) {
+    if (kind === "t") {   // 팀파니: 낮고 길게 울리는 북
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(58, t + 0.5);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.32, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      o.connect(g).connect(out); o.start(t); o.stop(t + 1.15);
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), n = ctx.createGain();
+      s.buffer = noiseBuf; f.type = "lowpass"; f.frequency.value = 500;
+      n.gain.setValueAtTime(0.12, t); n.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      s.connect(f).connect(n).connect(out); s.start(t, Math.random() * 0.5); s.stop(t + 0.17);
+      return;
+    }
     if (kind === "k") {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = "sine"; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
@@ -245,12 +277,12 @@
       s.connect(f).connect(g).connect(out); s.start(t, Math.random() * 0.5); s.stop(t + len + 0.02);
     }
   }
-  function note(type, midi, t, dur, vol, out, lp) {
+  function note(type, midi, t, dur, vol, out, lp, attack = 0.01, detune = 0) {
     const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-    o.type = type; o.frequency.value = mtof(midi);
+    o.type = type; o.frequency.value = mtof(midi); if (detune) o.detune.value = detune;
     f.type = "lowpass"; f.frequency.value = lp;
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.01);
-    g.gain.setTargetAtTime(vol * 0.6, t + 0.02, dur * 0.3);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + attack);
+    g.gain.setTargetAtTime(vol * 0.6, t + attack + 0.01, dur * 0.3);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(f).connect(g).connect(out); o.start(t); o.stop(t + dur + 0.03);
   }
@@ -259,6 +291,15 @@
     const tr = TRACKS[playing], sc = SCORES[playing] || (SCORES[playing] = compose(tr)), spb = 60 / tr.bpm / 4;
     while (nextAt < ctx.currentTime + 0.15) {
       const st = sc[step % sc.length], t = Math.max(nextAt, ctx.currentTime);
+      if (tr.epic) {
+        // 합창: 화음 음마다 살짝 어긋난 톱니파 두 개를 부드럽게 (천천히 커지고 마디 끝까지)
+        if (st.pad) for (const m of st.pad) for (const d of [-8, 8]) note("sawtooth", m, t, spb * 16, 0.011, trackGain, 1100, 0.7, d);
+        if (st.bass != null) { note(tr.bass, st.bass, t, spb * 16, 0.07, trackGain, 400, 0.05); note("sine", st.bass - 12, t, spb * 16, 0.05, trackGain, 200, 0.05); }
+        if (st.lead != null) { note(tr.lead, st.lead, t, spb * st.dur * 0.98, tr.leadVol, trackGain, 1600, 0.09); note("square", st.lead - 12, t, spb * st.dur * 0.98, tr.leadVol * 0.4, trackGain, 900, 0.09); }
+        if (st.drum && st.drum !== ".") drum(st.drum, t, trackGain);
+        nextAt += spb; step++;
+        continue;
+      }
       if (st.bass != null) note(tr.bass, st.bass, t, spb * (tr.eighthBass ? 1.8 : 6), 0.16, trackGain, 700);
       if (st.arp != null) note(tr.arp, st.arp, t, spb * 1.6, tr.arpVol, trackGain, 2200);
       if (st.lead != null) note(tr.lead, st.lead, t, spb * st.dur * 0.95, tr.leadVol, trackGain, 3000);
