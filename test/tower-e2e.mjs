@@ -27,9 +27,9 @@ const MAPS = {
 };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-// staff: 가짜 서버가 로비 응답에서 운영자 기기(unlimited)라고 알려 줌
+// staff: 가짜 서버가 로비 응답에서 운영자 기기(unlimited)라고 알려 줌. 점프 던전은 운영자만 (dc#96) → 기본은 운영자
 const API = "https://api.test/api.php";
-async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {}, staff = false, inv = null } = {}) {
+async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = null, run = {}, staff = true, inv = null } = {}) {
   const ctx = await browser.newContext(opts); const page = await ctx.newPage(); const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.slice(1) || "index.html";
@@ -37,10 +37,10 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
     const p = path.join(REPO, f); if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: "" });
     let body = fs.readFileSync(p);
     if (map && f === "jump.js") {
-      const src = body.toString(), from = 'hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }';
+      const src = body.toString(), from = 'hunt1: { name: "사냥터 1층", depth: 1, staff: true, rows: HUNT1 }';
       if (!src.includes(from)) throw new Error("map line moved");
       // stale: 예전(점프 탑) jump.js가 캐시에 남은 경우 — hunt1 맵이 없음
-      body = src.replace(from, map === "stale" ? 'tower1: { name: "t", rows: HUNT1 }' : `hunt1: { name: "t", depth: 1, rows: ${JSON.stringify(MAPS[map])} }`);
+      body = src.replace(from, map === "stale" ? 'tower1: { name: "t", rows: HUNT1 }' : `hunt1: { name: "t", depth: 1, staff: true, rows: ${JSON.stringify(MAPS[map])} }`);
     }
     r.fulfill({ contentType: { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp" }[path.extname(f)] || "text/html", body }); });
   await ctx.route(API + "**", r => { const route = new URL(r.request().url()).searchParams.get("r");
@@ -52,7 +52,8 @@ async function open({ opts = { viewport: { width: 1100, height: 1000 } }, map = 
     if (iv) localStorage.setItem("rl_inv:g:tower-dev-0001", iv);
     for (const k of ["rl_notice_1025a"]) localStorage.setItem(k, "1");
     window.__log = []; document.addEventListener("DOMContentLoaded", () => new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => window.__log.push(n.textContent)))).observe(document.getElementById("log"), { childList: true })); }, [save(run), level(), inv]);
-  await page.goto(ORIGIN); await sleep(800);
+  const lobby = staff ? page.waitForResponse(r => r.url().includes("r=lobby"), { timeout: 8000 }).catch(() => null) : null;
+  await page.goto(ORIGIN); await lobby; await sleep(800);
   return { ctx, page, errors };
 }
 const logs = (page) => page.evaluate(() => window.__log.join("\n"));
@@ -180,8 +181,14 @@ try {
   await ctx.close();
 
   // ---- 운영자: 마을 점프 던전 건물 오른쪽에 헬 50층 문. 다른 사람에게는 문이 없음 ----
-  ({ ctx, page, errors } = await open());
-  await press(page, "p"); await sleep(300); await goDoor(page, "towerHell"); await sleep(100);
+  ({ ctx, page, errors } = await open({ staff: false }));
+  await press(page, "p"); await sleep(300);
+  // 점프 던전도 운영자만 (dc#96): 다른 사람은 건물·문이 없고, 그 자리에서 ↑ 해도 안 들어감
+  check("not staff: the jump dungeon door is hidden", await page.evaluate(() => { const d = window.RLJump.TOWN.doors.find(q => q.id === "jumptower"); return d.staff === true; }));
+  await goDoor(page, "jumptower"); await sleep(100);
+  check("not staff: ↑ where the jump dungeon was does nothing", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("점프 던전 1층") && await page.evaluate(() => window.RLTownPos().near === null));
+  await page.screenshot({ path: path.join(OUT, "tower-hidden.png") });
+  await goDoor(page, "towerHell"); await sleep(100);
   check("not staff: no hell-50 door there (stays in the lobby)", (await scene(page)).join() === "false,true" && !(await logs(page)).includes("헬 50층") && await page.evaluate(() => window.RLTownPos().near === null));
   await ctx.close();
   ({ ctx, page, errors } = await open({ staff: true }));

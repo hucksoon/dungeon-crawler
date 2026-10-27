@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 점프 던전을 잠시 내렸어요</title>
+<meta name="description" content="옆에서 보는 실시간 사냥 맵인 점프 던전을 해 본 사람들의 평가가 좋지 않아서, 마을에서 잠시 내렸어요. 코드는 남겨 두고 더 다듬을 수 있게 했어요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-10-27.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 점프 던전을 잠시 내렸어요">
+<meta property="og:description" content="옆에서 보는 실시간 사냥 맵인 점프 던전을 해 본 사람들의 평가가 좋지 않아서, 마을에서 잠시 내렸어요. 코드는 남겨 두고 더 다듬을 수 있게 했어요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-27.html">
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-10-27.html">블로그 글 보기</a></nav>
+<h1 id="title-text">점프 던전을 잠시 내렸어요</h1>
+<p class="meta">2026년 10월 27일 (화) · 태그: 개발일기, 피드백, 점프 던전, Claude Code</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/town-nojump.png" download="2026-10-27-1-town-nojump.png">1. 점프 던전 건물이 있던 마을 왼쪽 끝</a></p>
+<div id="paper">
+<p>며칠 전 마을 왼쪽 끝에 &quot;점프 던전&quot;을 열었어요. 던전을 옆에서 보며 실시간으로 뛰어다니고 더블 점프로 발판을 오르내리며 몬스터를 잡는 시험판이었어요.</p>
+<p><br></p>
+<p>그런데 해 본 사람들의 평가가 좋지 않았어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">마을에서 점프 던전 건물을 치웠어요</span></b></p>
+<p>• 마을 왼쪽 끝의 점프 던전 건물과 간판, 문이 이제 보이지 않아요</p>
+<p>• 그 자리는 빈 거리라서 문 앞에서 위로 눌러도 들어가지 않아요</p>
+<p>• 옆에서 보는 마을 자체는 그대로예요. 걷기, 더블 점프, 문 앞에서 들어가기도 지금처럼 돼요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/town-nojump.png" alt="점프 던전 건물이 있던 마을 왼쪽 끝" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">점프 던전 건물이 있던 마을 왼쪽 끝</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">지우지 않고 남겨 둔 이유</span></b></p>
+<p>점프 던전의 물리, 몬스터 움직임, 스킬 효과는 코드에 그대로 남겨 뒀어요. 피드백을 반영해 더 다듬으면 다시 열 수 있도록요.</p>
+<p><br></p>
+<p>Claude Code와 함께 마을 건물마다 보이는 조건을 하나 붙이고, 자동 테스트로 문이 정말 사라졌는지까지 확인했어요.</p>
+<p><br></p>
+<p>솔직한 평가 고마워요!</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-27.html">https://game.apacimtest.com/blog/2026-10-27.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>

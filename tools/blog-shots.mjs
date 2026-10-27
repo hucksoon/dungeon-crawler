@@ -43,7 +43,7 @@ const json = (r, o, status = 200) => r.fulfill({ status, contentType: "applicati
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
 // touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null }) {
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false }) {
   const dev = "blogshot-device-1";
   const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage(); const errors = [];
@@ -56,6 +56,8 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
     if (route === "ranking") return json(r, { type: u.searchParams.get("type") || "stage", season: "v4", seasonName: "v4 베타", current: true, total: 8, updatedAt: Date.now(), rows: rankingRows() });
     // others: 마을에 함께 있는 사람 (게스트 번호만)
+    // staff: 운영자 기기만 들어가는 곳(점프 던전, dc#96)을 찍을 때. 화면에는 운영자 표시가 나오지 않게 장면만
+    if (route === "lobby" && staff) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950", unlimited: true }, players: [], mail: 0 });
     if (route === "lobby" && others) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950" }, players: others.map(([name, x]) => ({ id: name.slice(-6).padEnd(16, "0"), name, scene: "lobby", x, y: 10 })), mail: 0 });
     if (route === "geo") return json(r, { country: lang === "ja" ? "JP" : lang === "en" ? "US" : "KR" });
     if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: 8, enh: 0, id: it.id }; }) });
@@ -185,8 +187,8 @@ const SCENES = [
   ["hunt-fight", "점프 던전: 휘두르기, 날아가는 화염구, 차례로 튕기는 체인 번개", async () => {
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
     const fire = [513, 806, 56, 464].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));   // 화염의 세트(투구·장화) + 뇌전의 세트(바지·갑옷): 파이어볼 + 체인 라이트닝
-    const o = await open({ dsf: 1.6, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv([...fire, ...g40.filter(it => !fire.some(f => f.slot === it.slot))]) } });
-    await press(o.page, ["p"], 300);
+    const o = await open({ dsf: 1.6, api: true, staff: true, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv([...fire, ...g40.filter(it => !fire.some(f => f.slot === it.slot))]) } });
+    await sleep(1200); await press(o.page, ["p"], 300);
     await goDoor(o.page, "jumptower");
     await sleep(500);
     const plan = [["ArrowRight", 200, 1100], ["ArrowRight", 2400, 3000], [" ", 3700, 4000], [" ", 4050, 4350], ["ArrowLeft", 3750, 4400]];   // 끝에 더블 점프로 위 발판
@@ -201,8 +203,8 @@ const SCENES = [
   // 점프 던전 휴대폰 화면: 왼손 ◀ ▶ (▼), 오른손 큰 점프 버튼. 게임 화면과 버튼만 (위쪽 메뉴는 잘라냄)
   ["hunt-phone", "휴대폰: 왼손으로 ◀ ▶, 오른손으로 큰 점프 버튼", async () => {
     const W = 32, H = 24, lv = JSON.stringify({ rid: "blog-hunt", d: 3, turn: 3, map: Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(W * H), px: 5, py: 5, shop: null, enemies: [], items: [] });
-    const o = await open({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
-    await press(o.page, ["p"], 300);
+    const o = await open({ touch: true, viewport: { width: 390, height: 844 }, dsf: 2, api: true, staff: true, seed: { rl_save: save(3, "blog-hunt", { hp: 500, mh: 500, a: 10 }), rl_level: lv, "rl_inv:g:DEV": inv(g40) } });
+    await sleep(1200); await press(o.page, ["p"], 300);
     await goDoor(o.page, "jumptower");
     await sleep(1800);
     await o.page.evaluate(() => { const g = document.getElementById("stage") || document.getElementById("game"); window.scrollTo(0, g.getBoundingClientRect().top + scrollY - 8); });
@@ -283,6 +285,11 @@ const SCENES = [
   ["tutorial-steps", "튜토리얼: 해 본 단계에 ✓, 다 해야 닫혀요", async () => {
     const o = await explored({ dsf: 1.6, seed: { rl_save: save(3, "blog-tut", { hp: 900, mh: 900, a: 300 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)), rl_tut_on: JSON.stringify(["dungeon"]), rl_tut: JSON.stringify(["enter", "attack", "map"]), rl_tips: JSON.stringify(["intro"]) } });
     await sleep(300);
+    return { ...o, shot: "#stage" }; }],
+  // 점프 던전을 내린 마을 (dc#96): 왼쪽 끝 건물 자리가 빈 거리
+  ["town-nojump", "점프 던전 건물이 있던 마을 왼쪽 끝", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "jumptower", { enter: false }); await sleep(800);
     return { ...o, shot: "#stage" }; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
