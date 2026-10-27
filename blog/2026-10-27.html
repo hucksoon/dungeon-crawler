@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>점프 던전은 쉬고, 웨이포인트·묘비, 그리고 50층 정식 v1 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했어요.">
+<title>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했고, 드디어 소리가 생겼어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-27.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="점프 던전은 쉬고, 웨이포인트·묘비, 그리고 50층 정식 v1 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했어요.">
+<meta property="og:title" content="점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="평가가 좋지 않던 점프 던전을 잠시 내리고, 그 자리에 웨이포인트를 만들었어요. 쓰러진 자리에 남는 묘비, 왼쪽 위에서 하나씩 진행하는 튜토리얼도 더했고, 일반 던전을 50층으로 줄이며 정식 v1을 시작했고, 드디어 소리가 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-27.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/town-nojump.png">
 
@@ -48,8 +48,8 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>점프 던전은 쉬고, 웨이포인트·묘비, 그리고 50층 정식 v1</h1>
-<p class="meta">2026년 10월 27일 (화) · 개발일기 · 피드백 · 웨이포인트 · 튜토리얼 · 정식 v1 · Claude Code</p>
+<h1>점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 그리고 소리</h1>
+<p class="meta">2026년 10월 27일 (화) · 개발일기 · 피드백 · 웨이포인트 · 튜토리얼 · 정식 v1 · 사운드 · Claude Code</p>
 <p>며칠 전 마을 왼쪽 끝에 &quot;점프 던전&quot;을 열었어요. 던전을 옆에서 보며 실시간으로 뛰어다니고 더블 점프로 발판을 오르내리며 몬스터를 잡는 시험판이었어요.</p>
 <p>그런데 해 본 사람들의 평가가 좋지 않았어요.</p>
 <h2>마을에서 점프 던전 건물을 치웠어요</h2>
@@ -78,6 +78,14 @@
 <p>이번 기회에 시즌 이름도 정리했어요. 지금까지의 &quot;v4 베타&quot;는 이제 <strong>정식 v1</strong>이에요. 새 시즌을 따로 만들지 않고 그대로 이어서, 지금 랭킹 기록도 50층 기준으로 바꿔 이어 가요. 75층이 생기기 전의 아주 예전 기록은 <strong>클로즈 베타</strong> 탭에 기록용으로 그대로 남아 있어요.</p>
 <figure><img src="images/ranking-v1.png" alt="랭킹: 정식 v1, 50층 완료 ✓" loading="lazy"><figcaption>랭킹: 정식 v1, 50층 완료 ✓</figcaption></figure>
 <p>Claude Code와 함께 층 기준이 바뀌어도 예전 저장, 예전 기록, 예전 아이템이 모두 그대로 인정되는지 자동 테스트로 하나씩 확인했어요.</p>
+<h2>드디어 소리가 나요</h2>
+<p>게임은 소리가 중요하죠. 지금까지 던전 크롤러는 조용했어요. 이제 공격할 때마다, 속성 공격이 나갈 때마다 소리가 나요.</p>
+<ul><li>휘두르는 소리와 맞히는 소리, 치명타는 쇳소리가 한 번 더 나요</li><li>불은 지글지글, 얼음은 맑은 '찡', 번개는 '지직'. 낀 장비에서 가장 센 속성 소리가 같이 나요</li><li>파이어볼은 날아가는 소리 뒤에 '쾅' 터지고, 프로스트 노바와 체인 라이트닝도 각자 소리가 있어요</li><li>레전더리·세트·유니크가 떨어지면 반짝이는 소리가 나요. 바닥을 보지 않아도 좋은 게 떨어진 걸 알 수 있어요</li><li>레벨 업, 포션, 계단, 포탈, 웨이포인트, 묘비에도 소리를 붙였어요</li></ul>
+<p>배경 음악도 생겼어요. 마을은 밝고 느긋하게, 던전은 어둡고 느리게, 나이트메어와 헬은 갈수록 빠르고 거칠게 바뀌어요. 보스가 눈에 들어오면 보스 음악으로 바뀌고, 쓰러뜨리면 원래 음악으로 돌아와요.</p>
+<p>소리 파일은 하나도 쓰지 않았어요. 8비트 게임기처럼 브라우저가 그 자리에서 소리를 만들어 내요. 그래서 픽셀 그림과도 잘 어울려요.</p>
+<p>위쪽 🔊 버튼으로 효과음과 배경 음악을 따로 켜고 끄거나 크기를 바꿀 수 있어요.</p>
+<figure><img src="images/sound-settings.png" alt="🔊 소리 설정: 효과음과 배경 음악" loading="lazy"><figcaption>🔊 소리 설정: 효과음과 배경 음악</figcaption></figure>
+<p>Claude Code와 함께 소리를 만들고, 브라우저에서 실제로 나는 소리를 녹음해 들어 보며 다듬었어요.</p>
 <p>솔직한 평가 고마워요!</p>
 </article>
 <nav class="pager"><span><a href="2026-10-26.html">← 친구들의 첫 플레이 피드백, 바로 고치기</a></span><span></span></nav>

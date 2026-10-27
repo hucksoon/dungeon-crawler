@@ -1125,5 +1125,14 @@
     "(전에 남긴 묘비의 골드 {0}은 사라져요)": "(The {0} gold in your earlier tombstone will be lost)",
     "† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다. (웨이포인트로 가까운 층부터 갈 수 있다)": "† Left a tombstone where you fell on {0}. Go back and step on it to get {1} gold back. (Waypoints can take you to a nearby floor)",
     "예전 묘비(골드 {0})는 사라졌다.": "Your earlier tombstone ({0} gold) is gone.",
+    // 소리 (dc#99)
+    "🔊 소리": "🔊 Sound",
+    "효과음": "Sound effects",
+    "배경 음악": "Music",
+    "공격·속성·스킬·처치·좋은 장비마다 효과음이 나고, 마을·던전·나이트메어·헬·골드 던전·보스마다 배경 음악이 달라요. 설정은 이 기기에 저장돼요.": "Attacks, elements, skills, kills and good gear each have a sound, and the town, dungeon, Nightmare, Hell, Gold Dungeon and bosses each have their own music. Settings are saved on this device.",
+    "효과음 들어 보기": "Test sound effects",
+    "소리 설정": "Sound settings",
+    "효과음 크기": "Sound effects volume",
+    "배경 음악 크기": "Music volume",
   } });
 })(typeof self !== "undefined" ? self : this);
