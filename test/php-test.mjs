@@ -7,6 +7,9 @@ import path from "node:path";
 const REPO = process.argv[2];
 import { createRequire } from "node:module";
 const RL = createRequire(import.meta.url)(REPO + "/items.js");
+
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) && !("itemName" in v) ? RL.itemName(RL.fromRef(v.ref, { gems: true })) : null);
 // 게임 형식의 시드 중에서 조건에 맞는 아이템 찾기 (gateMax: 몬스터·포션 드롭 확률 안에 드는 시드만)
 function find(make, src, lvl, pred, gateMax = 1) {
   for (let n = 0; n < 200000; n++) {
@@ -142,8 +145,8 @@ try {
   check("stage order 15,15,12,10,6", stage.rows.map(r => r.stage).join(",") === "15,15,12,10,6");
   check("item: legendary +0 beats rare +10 (rarity first)", item.rows[0].item.rarity === "legendary" && item.rows[1].item.rarity === "epic");
   check("item: same epic +3 lvl10 → earlier (alice) first", item.rows[1].name === "ali***@gmail.com" && item.rows[2].name === "***-5678");
-  check("alice's best item kept (not the common one)", item.rows[1].item.name === RL.itemName({ ...E10a, enh: 3 }), item.rows[1].item.name);
-  check("item name made by the server (client name ignored)", item.rows[0].item.name === RL.itemName(L2), item.rows[0].item.name);
+  check("alice's best item kept (not the common one)", nameOf(item.rows[1].item) === RL.itemName({ ...E10a, enh: 3 }), JSON.stringify(item.rows[1].item));
+  check("item name made by the server (client name ignored)", nameOf(item.rows[0].item) === RL.itemName(L2), JSON.stringify(item.rows[0].item));
   check("rows carry a public id (16 hex)", stage.rows.every(r => /^[0-9a-f]{16}$/.test(r.id)));
   check("masks match the Worker version", stage.rows.some(r => r.name === "ali***@gmail.com"));
   const raw = JSON.stringify([stage, item]);
@@ -189,10 +192,10 @@ try {
   const lv = 6 * 2;   // Lv 7 레벨 보너스 +12% (dc#95)
   const expAtk = Math.round((3 + 6 + t.atk) * (1 + (t.atkPct + lv) / 100)), expHp = Math.round((20 + 24 + t.hp) * (1 + (t.hpPct + lv) / 100));
   check("gear: stats computed by server match the game formula", p1.gear?.stats.atk === expAtk && p1.gear.stats.maxHp === expHp && p1.gear.stats.level === 7, JSON.stringify(p1.gear?.stats));
-  check("gear: 2 items in slot order, names by server", p1.gear.items.map(i => i.slot).join(",") === "head,weapon" && p1.gear.items[1].name === RL.itemName({ ...W5, enh: 4 }));
+  check("gear: 2 items in slot order, item values only (name rebuilt from ref)", p1.gear.items.map(i => i.slot).join(",") === "head,weapon" && nameOf(p1.gear.items[1]) === RL.itemName({ ...W5, enh: 4 }) && p1.gear.items[1].main.every(l => l.k && !("text" in l)));
   check("gear: rejected count = 2 (duplicate slot + fake)", p1.gear.rejected === 2);
   check("gear: lines show ranges and enhancement", p1.gear.items[1].main.every(l => /^\d+(~\d+)?%?$/.test(l.range)) && p1.gear.items[1].main.some(l => l.plus > 0));
-  check("gear: best item detail present", p1.bestItem?.name === RL.itemName({ ...W5, enh: 4 }));
+  check("gear: best item detail present", nameOf(p1.bestItem) === RL.itemName({ ...W5, enh: 4 }));
   check("gear: no private data in player response", !/carol\.gear|sub-carol|pkey|email_hmac/.test(JSON.stringify(p1)));
   await call("POST", "score", { ...carol, body: { stage: 3, plvl: 9, gear: [ref(H5b)] } });
   check("gear: lower stage keeps the record-time snapshot", (await call("GET", "player", { query: `&id=${carolRow.id}` })).body.gear.stats.level === 7);
@@ -213,6 +216,7 @@ try {
     const daveRow = (await call("GET", "me", dave)).body;  // 예전 장비를 낀 기록은 층 랭킹에 안 올라가서 me로 찾음
     const daveP = daveRow && (await call("GET", "player", { query: `&id=${daveRow.id}` })).body;
     // v4 베타 아이템 랭킹은 v4 아이템만 세지만, 예전 아이템도 장비로는 검증돼서 보임
+    // v1 아이템은 게임이 참조로 다시 만들 수 없어서 서버가 이름 글자를 그대로 보냄 (dc#97)
     check("v1 (old rules) item verifies as gear (not counted on the v4 item board)", daveP?.gear?.items?.[0]?.name === RL.itemName({ ...it, enh: 2 }) && !daveP.gear.rejected && (await call("GET", "me", dave)).body.item === null, JSON.stringify(daveP?.gear)); }
 
   check("PATH_INFO style also works", (await (await fetch("http://127.0.0.1:8090/api.php/api/ranking?type=stage", { headers: { Origin: "https://hucksoon.github.io" } })).json()).type === "stage");

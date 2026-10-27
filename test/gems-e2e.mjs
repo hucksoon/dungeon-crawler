@@ -137,7 +137,7 @@ try {
   await post("gems-guest-01", { stage: 70, plvl: 40, gear: [ref(ch, [["ruby", 2], ["emerald", 2]]), ref(wpn, [["ruby", 0], ["ruby", 0], ["ruby", 0]])] });
   const p = await player("gems-guest-01");
   const c = p.gear?.items?.find(x => x.slot === "chest");
-  check("server: socketed chest shows gems and stats include them", p.gear?.rejected === 1 && c?.gems?.length === 2 && c.gems[0].name === "완벽한 루비" && c.gems[1].text === "받는 피해 감소 +3%" && c.lines.some(l => l.text === "홈 4개") && p.gear.stats.dmgReduce === 3, JSON.stringify([p.gear?.rejected, c?.gems, p.gear?.stats?.dmgReduce]));
+  check("server: socketed chest shows gems and stats include them", p.gear?.rejected === 1 && c?.gems?.length === 2 && JSON.stringify(c.gems.map(g => g.g)) === JSON.stringify([["ruby", 2], ["emerald", 2]]) && c.gems.every(g => !("name" in g) && !("text" in g)) && c.lines.some(l => l.k === "socket" && l.v === 4) && p.gear.stats.dmgReduce === 3, JSON.stringify([p.gear?.rejected, c?.gems, p.gear?.stats?.dmgReduce]));
   await post("gems-guest-02", { stage: 70, plvl: 40, gear: [ref(ch, [["opal", 2]])] });
   check("server: unknown gem rejected", (await player("gems-guest-02")).gear?.rejected === 1);
   const pv = (inv) => execFileSync("php", ["-r", `require "${path.join(REPO, "ranking-php/profile.php")}"; echo profile_valid(json_decode($argv[1], true)) ? "ok" : "bad";`, JSON.stringify({ inv })]).toString();

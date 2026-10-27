@@ -7,6 +7,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -129,12 +131,13 @@ try {
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
-  // 7. 일반 던전 완료자: 던전 입구 오른쪽 문(최고 층 − 10)에서 65층부터
+  // 7. 일반 던전 완료자: 웨이포인트가 모두 켜져 있음 (dc#97) → 마을 웨이포인트에서 75층부터
   ({ ctx, page, errors } = await open("nmtest-g", { rl_save: save(30, "nmG"), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) }));
   await portalOut(page);
-  // 마을 던전 입구 오른쪽 문(최고 − 10층)
-  await goDoor(page, "skip"); await sleep(100);
-  check("cleared player: right door → starts on floor 65", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "65" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
+  await goDoor(page, "waypoint"); await sleep(150);
+  check("cleared player: every normal waypoint already on (25·50·75), nightmare not", await page.locator("#wp-list .wp-row").nth(0).locator("button:not([disabled])").count() === 3 && await page.locator("#wp-list .wp-row").nth(1).locator("button:not([disabled])").count() === 0);
+  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "75층" }).click(); await sleep(400);
+  check("cleared player: waypoint 75 → starts on floor 75", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "75" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
   await ctx.close();
 
   // 8. 랭킹 화면: 탭 3개, 나이트메어 탭
@@ -155,7 +158,7 @@ try {
   await post("nm-guest-0001", { stage: 76, nm: 12, plvl: 40, item: ref(boss), gear: [ref(boss), ref(shop)] });
   const p1 = await player("nm-guest-0001", "nm");
   check("server: nightmare items (lvl 85 boss n10, lvl 84 shop n9) verify, nightmare board 12", !p1.gear.rejected && p1.gear.items.length === 2 && p1.stage === 12, JSON.stringify([p1.stage, p1.gear.rejected]));
-  check("server: nightmare item counts on the v4 item board too", (await me("nm-guest-0001")).item?.name === I.itemName(boss));
+  check("server: nightmare item counts on the v4 item board too", nameOf((await me("nm-guest-0001")).item) === I.itemName(boss));
   await post("nm-guest-0002", { stage: 76, plvl: 40, item: ref(boss), gear: [ref(boss)] });
   check("server: without nightmare progress, a lvl 85 item is rejected", (await player("nm-guest-0002")).gear.rejected === 1);
   const bad = I.generate("nmsrv|n10|k3", "boss", 90);

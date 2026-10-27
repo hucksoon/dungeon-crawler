@@ -113,7 +113,7 @@ try {
   await post("lock-guest-001", { stage: 76, nm: 21, plvl: 40, gear: [{ seed: multi.seed, src: multi.src, lvl: multi.lvl, v: 4, enh: 0, id: multi.id, r: 5 }] });
   const p = await player("lock-guest-001", "nm");
   const it = p.gear?.items?.[0];
-  check("server: old item shows one element damage line", it && it.lines.filter(l => /^(불|얼음|번개) 피해/.test(l.text)).length === 1 && p.gear.rejected === 0, JSON.stringify(it?.lines));
+  check("server: old item shows one element damage line", it && it.lines.filter(l => ["fireDmg", "iceDmg", "boltDmg"].includes(l.k)).length === 1 && p.gear.rejected === 0, JSON.stringify(it?.lines));
 } finally { php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 const pass = results.filter(Boolean).length;

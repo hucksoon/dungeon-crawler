@@ -586,6 +586,29 @@ function item_view(array $it): array {
     ];
 }
 
+// 게임·랭킹 화면이 이 참조로 아이템을 다시 만들 수 있는지 (items.js fromRef: 규칙 v2부터)
+function ref_drawable($ref): bool { return is_array($ref) && (int)($ref['v'] ?? 1) >= 2; }
+// 보낼 때 아이템 글자를 뺌 (dc#97): 참조(ref)가 있으면 게임·랭킹 화면이 값으로 아이템을 다시 만들어 그 언어로 보여줌
+// (이름·등급·부위·세트·룬워드 이름, 능력치 글자, 보석 이름·효과). 다시 만들 수 없는 예전 기록(참조 없음·v1)만 한국어 글자를 그대로 둠
+function view_out(?array $v): ?array {
+    if (!$v || !ref_drawable($v['ref'] ?? null)) return $v;
+    unset($v['name'], $v['rarityName'], $v['slotName'], $v['set'], $v['runeword']);
+    foreach (['main', 'lines'] as $part) foreach ($v[$part] ?? [] as $i => $l) unset($v[$part][$i]['text']);
+    foreach ($v['gems'] ?? [] as $i => $g) unset($v['gems'][$i]['name'], $v['gems'][$i]['text']);
+    return $v;
+}
+// 장비 기록: 아이템마다 view_out, 세트는 id가 있으면 이름·효과 글자를 뺌
+function gear_out(?array $gear): ?array {
+    if (!$gear) return $gear;
+    $gear['items'] = array_map('view_out', $gear['items'] ?? []);
+    foreach ($gear['sets'] ?? [] as $i => $set) {
+        if (empty($set['id'])) continue;
+        unset($gear['sets'][$i]['name']);
+        foreach ($set['bonuses'] ?? [] as $j => $b) unset($gear['sets'][$i]['bonuses'][$j]['text']);
+    }
+    return $gear;
+}
+
 function read_score(array $body, int $oldBest, string $key): array {
     $stage = $body['stage'] ?? null;
     if (!is_int($stage) || $stage < 1 || $stage > MAX_STAGE) throw new HttpError(400, 'bad_stage');
@@ -778,7 +801,9 @@ function row_out(array $r, ?int $rank): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'item' => (int)$r['item_score'] >= 0
-            ? ['rarity' => $r['item_rarity'], 'enh' => (int)$r['item_enh'], 'lvl' => (int)$r['item_lvl'], 'name' => $r['item_name'], 'ref' => view_ref($r['item_json'] ?? null)]
+            ? (function ($ref) use ($r) {   // 이름은 참조가 없는 예전 기록만 (dc#97)
+                return ['rarity' => $r['item_rarity'], 'enh' => (int)$r['item_enh'], 'lvl' => (int)$r['item_lvl'], 'ref' => $ref] + (ref_drawable($ref) ? [] : ['name' => $r['item_name']]);
+            })(view_ref($r['item_json'] ?? null))
             : null,
     ];
 }
@@ -850,8 +875,8 @@ function get_player(): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'stageAt' => $r['stage_at'] !== null ? (int)$r['stage_at'] : null,
-        'gear' => gear_keys(snapshot_now($gear)),
-        'bestItem' => view_keys($r['item_json'] ? json_decode($r['item_json'], true) : null),
+        'gear' => gear_out(gear_keys(snapshot_now($gear))),
+        'bestItem' => view_out(view_keys($r['item_json'] ? json_decode($r['item_json'], true) : null)),
     ];
 }
 

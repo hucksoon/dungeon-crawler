@@ -228,13 +228,14 @@
 
   // ---- 장비 보기: 최고 층을 세운 순간의 장비와 능력치 (서버가 시드로 검증하고 계산한 값) ----
   const SLOT_ORDER = [["head", T("머리")], ["chest", T("가슴")], ["arms", T("팔")], ["pants", T("바지")], ["boots", T("장화")], ["weapon", T("무기")], ["offhand", T("보조")]];
-  // 서버가 주는 아이템 이름·능력치 문구는 한국어라, 다른 언어면 아이템 참조(ref)·능력치 키(k·v)로 다시 만듦 (없으면 서버 문구)
+  // 서버는 아이템 값만 보냄 (dc#97): 아이템 참조(ref)·능력치 키(k·v)·세트 id로 이 언어의 이름·문구를 만듦
+  // 참조가 없는 예전 기록만 서버의 한국어 글자가 옴 → 조각으로 나눠 그 언어로 (I.nameFromKo, 모르면 그대로)
   const I = window.RLItems, TR = RLI18N.lang !== "ko";
-  // 참조가 없는 예전 기록은 한국어 이름을 조각으로 나눠 그 언어로 (I.nameFromKo, 모르면 그대로)
-  const nameOf = (v) => { if (TR && v?.ref) { try { const x = I.fromRef(v.ref, { gems: true }); if (x) return I.itemName(x); } catch {} } return TR ? I.nameFromKo(v?.name) : v?.name; };
-  const lineText = (l) => (TR && l.k ? I.formatStat(l.k, l.v) : l.text);
-  const setName = (id, ko) => (TR && I.SETS[id] ? I.SETS[id].name : ko);
-  const bonusText = (id, b) => (TR && I.SETS[id] ? I.SETS[id].bonuses.find(x => x.count === b.count)?.text ?? b.text : b.text);
+  const nameOf = (v) => { if (v?.ref) { try { const x = I.fromRef(v.ref, { gems: true }); if (x) return I.itemName(x); } catch {} } return TR ? I.nameFromKo(v?.name) : v?.name; };
+  const lineText = (l) => (l.k ? I.formatStat(l.k, l.v) : l.text);
+  const setName = (id, ko) => (I.SETS[id] ? I.SETS[id].name : ko);
+  const bonusText = (id, b) => (I.SETS[id] ? I.SETS[id].bonuses.find(x => x.count === b.count)?.text ?? b.text : b.text);
+  const slotNameOf = (it) => I.SLOT_NAMES[it.slot] ?? it.slotName;
   // 게스트 이름(서버: "게스트 #ab12cd")
   const who = (n) => String(n ?? "").replace(/^게스트 #/, `${T("게스트")} #`);
   const fmtTime = (ms) => new Date(ms).toLocaleString(LOCALE, { dateStyle: "medium", timeStyle: "short" });
@@ -247,7 +248,7 @@
       l.plus ? el("span", { className: "plus", textContent: T(" (강화 +{0})", l.plus) }) : null,
       l.eff ? el("span", { className: "plus", textContent: T(" (적용 {0})", l.eff) }) : null);
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
-      el("div", { className: "slot", textContent: `${TR ? I.SLOT_NAMES[it.slot] ?? it.slotName : it.slotName} · ${TR ? (RARITY[it.rarity] || {}).name ?? it.rarityName : it.rarityName} · Lv.${it.lvl}${it.set ? " · " + setName(it.setId, it.set) : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
+      el("div", { className: "slot", textContent: `${slotNameOf(it)} · ${(RARITY[it.rarity] || {}).name ?? it.rarityName} · Lv.${it.lvl}${it.setId || it.set ? " · " + setName(it.setId, it.set) : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
       el("div", { className: "nm", textContent: nameOf(it), style: `color:${color}` }),
       ...it.main.map(l => line("★", l, false)),
       ...it.lines.map(l => line("◆", l, true)));
@@ -287,7 +288,7 @@
       }
       if (g.rejected) body.push(el("p", { className: "pnote", textContent: T("확인되지 않은 장비 {0}개는 제외했어요.", g.rejected) }));
     }
-    if (p.bestItem) body.push(el("h4", { textContent: T("가진 적 있는 최강 아이템") }), el("div", { className: "pitems" }, itemCard(p.bestItem, p.bestItem.slotName)));
+    if (p.bestItem) body.push(el("h4", { textContent: T("가진 적 있는 최강 아이템") }), el("div", { className: "pitems" }, itemCard(p.bestItem, slotNameOf(p.bestItem))));
     body.push(el("p", { className: "pnote", textContent: T("장비와 능력치는 서버가 아이템 시드로 다시 만들어 확인한 값이에요. ★ 주 능력치 · ◆ 추가 능력치 · [최소~최대] ▲ 최대치") }));
     $("player-body").replaceChildren(...body);
   }

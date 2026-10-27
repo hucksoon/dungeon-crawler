@@ -192,7 +192,7 @@ try {
   const prof = await (await fetch(`http://127.0.0.1:8102/api.php?r=player&id=${meRes.id}&season=nm`, { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
   const st = prof.gear?.stats;
   check("server: r3 nightmare gear verified, stats include element/resist", prof.gear && !prof.gear.rejected && st?.elem?.fire === fireIt.lines.find(l => l[0] === "fireDmg")[1] && st?.res?.fire === res, JSON.stringify([prof.gear?.rejected, st?.elem, st?.res]));
-  check("server: item lines named 불 피해 / 불 저항", JSON.stringify(prof.gear?.items).includes("불 피해 +") && JSON.stringify(prof.gear?.items).includes("불 저항 +"));
+  check("server: item lines carry 불 피해 / 불 저항 keys (fireDmg / fireRes)", (prof.gear?.items || []).some(x => x.lines.some(l => l.k === "fireDmg")) && (prof.gear?.items || []).some(x => x.lines.some(l => l.k === "fireRes")));
   await page.goto(ORIGIN + `ranking.html#nm`); await sleep(900);
   await page.locator("#board-stage li", { hasText: "eltest" }).first().click().catch(() => {}); await sleep(700);
   const panel = await page.locator("body").innerText();

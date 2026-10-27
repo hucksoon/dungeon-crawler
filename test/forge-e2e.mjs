@@ -137,7 +137,7 @@ try {
   await post("forge-guest-01", { stage: 76, nm: 21, plvl: 40, gear: [ref(L, { rf: [2, 4], enh: 12 }), ref(e10, { rf: [0] })] });
   const p = await player("forge-guest-01", "nm");
   const it = p.gear?.items?.find(x => x.slot === L.slot);
-  check("server: reforged lines replayed, +12 accepted, rare/epic reforge rejected", it && it.enh === 12 && it.lines.length === want.lines.length && it.lines.every((l, i) => l.text.startsWith(I.STATS[want.lines[i][0]].name)) && p.gear.rejected === 1, JSON.stringify([it?.lines?.map(l => l.text), want.lines, p.gear?.rejected]));
+  check("server: reforged lines replayed, +12 accepted, rare/epic reforge rejected", it && it.enh === 12 && it.lines.length === want.lines.length && it.lines.every((l, i) => l.k === want.lines[i][0] && !("text" in l)) && p.gear.rejected === 1, JSON.stringify([it?.lines?.map(l => l.text), want.lines, p.gear?.rejected]));
   await post("forge-guest-02", { stage: 76, nm: 21, plvl: 40, gear: [ref(L, { rf: [7] })] });
   check("server: bad reforge index rejected", (await player("forge-guest-02", "nm")).gear?.rejected === 1);
 } finally { php.kill(); }

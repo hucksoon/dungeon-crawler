@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -120,7 +122,7 @@ try {
   await post("anc-guest-0001", { stage: 50, plvl: 20, item: { ...ref(lucky, 1), rarity: "legendary", name: "x" }, gear: [ref(lucky, 1), ref(unlucky, 2)] });
   const p1 = await player("anc-guest-0001");
   const lv1 = p1.gear.items.find(x => x.slot === lucky.slot), uv = p1.gear.items.find(x => x.slot === unlucky.slot);
-  check("server: ar 1 hit → ancient, ar 2 misses → not ancient", lv1?.ancient === true && lv1.name.startsWith("고대") && uv && !uv.ancient && !p1.gear.rejected, JSON.stringify([lv1?.name, uv?.name, p1.gear.rejected]));
+  check("server: ar 1 hit → ancient, ar 2 misses → not ancient", lv1?.ancient === true && nameOf(lv1)?.startsWith("고대") && uv && !uv.ancient && !p1.gear.rejected, JSON.stringify([nameOf(lv1), nameOf(uv), p1.gear.rejected]));
   check("server: best item shows 고대", p1.bestItem?.ancient === true);
   await post("anc-guest-0002", { stage: 50, plvl: 20, gear: [ref(lucky, 21)] });
   check("server: ar over 20 rejected", (await player("anc-guest-0002")).gear.rejected === 1);

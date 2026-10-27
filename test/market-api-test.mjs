@@ -9,6 +9,9 @@ import path from "node:path";
 const REPO = process.argv[2];
 const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
 const RL = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) && !("itemName" in v) ? RL.itemName(RL.fromRef(v.ref, { gems: true })) : null);
 const DB = path.join(DIR, "market.sqlite");
 for (const f of [DB, DB + "-wal", DB + "-shm"]) fs.rmSync(f, { force: true });
 fs.writeFileSync(path.join(DIR, "config.market.php"), `<?php
@@ -88,7 +91,7 @@ try {
 
   // ---- 등록 ----
   const l1 = await call("POST", "market_list", A, { item: ref(epic, { enh: 3, tries: 5 }), gold: 120, cash: 3, stage: 5 });
-  check("A lists an epic for 120 gold + 3 cash", l1.status === 200 && l1.body.listing.item.name === RL.itemName({ ...epic, enh: 3 }) && l1.body.listing.mine && l1.body.listing.ref.tries === 5 && l1.body.listing.ref.enh === 3, l1.text.slice(0, 300));
+  check("A lists an epic for 120 gold + 3 cash", l1.status === 200 && nameOf(l1.body.listing.item) === RL.itemName({ ...epic, enh: 3 }) && l1.body.listing.mine && l1.body.listing.ref.tries === 5 && l1.body.listing.ref.enh === 3, l1.text.slice(0, 300));
   const L1 = l1.body.listing.id;
   check("listing expires in 24h", Math.abs(l1.body.listing.expiresAt - l1.body.listing.createdAt - 24 * 3600 * 1000) < 5);
   check("same item twice → already_listed", (await call("POST", "market_list", A, { item: ref(epic), gold: 1, cash: 0, stage: 5 })).body?.error === "already_listed");
@@ -129,6 +132,7 @@ try {
   const ma = await call("GET", "market_mine", A);
   const sale = ma.body.mail.find(m => m.kind === "sale");
   check("A's mailbox: sale proceeds 120 gold + 3 cash", sale && sale.gold === 120 && sale.cash === 3 && sale.note.includes("bob***@example.com"));
+  check("sale mail: sold item shown by value (show), not claimable (no ref), no Korean name", sale && sale.ref === null && !("itemName" in sale) && RL.itemName(RL.fromRef(sale.show)) === RL.itemName({ ...epic, enh: 3 }), JSON.stringify(sale));
   check("lobby ping shows mail count", (await call("POST", "lobby", A, { scene: "lobby", x: 3, y: 3 })).body.mail === 1 && (await call("POST", "lobby", G, { scene: "lobby", x: 3, y: 3 })).body.mail === 0);
   store.grantFail = 1;
   const gf = await call("POST", "mail_claim", A, { id: sale.id });

@@ -1,4 +1,4 @@
-// 포탈 열기(던전에 파란 *, 걸어 들어가면 로비), 로비의 파란 포탈로 떠난 자리로, 던전 입구 오른쪽 문 = 최고 층 − 10층, 보물은 !
+// 포탈 열기(던전에 파란 *, 걸어 들어가면 로비), 로비의 파란 포탈로 떠난 자리로, 웨이포인트(예전 오른쪽 문 자리), 보물은 !
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
@@ -81,29 +81,23 @@ try {
   check("no page errors (portal)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
-  // 2. 던전 입구 오른쪽 문: 최고 층 − 10층부터 (최고 40층 → 30층)
+  // 2. 던전 입구 오른쪽 문(최고 층 − 10층)은 없어지고 웨이포인트로 (dc#97). 최고 층만으로는 웨이포인트가 켜지지 않음
   ({ ctx, page, errors } = await open("tptest-b", { rl_save: saveB(1, "tpB", 40), rl_level: lv(1, "tpB", "normal"), "rl_inv:g:DEV": inv(plain) }));
   await press(page, "p"); await sleep(200);
   // 1층에서 나오면 로비 포탈 없음, 1층 문 앞
   check("leaving from floor 1: no lobby portal (nothing to return to)", await inLobby(page) && !(await logs(page)).includes("파란 포탈로"));
-  await goDoor(page, "skip"); await sleep(250);
-  check("right door starts at best − 10 (40 → 30)", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "30", await page.locator("#depth").innerText());
-  check("new run id for the −10 start", (await level(page)).rid !== "tpB");
+  check("no right door (best − 10) in the town anymore", await page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "skip")));
+  await goDoor(page, "waypoint"); await sleep(200);
+  check("best 40 but never stepped on a waypoint: 25층 locked", await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "25층" }).isDisabled());
   await ctx.close();
 
-  // 3. 최고 11층 이하면 오른쪽 문은 닫힘
-  ({ ctx, page, errors } = await open("tptest-c", { rl_save: saveB(1, "tpC", 11), rl_level: lv(1, "tpC", "normal"), "rl_inv:g:DEV": inv(plain) }));
-  await press(page, "p"); await sleep(200);
-  await goDoor(page, "skip"); await sleep(200);
-  check("right door closed before floor 12", await inLobby(page) && (await logs(page)).includes("12층까지 내려가면 열린다"));
-  await ctx.close();
-
-  // 4. 75층 완료자: 오른쪽 문 = 65층, 포탈 층이 있으면 확인 창 (사라진다는 안내)
+  // 3. 75층 완료자: 웨이포인트가 모두 켜져 있음 → 75층부터, 포탈 층이 있으면 확인 창 (사라진다는 안내)
   ({ ctx, page, errors } = await open("tptest-d", { rl_save: saveB(75, "tpD", 76, { clr: 1 }), rl_level: lv(75, "tpD", "normal"), "rl_inv:g:DEV": inv(plain) }));
   let dlg = ""; page.on("dialog", d => { dlg = d.message(); });
   await press(page, "p"); await sleep(200);
-  await goDoor(page, "skip"); await sleep(250);
-  check("cleared: right door = 65층, confirms that the portal floor goes away", (await page.locator("#depth").innerText()) === "65" && dlg.includes("65층부터 새로 들어갈까요?") && dlg.includes("75층"), dlg);
+  await goDoor(page, "waypoint"); await sleep(200);
+  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "50층" }).click(); await sleep(300);
+  check("cleared: waypoint 50 (on for completed players), confirms that the portal floor goes away", (await page.locator("#depth").innerText()) === "50" && dlg.includes("50층부터 새로 들어갈까요?") && dlg.includes("75층"), dlg);
   check("no page errors (doors)", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally { await browser.close(); php.kill(); }

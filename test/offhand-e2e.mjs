@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/";
 const results = [];
@@ -163,7 +165,7 @@ try {
   const rk = { rows: [{ id: (await call("me")).id }] };
   const p = await call(`player&id=${rk.rows[0].id}`);
   const shieldView = p.gear.items.find(i => i.slot === "offhand");
-  check("server view: offhand 견고의 방패 with parry line", shieldView && shieldView.slotName === "보조" && shieldView.name === "견고의 방패" && shieldView.main.some(m => m.text === `패링 확률 +${sturdyS.parry}%`), JSON.stringify(shieldView));
+  check("server view: offhand 견고의 방패 with parry line", shieldView && shieldView.slot === "offhand" && !("slotName" in shieldView) && nameOf(shieldView) === "견고의 방패" && shieldView.main.some(m => m.k === "parry" && m.v === sturdyS.parry), JSON.stringify(shieldView));
   check("server stats: parry shield+15, sturdy set full 2", p.gear.stats.parry === Math.min(40, sturdyS.parry + 15) && p.gear.sets[0].full === 2 && p.gear.sets[0].bonuses[0].on, JSON.stringify(p.gear.stats));
   check("server: no rejected gear", !p.gear.rejected);
   const prof = await call("profile", { rev: 0, data: { v: 1, inv: { bag: [], equip: Object.fromEntries(I.SLOTS.map(s => [s, null])), stones: 0 }, dex: { seen: {}, kills: {} } } });

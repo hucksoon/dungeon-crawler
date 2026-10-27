@@ -105,7 +105,7 @@ try {
   const a = p.gear?.items?.find(x => x.slot === anc.slot);
   const o = p.gear?.items?.find(x => x.slot === old.slot);
   check("server: item view has no legend fields", a && !("legend" in a) && !("legendRes" in a), JSON.stringify(a));
-  check("server: r3 resist line applied at 20%", o?.lines.some(l => l.text.startsWith("불 저항") && l.eff === "20%"), JSON.stringify(o?.lines));
+  check("server: r3 resist line applied at 20%", o?.lines.some(l => l.k === "fireRes" && l.eff === "20%"), JSON.stringify(o?.lines));
 } finally { php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 const pass = results.filter(Boolean).length;

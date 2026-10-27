@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const ORIGIN = "https://game.apacimtest.com/";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -141,7 +143,7 @@ try {
   await post("rw-guest-01", { stage: 70, plvl: 40, gear: [ref(c2)] });
   const p = await player("rw-guest-01"), c = p.gear?.items?.find(x => x.slot === "chest");
   const js = I.totals([c2]).stats;
-  check("server: runeword chest named 천하무적, runeword field, stats match the game", c?.name === "천하무적" && c.runeword === "천하무적" && p.gear.stats.def === Math.round(js.def * (1 + js.defPct / 100)), JSON.stringify([c?.name, c?.runeword, p.gear?.stats?.def, js.def, js.defPct]));
+  check("server: runeword chest named 천하무적, runeword field, stats match the game", nameOf(c) === "천하무적" && !("runeword" in c) && p.gear.stats.def === Math.round(js.def * (1 + js.defPct / 100)), JSON.stringify([nameOf(c), c?.runeword, p.gear?.stats?.def, js.def, js.defPct]));
 } finally { php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 const pass = results.filter(Boolean).length;

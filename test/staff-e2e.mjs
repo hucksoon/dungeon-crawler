@@ -149,9 +149,11 @@ try {
   // 운영자 입구 (마을 던전 입구 건물 오른쪽): 포탈로 나와서 걸어가 ↑
   await press(D.page, "p"); await sleep(300);
   await D.page.screenshot({ path: `${OUT}/staff-lobby.png` });
-  await goDoor(D.page, "staff"); await sleep(150);
+  // 운영자 문은 웨이포인트가 생기면서 없앰 (dc#97): 파란 포탈로 5층에 돌아감 (쓰러진 창의 운영자 버튼은 그대로)
+  check("no operator door in the town anymore", await D.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "staff" || d.id === "skip")));
+  await goDoor(D.page, "resume"); await sleep(300);
   const lvl = await D.page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
-  check("operator door → the floor where the portal was taken (normal 5, not the older death on nightmare 37), new map", lvl?.d === 5 && (lvl?.z || "normal") === "normal" && lvl?.rid !== "rid" + DEV.sub && (await D.page.locator("#log").innerText()).includes("운영자 입구: 5층을(를) 새로 만들어 들어왔다"), JSON.stringify([lvl?.d, lvl?.z, lvl?.rid]));
+  check("blue portal → back on floor 5", lvl?.d === 5 && (lvl?.z || "normal") === "normal", JSON.stringify([lvl?.d, lvl?.z, lvl?.rid]));
   // 실제로 쓰러지면: 옆에 아주 센 몬스터를 두고 한 턴 → 쓰러진 창의 운영자 버튼 → 같은 층으로
   await D.page.evaluate(() => {
     const L = JSON.parse(localStorage.getItem("rl_level")), W = 32;
@@ -196,8 +198,7 @@ try {
   check("normal user: no gems → can't socket", await P.page.locator("#inv-detail button.gem-put").isDisabled());
   await P.page.locator("#inv-close").click(); await sleep(100);
   await press(P.page, "p"); await sleep(300);
-  await goDoor(P.page, "staff"); await sleep(150);
-  check("normal user: no operator door in the town (nothing to enter, stays in the lobby)", await P.page.evaluate(() => document.body.classList.contains("in-lobby") && window.RLTownPos().near === null));
+  check("normal user: no operator door in the town", await P.page.evaluate(() => document.body.classList.contains("in-lobby") && !window.RLJump.TOWN.doors.some(d => d.id === "staff")));
   check("normal user: no page errors", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 } finally { await browser.close(); }

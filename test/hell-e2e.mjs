@@ -7,6 +7,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -137,7 +139,7 @@ try {
   const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v, enh: 0, id: it.id, r: it.r });
   await post("hell-guest-01", { stage: 76, plvl: 40, nm: 51, hell: 21, item: ref(hellItem) });   // 76 = 일반 던전 완료
   const m = await me("hell-guest-01", "hell");
-  check("server: hell item (seed j20, lvl 145) accepted with hell 21, hell board", m.stage === 21 && m.item?.lvl === 145 && m.item?.name?.includes?.("지옥의") !== false, JSON.stringify(m));
+  check("server: hell item (seed j20, lvl 145) accepted with hell 21, hell board", m.stage === 21 && m.item?.lvl === 145 && nameOf(m.item)?.includes("지옥의"), JSON.stringify(m));
   await post("hell-guest-02", { stage: 76, plvl: 40, nm: 30, hell: 21, item: ref(hellItem) });
   const m2 = await me("hell-guest-02", "hell");
   check("server: hell record needs nightmare cleared (nm 51)", !m2.stageRank && !(m2.stage > 0), JSON.stringify(m2));

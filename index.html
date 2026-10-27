@@ -69,14 +69,19 @@
   #lvb { color: #9fe0ff; font-size: 0.85em; }
   /* 캔버스 위에 피해 숫자를 띄우는 층 (캔버스 크기에 맞춰 늘고 줄어듦) */
   #stage { position: relative; max-width: 100%; line-height: 0; }
-  /* 처음 하는 사람 안내 말풍선 (dc#91): 게임 위에 떠 있지만 막지 않음 (키·버튼은 그대로) */
-  #tip { position: absolute; left: 8px; right: 8px; top: 8px; line-height: 1.55; font-size: 13px; white-space: pre-line;
-    background: rgba(10, 14, 28, 0.93); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 34px 8px 10px; color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
-  #tip-close { position: absolute; top: 4px; right: 4px; padding: 2px 8px; font-size: 12px; line-height: 1.4; opacity: 0.8; }
+  /* 튜토리얼 (dc#97): 왼쪽 위 작은 상자에 하나씩. 클릭은 게임으로 지나감 (버튼만 눌림) */
+  #tip { position: absolute; left: 8px; top: 8px; max-width: min(300px, 62%); line-height: 1.45; font-size: 12px; white-space: pre-line; pointer-events: none;
+    background: rgba(10, 14, 28, 0.82); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; color: var(--fg); box-shadow: 0 3px 10px rgba(0,0,0,0.45); text-align: left; }
+  #tip .tip-btns { display: flex; gap: 4px; justify-content: flex-end; margin-top: 4px; }
+  #tip .tip-btns button { pointer-events: auto; padding: 1px 7px; font-size: 11px; line-height: 1.4; opacity: 0.8; }
+  #tip.folded { padding: 4px 6px; }
+  #tip.folded .tip-btns { display: inline-flex; margin: 0 0 0 6px; vertical-align: middle; }
+  #tip.folded #tip-close { display: none; }
+  #tip.folded #tip-text, #tip.folded .tip-title { display: inline; }
   #tip .tip-title { font-weight: bold; color: var(--accent); }
   #tip .tip-step { margin-left: 2px; }
   #tip .tip-step.ok { color: #6fdc6f; opacity: 0.85; }
-  #tip .tip-note { opacity: 0.85; font-size: 12px; }
+  #tip .tip-note { opacity: 0.8; font-size: 11px; }
   /* HP가 적을 때 (30% 이하): 위쪽 HP 숫자 빨갛게, 포션 버튼 깜빡임 */
   #hp.low { color: #ff5a4a; }
   #tp-potion.urgent { border-color: #ff5a4a; color: #ff9a8a; animation: urgent 0.8s ease-in-out infinite alternate; }
@@ -362,6 +367,13 @@
   .hellpick-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
   .hellpick-list button { border-color: #ff5a2e; color: #ffb38a; }
   .hellpick-list button:disabled { border-color: #444; color: #666; }
+  /* 웨이포인트 (dc#97) */
+  .modal.wp-modal h2 { color: #5fd4ff; text-shadow: 0 0 10px rgba(95, 212, 255, 0.6); }
+  .wp-list { display: grid; gap: 8px; margin: 8px 0; }
+  .wp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .wp-row b { width: 100%; font-size: 13px; color: var(--muted); }
+  .wp-row button { flex: 1 1 0; width: auto; min-width: 44px; margin: 0; padding: 8px 2px; border-color: #5fd4ff; color: #bfeaff; }
+  .wp-row button:disabled { border-color: #444; color: #666; }
   .modal.death { max-width: 360px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.death h2 { color: #ff6b6b; }
   .modal.death button { width: 100%; padding: 10px; }
@@ -597,7 +609,7 @@
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)<small id="lvb"></small></span>
     <span id="status" hidden></span>
   </div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><button id="tip-close" type="button" data-t>건너뛰기 ×</button></div></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
@@ -627,7 +639,7 @@
   <span class="touch-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 왼쪽 문 1층부터, 오른쪽 문 (최고 층 − 10)층부터.<br></span>
+  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 왼쪽 끝 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전 25·50·75층, 나이트메어·헬 10층마다).<br></span>
   <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
@@ -696,6 +708,15 @@
   </div>
 </div>
 
+<div id="wp-modal" class="overlay" hidden>
+  <div class="modal notice wp-modal" role="dialog" aria-modal="true" aria-labelledby="wp-title">
+    <h2 id="wp-title" data-t>◎ 웨이포인트</h2>
+    <p class="meta" data-t>던전의 웨이포인트를 밟아 활성화한 층부터 바로 시작해요. 일반 던전은 25·50·75층, 나이트메어·헬은 10·20·30·40·50층에 있어요.</p>
+    <p id="wp-empty" class="meta" data-t>아직 활성화한 웨이포인트가 없어요. 일반 던전 25층까지 내려가 보세요.</p>
+    <div id="wp-list" class="wp-list"></div>
+    <button id="wp-close" type="button" data-t>닫기</button>
+  </div>
+</div>
 <div id="hellpick-modal" class="overlay" hidden>
   <div class="modal notice hellpick" role="dialog" aria-modal="true" aria-labelledby="hellpick-title">
     <h2 id="hellpick-title" data-t>🔥 헬 던전 · 층 고르기</h2>
@@ -783,7 +804,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=96"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=98"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -863,87 +884,91 @@
   //   intro(처음 온 사람, 마을) · dungeon(처음 던전) · gear(처음 장비 줍기) · lowhp(HP 30% 이하) — 뒤의 셋은 아직 10층 전인 사람만
   //   저장: rl_tips = 끝난 안내, rl_tut = 해 본 단계, rl_tut_on = 진행 중인 안내 (HP 안내는 그때뿐이라 저장 안 함)
   const LOW_HP = 0.3;
+  // 튜토리얼 (dc#94 → dc#97): 왼쪽 위 작은 상자에 하나씩. 직접 해 보면 ☐ → ✓, 다 하면 "잘했어요!" 뒤 다음 튜토리얼
+  // 차례: ① 던전 들어가기 → ② 던전 탐험 → ③ 장비 끼기 → ④ HP 회복 → ⑤ 웨이포인트. HP가 적으면 ④를 먼저
+  // 게임을 막지 않음: 상자는 클릭이 게임으로 지나가고(버튼만 눌림), ▴로 접을 수 있음. 일반 던전 25층을 넘기기 전까지
+  // 저장(이 기기): rl_tut 해 본 단계, rl_tut_skip 건너뛴 튜토리얼, rl_tut_fold 접음. 끝은 해 본 단계로 판단 (예전 버전의 "봤음"은 안 셈)
   const Tips = (() => {
-    const box = document.getElementById("tip"), text = document.getElementById("tip-text");
+    const box = document.getElementById("tip"), text = document.getElementById("tip-text"), fold = document.getElementById("tip-fold");
     const phone = () => matchMedia("(max-width: 899px)").matches;
     const DEFS = {
-      intro: { scene: "lobby", rank: 1, title: () => T("👋 처음 오셨나요? 이렇게 해요"),
-        steps: () => [["enter", phone() ? T("① 마을 가운데 던전 입구로 걸어가 문 앞에서 ▲ 들어가기") : T("① 마을 가운데 던전 입구로 걸어가 문 앞에서 ↑ (← → 걷기)")]],
-        notes: () => [T("② 던전에서 몬스터 쪽으로 이동하면 공격, 계단(>)을 밟으면 다음 층"),
-          T("③ 몬스터가 떨어뜨린 장비를 끼면 강해져요 (인벤토리에서 ▲ 표시가 더 좋은 것)"),
-          phone() ? T("👆 던전에서는 화면을 밀어 움직이거나, 가고 싶은 칸을 누르면 거기까지 자동으로 걸어가요") : T("👆 던전에서 가고 싶은 칸을 클릭하면 거기까지 자동으로 걸어가요"),
-          phone() ? T("🗺 지도 버튼: 지나온 길이 화면 위에 겹쳐 보여요") : T("🗺 Tab: 지나온 길이 화면 위에 겹쳐 보여요 (디아블로처럼)"),
-          T("🏆 더 깊이 내려갈수록 좋은 장비 → 랭킹에 도전!")] },
-      dungeon: { scene: "dungeon", rank: 2, title: () => T("⚔ 던전에서 해 볼 것"),
-        steps: () => [["attack", T("몬스터 쪽으로 이동해서 공격하기")],
-          ["walk", phone() ? T("화면을 밀거나, 가고 싶은 칸을 눌러 걸어가기") : T("가고 싶은 칸을 클릭해 자동으로 걸어가기")],
-          ["map", phone() ? T("지도 버튼으로 지나온 길 겹쳐 보기") : T("Tab으로 지나온 길 겹쳐 보기")],
+      intro: { title: () => T("① 던전에 들어가기"),
+        steps: () => [["enter", phone() ? T("마을 가운데 던전 입구 문 앞에서 ▲") : T("마을 가운데 던전 입구 문 앞에서 ↑ (← → 걷기)")]] },
+      dungeon: { title: () => T("② 던전 탐험"),
+        steps: () => [["attack", T("몬스터 쪽으로 이동해서 공격")],
+          ["walk", phone() ? T("화면을 밀거나 칸을 눌러 걷기") : T("가고 싶은 칸을 클릭해 걷기")],
+          ["map", phone() ? T("지도 버튼으로 지나온 길 보기") : T("Tab으로 지나온 길 보기")],
           ["stairs", T("계단(>)을 밟고 다음 층으로")]],
-        notes: () => [phone() ? T("❤ 내 머리 위 막대가 HP예요. 빨개지면 포션 버튼, 또는 포탈로 마을에 가면 다 차요.") : T("❤ 내 머리 위 막대가 HP예요. 빨개지면 포션(Q), 또는 포탈(P)로 마을에 가면 다 차요.")] },
-      gear: { scene: "dungeon", rank: 3, title: () => T("🎒 장비를 주웠어요!"),
-        steps: () => [["inv", phone() ? T("인벤토리 버튼 누르기") : T("인벤토리 열기 (I)")], ["equip", T("▲ 표시가 붙은 장비를 눌러 지금 낀 것과 비교하고 장착하기")]],
-        notes: () => [] },
-      lowhp: { scene: "dungeon", rank: 4, title: () => T("❤ HP가 얼마 안 남았어요!"),
-        steps: () => [["heal", phone() ? T("포션 버튼을 누르거나, 포탈로 마을에 가기 (마을에 가면 HP가 다 차요)") : T("포션(Q)을 마시거나, 포탈(P)로 마을에 가기 (마을에 가면 HP가 다 차요)")]],
-        notes: () => [T("떠난 층에는 마을의 파란 포탈로 다시 들어가요.")] },
+        note: () => T("❤ 머리 위 막대가 HP예요 · ◎ 웨이포인트를 만나면 꼭 밟고 지나가요") },
+      gear: { title: () => T("③ 장비 끼기"),
+        steps: () => [["inv", phone() ? T("인벤토리 버튼 누르기") : T("인벤토리 열기 (I)")], ["equip", T("▲ 표시 장비를 비교하고 장착")]],
+        note: () => T("몬스터가 떨어뜨린 장비를 주워요") },
+      heal: { title: () => T("④ HP 회복"),
+        steps: () => [["heal", phone() ? T("포션 버튼, 또는 포탈로 마을에 가기") : T("포션(Q), 또는 포탈(P)로 마을에 가기")]],
+        note: () => T("마을에 가면 HP가 다 차요") },
+      waypoint: { title: () => T("⑤ 웨이포인트"),
+        steps: () => [["wp", T("일반 던전 25층 시작 자리 옆 ◎ 밟기")]],
+        note: () => T("◎은 꼭 밟고 지나가요 (밟아야 계단이 열려요) · 마을 왼쪽 끝 ◎에서 그 층부터 · 쓰러지면 묘비 †에서 골드 90%") },
     };
+    const ORDER = ["intro", "dungeon", "gear", "heal", "waypoint"];
     const read = (k) => { try { return JSON.parse(store.get(k)) || []; } catch { return []; } };
-    const done = () => read("rl_tips"), steps = () => read("rl_tut");
-    let active = new Set(read("rl_tut_on")), cheer = null, cheerTimer = 0;
-    const saveActive = () => store.set("rl_tut_on", JSON.stringify([...active].filter(id => id !== "lowhp")));
-    const stepsLeft = (id) => DEFS[id].steps().filter(([k]) => !steps().includes(k));
-    function finish(id) {
-      store.set("rl_tips", JSON.stringify([...new Set([...done(), id])]));
-      active.delete(id); saveActive();
-    }
-    // 지금 장면에서 보일 안내 하나 (급한 것부터)
-    function pick() {
-      const d = done();
-      return [...active].filter(id => DEFS[id] && !d.includes(id) && DEFS[id].scene === scene).sort((a, b) => DEFS[b].rank - DEFS[a].rank)[0] || null;
-    }
+    const steps = () => read("rl_tut"), skipped = () => read("rl_tut_skip");
+    const isDone = (id, have = steps()) => skipped().includes(id) || DEFS[id].steps().every(([k]) => have.includes(k));
+    let urgent = false, cheer = null, cheerTimer = 0, folded = store.get("rl_tut_fold") === "1";
+    const on = () => bestDepth <= 25 && !cleared && (scene === "lobby" || scene === "dungeon");
+    // 지금 보여줄 튜토리얼: HP가 적으면 ④, 아니면 차례대로 아직 안 끝난 첫 번째
+    const pick = () => (urgent && !isDone("heal") ? "heal" : ORDER.find(id => !isDone(id)) || null);
+    const line = (cls, t) => Object.assign(document.createElement("div"), { className: cls, textContent: t });
     function refresh() {
       if (cheer) return;   // "잘했어요!"를 보여주는 중
-      const id = pick();
+      const id = on() ? pick() : null;
       box.dataset.tip = id || "";
-      if (!id) { box.hidden = true; return; }
-      const D = DEFS[id], have = steps(), line = (cls, t) => Object.assign(document.createElement("div"), { className: cls, textContent: t });
-      text.replaceChildren(line("tip-title", D.title()),
-        ...D.steps().map(([k, t]) => line(have.includes(k) ? "tip-step ok" : "tip-step", `${have.includes(k) ? "✓" : "☐"} ${t}`)),
-        ...D.notes().map(t => line("tip-note", t)));
-      box.hidden = false;
+      box.hidden = !id;
+      if (!id) return;
+      const D = DEFS[id], have = steps(), list = D.steps(), n = list.filter(([k]) => have.includes(k)).length;
+      box.classList.toggle("folded", folded);
+      fold.textContent = folded ? "▾" : "▴";
+      fold.title = folded ? T("펼치기") : T("접기");
+      text.replaceChildren(line("tip-title", folded ? `📘 ${D.title()} (${n}/${list.length})` : `📘 ${D.title()}`),
+        ...(folded ? [] : [...list.map(([k, t]) => line(have.includes(k) ? "tip-step ok" : "tip-step", `${have.includes(k) ? "✓" : "☐"} ${t}`)),
+          ...(D.note ? [line("tip-note", D.note())] : [])]));
     }
-    // 안내 걸기 (이미 끝났으면 아무것도 안 함)
-    function want(id) {
-      if (done().includes(id) || active.has(id)) { if (!done().includes(id)) refresh(); return; }
-      active.add(id); saveActive();
-      if (!stepsLeft(id).length) return complete(id);
-      refresh();
-    }
+    // 한 튜토리얼을 끝냄: 잠깐 "잘했어요!" 뒤 다음 것
     function complete(id) {
-      finish(id);
-      if (DEFS[id].scene !== scene || box.hidden && pick()) return refresh();
+      const next = ORDER.find(x => x !== id && !isDone(x));
       cheer = id; clearTimeout(cheerTimer);
       box.dataset.tip = id;
-      text.replaceChildren(Object.assign(document.createElement("div"), { className: "tip-title", textContent: T("✓ 잘했어요!") }));
-      box.hidden = false;
+      box.classList.remove("folded");
+      text.replaceChildren(line("tip-title", T("✓ 잘했어요!")), ...(next ? [line("tip-note", T("다음: {0}", DEFS[next].title()))] : []));
+      box.hidden = !on();
       cheerTimer = setTimeout(() => { cheer = null; refresh(); }, 1500);
     }
-    // 단계를 해 봄: ✓, 그 안내의 단계를 다 했으면 끝
+    // 단계를 해 봄: ✓, 지금 튜토리얼의 단계를 다 했으면 끝 (차례가 아닌 단계도 기억해 둠)
     function step(k) {
-      const have = steps();
-      if (!have.includes(k)) store.set("rl_tut", JSON.stringify([...have, k]));
-      for (const id of [...active]) if (!done().includes(id) && DEFS[id].steps().some(([s]) => s === k) && !stepsLeft(id).length) return complete(id);
+      const before = steps();
+      if (before.includes(k)) return;
+      const shown = cheer ? null : box.hidden ? null : box.dataset.tip;
+      store.set("rl_tut", JSON.stringify([...before, k]));
+      if (shown && DEFS[shown].steps().some(([s]) => s === k) && isDone(shown)) return complete(shown);
       refresh();
     }
-    // 그때뿐인 안내(HP)가 필요 없어짐: 끝난 걸로 치지 않고 내림
-    function drop(id) { if (active.delete(id)) refresh(); }
-    document.getElementById("tip-close").addEventListener("click", () => {
+    // HP가 적을 때만 ④를 먼저 (want/drop은 예전 이름 그대로)
+    function want(id) { if (id === "lowhp" && !urgent) { urgent = true; refresh(); } else if (id !== "lowhp") refresh(); }
+    function drop(id) { if (id === "lowhp" && urgent) { urgent = false; refresh(); } }
+    document.getElementById("tip-close").addEventListener("click", (e) => {
       const id = cheer || box.dataset.tip;
       cheer = null; clearTimeout(cheerTimer);
-      if (id) finish(id);
+      if (id) store.set("rl_tut_skip", JSON.stringify([...new Set([...skipped(), id])]));
       refresh();
+      e.currentTarget.blur();   // 방향키가 버튼에 남지 않게
     });
-    return { want, step, drop, refresh, current: () => (box.hidden ? null : box.dataset.tip || null), newbie: () => bestDepth < 10 && !cleared };
+    fold.addEventListener("click", (e) => {
+      folded = !folded;
+      if (folded) store.set("rl_tut_fold", "1"); else store.del("rl_tut_fold");
+      refresh();
+      e.currentTarget.blur();
+    });
+    return { want, step, drop, refresh, current: () => (box.hidden ? null : box.dataset.tip || null), newbie: () => bestDepth <= 25 && !cleared };
   })();
   const randomId = () => (crypto.randomUUID ? crypto.randomUUID()
     : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""));
@@ -1625,6 +1650,8 @@
   // ---- 게임 상태 ----
   let map, visible, seen, player, enemies, items, depth, gameOver;
   let shop = null;       // 상점 칸 { x, y } (보스 층 바로 전 층)
+  let wpSpot = null;     // 이 층 웨이포인트 칸 { x, y } (dc#97)
+  let grave = null;      // 이 층 내 묘비 칸 { x, y } (dc#97)
   let shopBought = [];   // 이번 층 상점에서 산 칸 번호 (지금 진열 기준)
   let shopRerolls = 0;   // 이번 층 상점에서 진열을 바꾼 횟수
   // 랭킹 시즌: v4 베타. 그 전(v3 베타까지) 기록은 랭킹 화면의 v3 베타 탭에 그대로 남고, 최고 층은 새로 셈
@@ -1654,8 +1681,6 @@
   const presenceFloor = (n, nm, gold = inGold(), hell = inHell()) => (n ? (hell ? HELL.presence + n : nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
   const presenceLabel = (n) => (n > HELL.presence ? T("헬 {0}층", n - HELL.presence) : n > GD.presence ? (n - GD.presence <= NM.floors ? T("골드 던전(악몽 {0}층)", n - GD.presence) : T("골드 던전"))
     : n > NM.presence ? T("악몽 {0}층", n - NM.presence) : T("{0}층", n));
-  // 던전 입구 오른쪽 문: 일반 던전 최고 층 − 10층부터 (보스 2~3마리를 다시 잡으며 파밍). 2층 이상일 때만 열림. 완료자는 65층
-  const skipFloor = () => Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth) - 10);
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
   const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() || inHell() ? { tag: floorTag(), level: itemLevel() } : {});
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
@@ -1663,6 +1688,19 @@
   // — 운영자 입구가 이 층을 새로 만들어서 들어감 (같은 층을 다시 돌며 테스트). 새로 시작해도 남음
   let lastDeath = null;
   const markLastSpot = () => { lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) }; };
+  // 웨이포인트 (dc#97): 일반 던전 25·50·75층, 나이트메어·헬 10·20·30·40·50층. 그 층 시작 자리 옆 웨이포인트(◎)를 밟으면 활성화
+  // → 마을 왼쪽 끝 웨이포인트에서 활성화한 층부터 바로 시작. 새로 시작해도 남음 (시즌이 바뀌면 처음부터)
+  const WAYPOINTS = { normal: [25, 50, 75], nm: [10, 20, 30, 40, 50], hell: [10, 20, 30, 40, 50] };
+  const WP_COLOR = "#5fd4ff";
+  let waypoints = { normal: [], nm: [], hell: [] };
+  const wpZone = () => (inHell() ? "hell" : inNM() ? "nm" : inGold() ? null : "normal");
+  const wpCount = () => waypoints.normal.length + waypoints.nm.length + waypoints.hell.length;
+  // 묘비 (dc#97): 쓰러진 뒤 로비에서 새로 시작하면 쓰러진 자리에 묘비(†). 그 층에 다시 가서 밟으면 쓰러질 때 골드의 90%를 돌려받음
+  // 묘비는 하나만: 찾기 전에 또 쓰러져서 새로 시작하면 예전 묘비는 사라지고 새 묘비로
+  const TOMB = { rate: 0.9, color: "#c9c2b0" };
+  let tomb = null;   // { d, z, gn?, x, y, g: 돌려받을 골드 }
+  const tombHere = () => !!tomb && tomb.z === (player.zone || "normal") && tomb.d === depth && (tomb.gn || 0) === (player.gn || 0);
+  const tombFloorName = (t) => floorName(t.d, t.z === "nm", t.z === "gold", t.z === "hell");
 
   const newRunId = () => randomId().replace(/-/g, "").slice(0, 12);
   const rarityColor = (item) => (RLItems.runewordOf(item) ? RLItems.RUNEWORD_COLOR : RLItems.RARITIES[item.rarity].color);   // 룬워드는 금색
@@ -1831,6 +1869,18 @@
     return null;
   }
 
+  // p에서 가장 가까운 빈 바닥 칸 (계단·상점·exclude 제외). 묘비 자리 (dc#97)
+  function nearestFloor(p, exclude = []) {
+    let best = null, bd = Infinity;
+    for (let y = 0; y < MAP_H; y++)
+      for (let x = 0; x < MAP_W; x++) {
+        if (map[y][x] !== FLOOR || isShop(x, y) || exclude.some(q => q.x === x && q.y === y)) continue;
+        const d = Math.abs(x - p.x) + Math.abs(y - p.y);
+        if (d < bd) { bd = d; best = { x, y }; }
+      }
+    return best;
+  }
+
   // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
   function newLevel(rooms, { quiet = false } = {}) {
     const start = rooms[0];
@@ -1851,6 +1901,20 @@
       const spots = DIRS.map(([dx, dy]) => ({ x: far.cx + dx, y: far.cy + dy })).filter(p => map[p.y][p.x] === FLOOR);
       shop = spots[rnd(spots.length)] || null;
       if (shop && !quiet) log(T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
+    }
+    // 웨이포인트: 시작 자리 바로 옆 (dc#97)
+    wpSpot = null;
+    const wz = wpZone();
+    if (wz && WAYPOINTS[wz].includes(depth)) {
+      wpSpot = DIRS.map(([dx, dy]) => ({ x: player.x + dx, y: player.y + dy })).find(p => map[p.y]?.[p.x] === FLOOR && !isShop(p.x, p.y)) || null;
+      if (wpSpot && !quiet) log(waypoints[wz].includes(depth) ? T("◎ 이 층의 웨이포인트는 활성화되어 있다. 마을 웨이포인트에서 언제든 이 층부터 시작할 수 있다.")
+        : T("◎ 바로 옆에 웨이포인트가 있다! 꼭 밟고 지나가자 (밟아야 계단이 열린다). 마을 웨이포인트에서 언제든 이 층부터 시작할 수 있다."), null, WP_COLOR);
+    }
+    // 묘비: 쓰러진 층이면 쓰러진 자리에 (새 지도라 그 자리가 벽이면 가장 가까운 바닥)
+    grave = null;
+    if (tombHere()) {
+      grave = nearestFloor(tomb, [player, ...(wpSpot ? [wpSpot] : [])]);
+      if (grave && !quiet) log(T("† 이 층 어딘가에 내 묘비가 있다. 찾아서 밟으면 골드 {0}을(를) 돌려받는다.", tomb.g.toLocaleString()), null, TOMB.color);
     }
 
     enemies = [];
@@ -1984,16 +2048,42 @@
   function arrive(nx, ny) {
     player.x = nx; player.y = ny;
     pickup();
+    if (wpSpot && wpSpot.x === nx && wpSpot.y === ny) touchWaypoint();
+    if (grave && grave.x === nx && grave.y === ny) takeGrave();
     if (isShop(nx, ny)) openShop();
     if (map[ny][nx] === STAIRS) {
       // 싸우다가 실수로 내려가지 않도록, 근처에 몬스터가 있으면 막음
       const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
-      if (bossAlive()) log(T("보스가 살아 있는 동안 계단이 열리지 않는다."), "bad");
+      if (wpSpot && wpZone() && !waypoints[wpZone()].includes(depth)) log(T("◎ 이 층의 웨이포인트를 먼저 밟아야 계단이 열린다. (들어온 자리 바로 옆)"), null, WP_COLOR);   // 웨이포인트는 꼭 지나가게 (dc#97)
+      else if (bossAlive()) log(T("보스가 살아 있는 동안 계단이 열리지 않는다."), "bad");
       else if (near) log(T("주변 {0}칸 안에 몬스터가 {1}마리 있어 내려갈 수 없다. 정리한 뒤 다시 계단을 밟자.", RLMonsters.STAIRS_BLOCK_RADIUS, near), "bad");
       else if (inGold() || depth >= maxFloor()) { completeFloor(); return true; }
       else { descend(); return true; }
     }
     return false;
+  }
+
+  // 웨이포인트를 밟음: 처음이면 활성화 (dc#97)
+  function touchWaypoint() {
+    const z = wpZone();
+    if (!z || waypoints[z].includes(depth)) return;
+    waypoints[z] = [...waypoints[z], depth].sort((a, b) => a - b);
+    log(T("◎ 웨이포인트 활성화! 이제 마을 왼쪽 끝 웨이포인트에서 언제든 {0}부터 시작할 수 있다.", floorName()), "rainbow");
+    Tips.step("wp");
+    showDamage(player, T("웨이포인트"), true, WP_COLOR);
+    saveGame(true);
+  }
+  // 내 묘비를 밟음: 쓰러질 때 골드의 90%를 돌려받음 (dc#97)
+  function takeGrave() {
+    if (!tombHere()) { grave = null; return; }
+    const g = tomb.g;
+    player.gold += g;
+    tomb = null;
+    grave = null;
+    log(T("† 묘비에서 골드 {0}을(를) 되찾았다!", g.toLocaleString()), "good");
+    showDamage(player, `+${g.toLocaleString()}G`, true, "#ffcf5c");
+    updateStats();
+    saveGame(true);
   }
 
   // ---- 점프: Space 또는 J(휴대폰은 점프 버튼)를 누르고 방향 → 2칸 앞으로. 가운데 칸의 몬스터·아이템은 넘고 벽은 못 넘음
@@ -2513,7 +2603,7 @@
     updateStats();
     if (first) showNotice(T("일반 던전 완료!"), [
       T("{0}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 \"완료\"로 기록돼요.", depth),
-      T("{0}층이 마지막 층이에요. 로비의 파란 포탈로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 던전 입구 오른쪽 문으로는 {1}층부터 다시 내려갈 수 있어요.", depth, skipFloor()),
+      T("{0}층이 마지막 층이에요. 로비의 파란 포탈로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 마을 웨이포인트로는 밟아 둔 층부터 다시 내려갈 수 있어요.", depth),
       T("골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요."),
     ]);
     else showNotice(T("{0}층 클리어!", depth), [
@@ -2598,6 +2688,7 @@
     }
     gameOver = true;
     markLastSpot();
+    player.deathAt = { x: player.x, y: player.y };   // 새로 시작하면 여기에 묘비 (dc#97)
     log(T("당신은 {0}에서 쓰러졌다. {1}R을 눌러 로비에서 새로 시작.", floorName(), player.revived ? "" : T("부활하거나 ")), "bad");
     saveGame(true);
     openDeath();
@@ -2616,6 +2707,7 @@
     ...(player.oldGear ? { og: 1 } : {}),
     ...(player.zone === "nm" || player.zone === "gold" || player.zone === "hell" ? { z: player.zone } : {}),
     ...(goldNM() ? { gn: player.gn } : {}),
+    ...(player.deathAt ? { da: [player.deathAt.x, player.deathAt.y] } : {}),   // 쓰러진 자리 (묘비, dc#97)
   });
   function makeSave() {
     return {
@@ -2628,6 +2720,8 @@
       ...(hellBest ? { hb: hellBest } : {}),
       ...(hellCleared ? { hclr: 1 } : {}),
       ...(lastDeath ? { ld: lastDeath } : {}),
+      ...(wpCount() ? { wp: { n: waypoints.normal, m: waypoints.nm, h: waypoints.hell } } : {}),
+      ...(tomb ? { tb: tomb } : {}),
       run: gameOver ? null : runFields(),
       dead: gameOver && !player.revived ? runFields() : null,
     };
@@ -2641,7 +2735,7 @@
       rid: player.rid, d: depth, z: player.zone, turn,
       map: map.map(r => r.join("")).join(""),
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
-      px: player.x, py: player.y, shop, enemies, items,
+      px: player.x, py: player.y, shop, wp: wpSpot, grave, enemies, items,
       ps: { burn: player.burn || null, slow: player.slow || 0, immune: player.immune || 0 },  // 플레이어의 화상·느려짐
       lang: RLI18N.lang,   // 몬스터 이름의 언어 (다른 언어로 불러오면 이름을 다시 지음)
     }));
@@ -2659,6 +2753,8 @@
     seen = grid(L.seen, c => c === "1");
     visible = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
     shop = L.shop || null;
+    wpSpot = onFloor(L.wp) ? { x: L.wp.x, y: L.wp.y } : null;
+    grave = tombHere() && onFloor(L.grave) ? { x: L.grave.x, y: L.grave.y } : null;
     turn = L.turn || 0;
     // 저장된 층 고치기: 예전 버전에서 자리를 못 받고 저장된 보스(좌표 없음) 때문에 화면을 그리다 멈춰
     // 플레이어가 안 보이던 문제. 플레이어 → 적 → 바닥 아이템 순서로 빈 바닥에 다시 놓고, 놓을 곳이 없으면 뺌
@@ -2744,6 +2840,17 @@
     hellCleared = sameSeason && !!s?.hclr;
     const ld = s?.ld;
     lastDeath = ld && Number.isInteger(ld.d) && ld.d >= 1 && ["normal", "nm", "gold", "hell"].includes(ld.z) ? { d: ld.d, z: ld.z, ...(Number.isInteger(ld.gn) && ld.gn > 0 ? { gn: ld.gn } : {}) } : null;
+    // 웨이포인트·묘비 (dc#97): 정해진 층만, 묘비는 좌표·골드가 맞을 때만
+    const wp = sameSeason ? s?.wp : null;
+    const wpList = (a, z) => (Array.isArray(a) ? [...new Set(a.filter(n => WAYPOINTS[z].includes(n)))].sort((x, y) => x - y) : []);
+    waypoints = { normal: wpList(wp?.n, "normal"), nm: wpList(wp?.m, "nm"), hell: wpList(wp?.h, "hell") };
+    // 이미 완료한 던전은 웨이포인트를 모두 켜 둠 (웨이포인트가 생기기 전에 완료한 사람)
+    if (cleared) waypoints.normal = [...WAYPOINTS.normal];
+    if (nmCleared) waypoints.nm = [...WAYPOINTS.nm];
+    if (hellCleared) waypoints.hell = [...WAYPOINTS.hell];
+    const tb = s?.tb;
+    tomb = tb && Number.isInteger(tb.d) && tb.d >= 1 && ["normal", "nm", "gold", "hell"].includes(tb.z) && Number.isInteger(tb.g) && tb.g > 0 && Number.isInteger(tb.x) && Number.isInteger(tb.y)
+      ? { d: tb.d, z: tb.z, ...(Number.isInteger(tb.gn) && tb.gn > 0 ? { gn: tb.gn } : {}), x: tb.x, y: tb.y, g: tb.g } : null;
     if (s?.run) resumeRun(s.run);
     else if (s?.dead) resumeDead(s.dead);
     else newGame();
@@ -2778,6 +2885,7 @@
       oldGear: !!r.og,
       zone: r.z === "nm" || r.z === "gold" || r.z === "hell" ? r.z : "normal",
       gn: r.z === "gold" ? Math.max(0, Math.min(NM.floors, r.gn | 0)) : 0,
+      deathAt: Array.isArray(r.da) && Number.isInteger(r.da[0]) && Number.isInteger(r.da[1]) ? { x: r.da[0], y: r.da[1] } : null,
     };
     depth = Math.min(maxFloor(), depth);
     noteOldGear(true);  // 이 표시가 생기기 전의 판: 지금 예전 장비를 끼고 있으면 제외
@@ -3375,17 +3483,17 @@
       portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
       clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
       death: [T("로비에서 새로 시작한다. 골드는 처음으로 돌아갔고, 레벨과 장비는 그대로다."), "info"],
-      start: [(skipFloor() >= 2 ? T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 {0}층부터 들어간다.{1}", skipFloor(), backTo())
-        : T("로비에 들어왔다. 던전 입구의 왼쪽 문은 1층부터, 오른쪽 문은 최고 층 − 10층부터(12층까지 내려가면 열림) 들어간다.{0}", backTo())), "info"],
+      start: [T("로비에 들어왔다. 던전 입구는 1층부터, 마을 왼쪽 끝 웨이포인트는 밟아 둔 층부터 들어간다.{0}", backTo()), "info"],
     }[from];
     log(msg[0], msg[1]);
     render();
     Ads.loadStatus();
   }
 
-  // which: "start" = 1층부터 (같은 캐릭터, 새 지도) / "skip" = 최고 층 − 10층부터 (새 지도) / "resume" = 로비 포탈로 떠난 자리로
+  // which: "start" = 1층부터 (같은 캐릭터, 새 지도) / "resume" = 로비 포탈로 떠난 자리로
+  //        "wp" = 활성화한 웨이포인트 층(wpFloor)부터 (dc#97. 예전 "최고 층 − 10층" 오른쪽 문은 웨이포인트로 바꿈)
   let entering = false;  // 입장 확인(서버·광고) 중에는 문을 다시 밟아도 무시
-  async function enterDungeon(which) {
+  async function enterDungeon(which, wpFloor = 0) {
     if (gameOver) { openDeath(); return; }  // 쓰러진 판: 부활하거나 로비에서 새로 시작
     if (entering) return;
     if (which === "resume") {
@@ -3394,8 +3502,8 @@
       log(T("포탈을 타고 {0}의 떠난 자리로 돌아왔다.", floorName()), "info");
       saveGame(true);
     } else {
-      const from = which === "skip" ? skipFloor() : 1;
-      if (which === "skip" && from < 2) { log(T("오른쪽 문은 일반 던전 12층까지 내려가면 열린다 (최고 층 − 10층부터)."), "bad"); return; }
+      const from = which === "wp" ? wpFloor : 1;
+      if (which === "wp" && !waypoints.normal.includes(from)) return;
       if (resumeFloor() && !confirm(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
       entering = true;
       let ok = false;
@@ -3410,7 +3518,8 @@
       shopBought = [];
       shopRerolls = 0;
       setScene("dungeon");
-      log(depth === 1 ? T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.") : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
+      if (which === "wp") log(T("◎ 웨이포인트를 타고 {0}에 왔다.", floorName()), null, WP_COLOR);
+      else log(depth === 1 ? T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.") : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
       newLevel(generateDungeon());
       saveGame(true);
     }
@@ -3452,11 +3561,13 @@
 
   // 나이트메어 입구(로비 오른쪽 건물): 일반 던전을 완료하고, 장착한 장비가 모두 v4 이후일 때만
   // 오른쪽 문(from = 50): 나이트메어를 완료한 사람만, 50층(룬이 나오는 보스 층)에 바로
-  async function enterNightmare(from = 1) {
+  // wp: 웨이포인트로 (활성화한 10·20·30·40·50층, dc#97)
+  async function enterNightmare(from = 1, { wp = false } = {}) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
+    if (wp && !waypoints.nm.includes(from)) return;
     if (!cleared) { log(T("나이트메어는 일반 던전 {0}층을 완료해야 들어갈 수 있다.", RLMonsters.MAX_FLOOR), "bad"); return; }
-    if (from > 1 && !nmCleared) { log(T("나이트메어 {0}층 문은 나이트메어를 완료하면 열린다 ({0}층 보스가 룬을 떨어뜨림).", NM.floors), "bad"); return; }
+    if (from > 1 && !wp && !nmCleared) { log(T("나이트메어 {0}층 문은 나이트메어를 완료하면 열린다 ({0}층 보스가 룬을 떨어뜨림).", NM.floors), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
     if (resumeFloor() && !confirm(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
@@ -3472,7 +3583,8 @@
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
-    if (from > 1) log(T("나이트메어 {0}층에 바로 들어왔다. {0}층 보스를 쓰러뜨리면 룬 {1}개를 떨어뜨린다!", from, RLItems.RUNE_DROP.count), "rainbow");
+    if (wp) log(T("◎ 웨이포인트를 타고 {0}에 왔다.", floorName()), null, WP_COLOR);
+    else if (from > 1) log(T("나이트메어 {0}층에 바로 들어왔다. {0}층 보스를 쓰러뜨리면 룬 {1}개를 떨어뜨린다!", from, RLItems.RUNE_DROP.count), "rainbow");
     else log(T("나이트메어 1층에 발을 들였다. 몬스터가 훨씬 강하다! {0}층 보스까지 쓰러뜨리면 완료. 아이템 레벨 {1}~{2}. 내 속성 저항은 장비 합에서 {3}% 낮아진다.", NM.floors, NM.itemBase + 1, NM.itemBase + NM.floors, EL.zonePenalty.nightmare), "bad");
     log(T("몬스터마다 속성이 있다: 불꽃(화상), 서리(느려짐), 번개(한 번 더 맞음). 여기서 얻는 장비에는 속성 피해·저항이 붙는다."), "info");
     newLevel(generateDungeon());
@@ -3482,11 +3594,12 @@
   }
 
   // 헬 던전 입구(로비 맨 위): 나이트메어를 완료하고, 장착한 장비가 모두 v4 이후일 때만. from: 1층 또는 완료한 10·20·30·40·50층
-  async function enterHell(from = 1) {
+  async function enterHell(from = 1, { wp = false } = {}) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
+    if (wp && !waypoints.hell.includes(from)) return;
     if (!nmCleared) { log(T("헬 던전은 나이트메어 {0}층을 완료해야 들어갈 수 있다.", NM.floors), "bad"); return; }
-    if (from > 1 && !hellMilestones().includes(from)) { log(T("헬 {0}층은 그 층을 완료해야 골라서 들어갈 수 있다.", from), "bad"); return; }
+    if (from > 1 && !wp && !hellMilestones().includes(from)) { log(T("헬 {0}층은 그 층을 완료해야 골라서 들어갈 수 있다.", from), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
     if (resumeFloor() && !confirm(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName()))) return;
@@ -3524,6 +3637,26 @@
   }
   const closeHellPick = () => { hellPickModal.hidden = true; };
   document.getElementById("hellpick-close").addEventListener("click", closeHellPick);
+
+  // 마을 웨이포인트 (dc#97): 활성화한 층을 골라 바로 그 층부터. 아직 안 연 층은 회색으로 어디에 있는지 보여 줌
+  const wpModal = document.getElementById("wp-modal");
+  function openWaypoints() {
+    const zones = [["normal", T("일반 던전")], ["nm", T("나이트메어")], ["hell", T("헬")]];
+    const go = (z, n) => { closeWaypoints(); if (z === "normal") enterDungeon("wp", n); else if (z === "nm") enterNightmare(n, { wp: true }); else enterHell(n, { wp: true }); };
+    document.getElementById("wp-list").replaceChildren(...zones.map(([z, label]) => {
+      const row = document.createElement("div");
+      row.className = "wp-row";
+      row.append(Object.assign(document.createElement("b"), { textContent: label }), ...WAYPOINTS[z].map(n => Object.assign(document.createElement("button"), {
+        type: "button", textContent: T("{0}층", n), disabled: !waypoints[z].includes(n), onclick: () => go(z, n),
+      })));
+      return row;
+    }));
+    document.getElementById("wp-empty").hidden = wpCount() > 0;
+    wpModal.hidden = false;
+    (wpModal.querySelector(".wp-row button:not(:disabled)") || document.getElementById("wp-close")).focus();
+  }
+  const closeWaypoints = () => { wpModal.hidden = true; };
+  document.getElementById("wp-close").addEventListener("click", closeWaypoints);
 
   // 골드 던전 입구(로비 나이트메어 왼쪽 건물): 일반 던전을 완료하면. 들어갈 때마다 새 지도
   // 왼쪽 문: 75층 난이도 / 오른쪽 문: 나이트메어 최고 층 난이도 (나이트메어 기록이 있을 때, 보상 ×2)
@@ -3858,6 +3991,8 @@
       ctx.fillText(">", x * TILE + TILE / 2, y * TILE + TILE / 2 + 1);
     }
     if (shop && seen[shop.y][shop.x]) mark(shop.x, shop.y, SHOP_COLOR);
+    if (wpSpot && seen[wpSpot.y][wpSpot.x]) mark(wpSpot.x, wpSpot.y, WP_COLOR);
+    if (grave && seen[grave.y][grave.x]) mark(grave.x, grave.y, TOMB.color);
     for (const it of items) if (it.type === "gear" && seen[it.y]?.[it.x]) mark(it.x, it.y, rarityColor(it.item), 3);
     // 나: 흰 점 + 고리
     mark(player.x, player.y, "#ffffff", 4);
@@ -4856,9 +4991,8 @@
       if (!d || blocked()) return false;
       release();
       switch (d.id) {
-        case "start": case "skip": enterDungeon(d.id); break;
+        case "start": enterDungeon("start"); break;
         case "resume": enterDungeon("resume"); break;
-        case "staff": enterStaffDoor(); break;
         case "towerHell": Tower.enter("hell50"); break;
         case "jumptower": Tower.enter("hunt1"); break;
         case "market": openMarket("buy"); break;
@@ -4869,6 +5003,7 @@
         case "nightmare50": enterNightmare(NM.floors); break;
         case "hell": enterHell(1); break;
         case "hellPick": openHellPick(); break;
+        case "waypoint": openWaypoints(); break;
         case "golddungeon": enterGoldDungeon(false); break;
         case "golddungeonNM": enterGoldDungeon(true); break;
       }
@@ -4949,11 +5084,9 @@
     }
     // 문 하나: 아치 모양 입구 (열렸으면 빛), 위에 작은 안내 (층·닫힘)
     function doorInfo(d, t) {
-      const nmOpen = nmCleared, skip = skipFloor(), fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + d.x)))}, 30)`;
+      const nmOpen = nmCleared, fire = reduceMotion ? "#ff5a2e" : `rgb(255, ${70 + Math.round(60 * (0.5 + 0.5 * Math.sin(t * 6 + d.x)))}, 30)`;
       switch (d.id) {
         case "start": return { open: true, color: "#ffcf5c", label: T("1층") };
-        case "skip": return { open: skip >= 2, color: "#be8cff", label: skip >= 2 ? T("{0}층", skip) : T("닫힘") };
-        case "staff": return { open: true, color: STAFF_COLOR, label: T("운영자") };
         case "towerHell": return { open: true, color: "#ff7a3d", label: T("헬50") };
         case "golddungeon": return { open: cleared, color: cleared ? "#ffcf5c" : "#7a6a3a", label: cleared ? T("{0}층", GD.floor) : T("닫힘") };
         case "golddungeonNM": return { open: cleared && nmBest >= 1, color: nmBest >= 1 ? "#ffcf5c" : "#7a6a3a", label: nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘") };
@@ -4973,6 +5106,19 @@
       if (d.id === "resume") {   // 파란 포탈 (떠난 층으로)
         drawPortal(cx - TILE / 2, bot - TILE);
         drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(resumeFloor(), inNM()))), cx, bot - TILE - 2, PORTAL_COLOR, 8);
+        return;
+      }
+      if (d.id === "waypoint") {   // 웨이포인트 (dc#97): 돌 받침에 하늘색 고리와 빛기둥
+        const pulse = reduceMotion ? 0.7 : 0.55 + 0.45 * Math.sin(t * 2.4), n = wpCount();
+        ctx.fillStyle = "#2a2e3c"; ctx.beginPath(); ctx.ellipse(cx, bot - 2, TILE * 0.9, TILE * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#596079"; ctx.fillRect(cx - TILE * 0.8, bot - 5, TILE * 1.6, 4);
+        ctx.save(); ctx.shadowColor = WP_COLOR; ctx.shadowBlur = 6 + 8 * pulse;
+        ctx.strokeStyle = WP_COLOR; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, bot - 5, TILE * 0.6, TILE * 0.14, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        const beam = ctx.createLinearGradient(0, bot - TILE * 2.4, 0, bot - 5);
+        beam.addColorStop(0, "rgba(95, 212, 255, 0)"); beam.addColorStop(1, `rgba(95, 212, 255, ${0.25 + 0.2 * pulse})`);
+        ctx.fillStyle = beam; ctx.fillRect(cx - TILE * 0.45, bot - TILE * 2.4, TILE * 0.9, TILE * 2.4 - 5);
+        drawLabel(n ? `${T("웨이포인트")} (${n})` : T("웨이포인트"), cx, bot - TILE * 2.4 - 2, WP_COLOR, 8);
         return;
       }
       if (d.id === "mailbox") {   // 빨간 우편함 (받을 우편이 있으면 깃발)
@@ -5135,6 +5281,33 @@
   function drawArt(name, ch, px, py, color) {
     if (!(Sprites.on && Sprites.draw(name, px, py))) drawGlyph(ch, px, py, color);
   }
+  // 웨이포인트 (dc#97): 돌 받침에 빛나는 고리 두 개. 활성화하면 하늘색으로 빛나고 빛기둥
+  function drawWaypoint(px, py, lit, on) {
+    const cx = px + TILE / 2, cy = py + TILE / 2 + 2, pulse = reduceMotion ? 0.7 : 0.55 + 0.45 * Math.sin(performance.now() / 330);
+    const c = on ? WP_COLOR : "#8a96b0";
+    ctx.save();
+    if (!lit) ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "#2a2e3c"; ctx.beginPath(); ctx.ellipse(cx, cy + 1.5, TILE * 0.46, TILE * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#596079"; ctx.beginPath(); ctx.ellipse(cx, cy, TILE * 0.42, TILE * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+    if (lit) { ctx.shadowColor = c; ctx.shadowBlur = on ? 6 + 6 * pulse : 3; }
+    ctx.strokeStyle = c; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(cx, cy, TILE * 0.3, TILE * 0.17, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, cy, TILE * 0.14, TILE * 0.08, 0, 0, Math.PI * 2); ctx.stroke();
+    if (on && lit) { ctx.shadowBlur = 0; ctx.fillStyle = `rgba(95, 212, 255, ${0.12 + 0.14 * pulse})`; ctx.fillRect(cx - TILE * 0.2, py - TILE * 0.4, TILE * 0.4, cy - py + TILE * 0.4); }
+    ctx.restore();
+  }
+  // 내 묘비 (dc#97): 흙 위의 둥근 돌, 십자, 반짝이는 금빛 (되찾을 골드)
+  function drawGrave(px, py, lit) {
+    const cx = px + TILE / 2, base = py + TILE * 0.86, w = TILE * 0.5, h = TILE * 0.62, x = cx - w / 2, y = base - h;
+    ctx.save();
+    if (!lit) ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "#3b2f25"; ctx.beginPath(); ctx.ellipse(cx, base, TILE * 0.4, TILE * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#9a9384"; ctx.strokeStyle = "#15130f"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x, y + w / 2); ctx.arc(cx, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, base); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#4a463d"; ctx.fillRect(cx - 1, y + 3, 2, h * 0.55); ctx.fillRect(cx - 3.5, y + 6, 7, 2);
+    if (lit) { ctx.fillStyle = "#ffcf5c"; ctx.globalAlpha = reduceMotion ? 0.9 : 0.5 + 0.5 * Math.abs(Math.sin(performance.now() / 260)); ctx.fillRect(x + w - 2, y + 2, 2, 2); ctx.fillRect(x + 1, base - 4, 2, 2); }
+    ctx.restore();
+  }
   // 등급 색의 은은한 빛 (그림 모드에서 아이템 아래)
   function drawAura(px, py, color) {
     if (!Sprites.on) return;
@@ -5186,6 +5359,9 @@
       }
     }
 
+    // 웨이포인트 ◎ · 묘비 † (dc#97): 그림 모음에 없어서 직접 그림
+    if (wpSpot && seen[wpSpot.y][wpSpot.x]) drawWaypoint(wpSpot.x * TILE, wpSpot.y * TILE, visible[wpSpot.y][wpSpot.x], !!waypoints[wpZone()]?.includes(depth));
+    if (grave && seen[grave.y][grave.x]) drawGrave(grave.x * TILE, grave.y * TILE, visible[grave.y][grave.x]);
     // 상점
     if (shop && seen[shop.y][shop.x]) {
       drawArt("shop", "&", shop.x * TILE, shop.y * TILE, visible[shop.y][shop.x] ? SHOP_COLOR : "#2c6f7a");
@@ -5573,6 +5749,8 @@
     nmCleared = false;
     hellBest = 0;
     hellCleared = false;
+    waypoints = { normal: [], nm: [], hell: [] };
+    tomb = null;
     newGame();
     log(T("로그아웃했다. 게스트로 새로 시작한다."), "info");
     renderAccount();
@@ -6814,7 +6992,8 @@
     return m.kind === "gift" && m.note === "운영자 선물" ? null : noteText(m.note);
   };
   // 서버가 준 아이템 이름은 한국어라, 참조로 다시 만들 수 있으면 그 언어의 이름으로 (참조가 없으면 한국어 이름을 나눠 다시 조립)
-  const refName = (x) => { const it = x?.ref && itemFromRef(x.ref); return it ? RLItems.itemName(it) : RLItems.nameFromKo(x?.item?.name ?? x?.itemName); };
+  // 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름. 판매 우편은 show(받을 아이템이 아니라 이름만), 참조가 없는 예전 기록만 한국어 이름
+  const refName = (x) => { const r = x?.ref || x?.show, it = r && itemFromRef(r); return it ? RLItems.itemName(it) : RLItems.nameFromKo(x?.item?.name ?? x?.itemName); };
 
   function setMailCount(n) {
     if (n > Market.mailCount && Market.mailKnown) log(T("우편함에 새 우편이 왔다. (로비 거래소 옆 우편함)"), "good");
@@ -6913,7 +7092,7 @@
 
   function listingCard(r, now) {
     const item = itemFromRef(r.ref);
-    const name = item ? RLItems.itemName(item) : r.item.name;
+    const name = item ? RLItems.itemName(item) : RLItems.nameFromKo(r.item.name);
     const total = r.cash + r.fee;
     let label = T("구매 · ◆{0}", total) + (r.gold ? " + " + T("{0} 골드", r.gold.toLocaleString()) : "");
     let disabled = Market.busy;
@@ -6921,7 +7100,7 @@
     else if (!Account.loggedIn()) label = T("계정 연결하고 사기");
     else if (r.gold > player.gold) { label = T("골드 부족"); disabled = true; }
     else if (Market.cash != null && Market.cash < total) { label = T("캐시 부족 (◆{0} 필요)", total); disabled = true; }
-    const kind = item ? RLItems.kindName(item) : r.item.slotName;
+    const kind = item ? RLItems.kindName(item) : RLItems.SLOT_NAMES[r.item.slot] ?? r.item.slotName;
     return el("div", { className: `shop-card${r.mine ? " mine" : ""}${item?.ancient ? " ancient" : ""}` },
       el("h3", { className: item?.ancient ? "ancient-name" : "", style: { color: RLItems.RARITIES[r.item.rarity]?.color } }, name),
       el("span", { className: "meta" }, `${RLItems.RARITIES[r.item.rarity]?.name || r.item.rarityName} · ${kind} · Lv${r.item.lvl}`),
@@ -7308,7 +7487,7 @@
 
   // ---- 터치 조작 ----
   // 방향 버튼: 누르면 한 칸, 누르고 있으면 0.3초 뒤부터 계속 이동. 창이 열려 있으면 움직이지 않음
-  const anyModalOpen = () => !hellPickModal.hidden || !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen();
+  const anyModalOpen = () => !hellPickModal.hidden || !wpModal.hidden || !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen();
   const pad = document.getElementById("touch-pad");
   let holdTimer = null;
   const stopHold = () => { clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null; };
@@ -7465,7 +7644,12 @@
 
   async function openDeath() {
     deathModal.hidden = false;
-    document.getElementById("death-sub").textContent = T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드는 처음으로 돌아가고, 경험치를 {1} 잃어요 (모자라면 레벨이 내려가요). 장비는 그대로 남아요.", floorName(), Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp)));
+    const tombG = Math.floor(player.gold * TOMB.rate);
+    document.getElementById("death-sub").textContent = [
+      T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드는 처음으로 돌아가고, 경험치를 {1} 잃어요 (모자라면 레벨이 내려가요). 장비는 그대로 남아요.", floorName(), Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp))),
+      tombG > 0 ? T("쓰러진 자리에 묘비가 남아요. 다시 와서 밟으면 골드 {0}(90%)을 돌려받아요.", tombG.toLocaleString()) : "",
+      tombG > 0 && tomb ? T("(전에 남긴 묘비의 골드 {0}은 사라져요)", tomb.g.toLocaleString()) : "",
+    ].filter(Boolean).join(" ");
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
     // 운영자 기기: 되살아나 쓰러진 층으로 바로 (테스트용)
@@ -7577,11 +7761,17 @@
   }
 
   // 쓰러진 화면의 "로비에서 새로 시작": 골드는 처음으로, 레벨은 경험치 10%를 잃고 이어 감 (dc#95). 1층은 입구 왼쪽 문으로
+  // 묘비 (dc#97): 쓰러질 때 골드가 있었으면 그 90%를 쓰러진 자리의 묘비에 (예전 묘비는 사라짐)
   function startOver() {
+    const g = Math.floor(player.gold * TOMB.rate), at = player.deathAt || player;
+    const lost = tomb && g > 0 ? tomb.g : 0;
+    if (g > 0 && lastDeath) tomb = { ...lastDeath, x: at.x, y: at.y, g };
     const { loss, down } = loseDeathXp();
     newGame({ plvl: player.plvl, xp: player.xp, xpNext: player.xpNext, maxHp: player.maxHp, atk: player.atk });
     enterLobby({ from: "death" });
     log(down ? T("경험치 {0}을(를) 잃고 레벨이 내려갔다. Lv {1}", loss, player.plvl) : T("경험치 {0}을(를) 잃었다. (Lv {1})", loss, player.plvl), "bad");
+    if (g > 0 && tomb) log(T("† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다. (웨이포인트로 가까운 층부터 갈 수 있다)", tombFloorName(tomb), g.toLocaleString()), null, TOMB.color);
+    if (lost) log(T("예전 묘비(골드 {0})는 사라졌다.", lost.toLocaleString()), "bad");
   }
   document.getElementById("death-restart").addEventListener("click", startOver);
 
@@ -7597,6 +7787,10 @@
     }
     if (!hellPickModal.hidden) {
       if (e.key === "Escape") { e.preventDefault(); closeHellPick(); }
+      return;
+    }
+    if (!wpModal.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); closeWaypoints(); }
       return;
     }
     if (!deathModal.hidden && modal.hidden) {

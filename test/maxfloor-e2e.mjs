@@ -6,6 +6,8 @@ const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
+// 서버는 아이템 값만 보냄 (dc#97): 참조로 다시 만든 이름 (서버가 이름 글자를 보내면 실패)
+const nameOf = (v) => (v?.ref && !("name" in v) ? I.itemName(I.fromRef(v.ref, { gems: true })) : null);
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
@@ -171,7 +173,7 @@ const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v, enh: 0,
 await g({ stage: 20, plvl: 10, item: ref(legV3), gear: [ref(legV3)] }, "mf-guest-item3");
 await g({ stage: 20, plvl: 10, item: ref(v4item), gear: [ref(v4item)] }, "mf-guest-item4");
 const items4 = await getJ("r=ranking&type=item");
-check("v4 item board: v4 item counted, v3 item not", items4.rows.some(r => r.item?.name === I.itemName(v4item)) && !items4.rows.some(r => r.item?.name === I.itemName(legV3)), JSON.stringify(items4.rows.map(r => r.item?.name)));
+check("v4 item board: v4 item counted, v3 item not", items4.rows.some(r => nameOf(r.item) === I.itemName(v4item)) && !items4.rows.some(r => nameOf(r.item) === I.itemName(legV3)), JSON.stringify(items4.rows.map(r => nameOf(r.item))));
 // 예전 시즌에 172층까지 간 사람의 깊은 층 아이템도 v4 기록의 장비로 인정 (아이템 레벨 검증은 모든 시즌 최고 층)
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 php.kill();

@@ -85,7 +85,7 @@ try {
   check("대장간 door → inventory as 대장간", !(await N.page.locator("#inv-modal").isHidden()) && (await N.page.locator("#inv-title").innerText()) === "대장간");
   await N.page.keyboard.press("Escape"); await sleep(100);
   // 닫힌 문: 안내만, 마을에 그대로
-  for (const [id, msg] of [["skip", "12층까지 내려가면 열린다"], ["golddungeon", "골드 던전은 일반 던전 75층을 완료해야"], ["nightmare", "75층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
+  for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 75층을 완료해야"], ["nightmare", "75층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
     await goDoor(N.page, id);
     check(`closed door ${id}: stays in the town with a note`, await inLobby(N.page) && (await logText(N.page)).includes(msg), (await logText(N.page)).split("\n").slice(-1)[0]);
   }
