@@ -783,7 +783,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=89"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=96"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
@@ -5039,7 +5039,7 @@
       const z = PX * ZT;
       ctx.setTransform(z, 0, 0, z, -cx * TILE * z, -cy * TILE * z);
       const art = Sprites.on, x0 = Math.floor(cx), x1 = Math.min(map.w - 1, x0 + vw + 1);
-      for (const b of TW.buildings) if (b.x1 >= x0 - 1 && b.x0 <= x1 + 1) building(b, t);
+      for (const b of TW.buildings) if ((!b.staff || isStaff()) && b.x1 >= x0 - 1 && b.x0 <= x1 + 1) building(b, t);   // 운영자 건물(점프 던전)은 운영자에게만
       // 가로등 (건물 사이)
       for (const lx of [8.5, 14.5, 22.5, 27.5, 38.5, 44.5, 51.5, 62]) {
         if (lx < x0 - 1 || lx > x1 + 1) continue;

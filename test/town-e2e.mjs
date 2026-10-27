@@ -94,11 +94,9 @@ try {
   check("no portal floor: no blue portal door", (await pos(N.page)).near === null && (await st(N.page)).resume === 0);
   await N.page.keyboard.press("ArrowUp"); await sleep(150);
   check("↑ there does nothing", await inLobby(N.page));
-  // 점프 던전 → Esc로 나오면 그 문 앞
+  // 점프 던전은 운영자만 (dc#96): 다른 사람은 그 자리에 문이 없어 ↑ 해도 마을 그대로 (운영자 입장은 tower-e2e)
   await goDoor(N.page, "jumptower");
-  check("점프 던전 door → jump dungeon", await N.page.evaluate(() => document.body.classList.contains("in-tower")));
-  await N.page.keyboard.press("Escape"); await sleep(250);
-  check("Esc from the jump dungeon → back in front of its door", await inLobby(N.page) && (await pos(N.page)).near === "jumptower");
+  check("점프 던전 door is staff-only: ↑ there stays in the town", !(await N.page.evaluate(() => document.body.classList.contains("in-tower"))) && await inLobby(N.page) && (await pos(N.page)).near === null);
   // Enter도 들어가기: 1층 문
   await goDoor(N.page, "start", { enter: false });
   await N.page.keyboard.press("Enter"); await sleep(250);

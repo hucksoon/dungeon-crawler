@@ -49,7 +49,8 @@
   ];
   // ---- 마을 (dc#90): 옆에서 보는 로비. 폭 64 × 높이 12, 바닥 윗면 y=10 (서버는 로비 위치를 0~63칸으로 받음) ----
   // 건물은 왼쪽부터 점프 던전 · 대장간 · 거래소(+우편함) · 시간 상점 · 던전 입구 · 골드 던전 · 나이트메어 · 헬. 문 앞에서 ↑로 들어감
-  // doors: id(하는 일), x(문 가운데), staff(운영자만 보이고 열림). buildings: x0~x1칸, h(바닥에서 몇 칸 높이)
+  // doors: id(하는 일), x(문 가운데), staff(운영자만 보이고 열림). buildings: x0~x1칸, h(바닥에서 몇 칸 높이), staff(운영자만 보임)
+  // 점프 던전은 운영자만 (dc#96: 평가가 좋지 않아 다른 사람에게는 건물·문을 숨김)
   const TOWN_ROWS = [
     "#..............................................................#",
     "#..............................................................#",
@@ -67,12 +68,12 @@
   const TOWN = {
     rows: TOWN_ROWS, ground: 10,
     buildings: [
-      { id: "jumptower", x0: 2, x1: 7, h: 5 }, { id: "forge", x0: 9, x1: 13, h: 4 }, { id: "market", x0: 15, x1: 19, h: 4 },
+      { id: "jumptower", x0: 2, x1: 7, h: 5, staff: true }, { id: "forge", x0: 9, x1: 13, h: 4 }, { id: "market", x0: 15, x1: 19, h: 4 },
       { id: "hourshop", x0: 23, x1: 26, h: 4 }, { id: "gate", x0: 28, x1: 36, h: 6 }, { id: "golddungeon", x0: 39, x1: 43, h: 4 },
       { id: "nightmare", x0: 45, x1: 50, h: 5 }, { id: "hell", x0: 52, x1: 61, h: 6 },
     ],
     doors: [
-      { id: "jumptower", x: 4.5 }, { id: "towerHell", x: 6.5, staff: true }, { id: "forge", x: 11.5 },
+      { id: "jumptower", x: 4.5, staff: true }, { id: "towerHell", x: 6.5, staff: true }, { id: "forge", x: 11.5 },
       { id: "market", x: 17.5 }, { id: "mailbox", x: 21.5 }, { id: "hourshop", x: 24.5 },
       { id: "start", x: 30.5 }, { id: "resume", x: 32.5 }, { id: "skip", x: 34.5 }, { id: "staff", x: 37.5, staff: true },
       { id: "golddungeon", x: 40.5 }, { id: "golddungeonNM", x: 42.5 }, { id: "nightmare", x: 46.5 }, { id: "nightmare50", x: 49.5 },
@@ -83,7 +84,7 @@
   };
 
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
-  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 20.5, y: 2 } } };
+  const MAPS = { hunt1: { name: "사냥터 1층", depth: 1, staff: true, rows: HUNT1 }, hell50: { name: "헬 50층 (운영자 시험)", depth: 50, zone: "hell", staff: true, rows: HUNT1, crowd: true, boss: { x: 20.5, y: 2 } } };
   // crowd: 몬스터 수는 던전 그 층과 같게 (m 자리 대신 발판 곳곳에 흩어 놓음). boss: 보스가 서는 곳 (맨 위 발판 가운데)
 
   function parse(rows) {
