@@ -120,7 +120,7 @@ try {
   // ---- 2단계: 장비 상자 (캐시로 산 상자) → 서버가 열어서 우편함으로 ----
   const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
   const api = (sub, route, { method = "GET", body } = {}) => fetch(`http://127.0.0.1:8131/api.php?r=${route}`, { method, headers: { Authorization: `Bearer ${jwt(sub)}`, "Content-Type": "application/json", Origin: "https://hucksoon.github.io" }, body: body && JSON.stringify(body) }).then(async r => ({ status: r.status, body: await r.json().catch(() => null) }));
-  const prof = (best) => ({ rev: 0, data: { v: 1, save: { v: 1, best, run: null, dead: null }, inv: { bag: [], equip: {}, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [] } });
+  const prof = (best) => ({ rev: 0, data: { v: 1, save: { v: 1, f50: 1, best, run: null, dead: null }, inv: { bag: [], equip: {}, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [] } });
   const BUYER = "c3d4e5f6-0000-4000-8000-0000000000cc";
   await game(BUYER, "POST", JSON.stringify(prof(40)));   // 계정 저장본의 최고 층 40
   // 나뉜 방식: 캐시로 산 상자의 order_paid (billing 없음, 금액은 캐시)
@@ -128,9 +128,9 @@ try {
   check("box order_paid → 204", (await hook(boxPaid(8001, [{ sku: "box_equipment_10", type: "virtual_good", quantity: 1 }]))).status === 204);
   let mails = sql("SELECT * FROM mail WHERE kind = 'box' AND owner_key = ? ORDER BY created_at, id", userKey(BUYER));
   check("10 box items put in the buyer's mailbox", mails.length === 10 && mails.every(m => m.state === "new"), String(mails.length));
-  const want = Array.from({ length: 10 }, (_, i) => I.generate(`box|o8001|${i}`, "box", 40));
+  const want = Array.from({ length: 10 }, (_, i) => I.generate(`box|o8001|${i}`, "box", 60));
   const refs = mails.map(m => JSON.parse(m.item_ref));
-  check("same items the shop used to open in the browser (seed box|o<order>|i, level = best floor 40)", refs.every(r => r.lvl === 40 && r.src === "box" && r.r === 8) && want.every(w => refs.some(r => r.id === w.id && r.seed === w.seed)), JSON.stringify(refs[0]));
+  check("same items the shop used to open in the browser (seed box|o<order>|i, level 60 = best floor 40 × 1.5)", refs.every(r => r.lvl === 60 && r.src === "box" && r.r === 8) && want.every(w => refs.some(r => r.id === w.id && r.seed === w.seed)), JSON.stringify(refs[0]));
   check("game can rebuild every mailed item (RLItems.fromRef)", refs.every(r => I.fromRef(r)?.id === r.id));
   check("box_items rows granted, event state granted", sql("SELECT COUNT(*) n FROM box_items WHERE order_id = '8001' AND state = 'granted'")[0].n === 10 && sql("SELECT state FROM xsolla_events WHERE event_key = 'order_paid:8001'")[0].state === "granted");
   check("same webhook again → no second grant", (await hook(boxPaid(8001, [{ sku: "box_equipment_10", quantity: 1 }]))).status === 204 && sql("SELECT COUNT(*) n FROM mail WHERE kind = 'box'")[0].n === 10);
@@ -173,7 +173,7 @@ try {
   const seedOk = (seed, lvl = 10) => phpEval(`echo seed_origin_ok(4, '${seed}', 'box', ${lvl}, 8) ? 'ok' : 'no';`) === "ok";
   const OLD = "f6a7b8c9-0000-4000-8000-0000000000ff";
   const oldBag = I.generate("box|o5551|0", "box", 10), oldEq = I.generate("box|o5551|1", "box", 10), oldBoxMail = I.generate("box|orec77x0|0", "box", 10), oldGift = I.generate("box|o5552|3", "box", 10);
-  await game(OLD, "POST", JSON.stringify({ rev: 0, data: { v: 1, save: { v: 1, best: 10, run: null, dead: null }, inv: { bag: [oldBag], equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: oldEq }, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [{ item: oldBoxMail, from: "box" }] } }));
+  await game(OLD, "POST", JSON.stringify({ rev: 0, data: { v: 1, save: { v: 1, f50: 1, best: 10, run: null, dead: null }, inv: { bag: [oldBag], equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: oldEq }, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [{ item: oldBoxMail, from: "box" }] } }));
   sql("SELECT 1");   // DB 준비
   { const d = new DatabaseSync(DB); try { d.prepare("INSERT INTO mail (id, owner_key, kind, item_id, item_ref, item_name, rarity, gold, cash, state, created_at) VALUES ('legacygift000001', ?, 'gift', ?, ?, 'x', 'common', 0, 0, 'new', 1)").run(userKey(OLD), oldGift.id, JSON.stringify({ seed: oldGift.seed, src: "box", lvl: 10, v: 4, r: 8, id: oldGift.id })); } finally { d.close(); } }
   check("boxes: not narrowed yet, forged box seed still accepted", admin("boxes").includes("좁히기 전") && seedOk("box|o999999|0"));

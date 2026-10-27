@@ -18,7 +18,7 @@ const common = find(x => x.rarity === "common", "cm", "drop");
 const setPieces = ["head", "chest", "arms", "pants", "boots"].map((s, i) => find(x => x.rarity === "set" && x.slot === s, "sp" + i));
 const dagger = find(x => x.rarity === "legendary" && x.slot === "weapon" && x.type === "dagger", "dg");
 const DEV = "fb-device-0001";
-const save = JSON.stringify({ v: 1, best: 120, run: { d: 120, hp: 3000, mh: 3000, a: 100, g: 500, p: 3, l: 60, x: 0, xn: 1e9, rid: "fbrun", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, best: 120, run: { d: 120, hp: 3000, mh: 3000, a: 100, g: 500, p: 3, l: 60, x: 0, xn: 1e9, rid: "fbrun", k: 0, pp: 0 } });
 const equip = Object.fromEntries(RL.SLOTS.map(s => [s, null]));
 setPieces.forEach(p => equip[p.slot] = p);
 equip.weapon = dagger;

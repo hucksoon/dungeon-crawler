@@ -16,7 +16,7 @@ const waitFor = async (fn, ms = 10000) => { const end = Date.now() + ms; while (
 const find = (pred, tag) => { for (let n = 0; n < 200000; n++) { const it = RL.generate(`${tag}${n}|shop|d5|s${n % 6}`, "golden", 5); if (pred(it)) return it; } };
 const epic = find(x => x.rarity === "epic", "mv");
 const DEV = "old-guest-device-1";
-const save = (gold) => JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: 100, mh: 100, a: 20, g: gold, p: 1, l: 3, x: 0, xn: 100, rid: "oldrun", k: 0, pp: 0 } });
+const save = (gold) => JSON.stringify({ v: 1, f50: 1, best: 4, run: { d: 4, hp: 100, mh: 100, a: 20, g: gold, p: 1, l: 3, x: 0, xn: 100, rid: "oldrun", k: 0, pp: 0 } });
 const inv = (bag, logN = 3) => JSON.stringify({ bag, equip: Object.fromEntries(RL.SLOTS.map(s => [s, null])), log: Array.from({ length: logN }, (_, i) => ({ ev: "get", id: "l" + i, note: "기록" })), stones: 5 });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });

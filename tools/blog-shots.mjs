@@ -27,7 +27,7 @@ const level = (d, rid, z, enemies = [], extra = {}) => { const m = baseMap(); m[
 const gear = (lvl, src = "golden", tag = "blog") => I.SLOTS.map((s, i) => { for (let k = 0; k < 400; k++) { const it = I.generate(`${tag}|${s}|${i}|${k}`, src, lvl); if (it.slot === s && ["legendary", "set", "epic"].includes(it.rarity)) return it; } return I.generate(`${tag}|${s}`, src, lvl); });
 const equipOf = (its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) if (it.slot in e && !e[it.slot]) e[it.slot] = { ...it, enh: 6 }; return e; };
 const inv = (equip, bag = []) => JSON.stringify({ bag, equip: equipOf(equip), log: [], stones: 12 });
-const save = (d, rid, run = {}, extra = {}) => JSON.stringify({ v: 1, season: 4, best: Math.max(d, 40), clr: 1, nb: 50, nclr: 1, hb: 20, ...extra, run: { d, hp: 900, mh: 1200, a: 60, g: 18500, l: 42, x: 0, xn: 1e9, rid, k: 120, pp: 0, ...run } });
+const save = (d, rid, run = {}, extra = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: Math.max(d, 40), clr: 1, nb: 50, nclr: 1, hb: 20, ...extra, run: { d, hp: 900, mh: 1200, a: 60, g: 18500, l: 42, x: 0, xn: 1e9, rid, k: 120, pp: 0, ...run } });
 const mob = (id, x, y, extra = {}) => { const m = M.MONSTERS.find(q => q.id === id) || M.MONSTERS[0]; return { id: m.id, name: m.name, ch: m.ch, color: m.color, hp: 50, maxHp: 50, atk: 3, def: 1, xp: 3, x, y, ...extra }; };
 const NOTICES = ["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"];
 
@@ -36,7 +36,7 @@ function rankingRows() {
   // 예시 화면: 실제 사람처럼 보이지 않게 모두 게스트 번호로
   const names = ["게스트 #3fa2c1", "게스트 #a81d05", "게스트 #9b07de", "게스트 #c4e690", "게스트 #51c8a0", "게스트 #7f2b3e", "게스트 #e2d417", "게스트 #07ab9c"];
   return names.map((name, i) => { const it = I.generate(`blogrank|${i}`, "golden", 70 - i * 6);
-    return { rank: i + 1, id: `b${i}`.padEnd(16, "0"), name, guest: name.startsWith("게스트"), stage: 76 - i * 7, bought: false, itemBought: false, item: { rarity: it.rarity, enh: 10 - i, lvl: it.lvl, name: I.itemName(it), ref: null } }; });
+    return { rank: i + 1, id: `b${i}`.padEnd(16, "0"), name, guest: name.startsWith("게스트"), stage: 51 - i * 5, bought: false, itemBought: false, item: { rarity: it.rarity, enh: 10 - i, lvl: it.lvl, name: I.itemName(it), ref: null } }; });
 }
 const json = (r, o, status = 200) => r.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" }, body: JSON.stringify(o) });
 
@@ -54,7 +54,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     r.fulfill({ contentType: f.endsWith(".js") ? "text/javascript" : f.endsWith(".css") ? "text/css" : f.endsWith(".webp") ? "image/webp" : f.endsWith(".png") ? "image/png" : "text/html", body: fs.readFileSync(p) }); });
   await ctx.route("https://api.test/**", r => { const u = new URL(r.request().url()), route = u.searchParams.get("r");
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
-    if (route === "ranking") return json(r, { type: u.searchParams.get("type") || "stage", season: "v4", seasonName: "v4 베타", current: true, total: 8, updatedAt: Date.now(), rows: rankingRows() });
+    if (route === "ranking") return json(r, { type: u.searchParams.get("type") || "stage", season: "v4", seasonName: "정식 v1", current: true, total: 8, updatedAt: Date.now(), rows: rankingRows() });
     // others: 마을에 함께 있는 사람 (게스트 번호만)
     // staff: 운영자 기기만 들어가는 곳(점프 던전, dc#96)을 찍을 때. 화면에는 운영자 표시가 나오지 않게 장면만
     if (route === "lobby" && staff) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950", unlimited: true }, players: [], mail: 0 });
@@ -117,6 +117,8 @@ const SCENES = [
   ["inventory", "인벤토리와 장비", async () => { const o = await open({ seed: { rl_save: save(30, "blog-inv"), "rl_inv:g:DEV": inv(g40, gear(30, "drop", "blogbag").slice(0, 6)) } }); await press(o.page, ["i"]); await sleep(400); await o.page.locator(".slot, .equip-slot, [data-slot]").first().click().catch(() => {}); return o; }],
   ["mobile", "휴대폰 화면", async () => explored({ viewport: { width: 390, height: 844 }, seed: { rl_save: save(12, "blog-mobile", { hp: 240, mh: 330, a: 31, g: 820, l: 14 }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } })],
   ["ranking", "랭킹 페이지", async () => open({ file: "ranking.html", api: true })],
+  // 정식 v1 (dc#98): 일반 던전 50층, 51 = 50층 완료
+  ["ranking-v1", "랭킹: 정식 v1, 50층 완료 ✓", async () => open({ file: "ranking.html", api: true, dsf: 1.6 })],
   ["lobby", "여러 사람이 모이는 로비", async () => open({ scene: "lobby", seed: { rl_save: save(40, "blog-lobby"), "rl_inv:g:DEV": inv(g40) } })],
   ["nightmare", "나이트메어 던전", async () => explored({ seed: { rl_save: save(18, "blog-nm", { z: "nm", hp: 4200, mh: 5000 }), "rl_inv:g:DEV": inv(g90) } })],
   ["hell-named", "헬 던전 네임드 보스와의 전투", async () => { const o = await explored({ seed: { rl_save: save(10, "blog-hell", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } }, { add: [{ dx: 1, dy: 0, ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", ".", ".", "."], 150); return o; }],
@@ -293,13 +295,13 @@ const SCENES = [
     return { ...o, shot: "#stage" }; }],
   // 웨이포인트·묘비·튜토리얼 (dc#97)
   ["wp-picker", "마을 웨이포인트: 활성화한 층부터 바로", async () => {
-    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-wp", {}, { wp: { n: [25, 50], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-wp", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
     await goDoor(o.page, "waypoint");
     await sleep(300);
     return { ...o, shot: ".wp-modal" }; }],
-  ["wp-grave", "25층: 시작 자리 옆 웨이포인트(◎)와 내 묘비(†)", async () => {
-    const o = await open({ dsf: 1.6, seed: { rl_save: save(25, "blog-grave", { hp: 900, mh: 1200 }, { wp: { n: [25] }, tb: { d: 25, z: "normal", x: 14, y: 11, g: 12340 } }),
-      rl_level: level(25, "blog-grave", undefined, [], { wp: { x: 11, y: 12 }, grave: { x: 14, y: 11 } }), "rl_inv:g:DEV": inv(g40) } });
+  ["wp-grave", "10층: 시작 자리 옆 웨이포인트(◎)와 내 묘비(†)", async () => {
+    const o = await open({ dsf: 1.6, seed: { rl_save: save(10, "blog-grave", { hp: 900, mh: 1200 }, { wp: { n: [10] }, tb: { d: 10, z: "normal", x: 14, y: 11, g: 12340 } }),
+      rl_level: level(10, "blog-grave", undefined, [], { wp: { x: 11, y: 12 }, grave: { x: 14, y: 11 } }), "rl_inv:g:DEV": inv(g40) } });
     await sleep(400);
     return { ...o, shot: "#stage" }; }],
   ["tutorial-one", "튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓", async () => {
@@ -309,7 +311,7 @@ const SCENES = [
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };
-    const o = await open({ seed: { rl_save: JSON.stringify({ v: 1, season: 4, best: 40, clr: 1, nb: 50, nclr: 1, hb: 20, dead }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
+    const o = await open({ seed: { rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 40, clr: 1, nb: 50, nclr: 1, hb: 20, dead }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
     await sleep(600);
     return o; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],

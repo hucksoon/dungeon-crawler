@@ -131,7 +131,7 @@ try {
 
   // ---- 쓰러진 판: 로비에서는 창이 안 뜨고, 입구로 들어가면 뜸 ----
   const GD = "dddddd11-2222-4333-8444-555555555555";
-  const dead = JSON.stringify({ v: 1, best: 4, run: null, dead: { d: 4, hp: 0, mh: 30, a: 5, g: 10, p: 0, l: 3, x: 0, xn: 30, rid: "deadrun", k: 0, pp: 0 } });
+  const dead = JSON.stringify({ v: 1, f50: 1, best: 4, run: null, dead: { d: 4, hp: 0, mh: 30, a: 5, g: 10, p: 0, l: 3, x: 0, xn: 30, rid: "deadrun", k: 0, pp: 0 } });
   const D = await open({ rl_device_id: GD, rl_save: dead });
   check("dead run: lobby first, no death modal", await inLobby(D.page) && await D.page.locator("#death-modal").isHidden());
   await walkToDoor(D.page);
@@ -158,7 +158,7 @@ try {
 
   // ---- 로비에서 각자 포탈 층이 보임 ----
   {
-    const runAt = (d) => JSON.stringify({ v: 1, best: d, run: { d, hp: 300, mh: 300, a: 50, g: 10, p: 1, l: 4, x: 0, xn: 1e9, rid: "pv" + d, k: 0, pp: 0 } });
+    const runAt = (d) => JSON.stringify({ v: 1, f50: 1, best: d, run: { d, hp: 300, mh: 300, a: 50, g: 10, p: 1, l: 4, x: 0, xn: 1e9, rid: "pv" + d, k: 0, pp: 0 } });
     const api = await ping({ guest: "portal77-0000" }, { scene: "lobby", x: 4, y: 4, portal: 7 });
     check("API: village ping keeps portal floor", api.body.players.find(p => p.name === "게스트 #portal")?.portal === 7);
     const dz = await ping({ guest: "dungeon5-0000" }, { scene: "dungeon", depth: 5, portal: 9 });

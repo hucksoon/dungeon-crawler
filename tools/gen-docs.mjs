@@ -24,7 +24,10 @@ const table = (head, rows) => [
   `|${head.map(() => "---").join("|")}|`,
   ...rows.map(r => `| ${r.join(" | ")} |`),
 ].join("\n");
-const floors = (m) => (m.until ? `${m.from}~${m.until}` : `${m.from}~`);
+// 일반 던전 50층 (dc#98): 몬스터 표는 레벨(예전 75층 곡선) 기준. 문서에는 그 레벨이 처음 나오는 지금 층으로
+const F = (l) => Math.max(1, Math.ceil(l * M.MAX_FLOOR / M.EFF_MAX));
+const floors = (m) => (m.until ? `${F(m.from)}~${F(m.until)}` : `${F(m.from)}~`);
+const MUL = 1.5;   // 일반 던전 장비 드롭·보물·황금 고블린 배율 (index.html NORMAL_DROP_MUL)
 const tableRates = (t) => Object.entries(t).map(([k, w]) => {
   const total = Object.values(t).reduce((s, x) => s + x, 0);
   return `${I.RARITIES[k].name} ${pct(w / total)}`;
@@ -32,8 +35,9 @@ const tableRates = (t) => Object.entries(t).map(([k, w]) => {
 const HEADER = "> 이 문서는 `node tools/gen-docs.mjs`로 만들어요. 직접 고치지 말고 `monsters.js`, `items.js`를 고친 뒤 다시 실행하세요.";
 
 const E = M.ELITE, G = M.GOLDEN, GOLD = M.GOLD;
-const FLOORS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 15, 17, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150];
-const BOSS_FLOORS = [5, 10, 15, 20, 25, 30, 50, 100, 150];
+// 지금 층 → 레벨 (새 n층 = 레벨 반올림(1.5n))
+const FLOORS = [1, 2, 3, 4, 5, 7, 10, 13, 15, 20, 25, 30, 40, 50].map(f => ({ f, d: M.effLevel(f) }));
+const BOSS_FLOORS = [5, 10, 15, 20, 25, 30, 40, 50];
 
 // ---------------------------------------------------------------- monsters.md
 const monstersMd = `# 몬스터 도감
@@ -45,79 +49,82 @@ ${HEADER}
 ${table(["표시", "이름", "HP", "공격", "방어", "경험치", "나오는 층"],
   M.MONSTERS.map(m => [`\`${m.ch}\``, m.name, m.hp, m.atk, m.def, m.xp, floors(m)]))}
 
-위 표는 **1~${M.FLOOR.from - 1}층 기준** 수치예요. 더 깊은 층에서는 [층 보정](#층-보정)만큼 강해져요.
+위 표는 **1층 기준** 수치예요. 더 깊은 층에서는 [층 보정](#층-보정)만큼 강해져요.
+
+> **층과 레벨 (dc#98)**: 일반 던전은 ${M.MAX_FLOOR}층이에요. 몬스터 강함·아이템 레벨·골드는 예전 ${M.EFF_MAX}층 곡선을 그대로 압축해서, **n층의 레벨 = 반올림(1.5 × n)** (1층 레벨 2, 10층 15, 30층 45, ${M.MAX_FLOOR}층 ${M.EFF_MAX}). 아래 표의 수치는 그 층의 레벨로 계산해요. 보스는 그대로 ${M.BOSS_EVERY}층마다예요
 
 - 플레이어가 주는 피해: 공격력 + (0~1) − 몬스터 방어력 (최소 1, 치명타면 공격력 부분이 2배 + 장비의 치명타 피해)
 - 몬스터가 주는 피해: 방어력이 **비율로** 줄여요. 피해 = 공격 × ${M.DEFENSE_K}공격 ÷ (${M.DEFENSE_K}공격 + 방어력), 최소 1
   - 방어력이 공격력과 같으면 피해 ${pct(M.damageToPlayer(100, 100) / 100)}, 2배면 ${pct(M.damageToPlayer(100, 200) / 100)}, 4배면 ${pct(M.damageToPlayer(100, 400) / 100)}
 - 포션: 최대 HP의 30% 회복 (최소 8). **개수 제한 없이 10턴마다 한 번** 마실 수 있어요 (마시는 데 한 턴). 화면 아래 포션 버튼에 남은 턴이 보여요
-- 보물(!): 층마다 1~3곳. 주우면 **레어 이상 장비 1개** (황금 고블린과 같은 등급표). 예전의 포션 자리예요
-- 한 층의 마릿수: (4 + 층) ~ (6 + 층×2)
+- 보물(!): 층마다 2~4곳 (나이트메어·헬은 1~3곳). 주우면 **레어 이상 장비 1개** (황금 고블린과 같은 등급표). 예전의 포션 자리예요
+- 한 층의 마릿수: (4 + 레벨) ~ (6 + 레벨×2)
 - 계단: 주변 ${M.STAIRS_BLOCK_RADIUS}칸(가로 칸 + 세로 칸) 안에 몬스터가 있으면 내려갈 수 없어요. 정리한 뒤 다시 밟으면 내려가요
 - 처치 골드는 [경제 문서](economy.md#골드)를 보세요
 
 ## 층 보정
 
-같은 몬스터도 깊은 층일수록 강해져요. ${M.FLOOR.from}층부터 한 층마다 HP +${pct(M.FLOOR.hp)}, 공격력 +${pct(M.FLOOR.atk)}, 방어력 +${M.FLOOR.def}씩 (방어력은 내림).
+같은 몬스터도 깊은 층일수록 강해져요. 레벨 ${M.FLOOR.from}부터 레벨마다 HP +${pct(M.FLOOR.hp)}, 공격력 +${pct(M.FLOOR.atk)}, 방어력 +${M.FLOOR.def}씩 (방어력은 내림). 한 층에 레벨이 1.5씩 오르니 층마다 그 1.5배예요.
 정예와 보스도 같은 보정을 받아요 (정예 배율은 보정한 값에 곱해요).
 
-${table(["층", "HP 배율", "공격력 배율", "방어력 +", "예: 그 층에서 가장 강한 몬스터"],
-  FLOORS.map(d => {
-    const f = M.floorScale(d);
+${table(["층 (레벨)", "HP 배율", "공격력 배율", "방어력 +", "예: 그 층에서 가장 강한 몬스터"],
+  FLOORS.map(({ f, d }) => {
+    const fs = M.floorScale(d), f0 = f;
     const top = M.spawnRates(d).at(-1).monster;
     const m = M.makeMonster(top, "normal", d);
-    return [d, `×${Math.round(f.hp * 100) / 100}`, `×${Math.round(f.atk * 100) / 100}`, f.def, `${m.name} HP ${m.hp} · 공격 ${m.atk} · 방어 ${m.def}`];
+    return [`${f0}층 (${d})`, `×${Math.round(fs.hp * 100) / 100}`, `×${Math.round(fs.atk * 100) / 100}`, fs.def, `${m.name} HP ${m.hp} · 공격 ${m.atk} · 방어 ${m.def}`];
   }))}
 
 ## 층별 출현 비율
 
 그 층에 나올 수 있는 종류 중 강한(표에서 아래쪽) 종류일수록 2배씩 자주 나와요.
 
-${table(["층", "종류 수", "출현 비율 (높은 순)"],
-  FLOORS.map(d => {
+${table(["층 (레벨)", "종류 수", "출현 비율 (높은 순)"],
+  FLOORS.map(({ f, d }) => {
     const r = M.spawnRates(d).slice().reverse();
-    return [d, r.length, r.map(x => `${x.monster.name} ${pct(x.p)}`).join(", ")];
+    return [`${f}층 (${d})`, r.length, r.map(x => `${x.monster.name} ${pct(x.p)}`).join(", ")];
   }))}
 
 ## 정예
 
-- ${E.from}층부터 ${pct(E.base)}, 층마다 ${pct(E.perFloor)}p씩 올라 최대 ${pct(E.max)}
+- ${F(E.from)}층부터 ${pct(E.base)}, 레벨마다 ${pct(E.perFloor)}p씩 (층마다 ${pct(E.perFloor * 1.5)}p) 올라 최대 ${pct(E.max)}
 - 이름 앞에 "정예", 금색 테두리
 - HP ${E.hpMul}배, 공격력 ${E.atkMul}배(올림), 방어력 +${E.defAdd}, 경험치 ${E.xpMul}배
-- 장비 드롭 ${pct(I.DROPS.elite.chance)} (일반 몬스터 등급표)
+- 장비 드롭 ${pct(Math.min(1, I.DROPS.elite.chance * MUL))} (일반 몬스터 등급표, 나이트메어·헬은 ${pct(I.DROPS.elite.chance)})
 
 ## 황금 고블린
 
-- ${G.from}층부터 층마다 ${pct(G.chance)} 확률로 1마리. 시작 지점에서 떨어진 곳에 있고, 금빛 칸으로 보여요
+- ${F(G.from)}층부터 층마다 ${pct(G.chance * MUL)} 확률로 1마리 (나이트메어·헬 ${pct(G.chance)}). 시작 지점에서 떨어진 곳에 있고, 금빛 칸으로 보여요
 - 플레이어를 공격하지 않아요. 들키면 플레이어에게서 멀어지는 쪽으로 움직이고, 처음 보인 뒤 정해진 턴 안에 잡지 못하면 도망쳐서 사라져요 (10턴 남으면 경고)
-- HP는 6 + 층, 또는 그 층에서 가장 튼튼한 몬스터 HP(층 보정 포함)의 ${pct(G.hpOfPool)} 중 큰 쪽. 방어력은 그 층 몬스터 중 가장 높은 방어력 +${G.defAdd}
+- HP는 6 + 레벨, 또는 그 층에서 가장 튼튼한 몬스터 HP(층 보정 포함)의 ${pct(G.hpOfPool)} 중 큰 쪽. 방어력은 그 층 몬스터 중 가장 높은 방어력 +${G.defAdd}
 - 깊은 층에서는 **정예**(금색 테두리)와 **왕**(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 맞고 살아남으면 확률로 연막을 터뜨려 ${G.blinkRange[0]}~${G.blinkRange[1]}칸 떨어진 곳으로 순간이동해요
 - 잡으면 **레어 이상 장비를 반드시** 떨어뜨려요: ${tableRates(I.TABLES.golden)}
 
 ${table(["등급", "나오는 층", "확률 (황금 고블린 중)", "HP", "방어", "도망까지", "이동", "순간이동", "장비", "골드·경험치"],
-  Object.entries(G.ranks).map(([rank, r]) => [r.name, `${r.from}층부터`, rank === "normal" ? "나머지" : pct(r.chance),
+  Object.entries(G.ranks).map(([rank, r]) => [r.name, `${F(r.from)}층부터`, rank === "normal" ? "나머지" : pct(r.chance),
     `×${r.hpMul}`, r.defAdd ? `+${r.defAdd}` : "-", `${r.fleeTurns}턴`, `${r.moves[1]}턴에 ${r.moves[0]}번`, r.blink ? pct(r.blink) : "-", `${r.drops}개`, `×${r.goldMul}`]))}
 
-${table(["층", "보통 HP", "정예 HP", "왕 HP", "방어 (보통)", "경험치 (보통)"],
-  FLOORS.filter(d => d >= G.from).map(d => { const g = M.makeGolden(d); return [d, g.hp, d >= G.ranks.elite.from ? M.makeGolden(d, "elite").hp : "-", d >= G.ranks.king.from ? M.makeGolden(d, "king").hp : "-", g.def, g.xp]; }))}
+${table(["층 (레벨)", "보통 HP", "정예 HP", "왕 HP", "방어 (보통)", "경험치 (보통)"],
+  FLOORS.filter(({ d }) => d >= G.from).map(({ f, d }) => { const g = M.makeGolden(d); return [`${f}층 (${d})`, g.hp, d >= G.ranks.elite.from ? M.makeGolden(d, "elite").hp : "-", d >= G.ranks.king.from ? M.makeGolden(d, "king").hp : "-", g.def, g.xp]; }))}
 
 ## 보스
 
 - ${M.BOSS_EVERY}층마다 계단 방에서 계단을 지켜요. 쓰러뜨려야 계단이 열려요. 빨간 테두리
 - 장비를 반드시 ${I.DROPS.boss.rolls}개 떨어뜨려요: ${tableRates(I.TABLES.boss)}
-- 준비된 보스를 다 지나면 마지막 보스가 ${M.BOSS_EVERY}층마다 ${pct(M.BOSS_SCALE)}씩 강해져요
+- 준비된 보스를 다 지나면 마지막 보스가 레벨 ${M.BOSS_EVERY}마다 ${pct(M.BOSS_SCALE)}씩 강해져요 (그 층의 레벨로)
 
-${table(["층", "표시", "이름", "HP", "공격", "방어", "경험치"],
-  BOSS_FLOORS.map(d => { const b = M.makeBoss(d); return [d, `\`${b.ch}\``, b.name, b.hp, b.atk, b.def, b.xp]; }))}
+${table(["층 (레벨)", "표시", "이름", "HP", "공격", "방어", "경험치"],
+  BOSS_FLOORS.map(d => { const b = M.makeBoss(d, M.effLevel(d)); return [`${d}층 (${M.effLevel(d)})`, `\`${b.ch}\``, b.name, b.hp, b.atk, b.def, b.xp]; }))}
 
 ## 최대 층 ${M.MAX_FLOOR}층: 일반 던전 완료
 
 - 일반 던전은 **${M.MAX_FLOOR}층까지**예요. ${M.MAX_FLOOR}층 보스를 쓰러뜨리고 계단을 밟으면 **일반 던전 완료**
 - 완료하면 안내 창과 함께 **로비로 돌아와요**. 로비의 **파란 포탈(\*)**로 들어가면 ${M.MAX_FLOOR}층의 **새 구역**(새 지도·몬스터·보스)에서 계속 파밍할 수 있어요. 다시 클리어하면 또 로비로 돌아와요. 아이템 레벨은 얻은 층이라 ${M.MAX_FLOOR}보다 높은 아이템은 없어요
 - 랭킹 최고 층에는 "${M.MAX_FLOOR}층 완료 ✓"로 보여요 (서버 기록값 ${M.CLEAR_STAGE}). 같은 기록이면 먼저 세운 사람이 위
-- 랭킹은 버전(시즌)마다 따로예요. 지금은 **v4 베타**에 기록되고, 최대 층이 생기기 전까지의 기록은 **v3 베타** 탭에 최종 기록으로 그대로 남아요. v4 베타의 아이템 랭킹은 v4 아이템만 세고, **예전(v3까지) 장비를 한 번이라도 낀 판은 v4 베타 층 랭킹에 기록되지 않아요** (가방에 보관하는 건 괜찮아요)
+- 랭킹은 버전(시즌)마다 따로예요. 지금은 **정식 v1**에 기록되고(그 전 v4 베타 기록을 ${M.MAX_FLOOR}층 기준으로 바꿔 이어 감), 최대 층이 생기기 전까지의 기록은 **클로즈 베타** 탭에 최종 기록으로 그대로 남아요. 정식 v1의 아이템 랭킹은 v4 아이템만 세고, **예전(v3까지) 장비를 한 번이라도 낀 판은 정식 v1 층 랭킹에 기록되지 않아요** (가방에 보관하는 건 괜찮아요)
 - 왜 ${M.MAX_FLOOR}층인가: 처음엔 150층이었는데, 끝까지 가는 시간이 너무 길어서(몬스터 약 17,700마리) ${M.MAX_FLOOR}층(약 4,650마리)으로 줄였어요. 대신 드롭 확률과 레전더리·세트가 나올 확률을 올려서, ${M.MAX_FLOOR}층까지만 가도 예전 150층만큼 좋은 장비(레전더리·세트 40~50개)와 강화석이 모여요. ${M.MAX_FLOOR}층을 완료한 사람은 나이트메어 던전으로 이어져요
-- 던전 입구 **오른쪽 문**은 **최고 층 − 10층부터** 새로 시작해요 (최고 층 12층부터 열림). 완료한 사람은 **${M.MAX_FLOOR - 10}층부터** (${M.MAX_FLOOR - 10}·${M.MAX_FLOOR - 5}·${M.MAX_FLOOR}층 보스를 다시 파밍). 왼쪽 문은 1층부터
+- 75층 → ${M.MAX_FLOOR}층 (dc#98): 층 수만 줄이고 강함·아이템 레벨·골드는 예전 75층 곡선을 압축했어요 (${M.MAX_FLOOR}층 = 예전 75층). 한 판에 만나는 몬스터가 2/3라 **장비 드롭 확률·보물 자리·황금 고블린을 ×${MUL}**로 올렸어요. 예전 기록·저장은 층 ÷ 1.5(올림)로 바꿨어요 (60층 → 40층, 75층 완료 → ${M.MAX_FLOOR}층 완료)
+- 던전 입구는 1층부터. **웨이포인트**(10·20·30·40·50층, 나이트메어·헬도 10층마다)를 밟아 두면 마을 왼쪽 끝 웨이포인트에서 그 층부터 시작해요 (웨이포인트를 밟아야 그 층 계단이 열려요. 완료한 던전은 모두 켜져 있어요)
 
 ## 둘러싸임 방어
 
@@ -137,7 +144,7 @@ ${table(["붙은 몬스터", ...[2, 3, 4, 5, 6, 7, 8].map(n => `${n}마리`)], [
 ## 골드 던전
 
 - 일반 던전 ${M.MAX_FLOOR}층을 **완료**하면 로비의 **골드 던전** 건물(던전 입구와 나이트메어 사이, 금색 ▼)이 열려요. 문이 두 개예요
-- **왼쪽 문 (${M.GOLD_DUNGEON.floor}층)**: 난이도는 **${M.GOLD_DUNGEON.floor}층과 같아요** (${M.GOLD_DUNGEON.floor}층 몬스터 수·종류·정예, 계단을 지키는 ${M.GOLD_DUNGEON.floor}층 보스)
+- **왼쪽 문 (${M.MAX_FLOOR}층)**: 난이도는 **일반 던전 ${M.MAX_FLOOR}층(레벨 ${M.GOLD_DUNGEON.floor})과 같아요** (몬스터 수·종류·정예, 계단을 지키는 ${M.MAX_FLOOR}층 보스)
 - **오른쪽 문 (악몽 N층)**: 나이트메어에 들어가 본 뒤에 열려요. **나이트메어 최고 층과 같은 몬스터·보스**(속성 포함)가 나오고, 보상은 그 레벨(${M.NIGHTMARE.itemBase} + 층) 레전더리 고대 굴리기 ${M.GOLD_DUNGEON.rewardRolls}번 비용의 **×${I.NM_SHOP.priceMul}** (몬스터가 강한 만큼). 예: 악몽 10층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 10, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 25층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 25, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}, 50층 ${I.goldDungeonReward(M.NIGHTMARE.itemBase + 50, M.GOLD_DUNGEON.rewardRolls, true).toLocaleString()}골드. 몬스터 처치 골드도 그 레벨만큼
 - 보스를 쓰러뜨리고 계단을 밟으면 **완료 보상 골드 ${I.goldDungeonReward(M.GOLD_DUNGEON.floor, M.GOLD_DUNGEON.rewardRolls).toLocaleString()}** (= ${M.GOLD_DUNGEON.floor}레벨 레전더리 하나를 [고대 다시 굴리기](items.md#고대-다시-굴리기-골드) ${M.GOLD_DUNGEON.rewardRolls}번 할 수 있는 골드). 몬스터 처치·골드 더미 골드도 ${M.GOLD_DUNGEON.floor}층만큼 따로 받아요 ([경제: 골드](economy.md#골드) 참고)
 - **장비는 나오지 않아요** (몬스터 드롭·보물·황금 고블린 없음). 골드를 모으는 곳이에요
@@ -150,7 +157,7 @@ ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요
 
 - 들어갈 수 있는 사람: 일반 던전 ${M.MAX_FLOOR}층 완료 + **장착한 장비가 모두 v4 이후** (예전 v3까지 장비는 가방에 있어도 되지만 끼고 있으면 못 들어가요. 안에서도 낄 수 없어요)
 - **${N.floors}층**까지, 한 층 몬스터는 **1층 ${N.monsters.start}마리에서 층마다 ${N.monsters.perFloor}마리씩 늘어 ${Math.ceil((N.monsters.max - N.monsters.start) / N.monsters.perFloor) + 1}층부터 ${N.monsters.max}마리** (처음부터 ${N.monsters.max}마리면 들어가자마자 둘러싸여서), 보스는 ${M.BOSS_EVERY}층마다. ${N.floors}층 보스를 쓰러뜨리면 **나이트메어 완료** → 로비로, 파란 포탈(\*)로 ${N.floors}층 새 구역에서 계속 파밍
-- 몬스터: 일반 던전 ${N.base}층 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${N.base}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
+- 몬스터: 일반 던전 ${M.MAX_FLOOR}층(레벨 ${N.base}) 몬스터 기준으로 HP ×${N.hp}, 공격 ×${N.atk} (이름 앞에 "악몽의"). 보스는 ${M.MAX_FLOOR}층 보스 기준 HP ×${N.bossHp}, 공격 ×${N.bossAtk}
 - 층 배율 = 1 + ${pct(N.perFloor)} × (층 − 1) + ${(N.perFloor2 * 100).toFixed(1)}% × (층 − 1)²: **앞쪽 층은 천천히, 깊을수록 가파르게** 강해져요 (${[5, 10, 25, N.floors].map(n => `${n}층 ×${M.nmScale(n).toFixed(2)}`).join(", ")}).
   - **공격력은 제곱 항이 ${(N.atkPerFloor2 * 100).toFixed(1)}%로 더 완만해요** (${[10, 25, 40, N.floors].map(n => `${n}층 ×${M.nmAtkScale(n).toFixed(2)}`).join(", ")}). 장비는 아이템 레벨만큼만 강해져서, HP와 같은 곡선이면 고대 장비로도 40층에서 몰려오는 몬스터에게 100% 쓰러졌어요 (시뮬레이션) 깊이 갈수록 [나이트메어 아이템](items.md#나이트메어-아이템의-힘-공격력방어력최대-hp-${I.NM_POWER.mul})(공격력·방어력·최대 HP ×${I.NM_POWER.mul})이 필요해요
   - 시뮬레이션으로 맞춘 목표: **보통 나이트메어 장비**(1~5층에서 얻은 것 중 부위별로 고름, +4)로 **5층 보스**를 잡을 수 있게 (무기가 괜찮으면 쓰러질 확률 0%, 공격력이 낮은 조합은 포탈로 회복하며 잡기), 잘 맞춘 장비(+10)는 40층까지 꾸준히, 50층이 벽
@@ -251,14 +258,15 @@ const range = ([lo, hi], d) => {
 const avg = ([lo, hi]) => (lo + hi) / 2;
 
 // 그 층의 몬스터를 모두 잡고 골드 더미를 모두 주웠을 때의 평균 (장비 보너스 제외)
-function expectedGold(d) {
-  const mul = M.goldMultiplier(d);
+// f: 지금 층 (레벨 d = effLevel(f)로 계산, 보스는 층으로, 황금 고블린 ×MUL)
+function expectedGold(f) {
+  const d = M.effLevel(f), mul = M.goldMultiplier(d);
   const piles = avg(GOLD.piles.count) * avg(GOLD.piles.amount) * mul;
   const monsters = ((4 + d) + (6 + d * 2)) / 2;
   const elite = M.eliteChance(d);
   const kills = monsters * ((1 - elite) * avg(GOLD.kill.normal) + elite * avg(GOLD.kill.elite)) * mul;
-  const boss = M.isBossFloor(d) ? avg(GOLD.kill.boss) * mul : 0;
-  const golden = d >= G.from ? G.chance * avg(GOLD.kill.golden) * mul : 0;
+  const boss = M.isBossFloor(f) ? avg(GOLD.kill.boss) * mul : 0;
+  const golden = d >= G.from ? G.chance * MUL * avg(GOLD.kill.golden) * mul : 0;
   return { piles, kills, boss, golden, total: piles + kills + boss + golden };
 }
 // 나이트메어 한 층 기대 골드 (몬스터 수는 nmMonsterCount, 정예 확률은 75층, 처치·더미 배율 NIGHTMARE.gold)
@@ -296,14 +304,14 @@ ${table(["처치한 몬스터", "골드 (1층 기준)", "일반 대비"],
   [["일반", "normal"], ["정예", "elite"], ["보스", "boss"], ["황금 고블린", "golden"]].map(([name, k]) =>
     [name, GOLD.kill[k].join("~"), `${Math.round(avg(GOLD.kill[k]) / avg(GOLD.kill.normal) * 10) / 10}배`]))}
 
-- **층 배율** = 1 + ${GOLD.perFloor} × (층 − 1). 층이 하나 깊어질 때마다 ${pct(GOLD.perFloor)}씩 늘어요
+- **배율** = 1 + ${GOLD.perFloor} × (레벨 − 1). 레벨이 하나 오를 때마다 ${pct(GOLD.perFloor)}씩 (한 층에 레벨 1.5) 늘어요
 - 장비의 **골드 획득 +%**는 그 위에 더해져요 (더미와 처치 골드 모두)
 
 ### 층별 골드
 
-${table(["층", "층 배율", "더미 1개", "일반 처치", "정예 처치", "보스 처치", "황금 고블린"],
-  FLOORS.map(d => [d, `×${M.goldMultiplier(d)}`, range(GOLD.piles.amount, d), range(GOLD.kill.normal, d), range(GOLD.kill.elite, d),
-    M.isBossFloor(d) ? range(GOLD.kill.boss, d) : "-", d >= G.from ? range(GOLD.kill.golden, d) : "-"]))}
+${table(["층 (레벨)", "배율", "더미 1개", "일반 처치", "정예 처치", "보스 처치", "황금 고블린"],
+  FLOORS.map(({ f, d }) => [`${f}층 (${d})`, `×${Math.round(M.goldMultiplier(d) * 100) / 100}`, range(GOLD.piles.amount, d), range(GOLD.kill.normal, d), range(GOLD.kill.elite, d),
+    M.isBossFloor(f) ? range(GOLD.kill.boss, d) : "-", d >= G.from ? range(GOLD.kill.golden, d) : "-"]))}
 
 ### 층마다 평균 얼마나 모일까
 
@@ -317,7 +325,7 @@ ${table(["층", "더미", "처치", "보스", "황금 고블린", "합계", "1�
 
 ### 나이트메어 골드
 
-- 나이트메어는 한 층 몬스터가 일반 75층보다 적어서, 예전에는 한 층 골드가 75층보다 적었어요. 그래서 **몬스터 처치 골드 ×${M.NIGHTMARE.gold.kill}, 바닥의 골드 더미(\$) ×${M.NIGHTMARE.gold.pile}**이에요 (아이템 레벨 = ${M.NIGHTMARE.itemBase} + 층으로 층 배율도 높음). 나이트메어 골드 던전(오른쪽 문)의 몬스터도 같아요
+- 나이트메어는 한 층 몬스터가 일반 ${M.MAX_FLOOR}층(레벨 75)보다 적어서, 예전에는 한 층 골드가 그보다 적었어요. 그래서 **몬스터 처치 골드 ×${M.NIGHTMARE.gold.kill}, 바닥의 골드 더미(\$) ×${M.NIGHTMARE.gold.pile}**이에요 (아이템 레벨 = ${M.NIGHTMARE.itemBase} + 층으로 층 배율도 높음). 나이트메어 골드 던전(오른쪽 문)의 몬스터도 같아요
 - **층 돌파 보상**: 계단을 밟아 다음 층으로 갈 때(${M.NIGHTMARE.floors}층은 완료할 때) 그 층 나이트메어 레전더리 상점 가격의 ${pct(M.NIGHTMARE.gold.floor)} (1층 ${nmFloorGold(1).toLocaleString()} ~ ${M.NIGHTMARE.floors}층 ${nmFloorGold(M.NIGHTMARE.floors).toLocaleString()}). 몬스터가 적은 앞쪽 층도 확실히 모이게
 - 나이트메어 아이템을 판매하면 골드도 ×${I.NM_SHOP.sellMul} ([판매와 강화](#판매와-강화))
 
@@ -337,16 +345,16 @@ ${table(["나이트메어 층", "더미", "처치", "보스", "황금 고블린"
 - **나이트메어 아이템(나이트메어 상점·시간 상점)은 가격과 진열 바꾸기 비용이 ×${I.NM_SHOP.priceMul}**예요 (강화석·고대 굴리기도 ×${I.NM_SHOP.priceMul}) (공격력·방어력·최대 HP ×${I.NM_POWER.mul}이라서). 예: ${M.NIGHTMARE.itemBase + 25}레벨 레전더리 ${I.shopPrice({ rarity: "legendary", lvl: M.NIGHTMARE.itemBase + 25, v: 4, seed: "x|n25|k0" }).toLocaleString()}골드
 
 ${table(["등급", "기본 가격", ...SHOP_FLOORS.map(d => `${d}층`)],
-  Object.keys(I.SHOP.prices).filter(r => r !== "unique").map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: l }))]))}
+  Object.keys(I.SHOP.prices).filter(r => r !== "unique").map(r => [I.RARITIES[r].name, I.SHOP.prices[r], ...SHOP_FLOORS.map(l => I.shopPrice({ rarity: r, lvl: M.effLevel(l) }))]))}
 
 ### 진열 바꾸기
 
 - 상점마다 최대 ${I.SHOP.rerolls.max}번. 바꾸면 ${I.SHOP.slots}개가 모두 새로 진열되고, 산 칸 표시도 초기화돼요
-- 비용은 바꿀 때마다 2배, 층이 깊을수록 비싸져요: 기본 ${I.SHOP.rerolls.costs.join(" → ")} × (1 + ${I.SHOP.rerolls.perFloor} × (층 − 1)), 5골드 단위
+- 비용은 바꿀 때마다 2배, 층이 깊을수록 비싸져요: 기본 ${I.SHOP.rerolls.costs.join(" → ")} × (1 + ${I.SHOP.rerolls.perFloor} × (레벨 − 1)), 5골드 단위
 - 바뀐 진열도 (판 ID, 층, 바꾼 횟수)로 정해져서 새로고침해도 같아요
 
 ${table(["층", ...I.SHOP.rerolls.costs.map((_, n) => `${n + 1}번째`), "3번 모두"],
-  SHOP_FLOORS.map(d => { const c = I.SHOP.rerolls.costs.map((_, n) => I.rerollCost(d, n)); return [d, ...c, c.reduce((x, y) => x + y, 0)]; }))}
+  SHOP_FLOORS.map(d => { const c = I.SHOP.rerolls.costs.map((_, n) => I.rerollCost(M.effLevel(d), n)); return [d, ...c, c.reduce((x, y) => x + y, 0)]; }))}
 
 1층부터 상점 층까지 모은 평균 골드: ${SHOP_FLOORS.map(d => `${d}층 약 ${Math.round(cumulative[d - 1])}`).join(", ")} (상점에서 쓴 골드는 빼지 않은 값)
 
@@ -528,7 +536,7 @@ ${table(["몬스터", "보석 확률"], Object.entries({ normal: "일반", elite
 
 ${table(["던전", ...I.GEM_GRADES], [["일반 던전", ...I.GEM_DROP.grades.normal.map(w => w + "%")], ["나이트메어", ...I.GEM_DROP.grades.nightmare.map(w => w + "%")]])}
 
-- 기대 개수 (시뮬레이션): 일반 1~75층 한 번에 약 157개 (조각으로 치면 약 214개), 나이트메어 1~50층 약 66개 (조각으로 치면 약 204개). 투구·갑옷·팔·장화·무기·방패의 홈을 모두 최대로 완벽한 보석으로 채우려면 조각으로 144개
+- 기대 개수 (시뮬레이션, 예전 75층 기준): 일반 1~75층 한 번에 약 157개 (조각으로 치면 약 214개), 나이트메어 1~50층 약 66개 (조각으로 치면 약 204개). 투구·갑옷·팔·장화·무기·방패의 홈을 모두 최대로 완벽한 보석으로 채우려면 조각으로 144개
 
 ### 룬
 
@@ -636,7 +644,7 @@ ${table(["조합", "세 힘 있을 때 (장신구 없음)", "3단계: 레전더�
 - 골드가 모자라면 [골드 던전](monsters.md#골드-던전)에서 한 번에 모을 수 있어요
 
 ${table(["아이템 레벨", "레전더리 한 번", "세트 한 번", "그 층에서 한 층에 모이는 골드 (평균)"],
-  [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(l).total).toLocaleString()]))}
+  [25, 50, 75].map(l => [l, I.ancientRerollCost({ rarity: "legendary", lvl: l }).toLocaleString(), I.ancientRerollCost({ rarity: "set", lvl: l }).toLocaleString(), Math.round(expectedGold(F(l)).total).toLocaleString()]))}
 
 - 결과는 아이템 ID와 몇 번째 굴림인지로 정해져서, 서버가 똑같이 다시 계산해요 (새로고침해도 같은 결과)
 
@@ -748,7 +756,7 @@ ${table(["능력치", ...RAR.map(r => I.RARITIES[r].name)],
 
 ## 추천 능력치 (끝판 목표): 일반 · 나이트메어 · 헬
 
-단계마다 그 단계 끝(**일반 75층 · 나이트메어 50층 · 헬 50층**)을 깨는 조합이에요. 인벤토리 **추천** 탭에서 단계 버튼(일반·나이트메어·헬)으로 고르고(처음엔 지금 있는 곳), 지금 값과 같이 볼 수 있어요 (장착한 아이템에 이미 있는 줄은 ✓). 장비 칸의 **추천 N/5**와 아이템 상세의 부위 추천은 **그 아이템을 얻은 단계**의 추천으로 세요 (일반 아이템 → 일반, 악몽의 → 나이트메어, 지옥의 → 헬).
+단계마다 그 단계 끝(**일반 ${M.MAX_FLOOR}층 · 나이트메어 50층 · 헬 50층**)을 깨는 조합이에요. 인벤토리 **추천** 탭에서 단계 버튼(일반·나이트메어·헬)으로 고르고(처음엔 지금 있는 곳), 지금 값과 같이 볼 수 있어요 (장착한 아이템에 이미 있는 줄은 ✓). 장비 칸의 **추천 N/5**와 아이템 상세의 부위 추천은 **그 아이템을 얻은 단계**의 추천으로 세요 (일반 아이템 → 일반, 악몽의 → 나이트메어, 지옥의 → 헬).
 
 ${table(["단계", "저항", "흡혈", "치명타", "장비", "장신구"], I.RECOMMEND.tiers.map(t => { const r = I.RECOMMEND[t], T = r.targets; return [`**${r.name}** (${r.goal})`, T.res ? `${T.res}% (장비 합 ${T.res + (M.ELEMENTS.zonePenalty[t] || 0)}% − ${M.ELEMENTS.zonePenalty[t] || 0})` : "-", `${T.lifesteal}%`, `${T.crit}%`, T.uniques ? `추천 유니크 ${T.uniques}부위 (없으면 레전더리)` : `고대 레전더리 ${T.legendary}부위 +${T.enh}`, r.acc]; }))}
 
@@ -756,7 +764,7 @@ ${table(["부위", "주 능력치 ★", ...I.RECOMMEND.tiers.map(t => `◆ ${I.R
   return [I.SLOT_NAMES[slot] + (r.kind ? ` (${r.kind})` : ""), r.main.map(lbl).join(", "), ...I.RECOMMEND.tiers.map(t => I.RECOMMEND[t].slots[slot].lines.map(lbl).join(", ")), `${U.name} (${U.boss}층 ${M.namedAt(U.boss).name})`]; }))}
 
 - 시뮬레이션 (그 단계 끝 레벨 레전더리 +10, 몬스터 20마리가 8마리씩 몰려옴 / 보스 1:1, 장신구는 실제 아이템):
-  - **일반 75층**: 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서 저항 목표가 없어요. 저항 줄 자리를 **HP·방어력**으로 채우면 (줄 품질 80%, 장비·장신구 +8) 몰려옴 1%·보스 0% — 비워 두면 41%, HP·공격력 9%, 방어력·공격력 22%, 장신구가 없으면 98%. 고대 +10이면 모두 0%
+  - **일반 ${M.MAX_FLOOR}층**: 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서 저항 목표가 없어요. 저항 줄 자리를 **HP·방어력**으로 채우면 (줄 품질 80%, 장비·장신구 +8) 몰려옴 1%·보스 0% — 비워 두면 41%, HP·공격력 9%, 방어력·공격력 22%, 장신구가 없으면 98%. 고대 +10이면 모두 0%
   - **나이트메어 50층** (줄 품질 95% +10, 장신구 +10): 내 저항이 장비 합에서 −${M.ELEMENTS.zonePenalty.nightmare}이라 (dc#54) 저항 줄을 더 — 투구 불·갑옷 얼음·바지 번개 + 모든 저항·장화 번개·팔 모든 저항, 무기 불·보조 얼음, 장신구 저항 2줄씩 → 장비 합 115% = 75%, 몰려옴 26%·보스 0%. 전 추천(저항 줄 4개 + 무기 HP)이면 89% → 49%로 42%
     - 헬도 같은 줄 + 장신구 3줄이면 148% → 75% (몰려옴 16%·염라대왕 25%), 전 추천은 122% → 52% (26% / 38%)
   - **헬 50층**: 게임 추천 탭에는 **가장 강한 유니크 순위**만 보여요 (부위별 줄 대신). 조합·줄은 [최고 조합 페이지](https://game.apacimtest.com/builds.html) (추천 탭의 "🏆 최고 조합 보기", 새 창)

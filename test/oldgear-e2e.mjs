@@ -1,4 +1,4 @@
-// 예전(v3까지) 장비를 낀 판은 v4 베타 랭킹 제외 (게임·서버), 이미 올라간 기록은 admin.php로 지우기
+// 예전(v3까지) 장비를 낀 판은 정식 v1 랭킹 제외 (게임·서버), 이미 올라간 기록은 admin.php로 지우기
 import { createRequire } from "node:module";
 import { spawn, execFileSync } from "node:child_process";
 import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
@@ -16,7 +16,7 @@ const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 map[10][11] = 2;
 const level = (d, rid) => JSON.stringify({ rid, d, turn: 0, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies: [], items: [] });
-const save = (d, rid, best, run = {}) => JSON.stringify({ v: 1, season: 4, best, run: { d, hp: 900000, mh: 900000, a: 30, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, best, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best, run: { d, hp: 900000, mh: 900000, a: 30, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -48,7 +48,7 @@ try {
   await page.keyboard.press("ArrowRight"); await sleep(250);
   check("old gear equipped: depth 11 but v4 best stays 10, run flagged og", (await page.locator("#depth").innerText()) === "11" && (await page.locator("#best").innerText()) === "10" && (await sv(page)).run.og === 1);
   await page.keyboard.press("i"); await sleep(150);
-  check("inventory says this run is not recorded on v4 beta", (await page.locator("#inv-summary").innerText()).includes("이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요"));
+  check("inventory says this run is not recorded on v1", (await page.locator("#inv-summary").innerText()).includes("이번 판은 예전 장비를 껴서 정식 v1 랭킹에 기록되지 않아요"));
   check("no page errors (old run)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
@@ -58,7 +58,7 @@ try {
   await page.locator(".bag-item", { hasText: I.itemName(v3) }).click();
   await page.getByRole("button", { name: "장착", exact: true }).click(); await sleep(150);
   const L = await page.evaluate(() => window.__log.join("\n"));
-  check("equipping old gear mid-run: warning in the log", L.includes("이번 판은 v4 베타 랭킹에 기록되지 않아요"), L);
+  check("equipping old gear mid-run: warning in the log", L.includes("이번 판은 정식 v1 랭킹에 기록되지 않아요"), L);
   await page.locator("#inv-equip .slot", { hasText: I.itemName(v3) }).click();
   await page.getByRole("button", { name: "해제", exact: true }).click(); await sleep(100);
   await page.keyboard.press("Escape");
@@ -66,11 +66,11 @@ try {
   check("took it off again: still excluded (best stays 10)", (await page.locator("#best").innerText()) === "10" && (await sv(page)).run.og === 1);
   await ctx.close();
 
-  // 4. 예전 장비로 마지막 층(75) 클리어: 게임은 완료, v4 랭킹 완료는 아님
-  ({ ctx, page, errors } = await open("og-d", save(75, "ogD", 40, { og: 1 }), level(75, "ogD"), { bag: [], equip: eqOf(v3), log: [], stones: 0 }));
+  // 4. 예전 장비로 마지막 층(50) 클리어: 게임은 완료, v4 랭킹 완료는 아님
+  ({ ctx, page, errors } = await open("og-d", save(50, "ogD", 40, { og: 1 }), level(50, "ogD"), { bag: [], equip: eqOf(v3), log: [], stones: 0 }));
   await page.keyboard.press("ArrowRight"); await sleep(300);
   const body = await page.locator("#notice-body").innerText();
-  check("old-gear clear: lobby + notice says not recorded, not 완료", await page.evaluate(() => document.body.classList.contains("in-lobby")) && body.includes("v4 베타 랭킹에는 기록되지 않아요") && !(await sv(page)).clr && (await page.locator("#best").innerText()) === "40", body);
+  check("old-gear clear: lobby + notice says not recorded, not 완료", await page.evaluate(() => document.body.classList.contains("in-lobby")) && body.includes("정식 v1 랭킹에는 기록되지 않아요") && !(await sv(page)).clr && (await page.locator("#best").innerText()) === "40", body);
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally { await browser.close(); }
@@ -87,10 +87,10 @@ try {
   const g = (guest, body) => fetch("http://127.0.0.1:8098/api.php?r=score", { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN.slice(0, -1), "X-Guest-Id": guest }, body: JSON.stringify(body) }).then(r => r.json());
   const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v, enh: 0, id: it.id, ...(it.r ? { r: it.r } : {}) });
   const board = async () => (await (await fetch("http://127.0.0.1:8098/api.php?r=ranking&type=stage", { headers: { Origin: ORIGIN.slice(0, -1) } })).json()).rows;
-  await g("og-guest-aaaa", { stage: 20, plvl: 10, gear: [ref(v4)] });
-  await g("og-guest-aaaa", { stage: 30, plvl: 10, gear: [ref(v4), ref(v3)] });
-  await g("og-guest-bbbb", { stage: 50, plvl: 10, gear: [ref(v3)] });
-  await g("og-guest-cccc", { stage: 25, plvl: 10, gear: [ref(v4), ref(v4b)] });
+  await g("og-guest-aaaa", { stage: 20, fl: 50, plvl: 10, gear: [ref(v4)] });
+  await g("og-guest-aaaa", { stage: 30, fl: 50, plvl: 10, gear: [ref(v4), ref(v3)] });
+  await g("og-guest-bbbb", { stage: 50, fl: 50, plvl: 10, gear: [ref(v3)] });
+  await g("og-guest-cccc", { stage: 25, fl: 50, plvl: 10, gear: [ref(v4), ref(v4b)] });
   const b = await board();
   check("server: v4 gear counts (20, 25); old-gear submissions ignored (30, 50)", JSON.stringify(b.map(r => r.stage)) === "[25,20]", JSON.stringify(b.map(r => [r.name, r.stage])));
   // 예전 시즌 기록과 함께 있는 사람을 admin.php로 지움
@@ -102,7 +102,7 @@ try {
   const env = { ...process.env, RANKING_CONFIG: CFG };
   const adm = (...a) => execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), ...a], { env }).toString();
   const list = adm("list");
-  check("admin list shows v4 board with ids", list.includes("v4 베타") && list.includes("v3 랭커") && list.includes("aaaaaaaaaaaaaaaa"), list);
+  check("admin list shows v4 board with ids", list.includes("정식 v1") && list.includes("v3 랭커") && list.includes("aaaaaaaaaaaaaaaa"), list);
   const rm = adm("remove", "aaaaaaaaaaaaaaaa");
   const b2 = await board();
   const v3b = (await (await fetch("http://127.0.0.1:8098/api.php?r=ranking&type=stage&season=v3", { headers: { Origin: ORIGIN.slice(0, -1) } })).json()).rows;

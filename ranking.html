@@ -87,7 +87,7 @@
 <body>
 <main>
   <header>
-    <h1><span data-t>🏆 던전 크롤러 랭킹</span><span class="ver" id="ver" data-t>v4 베타</span></h1>
+    <h1><span data-t>🏆 던전 크롤러 랭킹</span><span class="ver" id="ver" data-t>정식 v1</span></h1>
     <div class="status"><span id="dot" class="dot"></span><span id="updated" data-t>불러오는 중…</span></div>
     <a class="btn" href="./" data-t>게임으로 돌아가기</a>
   </header>
@@ -153,7 +153,7 @@
 
   // 랭킹 버전(시즌). 지금 시즌에만 기록이 올라가고, 예전 시즌은 최종 기록으로 그대로 보여줌
   const SEASONS = [
-    { id: "v4", name: T("v4 베타"), note: T("진행 중"), current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
+    { id: "v4", name: T("정식 v1"), note: T("진행 중"), current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
       stageSub: T("가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.MAX_FLOOR),
       itemSub: T("가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
     { id: "nm", name: T("나이트메어"), note: T("진행 중"), current: true, clear: RLMonsters.NIGHTMARE.clearStage, max: RLMonsters.NIGHTMARE.floors,
@@ -162,9 +162,9 @@
     { id: "hell", name: T("헬"), note: T("최종 목적지"), current: true, clear: RLMonsters.HELL.clearStage, max: RLMonsters.HELL.floors,
       stageSub: T("헬 던전에서 가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.HELL.floors),
       itemSub: T("헬에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
-    { id: "v3", name: T("v3 베타"), note: T("최종 기록"), current: false,
-      stageSub: T("v3 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)"),
-      itemSub: T("v3 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)") },
+    { id: "v3", name: T("클로즈 베타"), note: T("최종 기록"), current: false,
+      stageSub: T("클로즈 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)"),
+      itemSub: T("클로즈 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)") },
   ];
   let season = SEASONS.find(s => location.hash === `#${s.id}`) || SEASONS[0];
   function renderSeasons() {
@@ -296,7 +296,7 @@
   $("player-modal").addEventListener("click", (e) => { if (e.target.id === "player-modal") $("player-modal").hidden = true; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("player-modal").hidden = true; });
 
-  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (v4 베타부터. v3 베타는 내려간 층 그대로)
+  // 최대 층 보스까지 쓰러뜨린 기록(CLEAR_STAGE)은 "75층 완료" (정식 v1부터. 클로즈 베타는 내려간 층 그대로)
   const stageText = (n) => season.clear && n >= season.clear ? T("{0}층 완료 ✓", season.max) : T("{0}층", n);
   // 현금으로 산 아이템(고대 유니크 선택 상자)을 쓴 기록 표시: 층 = 그 층을 세울 때 낀 장비, 아이템 = 최고 아이템
   const boughtTag = () => el("small", { className: "bought", textContent: T("💰 구매 아이템"), title: T("현금으로 산 고대 유니크 선택 상자의 아이템을 썼어요") });

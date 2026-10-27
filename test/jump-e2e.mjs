@@ -14,7 +14,7 @@ const MAP_W = 32, MAP_H = 24, D = 12;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)));
 const mob = (x, y, extra = {}) => ({ x, y, ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "normal", D), hp: 1e9, maxHp: 1e9, atk: 0, ...extra });
 const level = ({ px = 5, py = 5, enemies = [], items = [] } = {}) => JSON.stringify({ rid: "jump-run", d: D, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px, py, shop: null, enemies, items });
-const save = (run = {}) => JSON.stringify({ v: 1, best: D, run: { d: D, hp: 1e6, mh: 1e6, a: 5, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "jump-run", k: 0, pp: 0, ...run } });
+const save = (run = {}) => JSON.stringify({ v: 1, f50: 1, best: D, run: { d: D, hp: 1e6, mh: 1e6, a: 5, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "jump-run", k: 0, pp: 0, ...run } });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 async function open(lv, { opts = { viewport: { width: 1100, height: 1000 } }, sv = save() } = {}) {

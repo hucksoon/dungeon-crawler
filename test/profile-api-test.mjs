@@ -22,7 +22,7 @@ async function call(who, body, raw) {
   const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {} return { status: r.status, body: j, text: t };
 }
 const item = (n) => ({ id: `it${n}`, seed: `s${n}`, src: "floor", lvl: 3, v: 2, rarity: "rare", slot: "head", enh: 0, stats: { atk: 1 } });
-const data = (bag, extra = {}) => ({ v: 1, save: { v: 1, best: 3, run: { d: 3, g: 120 }, dead: null }, inv: { bag, equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: null }, stones: 4 }, dex: { seen: {}, kills: {} }, boxMail: [], ...extra });
+const data = (bag, extra = {}) => ({ v: 1, save: { v: 1, f50: 1, best: 3, run: { d: 3, g: 120 }, dead: null }, inv: { bag, equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: null }, stones: 4 }, dex: { seen: {}, kills: {} }, boxMail: [], ...extra });
 try {
   const g0 = await call(A);
   check("new account: rev 0, no data", g0.status === 200 && g0.body.rev === 0 && g0.body.data === null, g0.text);

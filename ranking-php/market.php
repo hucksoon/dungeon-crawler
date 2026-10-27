@@ -553,10 +553,12 @@ function box_draws(string $sku): int {
     return preg_match(BOX_SKU_RE, $sku, $m) && (int)$m[1] >= 1 && (int)$m[1] <= BOX_MAX_DRAWS ? (int)$m[1] : 0;
 }
 // 상점이 쓰던 레벨: 이 계정의 최고 층 (rl_save.best). 저장본이 없으면 1
+// 50층 기준 저장(f50, dc#98)이면 그 층의 레벨 (1.5 × 층, 최대 75), 예전 저장은 층 = 레벨
 function box_level(string $owner): int {
     $data = q_val('SELECT data FROM profiles WHERE pkey = ?', [$owner]);
-    $best = $data ? (json_decode((string)$data, true)['save']['best'] ?? 1) : 1;
-    return max(1, min(CLEAR_STAGE, is_int($best) ? $best : 1));
+    $save = $data ? (json_decode((string)$data, true)['save'] ?? []) : [];
+    $best = is_int($save['best'] ?? null) ? $save['best'] : 1;
+    return max(1, !empty($save['f50']) ? stage_level($best) : min(OLD_CLEAR_STAGE, $best));
 }
 
 // 주문의 상자를 열어 우편함에 넣음 (트랜잭션 안에서 부름). 넣은 아이템 수. 같은 시드가 이미 있으면 건너뜀

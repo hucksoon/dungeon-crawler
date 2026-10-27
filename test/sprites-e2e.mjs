@@ -36,7 +36,7 @@ map[9][13] = 2;
 const enemies = [{ x: 8, y: 5, ...M.makeMonster(M.MONSTERS.find(m => m.id === "goblin"), "normal", D) }];
 const items = [{ x: 4, y: 4, type: "gold", amount: 10 }, { x: 4, y: 6, type: "potion" }];
 const level = (z = "normal", px = 5, py = 5) => JSON.stringify({ rid: "spr-run", d: D, z, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px, py, shop: null, enemies, items });
-const save = JSON.stringify({ v: 1, best: D, run: { d: D, hp: 500, mh: 500, a: 90, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "spr-run", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, best: D, run: { d: D, hp: 500, mh: 500, a: 90, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "spr-run", k: 0, pp: 0 } });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 // 그림 칸을 지도 좌표로 보는 검사는 전체 지도(view = "full")로 엶

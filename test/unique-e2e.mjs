@@ -82,7 +82,7 @@ async function portalOut(page) {
 }
 // 포탈로 마을에 나와서 헬 문(dx 1) / 층 고르기 문(dx 5)까지 걸어가 ↑
 async function walkToHell(page, dx = 1) { await portalOut(page); await goDoor(page, dx === 5 ? "hellPick" : "hell"); await sleep(100); }
-const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
+const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const findU = (k, f) => { for (let i = 0; ; i++) { const it = I.generateUnique(`ug${k}${i}|j${f}|u${i}`, 125 + f); if (it.uq === k) return it; } };
 const mob = (extra = {}) => ({ x: 11, y: 10, ...M.makeHell(M.MONSTERS.at(-1), "normal", 5, "fire"), hp: 1e9, maxHp: 1e9, atk: 50, el: null, res: { fire: 0, ice: 0, bolt: 0 }, ...extra });
 try {

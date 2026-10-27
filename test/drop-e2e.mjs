@@ -22,7 +22,7 @@ const level = (d, enemies, items = [], tweak) => {
   if (tweak) tweak(map);
   return JSON.stringify({ rid: "drop-run", d, turn: 0, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items });
 };
-const save = (d) => JSON.stringify({ v: 1, best: d, run: { d, hp: 5000, mh: 5000, a: 50, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "drop-run", k: 0, pp: 0 } });
+const save = (d) => JSON.stringify({ v: 1, f50: 1, best: d, run: { d, hp: 5000, mh: 5000, a: 50, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "drop-run", k: 0, pp: 0 } });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 async function open(d, lvl, opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 1000 }, ...opts }); const page = await ctx.newPage(); const errors = [];
@@ -50,8 +50,8 @@ const tileColor = (page, x, y) => page.evaluate(([x, y, T]) => {
 try {
   check("canvas tile size assumption", true);
   // 1. 황금 고블린 왕(장비 4개) → 4칸에 하나씩
-  const king = { x: 11, y: 10, ...M.makeGolden(60, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
-  let { page, errors } = await open(60, level(60, [king]));
+  const king = { x: 11, y: 10, ...M.makeGolden(40, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
+  let { page, errors } = await open(40, level(40, [king]));
   await page.keyboard.press("ArrowRight"); await sleep(300);
   let lv = await L(page);
   const gear = lv.items.filter(i => i.type === "gear");
@@ -64,8 +64,8 @@ try {
   await page.context().close();
 
   // 2. 좁은 통로에서도 벽을 넘지 않고 이어진 바닥으로 밀림
-  const king2 = { x: 11, y: 10, ...M.makeGolden(60, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
-  ({ page, errors } = await open(60, level(60, [king2], [], (map) => {
+  const king2 = { x: 11, y: 10, ...M.makeGolden(40, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
+  ({ page, errors } = await open(40, level(40, [king2], [], (map) => {
     for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) map[y][x] = 0;
     for (let x = 5; x <= 20; x++) map[10][x] = 1;  // 가로 통로 한 줄
     map[10][20] = 2;

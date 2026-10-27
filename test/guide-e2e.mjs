@@ -22,7 +22,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -73,7 +73,7 @@ const T = I.totals([...gear, ...accs]).stats;
 check("rules: the recommended ancient +10 gear + 3 accessories reaches nightmare res 75/75/75 after −40 (gear total ≥ 115), lifesteal 20, crit 75", ["fire", "ice", "bolt"].every(k => M.playerRes(T[k + "Res"] + T.allRes, 75, "nightmare") >= 75) && T.lifesteal >= 20 && T.crit >= 75, JSON.stringify({ res: ["fire", "ice", "bolt"].map(k => T[k + "Res"] + T.allRes), ls: T.lifesteal, crit: T.crit }));
 const foxorb = (() => { for (let i = 0; ; i++) { const it = I.generateUnique(`gu${i}|j20|u${i}`, 145); if (it.uq === "foxorb") return it; } })();
 const hellHead = (() => { for (let i = 0; ; i++) { const it = I.generate(`gh|j40|k${i}`, "boss", 165); if (it.slot === "head" && it.rarity === "legendary") return it; } })();
-const sv = (d, rid) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 3000, mh: 3000, a: 30, g: 0, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const sv = (d, rid) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 3000, mh: 3000, a: 30, g: 0, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 try {
   const eq = eqOf(...gear.slice(0, 3));   // 무기·보조무기·투구만 장착 (나이트메어 아이템)
   const shield = (() => { for (let i = 0; ; i++) { const it = I.generate(`gs|n50|k${i}`, "boss", L); if (it.type === "shield" && it.rarity === "legendary") return it; } })();
@@ -82,7 +82,7 @@ try {
   check("inventory opens on the 능력치 tab", await page.locator("#inv-summary").isVisible() && !(await page.locator("#inv-detail").isVisible()));
   await page.locator(".inv-tab[data-tab=guide]").click(); await sleep(200);
   let d = await page.locator("#inv-guide").innerText();
-  check("guide opens on the 일반 tier (player in the normal dungeon): no resist goal, hp/def lines", d.includes("📋 추천 능력치 (일반 75층)") && !d.includes("속성 저항 불") && d.includes("고대 레전더리 3 / 7부위") && d.includes("장신구 0 / 3칸") && d.includes("+10 이상 강화 3 / 7부위") && (await page.locator(".guide-tier.on").innerText()) === "일반", d.slice(0, 500));
+  check("guide opens on the 일반 tier (player in the normal dungeon): no resist goal, hp/def lines", d.includes("📋 추천 능력치 (일반 50층)") && !d.includes("속성 저항 불") && d.includes("고대 레전더리 3 / 7부위") && d.includes("장신구 0 / 3칸") && d.includes("+10 이상 강화 3 / 7부위") && (await page.locator(".guide-tier.on").innerText()) === "일반", d.slice(0, 500));
   check("guide: 7 slot rows + accessory row", (await page.locator("#inv-guide .guide-slot").count()) === 8);
   await page.locator(".guide-tier", { hasText: "나이트메어" }).click(); await sleep(150);
   d = await page.locator("#inv-guide").innerText();

@@ -11,7 +11,7 @@ const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 map[20][28] = 2;
 const level = JSON.stringify({ rid: "nav-run", d: 37, turn: 5, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies: [], items: [{ x: 3, y: 3, type: "gold", amount: 7 }] });
-const save = JSON.stringify({ v: 1, season: 4, best: 37, run: { d: 37, hp: 500, mh: 500, a: 30, g: 123, p: 3, l: 20, x: 0, xn: 1e9, rid: "nav-run", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, season: 4, best: 37, run: { d: 37, hp: 500, mh: 500, a: 30, g: 123, p: 3, l: 20, x: 0, xn: 1e9, rid: "nav-run", k: 0, pp: 0 } });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 try {
   for (const [name, opts] of [["desktop", { viewport: { width: 1100, height: 1000 } }], ["phone", { ...devices["iPhone 13"] }]]) {

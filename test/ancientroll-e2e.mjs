@@ -26,7 +26,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -63,7 +63,7 @@ const unlucky = find(it => it.rarity === "set" && it.slot !== lucky.slot && !it.
 const epic = find(it => it.rarity === "epic");
 const cost = I.ancientRerollCost(lucky), cost2 = I.ancientRerollCost(unlucky);
 check(`cost at lvl 50 = 1/3 of shop price: legendary ${cost}, set ${cost2}`, cost === Math.round(I.shopPrice(lucky) / 3 / 5) * 5 && cost2 === Math.round(I.shopPrice(unlucky) / 3 / 5) * 5 && cost === 785);
-const saveG = (rid, gold) => JSON.stringify({ v: 1, season: 4, best: 50, run: { d: 50, hp: 900, mh: 1000, a: 300, g: gold, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const saveG = (rid, gold) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, run: { d: 50, hp: 900, mh: 1000, a: 300, g: gold, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 const invOf = (page, dev) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), `rl_inv:g:${dev}`);
 const pick = async (page, it) => { await page.locator(".bag-item", { hasText: I.itemName(it) }).first().click(); await sleep(100); };
 try {

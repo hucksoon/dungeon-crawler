@@ -30,20 +30,29 @@ require_once __DIR__ . '/profile.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5, 'unique' => 6];
 const MAX_STAGE = 10000;
-// 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("150층 완료")
-const MAX_FLOOR = 75;
+// 일반 던전 최대 층 (monsters.js MAX_FLOOR). 그 층 보스까지 쓰러뜨리면 랭킹 기록값 CLEAR_STAGE("50층 완료")
+// dc#98: 75층 → 50층. 강함·아이템 레벨은 예전 75층 곡선을 압축: 새 n층의 레벨 = 반올림(1.5n), 최대 EFF_MAX(75)
+const MAX_FLOOR = 50;
 const CLEAR_STAGE = MAX_FLOOR + 1;
+const EFF_MAX = 75;
+const OLD_CLEAR_STAGE = EFF_MAX + 1;   // 예전 75층 기준 "완료" 기록값
+function r_eff(int $n): int { return min(EFF_MAX, (int)round($n * EFF_MAX / MAX_FLOOR)); }
+// 일반 던전 기록 층 → 얻을 수 있는 아이템 레벨 (완료면 75)
+function stage_level(int $stage): int { return $stage >= CLEAR_STAGE ? EFF_MAX : r_eff(max(0, $stage)); }
+// 예전 75층 기준 층 → 50층 기준 (올림(n / 1.5), 75층 완료 76 → 51)
+function stage_to50(int $n): int { return $n <= 0 ? $n : min(CLEAR_STAGE, (int)ceil($n * MAX_FLOOR / EFF_MAX)); }
+const E_DROP_MUL = 1.5;   // 일반 던전 50층 시드(|e층|)의 장비 드롭 확률 배율 (index.html NORMAL_DROP_MUL)
 // 랭킹 시즌: 규칙이 크게 바뀌면 새 표에 따로 쌓고, 예전 시즌 표는 그대로 보관해서 최종 기록으로 보여줌.
-// players 표는 v3 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
+// players 표는 클로즈 베타까지의 기록 (더 이상 쓰지 않음). 기록 올리기·로비 왕관은 지금 시즌만
 const SEASONS = [
-    'v4' => ['table' => 'players_v4', 'name' => 'v4 베타', 'minItemV' => 4],
+    'v4' => ['table' => 'players_v4', 'name' => '정식 v1', 'minItemV' => 4, 'eff' => true],   // eff: 기록 층이 50층 기준 (dc#98에서 한 번 바꿈)
     'nm' => ['table' => 'players_nm', 'name' => '나이트메어', 'minItemV' => 4, 'nightmare' => true],
-    'hell' => ['table' => 'players_hell', 'name' => '헬', 'minItemV' => 4, 'nightmare' => true, 'hell' => true],  // 헬 던전 (층 = 헬 층, 50층 완료 = 51)  // v4 베타의 나이트메어 던전 (층 = 나이트메어 층)
-    'v3' => ['table' => 'players', 'name' => 'v3 베타', 'minItemV' => 1],
+    'hell' => ['table' => 'players_hell', 'name' => '헬', 'minItemV' => 4, 'nightmare' => true, 'hell' => true],  // 헬 던전 (층 = 헬 층, 50층 완료 = 51)  // 정식 v1의 나이트메어 던전 (층 = 나이트메어 층)
+    'v3' => ['table' => 'players', 'name' => '클로즈 베타', 'minItemV' => 1],
 ];
 // 나이트메어 던전 (monsters.js NIGHTMARE): 50층, 아이템 레벨 = 75 + 나이트메어 층, 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
 const NM_FLOORS = 50;
-const NM_ITEM_BASE = MAX_FLOOR;
+const NM_ITEM_BASE = EFF_MAX;
 const NM_CLEAR = NM_FLOORS + 1;
 // 헬 던전 (monsters.js HELL): 50층, 아이템 레벨 = 125 + 헬 층 ("지옥의" 아이템, 시드 |j층|), 나이트메어를 완료한 사람만
 const HELL_FLOORS = 50;
@@ -72,6 +81,28 @@ function config(): array {
     }
     if (strlen((string)$cfg['hash_key']) < 32) throw new RuntimeException('hash_key는 32자 이상의 무작위 값이어야 합니다');
     return $cfg;
+}
+
+// 정식 v1 (dc#98): 일반 던전이 50층이 되면서 지금 시즌 표(players_v4)의 기록 층을 50층 기준으로 한 번 바꿈
+// (최고 층과 그때의 장비 기록 층). 클로즈 베타(players)·나이트메어·헬 표는 그대로. meta 표에 한 번 했다고 남김
+function migrate_floors50(PDO $pdo): void {
+    $done = $pdo->prepare('SELECT v FROM meta WHERE k = ?');
+    $done->execute(['floors50']);
+    if ($done->fetchColumn() !== false) return;
+    try {
+        $pdo->beginTransaction();
+        $pdo->prepare('INSERT INTO meta (k, v) VALUES (?, ?)')->execute(['floors50', (string)now_ms()]);   // 다른 요청이 먼저 했으면 기본 키가 겹쳐 여기서 그만
+        $rows = $pdo->query('SELECT pkey, best_stage, stage_gear FROM players_v4')->fetchAll();
+        $up = $pdo->prepare('UPDATE players_v4 SET best_stage = ?, stage_gear = ? WHERE pkey = ?');
+        foreach ($rows as $r) {
+            $g = $r['stage_gear'] !== null ? json_decode($r['stage_gear'], true) : null;
+            if (is_array($g) && is_int($g['stage'] ?? null)) $g['stage'] = stage_to50($g['stage']);
+            $up->execute([stage_to50((int)$r['best_stage']), is_array($g) ? json_encode($g, JSON_UNESCAPED_UNICODE) : $r['stage_gear'], $r['pkey']]);
+        }
+        $pdo->commit();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+    }
 }
 
 function db(): PDO {
@@ -127,7 +158,7 @@ function db(): PDO {
         label        VARCHAR(40) NOT NULL DEFAULT \'\',
         created_at   BIGINT NOT NULL
     )');
-    // v4 베타 시즌 표, 나이트메어 표 (players와 같은 모양)
+    // 정식 v1 시즌 표, 나이트메어 표 (players와 같은 모양)
     foreach (['players_v4', 'players_nm', 'players_hell'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
         pkey         VARCHAR(64) PRIMARY KEY,
         pub_id       VARCHAR(32),
@@ -146,6 +177,11 @@ function db(): PDO {
         item_at      BIGINT,
         updated_at   BIGINT NOT NULL
     )");
+    $pdo->exec('CREATE TABLE IF NOT EXISTS meta (
+        k            VARCHAR(32) PRIMARY KEY,
+        v            VARCHAR(64) NOT NULL
+    )');
+    migrate_floors50($pdo);
     // 나중에 추가된 칸: 기존 DB에도 붙임 (이미 있으면 무시)
     market_tables($pdo);
     ads_tables($pdo);
@@ -423,10 +459,11 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     if ($dev) $seed = preg_replace('/\|r\d{1,6}\|s([0-5])$/', '|r1|s$1', $seed);
     $chance = r_drop_chance_for($v, $rev);  // r2부터 일반 15% / 정예 60% (그 전 8% / 40%)
     // 아이템 발견 보너스 (r8, 시드 |f처치 순번): 보물 표(golden)로, 드롭 굴림이 최대 발견일 때의 확률 안 (items.js rollFindBonus)
-    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|([dnj])(\d{1,5})\|f\d{1,8}$/', $seed, $m)) {
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|([dnje])(\d{1,5})\|f\d{1,8}$/', $seed, $m)) {
         $n = (int)$m[2];
         if ($v !== 4 || $rev < 8 || $src !== 'golden' || r_drop_roll($v, $seed) >= r_find_max_bonus()) return false;
         if ($m[1] === 'd') return $n === $lvl;
+        if ($m[1] === 'e') return $n >= 1 && $n <= MAX_FLOOR && $lvl === r_eff($n);
         if ($m[1] === 'n') return $n >= 1 && $n <= NM_FLOORS && $lvl === NM_ITEM_BASE + $n;
         return $n >= 1 && $n <= HELL_FLOORS && $lvl === HELL_ITEM_BASE + $n;
     }
@@ -435,6 +472,19 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         if ($src === 'drop') return r_drop_roll($v, $seed) < $chance['elite'];      // 정예 확률 안에 들어야 떨어짐
         if ($src === 'boss') return $lvl % 5 === 0;
         return $src === 'golden' && $lvl >= 2;
+    }
+    // 일반 던전 50층 (dc#98, v4 r8): 층 n은 1~50, 아이템 레벨 = r_eff(n). 드롭 확률 ×1.5. k 처치 · p 보물 자리
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|e(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
+        $n = (int)$m[1];
+        if ($v !== 4 || $rev < 8 || $n < 1 || $n > MAX_FLOOR || $lvl !== r_eff($n)) return false;
+        if ($m[2] === 'p') return ($src === 'golden') || ($src === 'drop' && r_drop_roll($v, $seed) < min(1, $chance['normal'] * E_DROP_MUL));
+        if ($src === 'drop') return r_drop_roll($v, $seed) < min(1, $chance['elite'] * E_DROP_MUL);
+        if ($src === 'boss') return $n % 5 === 0;
+        return $src === 'golden';
+    }
+    if (preg_match('/^[0-9A-Za-z_-]{1,40}\|shop\|e(\d{1,2})(\|r[1-3])?\|s[0-5]$/', $seed, $m)) { // 일반 던전 50층 상점 (보스 전 층)
+        $n = (int)$m[1];
+        return $v === 4 && $rev >= 8 && $n >= 1 && $n <= MAX_FLOOR && $n % 5 === 4 && $lvl === r_eff($n) && $src === 'golden';
     }
     // 나이트메어 (r2 이후 v4만): 층 n은 1~50, 아이템 레벨 = 75 + n
     if (preg_match('/^[0-9A-Za-z_-]{1,40}\|n(\d{1,2})\|([kp])\d{1,8}$/', $seed, $m)) {
@@ -612,6 +662,11 @@ function gear_out(?array $gear): ?array {
 function read_score(array $body, int $oldBest, string $key): array {
     $stage = $body['stage'] ?? null;
     if (!is_int($stage) || $stage < 1 || $stage > MAX_STAGE) throw new HttpError(400, 'bad_stage');
+    // 50층 기준 표시(fl)가 없으면 예전 게임(캐시된 75층 화면)이 보낸 층: 50층 기준으로 바꿈 (dc#98)
+    // 아이템 레벨 상한: 50층 기준이면 그 층의 레벨, 예전 화면이면 예전처럼 보낸 층 그대로 (예전 시즌 깊은 층 장비)
+    $fl50 = ($body['fl'] ?? null) === MAX_FLOOR;
+    $stageLvl = $fl50 ? stage_level($stage) : $stage;
+    if (!$fl50) $stage = stage_to50(min($stage, OLD_CLEAR_STAGE));
     $nm = $body['nm'] ?? 0;  // 나이트메어 최고 층 (51 = 완료)
     if (!is_int($nm) || $nm < 0) $nm = 0;
     $nm = min($nm, NM_CLEAR);
@@ -619,7 +674,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     $hell = $body['hell'] ?? 0;  // 헬 최고 층 (51 = 완료), 나이트메어를 완료한 사람만
     if (!is_int($hell) || $hell < 0 || $nm < NM_CLEAR) $hell = 0;
     $hell = min($hell, HELL_CLEAR);
-    $maxLvl = max($stage, $oldBest, nm_level($nm), hell_level($hell));
+    $maxLvl = max($stageLvl, $oldBest, nm_level($nm), hell_level($hell));
     $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
     if (!is_int($plvl) || $plvl < 1 || $plvl > 500) $plvl = 1;
@@ -629,7 +684,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     $verified = verify_item($body['item'] ?? null, $maxLvl);
     // 거래소에서 남에게 판 아이템(의 복사본)은 인정하지 않음
     if ($verified && owned_by_other($verified['id'], $key)) $verified = null;
-    // 아이템 랭킹은 시즌 규칙의 아이템만 (v4 베타는 v4 아이템)
+    // 아이템 랭킹은 시즌 규칙의 아이템만 (정식 v1은 v4 아이템)
     if ($verified && ($verified['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $verified = null;
     if ($verified) {
         $item = [
@@ -650,7 +705,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     }
     $ordered = [];
     foreach (EQUIP_SLOTS as $slot) if (isset($gear[$slot])) $ordered[] = $gear[$slot];
-    // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (v4 베타는 v4 장비로만)
+    // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (정식 v1은 v4 장비로만)
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
     if ($oldGear) { $stage = 0; $nm = 0; $hell = 0; }
@@ -675,14 +730,14 @@ function req_season(): string {
 }
 function season_table(string $season = CURRENT_SEASON): string { return SEASONS[$season]['table']; }
 // 모든 시즌을 통틀어 얻을 수 있었던 가장 높은 아이템 레벨: 아이템 레벨 검증·거래소용 (예전 시즌에 얻은 깊은 층 아이템도 인정)
-// 일반 던전은 층 = 레벨, 나이트메어는 75 + 나이트메어 층
+// 일반 던전은 층의 레벨 (정식 v1은 r_eff(층), 클로즈 베타는 층 = 레벨), 나이트메어는 75 + 나이트메어 층
 function nm_level(int $nm): int { return $nm > 0 ? NM_ITEM_BASE + min($nm, NM_FLOORS) : 0; }
 function hell_level(int $h): int { return $h > 0 ? HELL_ITEM_BASE + min($h, HELL_FLOORS) : 0; }
 function best_level_any(string $key): int {
     $best = 0;
     foreach (SEASONS as $s) {
         $v = (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0);
-        $best = max($best, !empty($s['hell']) ? hell_level($v) : (!empty($s['nightmare']) ? nm_level($v) : $v));
+        $best = max($best, !empty($s['hell']) ? hell_level($v) : (!empty($s['nightmare']) ? nm_level($v) : (!empty($s['eff']) ? stage_level($v) : $v)));
     }
     return $best;
 }

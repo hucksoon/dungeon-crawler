@@ -14,7 +14,7 @@ const MAP_W = 32, MAP_H = 24, D = 20;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)));
 const mob = (id, x, y, extra = {}) => ({ x, y, ...M.makeMonster(M.MONSTERS.find(m => m.id === id), "normal", D), ...extra });
 const level = (enemies) => JSON.stringify({ rid: "anim-run", d: D, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 5, py: 5, shop: null, enemies, items: [] });
-const save = JSON.stringify({ v: 1, best: D, run: { d: D, hp: 1e6, mh: 1e6, a: 5, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "anim-run", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, best: D, run: { d: D, hp: 1e6, mh: 1e6, a: 5, g: 10, p: 0, l: 5, x: 0, xn: 1e9, rid: "anim-run", k: 0, pp: 0 } });
 // 그 등급의 갑옷 하나 (룬 없음)
 const chestOf = (rarity) => { for (let k = 0; k < 5000; k++) { const it = I.generate(`anim|chest|${k}`, "golden", 40); if (it.slot === "chest" && it.rarity === rarity) return it; } throw new Error(rarity); };
 const inv = (items) => JSON.stringify({ bag: [], equip: Object.fromEntries(I.SLOTS.map(s => [s, items.find(it => it.slot === s) || null])), log: [], stones: 0 });

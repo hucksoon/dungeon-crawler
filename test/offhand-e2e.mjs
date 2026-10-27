@@ -58,7 +58,7 @@ const level = (enemies) => {
   map[20][28] = 2;
   return JSON.stringify({ rid: "oh-run", d: 20, turn: 0, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [] });
 };
-const save = JSON.stringify({ v: 1, best: 20, run: { d: 20, hp: 9000000, mh: 9000000, a: 30, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "oh-run", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, best: 20, run: { d: 20, hp: 9000000, mh: 9000000, a: 30, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "oh-run", k: 0, pp: 0 } });
 const DEV = "oh-dev-0001";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 async function open(equip, bag, enemies) {

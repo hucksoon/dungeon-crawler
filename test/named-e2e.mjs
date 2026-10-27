@@ -50,7 +50,7 @@ const logs = (page) => page.evaluate(() => window.__log.join("\n"));
 const stored = (page, k) => page.evaluate(k => JSON.parse(localStorage.getItem(k) || "null"), k);
 const press = async (page, k, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(40); } };
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
-const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
+const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const named = (n, extra = {}) => ({ x: 11, y: 10, ...M.makeNamedBoss(n), ...extra });
 try {
   // 1. 헬 10층을 새로 만들면 계단 방에 불가사리 (네임드 로그)
@@ -137,7 +137,7 @@ try {
   await page.screenshot({ path: `${OUT}/named-dex.png` });
   await ctx.close();
   // 7. 층 고르기 문: 버튼에 네임드 이름
-  ({ ctx, page, errors } = await open("namedtest-g", { rl_save: JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: 11, run: { d: 30, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid: "nmG", k: 0, pp: 0 } }), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": inv(v4) }));
+  ({ ctx, page, errors } = await open("namedtest-g", { rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: 11, run: { d: 30, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid: "nmG", k: 0, pp: 0 } }), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": inv(v4) }));
   await press(page, "p"); await sleep(300);
   await goDoor(page, "hellPick"); await sleep(100);
   check("hell pick buttons show named boss names", (await page.locator("#hellpick-list").innerText()).includes("10층 · 불가사리") && (await page.locator("#hellpick-list").innerText()).includes("20층 · 구미호 (미완료)"), await page.locator("#hellpick-list").innerText());

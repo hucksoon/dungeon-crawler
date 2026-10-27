@@ -34,7 +34,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], stairs = [11, 10]) => { const m = map.map(r => r.slice()); m[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: m.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [] }); };
-const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, p: 3, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, p: 3, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const v4 = I.generate("nmv4|shop|d70|s1", "golden", 70), v3 = I.generate("nmv3|shop|d20|s1", "golden", 20, 3);
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -76,7 +76,7 @@ try {
   // 1. 일반 던전 미완료: 입장 불가
   let { ctx, page, errors } = await open("nmtest-a", { rl_save: save(30, "nmA", { clr: 0 }), rl_level: lv(30, "nmA", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) });
   await walkToNightmare(page);
-  check("not cleared: stays in lobby with the requirement message", await inLobby(page) && (await logs(page)).includes("75층을 완료해야 들어갈 수 있다"), await logs(page));
+  check("not cleared: stays in lobby with the requirement message", await inLobby(page) && (await logs(page)).includes("50층을 완료해야 들어갈 수 있다"), await logs(page));
   await page.screenshot({ path: path.join(OUT, "nm-lobby.png") });
   await ctx.close();
 
@@ -115,7 +115,7 @@ try {
   // 5. 계단: 나이트메어 6층 → 7층, 최고 층
   ({ ctx, page, errors } = await open("nmtest-e", { rl_save: save(6, "nmE", { nb: 6 }, { z: "nm" }), rl_level: lv(6, "nmE", "nm"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) }));
   await page.keyboard.press("ArrowRight"); await sleep(250);
-  check("nightmare stairs: floor 7, nightmare best 7 (normal best untouched)", (await page.locator("#depth").innerText()) === "7" && (await page.locator("#best").innerText()) === "7" && (await stored(page, "rl_save")).nb === 7 && (await stored(page, "rl_save")).best === 75);
+  check("nightmare stairs: floor 7, nightmare best 7 (normal best untouched)", (await page.locator("#depth").innerText()) === "7" && (await page.locator("#best").innerText()) === "7" && (await stored(page, "rl_save")).nb === 7 && (await stored(page, "rl_save")).best === 50);
   await ctx.close();
 
   // 6. 나이트메어 50층 완료 → 로비, 포탈은 나이트메어 50층 새 구역, 랭킹(따로)에 51
@@ -131,13 +131,13 @@ try {
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
-  // 7. 일반 던전 완료자: 웨이포인트가 모두 켜져 있음 (dc#97) → 마을 웨이포인트에서 75층부터
+  // 7. 일반 던전 완료자: 웨이포인트가 모두 켜져 있음 (dc#97) → 마을 웨이포인트에서 50층부터
   ({ ctx, page, errors } = await open("nmtest-g", { rl_save: save(30, "nmG"), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: eqOf(v4), log: [], stones: 0 }) }));
   await portalOut(page);
   await goDoor(page, "waypoint"); await sleep(150);
-  check("cleared player: every normal waypoint already on (25·50·75), nightmare not", await page.locator("#wp-list .wp-row").nth(0).locator("button:not([disabled])").count() === 3 && await page.locator("#wp-list .wp-row").nth(1).locator("button:not([disabled])").count() === 0);
-  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "75층" }).click(); await sleep(400);
-  check("cleared player: waypoint 75 → starts on floor 75", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "75" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
+  check("cleared player: every normal waypoint already on (10~50), nightmare not", await page.locator("#wp-list .wp-row").nth(0).locator("button:not([disabled])").count() === 5 && await page.locator("#wp-list .wp-row").nth(1).locator("button:not([disabled])").count() === 0);
+  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "50층" }).click(); await sleep(400);
+  check("cleared player: waypoint 50 → starts on floor 50", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "50" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
   await ctx.close();
 
   // 8. 랭킹 화면: 탭 3개, 나이트메어 탭

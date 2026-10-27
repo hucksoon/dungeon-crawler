@@ -46,7 +46,7 @@ try {
   const inv = JSON.stringify({ bag: [{ ...it, enh: 2 }], equip, log: [] });
   const RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, set: 4, legendary: 5 };
   const best = [{ ...it, enh: 2 }, ...Object.values(equip).filter(Boolean)].sort((a, b) => (RANK[b.rarity] * 1e5 + (b.enh || 0) * 1e3 + b.lvl) - (RANK[a.rarity] * 1e5 + (a.enh || 0) * 1e3 + a.lvl))[0];
-  const save = JSON.stringify({ v: 1, season: 4, best: 7, run: { d: 7, hp: 28, mh: 28, a: 5, g: 10, p: 1, l: 3, x: 0, xn: 30, rid: "e2e", k: 0, pp: 0 } });
+  const save = JSON.stringify({ v: 1, f50: 1, season: 4, best: 7, run: { d: 7, hp: 28, mh: 28, a: 5, g: 10, p: 1, l: 3, x: 0, xn: 30, rid: "e2e", k: 0, pp: 0 } });
   const t = await open(ORIGIN, { rl_device_id: G, rl_save: save, [`rl_inv:g:${G}`]: inv });
   const db = () => new DatabaseSync(path.join(DIR, "test.sqlite"));
   check("game → PHP: guest score stored with gear snapshot", await waitFor(() => fs.existsSync(path.join(DIR, "test.sqlite")) && db().prepare("SELECT best_stage, stage_gear FROM players_v4 WHERE display = ?").get("게스트 #c0ffee")?.stage_gear));

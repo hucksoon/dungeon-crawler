@@ -78,7 +78,7 @@ const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }
 const lv = (d, rid, z, enemies = [], extra = {}) => { const mm = map.map(r => r.slice()); mm[10][11] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot === "ring" ? (e.ring1 === null ? "ring1" : "ring2") : it.slot] = it; return e; };
 const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], stones: 0 });
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: d, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const mob = (extra = {}) => ({ x: 11, y: 10, ...M.makeHell(M.MONSTERS.at(-1), "normal", 5, "fire"), hp: 1, maxHp: 1, atk: 1, el: null, res: { fire: 0, ice: 0, bolt: 0 }, ...extra });
 // 판 ID: 처치 1번째(|f1)에서 보너스가 나오는 것
 let rid = null; for (let i = 0; !rid; i++) if (I.rollFindBonus(`fd${i}|j5|f1`, 130, 100)) rid = `fd${i}`;
