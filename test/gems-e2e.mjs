@@ -22,7 +22,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -79,12 +79,12 @@ let drops = 0, grades = [0, 0, 0], nmG = [0, 0, 0];
 for (let i = 0; i < 50000; i++) { const g = I.rollGem(`t|d10|g${i}`, "normal"); if (g) { drops++; grades[g[1]]++; } const b = I.rollGem(`t|n10|g${i}`, "boss", true); if (b) nmG[b[1]]++; }
 check(`gem drops: normal monsters ~2% mostly shards, nightmare bosses higher grades (${grades} / ${nmG})`, drops / 50000 > 0.015 && drops / 50000 < 0.025 && grades[0] / drops > 0.8 && nmG[1] + nmG[2] > nmG[0]);
 
-const sv = (d, rid) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 3000, mh: 3000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const sv = (d, rid) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 3000, mh: 3000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 const invOf = () => page => page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k => k.startsWith("rl_inv:")))));
 const readInv = invOf();
 // 처치하면 보석이 떨어지는 판 ID (첫 처치, 일반 몬스터 2%)
-let rid = null; for (let i = 0; i < 100000 && !rid; i++) if (I.rollGem(`gemrid${i}|d5|g1`, "normal", false)) rid = `gemrid${i}`;
-const dropped = I.rollGem(`${rid}|d5|g1`, "normal", false);
+let rid = null; for (let i = 0; i < 100000 && !rid; i++) if (I.rollGem(`gemrid${i}|e5|g1`, "normal", false)) rid = `gemrid${i}`;
+const dropped = I.rollGem(`${rid}|e5|g1`, "normal", false);
 try {
   const plain = findG("skp|d60", it => it.slot === "head" && !I.socketCount(it), 60);
   const { ctx, page, errors } = await open("gemtest-a", { rl_save: sv(5, rid), rl_level: lv(5, rid, "normal", [foe(11, 10, { hp: 1, maxHp: 1, kind: "normal", nm: 0, id: "rat", name: "쥐" })], { items: [{ x: 9, y: 10, type: "gem", gem: "topaz", grade: 2 }] }),

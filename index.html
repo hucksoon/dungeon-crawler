@@ -637,9 +637,9 @@
   <div id="log"></div>
   <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="touch-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
-  <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 75층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
+  <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 왼쪽 끝 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전 25·50·75층, 나이트메어·헬 10층마다).<br></span>
+  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 왼쪽 끝 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
   <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
@@ -711,8 +711,8 @@
 <div id="wp-modal" class="overlay" hidden>
   <div class="modal notice wp-modal" role="dialog" aria-modal="true" aria-labelledby="wp-title">
     <h2 id="wp-title" data-t>◎ 웨이포인트</h2>
-    <p class="meta" data-t>던전의 웨이포인트를 밟아 활성화한 층부터 바로 시작해요. 일반 던전은 25·50·75층, 나이트메어·헬은 10·20·30·40·50층에 있어요.</p>
-    <p id="wp-empty" class="meta" data-t>아직 활성화한 웨이포인트가 없어요. 일반 던전 25층까지 내려가 보세요.</p>
+    <p class="meta" data-t>던전의 웨이포인트를 밟아 활성화한 층부터 바로 시작해요. 일반 던전·나이트메어·헬 모두 10·20·30·40·50층에 있어요.</p>
+    <p id="wp-empty" class="meta" data-t>아직 활성화한 웨이포인트가 없어요. 일반 던전 10층까지 내려가 보세요.</p>
     <div id="wp-list" class="wp-list"></div>
     <button id="wp-close" type="button" data-t>닫기</button>
   </div>
@@ -907,7 +907,7 @@
         steps: () => [["heal", phone() ? T("포션 버튼, 또는 포탈로 마을에 가기") : T("포션(Q), 또는 포탈(P)로 마을에 가기")]],
         note: () => T("마을에 가면 HP가 다 차요") },
       waypoint: { title: () => T("⑤ 웨이포인트"),
-        steps: () => [["wp", T("일반 던전 25층 시작 자리 옆 ◎ 밟기")]],
+        steps: () => [["wp", T("일반 던전 10층 시작 자리 옆 ◎ 밟기")]],
         note: () => T("◎은 꼭 밟고 지나가요 (밟아야 계단이 열려요) · 마을 왼쪽 끝 ◎에서 그 층부터 · 쓰러지면 묘비 †에서 골드 90%") },
     };
     const ORDER = ["intro", "dungeon", "gear", "heal", "waypoint"];
@@ -1592,10 +1592,10 @@
 
     function payload() {
       // 최대 층 보스까지 쓰러뜨렸으면 "완료"(CLEAR_STAGE)로 기록
-      // 층은 이번 시즌(v4 베타)에 실제로 내려간 최고 층, 아이템은 이번 시즌 규칙(v4) 아이템만
-      const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, bestDepth);
-      // 아이템 레벨은 얻은 층: 일반 던전 최고 층, 나이트메어를 갔으면 75 + 나이트메어 최고 층까지
-      const maxLvl = Math.max(stage, nmBest ? NM.itemBase + Math.min(nmBest, NM.floors) : 0, hellBest ? HELL.itemBase + Math.min(hellBest, HELL.floors) : 0);
+      // 층은 이번 시즌(정식 v1)에 실제로 내려간 최고 층, 아이템은 이번 시즌 규칙(v4) 아이템만
+      const stage = cleared ? RLMonsters.CLEAR_STAGE : Math.min(RLMonsters.MAX_FLOOR, bestDepth);   // 50층 기준 (fl: 50, dc#98)
+      // 아이템 레벨은 얻은 층의 레벨: 일반 던전 최고 층의 레벨(1.5 × 층, 최대 75), 나이트메어를 갔으면 75 + 나이트메어 최고 층까지
+      const maxLvl = Math.max(RLMonsters.effLevel(stage), nmBest ? NM.itemBase + Math.min(nmBest, NM.floors) : 0, hellBest ? HELL.itemBase + Math.min(hellBest, HELL.floors) : 0);
       let item = null, best = -1;
       for (const it of Inv.items()) {
         if (!(it.rarity in RANK) || !(it.lvl <= maxLvl) || !(it.v >= SEASON)) continue;
@@ -1606,7 +1606,7 @@
       // rarity·name은 Cloudflare 버전 서버용
       const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: it.v || 1, enh: it.enh || 0, id: it.id, ...(it.r ? { r: it.r } : {}), ...(it.ar ? { ar: it.ar } : {}), ...(it.rf?.length ? { rf: it.rf } : {}), ...(it.gems?.length ? { g: it.gems } : {}) });
       return {
-        stage,
+        stage, fl: RLMonsters.MAX_FLOOR,   // fl: 층이 50층 기준이라는 표시 (없으면 서버가 예전 75층 기준으로 보고 바꿈, dc#98)
         ...(nmBest ? { nm: nmCleared ? NM.clearStage : nmBest } : {}),  // 나이트메어 랭킹 (따로)
         ...(hellBest ? { hell: hellCleared ? HELL.clearStage : hellBest } : {}),  // 헬 랭킹 (따로)
         plvl: player?.plvl || 1,
@@ -1654,7 +1654,7 @@
   let grave = null;      // 이 층 내 묘비 칸 { x, y } (dc#97)
   let shopBought = [];   // 이번 층 상점에서 산 칸 번호 (지금 진열 기준)
   let shopRerolls = 0;   // 이번 층 상점에서 진열을 바꾼 횟수
-  // 랭킹 시즌: v4 베타. 그 전(v3 베타까지) 기록은 랭킹 화면의 v3 베타 탭에 그대로 남고, 최고 층은 새로 셈
+  // 랭킹 시즌: 정식 v1. 그 전(클로즈 베타까지) 기록은 랭킹 화면의 클로즈 베타 탭에 그대로 남고, 최고 층은 새로 셈
   const SEASON = 4;
   let bestDepth = 0;     // 이번 시즌에 내려간 최고 층
   // 나이트메어 던전: player.zone이 "nm"이면 depth는 나이트메어 층(1~50). 최고 층·완료는 따로
@@ -1673,16 +1673,20 @@
   let hellBest = 0, hellCleared = false;
   const inHell = () => player?.zone === "hell";
   const goldReward = (gn = goldNM() ? player.gn : 0) => RLItems.goldDungeonReward(gn ? NM.itemBase + gn : GD.floor, GD.rewardRolls, gn > 0);
-  const maxFloor = () => (inNM() ? NM.floors : inHell() ? HELL.floors : RLMonsters.MAX_FLOOR);
-  const itemLevel = () => (inHell() ? HELL.itemBase + depth : nmMobs() ? NM.itemBase + depth : depth);   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125, 헬 126~175)
-  const floorTag = () => (inNM() ? "n" : inHell() ? "j" : "d");      // 아이템 시드의 층 표시 (서버가 층·레벨을 검증, 헬은 j)
+  const maxFloor = () => (inNM() ? NM.floors : inHell() ? HELL.floors : inGold() ? (player.gn || GD.floor) : RLMonsters.MAX_FLOOR);
+  // 일반 던전 50층 (dc#98): 강함·아이템 레벨·골드는 예전 75층 곡선을 압축한 레벨 (새 n층 = 예전 1.5n층). 골드 던전은 그 층 그대로(75)
+  const monLevel = () => (inGold() ? depth : RLMonsters.effLevel(depth));
+  const NORMAL_DROP_MUL = 1.5;   // 한 판에 만나는 몬스터가 2/3라 장비 드롭 확률·보물 자리·황금 고블린 ×1.5 (일반 던전만)
+  const dropMul = () => (inNM() || inHell() || inGold() ? 1 : NORMAL_DROP_MUL);
+  const itemLevel = () => (inHell() ? HELL.itemBase + depth : nmMobs() ? NM.itemBase + depth : monLevel());   // 이 층에서 얻는 아이템 레벨 (나이트메어 76~125, 헬 126~175)
+  const floorTag = () => (inNM() ? "n" : inHell() ? "j" : "e");   // e: 일반 던전 50층 (레벨 = 1.5 × 층, dc#98. 예전 d는 층 = 레벨)      // 아이템 시드의 층 표시 (서버가 층·레벨을 검증, 헬은 j)
   const floorName = (n = depth, nm = inNM(), gold = inGold(), hell = inHell()) => (hell ? T("헬 {0}층", n) : nm ? T("나이트메어 {0}층", n) : gold ? (goldNM() ? T("골드 던전(악몽 {0}층)", player.gn) : T("골드 던전")) : T("{0}층", n));
   // 로비 접속자 목록·포탈 표시용: 나이트메어 층은 1000 + 층, 골드 던전은 2000 + 층, 헬은 3000 + 층으로 보내고 받음
   const presenceFloor = (n, nm, gold = inGold(), hell = inHell()) => (n ? (hell ? HELL.presence + n : nm ? NM.presence + n : gold ? GD.presence + n : n) : 0);
   const presenceLabel = (n) => (n > HELL.presence ? T("헬 {0}층", n - HELL.presence) : n > GD.presence ? (n - GD.presence <= NM.floors ? T("골드 던전(악몽 {0}층)", n - GD.presence) : T("골드 던전"))
     : n > NM.presence ? T("악몽 {0}층", n - NM.presence) : T("{0}층", n));
   // 이 층 상점 진열 (나이트메어는 시드에 n, 아이템 레벨 75 + 층)
-  const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, inNM() || inHell() ? { tag: floorTag(), level: itemLevel() } : {});
+  const currentStock = () => RLItems.shopStock(player.rid, depth, shopRerolls, { tag: floorTag(), level: itemLevel() });
   let cleared = false;   // 일반 던전(최대 층 보스)을 완료했는지. 판이 바뀌어도 남음
   // 마지막으로 쓰러지거나 포탈(P)을 탄 곳 { d: 층, z: "normal" | "nm" | "gold" | "hell", gn: 골드 던전(악몽) 층 }
   // — 운영자 입구가 이 층을 새로 만들어서 들어감 (같은 층을 다시 돌며 테스트). 새로 시작해도 남음
@@ -1690,7 +1694,7 @@
   const markLastSpot = () => { lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) }; };
   // 웨이포인트 (dc#97): 일반 던전 25·50·75층, 나이트메어·헬 10·20·30·40·50층. 그 층 시작 자리 옆 웨이포인트(◎)를 밟으면 활성화
   // → 마을 왼쪽 끝 웨이포인트에서 활성화한 층부터 바로 시작. 새로 시작해도 남음 (시즌이 바뀌면 처음부터)
-  const WAYPOINTS = { normal: [25, 50, 75], nm: [10, 20, 30, 40, 50], hell: [10, 20, 30, 40, 50] };
+  const WAYPOINTS = { normal: [10, 20, 30, 40, 50], nm: [10, 20, 30, 40, 50], hell: [10, 20, 30, 40, 50] };
   const WP_COLOR = "#5fd4ff";
   let waypoints = { normal: [], nm: [], hell: [] };
   const wpZone = () => (inHell() ? "hell" : inNM() ? "nm" : inGold() ? null : "normal");
@@ -1926,7 +1930,7 @@
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth);
+      const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth, monLevel());
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (quiet) {}
@@ -1939,23 +1943,23 @@
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
     const deep = nmMobs() || inHell();
     const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
-    const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + depth, 6 + depth * 2);
+    const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
-      const kind = Math.random() < RLMonsters.eliteChance(deep ? NM.base : depth) ? "elite" : "normal";
+      const kind = Math.random() < RLMonsters.eliteChance(deep ? NM.base : monLevel()) ? "elite" : "normal";
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
-        : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), kind, depth);
+        : RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel());
       enemies.push({ x: spot.x, y: spot.y, ...m });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
-    if (!inGold() && depth >= RLMonsters.GOLDEN.from && Math.random() < RLMonsters.GOLDEN.chance) {
+    if (!inGold() && monLevel() >= RLMonsters.GOLDEN.from && Math.random() < RLMonsters.GOLDEN.chance * dropMul()) {
       let spot = null;
       for (let tries = 0; tries < 50 && (!spot || dist(spot, player) < 10); tries++) spot = randomFloor([player, ...enemies]);
       if (spot) {
-        const g = inNM() || inHell() ? RLMonsters.makeGolden(NM.base, RLMonsters.goldenRank(NM.base, Math.random)) : RLMonsters.makeGolden(depth, RLMonsters.goldenRank(depth, Math.random));
+        const g = inNM() || inHell() ? RLMonsters.makeGolden(NM.base, RLMonsters.goldenRank(NM.base, Math.random)) : RLMonsters.makeGolden(monLevel(), RLMonsters.goldenRank(monLevel(), Math.random));
         if (inNM()) g.hp = g.maxHp = Math.round(g.hp * NM.hp * RLMonsters.nmScale(depth));
         if (inHell()) g.hp = g.maxHp = Math.round(g.hp * NM.hp * RLMonsters.nmScale(HELL.startNm) * HELL.hp * RLMonsters.hellScale(depth));
         enemies.push({ ...spot, ...g, fleeAt: null });
@@ -1964,7 +1968,7 @@
 
     // 보물 자리(!) 1~3곳: 주우면 레어 이상 장비 (예전의 포션 자리). 골드 던전에는 없음
     items = [];
-    const treasures = inGold() ? 0 : between(1, 3);
+    const treasures = inGold() ? 0 : dropMul() > 1 ? between(2, 4) : between(1, 3);   // 일반 던전 50층은 평균 3곳 (예전 2곳 × 1.5)
     for (let i = 0; i < treasures; i++) {
       const spot = randomFloor([player, ...enemies, ...items]);
       if (spot) items.push({ x: spot.x, y: spot.y, type: "treasure" });
@@ -2429,7 +2433,7 @@
     const rolls = e.kind === "golden" ? (e.drops || RLMonsters.GOLDEN.ranks.normal.drops) : (RLItems.DROPS[e.kind]?.rolls || 1);
     for (let i = 0; i < rolls; i++) {
       const seed = `${player.rid}|${floorTag()}${depth}|k${player.kills++}`;
-      const item = RLItems.rollDrop(seed, itemLevel(), e.kind);
+      const item = RLItems.rollDrop(seed, itemLevel(), e.kind, dropMul());
       if (!item) continue;
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
@@ -2571,7 +2575,7 @@
     noteOldGear();
     if (inNM()) nmBest = Math.max(nmBest, depth);
     else if (inHell()) hellBest = Math.max(hellBest, depth);
-    else if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 v4 베타 랭킹에 안 셈
+    else if (!player.oldGear) bestDepth = Math.max(bestDepth, depth);  // 예전 장비를 낀 판은 정식 v1 랭킹에 안 셈
     log(T("{0}으로 내려간다...", floorName()), "info");
     if (depth === maxFloor() && !(inNM() ? nmCleared : inHell() ? hellCleared : cleared)) log(T("마지막 층이다! {0} 보스를 쓰러뜨리고 계단을 밟으면 {1} 완료.", floorName(), inNM() ? T("나이트메어") : inHell() ? T("헬") : T("일반 던전")), "good");
     const rooms = generateDungeon();
@@ -2588,7 +2592,7 @@
     if (inHell()) { completeHell(); return; }
     if (inGold()) { completeGold(); return; }
     noteOldGear();
-    const counts = !player.oldGear;  // 예전 장비를 낀 판은 완료해도 v4 베타 랭킹에는 안 셈
+    const counts = !player.oldGear;  // 예전 장비를 낀 판은 완료해도 정식 v1 랭킹에는 안 셈
     const first = counts && !cleared;
     if (counts) {
       cleared = true;
@@ -2608,7 +2612,7 @@
     ]);
     else showNotice(T("{0}층 클리어!", depth), [
       T("{0}층 보스를 {1}쓰러뜨리고 로비로 돌아왔어요.", depth, counts ? T("또 ") : ""),
-      ...(counts ? [] : [T("이번 판은 예전(v3까지) 장비를 써서 v4 베타 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요.")]),
+      ...(counts ? [] : [T("이번 판은 예전(v3까지) 장비를 써서 정식 v1 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요.")]),
       T("로비의 파란 포탈로 {0}층의 새 구역에 다시 들어갈 수 있어요.", depth),
     ]);
   }
@@ -2713,6 +2717,7 @@
     return {
       v: 1,
       season: SEASON,
+      f50: 1,   // 일반 던전 50층 기준 (dc#98)
       best: bestDepth,
       ...(cleared ? { clr: 1 } : {}),
       ...(nmBest ? { nb: nmBest } : {}),
@@ -2829,10 +2834,27 @@
     }
   }
 
+  // 예전 75층 기준 저장 → 50층 기준 (dc#98): 층 n → 올림(n / 1.5) (75층 = 50층). 한 번만 (f50 표시)
+  // 바꾸는 것: 일반 던전 최고 층·진행 중인 층·쓰러진 판·마지막으로 쓰러진 층·묘비 층·웨이포인트. 나이트메어·헬·골드 던전은 그대로
+  const to50 = (n) => Math.max(1, Math.min(RLMonsters.MAX_FLOOR, Math.ceil(n / 1.5)));
+  function migrate50(s) {
+    if (!s || s.f50) return s;
+    const t = JSON.parse(JSON.stringify(s));
+    const normal = (z) => !z || z === "normal";
+    if (t.best) t.best = to50(t.best);
+    for (const k of ["run", "dead"]) if (t[k] && normal(t[k].z) && Number.isInteger(t[k].d)) t[k].d = to50(t[k].d);
+    if (t.ld && normal(t.ld.z) && Number.isInteger(t.ld.d)) t.ld.d = to50(t.ld.d);
+    if (t.tb && normal(t.tb.z) && Number.isInteger(t.tb.d)) t.tb.d = to50(t.tb.d);
+    // 예전 웨이포인트(25·50·75층) → 그 아래 가장 가까운 새 웨이포인트(10층마다)
+    if (Array.isArray(t.wp?.n)) t.wp.n = [...new Set(t.wp.n.map(n => Math.floor(to50(n) / 10) * 10).filter(n => n >= 10))];
+    t.f50 = 1;
+    return t;
+  }
   function startFromSave(s) {
+    s = migrate50(s);
     // 예전 시즌 저장이면 최고 층·완료는 새로 셈 (진행 중이던 판은 그대로 이어서 하고, 이제부터 내려가는 층이 기록됨)
     const sameSeason = s?.season === SEASON;
-    bestDepth = sameSeason ? Math.min(RLMonsters.MAX_FLOOR, s?.best || 0) : 0;
+    bestDepth = sameSeason ? Math.min(RLMonsters.MAX_FLOOR, s?.best || 0) : 0;   // 예전 75층 기준 저장은 위에서 50층 기준으로 바꿈 (f50)
     cleared = sameSeason && !!s?.clr;
     nmBest = sameSeason ? Math.min(NM.floors, s?.nb || 0) : 0;
     nmCleared = sameSeason && !!s?.nclr;
@@ -2869,7 +2891,7 @@
   }
 
   function resumeRun(r, { restore = true } = {}) {
-    depth = Math.min(RLMonsters.MAX_FLOOR, r.d);  // 최대 층이 생기기 전에 더 내려간 판은 최대 층에서
+    depth = r.z === "gold" ? r.d : Math.min(RLMonsters.MAX_FLOOR, r.d);  // 최대 층이 생기기 전에 더 내려간 판은 최대 층에서 (골드 던전은 75층 난이도 그대로)
     gameOver = false;
     player = {
       x: 0, y: 0,
@@ -3512,7 +3534,7 @@
       depth = from;
       player.zone = "normal";
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
-      player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 v4 베타 랭킹에 기록됨
+      player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 정식 v1 랭킹에 기록됨
       noteOldGear();
       if (!player.oldGear) bestDepth = Math.max(bestDepth, 1);
       shopBought = [];
@@ -3679,7 +3701,7 @@
     setScene("dungeon");
     log(goldNM()
       ? T("{0}에 발을 들였다. 나이트메어 {1}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 {2}!", floorName(), player.gn, goldReward().toLocaleString())
-      : T("골드 던전에 발을 들였다. {0}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 {1}!", GD.floor, goldReward().toLocaleString()), null, "#ffcf5c");
+      : T("골드 던전에 발을 들였다. {0}층과 같은 몬스터와 보스가 있다. 보스를 쓰러뜨리고 계단을 밟으면 골드 {1}!", RLMonsters.MAX_FLOOR, goldReward().toLocaleString()), null, "#ffcf5c");
     log(T("골드 던전에서는 장비가 떨어지지 않는다. 몬스터 골드와 완료 보상만."), "info");
     newLevel(generateDungeon());
     saveGame(true);
@@ -5088,7 +5110,7 @@
       switch (d.id) {
         case "start": return { open: true, color: "#ffcf5c", label: T("1층") };
         case "towerHell": return { open: true, color: "#ff7a3d", label: T("헬50") };
-        case "golddungeon": return { open: cleared, color: cleared ? "#ffcf5c" : "#7a6a3a", label: cleared ? T("{0}층", GD.floor) : T("닫힘") };
+        case "golddungeon": return { open: cleared, color: cleared ? "#ffcf5c" : "#7a6a3a", label: cleared ? T("{0}층", RLMonsters.MAX_FLOOR) : T("닫힘") };
         case "golddungeonNM": return { open: cleared && nmBest >= 1, color: nmBest >= 1 ? "#ffcf5c" : "#7a6a3a", label: nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘") };
         case "nightmare": return { open: cleared, color: cleared ? "#d07bff" : "#7a5a8a", label: cleared ? T("1층") : T("닫힘") };
         case "nightmare50": return { open: nmOpen, color: nmOpen ? (reduceMotion ? "#ff6bd3" : rainbowColor(d.x)) : "#7a5a8a", label: nmOpen ? T("{0}층 룬", NM.floors) : T("닫힘") };
@@ -5942,7 +5964,7 @@
     invSummary.replaceChildren(
       el("h3", {}, T("능력치")), ...statRows.map(t => el("div", {}, t)),
       ...(oldEquipped ? [el("div", { className: "meta" }, T("예전 규칙 장비 {0}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.", oldEquipped))] : []),
-      ...(player?.oldGear ? [el("div", { className: "msg-bad" }, T("이번 판은 예전 장비를 껴서 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."))] : []),
+      ...(player?.oldGear ? [el("div", { className: "msg-bad" }, T("이번 판은 예전 장비를 껴서 정식 v1 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."))] : []),
       // 세트는 한 줄씩 (누르면 모든 단계), 보석 주머니는 접어서
       ...sets.map(set => fold(`set:${set.id}`,
         [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
@@ -6260,7 +6282,7 @@
   }
   // 단계마다 시뮬레이션 설명 (items.js RECOMMEND 주석)
   const GUIDE_NOTE = {
-    normal: T("일반 75층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)"),
+    normal: T("일반 50층을 깨는 조합이에요. 일반 아이템에는 속성 줄이 없고 일반 몬스터도 속성이 없어서, 저항 대신 HP·방어력을 노리세요. (시뮬레이션: 레전더리 +8·장신구 +8·줄 품질 80%면 몰려오는 몬스터 1%·보스 0%. 그 자리를 비우면 41%, 장신구가 없으면 98%)"),
     nightmare: T("나이트메어 50층을 깨는 조합이에요. 나이트메어에서는 내 저항이 장비 합에서 {0}% 낮아져서, {1}%가 되려면 장비 저항 {2}%를 모아야 해요 — 방어구·무기에도 저항 줄을. (시뮬레이션: 레전더리 +10 · 장신구 저항 2줄, 장비 합 115%면 몰려오는 몬스터 26%·보스 0%. 저항 줄 4개뿐이면 89% → 49%로 42%)", EL.zonePenalty.nightmare, EL.resCap, EL.resCap + EL.zonePenalty.nightmare),
     hell: T("헬 50층을 깨는 조합이에요. 헬에서는 내 저항이 장비 합에서 {0}% 낮아져서, {1}%가 되려면 장비 저항 {2}%를 모아야 해요 (업경 목걸이면 최대 {3}%). 장신구는 +10까지 강화하세요 (+0이면 헬 50층이 훨씬 어려워요). 부위별 조합과 줄은 아래 \"최고 조합 보기\"에서", EL.zonePenalty.hell, EL.resCap, EL.resCap + EL.zonePenalty.hell, EL.resCap + RLItems.UNIQUE.items.eopgyeong.stats.allResMax),
   };
@@ -6377,7 +6399,7 @@
   // 실제 규칙으로 만듦 (유니크는 네임드 드롭과 같은 시드 모양·굴림, 세트·장신구는 그 단계 50층 보스 드롭). 운영자는 랭킹에 기록되지 않음
   let staffGift = false, giftTier = "hell", giftAncient = false;
   const GIFT_TIERS = { hell: { name: T("헬 (지옥의)"), tag: "j50", lvl: 175 }, nightmare: { name: T("나이트메어 (악몽의)"), tag: "n50", lvl: 125 } };
-  // 룬워드 베이스: 홈 개수가 룬 수와 딱 맞는 커먼 (일반 75층·나이트메어 50층·헬 50층 몬스터 드롭)
+  // 룬워드 베이스: 홈 개수가 룬 수와 딱 맞는 커먼 (일반 레벨 75(예전 시드 d75)·나이트메어 50층·헬 50층 몬스터 드롭)
   let rwGiftTier = "hell";
   const RW_GIFT_TIERS = { normal: { name: T("일반"), tag: "d75", lvl: 75 }, nightmare: { name: T("나이트메어 (악몽의)"), tag: "n50", lvl: 125 }, hell: { name: T("헬 (지옥의)"), tag: "j50", lvl: 175 } };
   const rwBases = () => RLItems.RUNEWORDS.flatMap(w => w.bases.map(base => ({ w, base })));
@@ -6693,7 +6715,7 @@
       // n이 없는 상태는 나이트메어 진열이 생기기 전에 저장된 것 → 새로 (이번 시간이어도)
       if (!st || st.h !== h || !Array.isArray(st.b) || st.n === undefined) {
         const n = Math.min(NM.floors, nmBest);
-        st = { h, n, lv: n ? NM.itemBase + n : Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth)), b: [], r: 0 };
+        st = { h, n, lv: n ? NM.itemBase + n : Math.max(1, RLMonsters.effLevel(Math.min(RLMonsters.MAX_FLOOR, bestDepth))), b: [], r: 0 };   // 일반: 최고 층의 레벨 (dc#98)
       }
       return st;
     }
@@ -6853,28 +6875,30 @@
 
   function renderDex() {
     const M = RLMonsters, G = M.GOLDEN;
-    const rates = new Map(M.spawnRates(depth).map(r => [r.monster.id, r.p]));
+    // 일반 던전 50층 (dc#98): 몬스터 표는 레벨(예전 75층 곡선) 기준 → 보여줄 때는 그 레벨이 처음 나오는 지금 층으로
+    const lv = inNM() || inHell() ? M.EFF_MAX : monLevel(), F = (l) => Math.max(1, Math.ceil(l * M.MAX_FLOOR / M.EFF_MAX));
+    const rates = new Map(M.spawnRates(lv).map(r => [r.monster.id, r.p]));
     const pct = (p) => `${Math.max(1, Math.round(p * 100))}%`;
     const total = M.MONSTERS.length + M.BOSSES.length + 1 + Object.keys(M.NAMED.bosses).length;  // 황금 고블린은 등급이 달라도 1종
     document.getElementById("dex-count").textContent = T("발견 {0}/{1} · 지금 {2}층", Dex.count(), total, depth);
 
     // 능력치는 지금 층의 층 보정을 적용한 값
-    const normal = M.MONSTERS.map(m => dexCard({ ...m, ...M.makeMonster(m, "normal", Math.max(depth, m.from)), xp: m.xp }, {
-      floors: m.until ? T("{0}~{1}층", m.from, m.until) : T("{0}층부터", m.from),
+    const normal = M.MONSTERS.map(m => dexCard({ ...m, ...M.makeMonster(m, "normal", Math.max(lv, m.from)), xp: m.xp }, {
+      floors: m.until ? T("{0}~{1}층", F(m.from), F(m.until)) : T("{0}층부터", F(m.from)),
       rate: rates.has(m.id) ? pct(rates.get(m.id)) : null,
     }));
 
     // 황금 고블린 등급: 보통·정예·왕 (도감 처치 수는 셋을 합쳐서)
     const R = G.ranks;
     const goldenCards = Object.entries(R).map(([rank, r]) => {
-      const g = M.makeGolden(Math.max(depth, r.from), rank);
+      const g = M.makeGolden(Math.max(lv, r.from), rank);
       return dexCard({ ...g, id: G.id }, {
-        floors: rank === "normal" ? T("{0}층부터 층마다 {1}%", G.from, Math.round(G.chance * 100)) : T("{0}층부터 황금 고블린의 {1}%", r.from, Math.round(r.chance * 100)),
+        floors: rank === "normal" ? T("{0}층부터 층마다 {1}%", F(G.from), Math.round(G.chance * NORMAL_DROP_MUL * 100)) : T("{0}층부터 황금 고블린의 {1}%", F(r.from), Math.round(r.chance * 100)),
         extra: T("레어 이상 {0}개 · {1}턴 · {2}턴에 {3}번 이동", r.drops, r.fleeTurns, r.moves[1], r.moves[0]) + (r.blink ? T(" · 순간이동 {0}%", Math.round(r.blink * 100)) : ""),
       });
     });
 
-    const bosses = M.BOSSES.map((b, i) => dexCard({ ...b, ...M.makeBoss((i + 1) * M.BOSS_EVERY), color: M.BOSS_COLOR }, {
+    const bosses = M.BOSSES.map((b, i) => dexCard({ ...b, ...M.makeBoss((i + 1) * M.BOSS_EVERY, M.effLevel((i + 1) * M.BOSS_EVERY)), color: M.BOSS_COLOR }, {
       floors: i === M.BOSSES.length - 1 ? T("{0}층, 이후 {1}층마다", (i + 1) * M.BOSS_EVERY, M.BOSS_EVERY) : T("{0}층", (i + 1) * M.BOSS_EVERY),
     }));
 
@@ -6883,21 +6907,21 @@
 
     const E = M.ELITE;
     // 이번 층 기준 처치 골드 범위
-    const gold = (kind) => M.GOLD.kill[kind].map(v => Math.round(v * M.goldMultiplier(depth))).join("~");
+    const gold = (kind) => M.GOLD.kill[kind].map(v => Math.round(v * M.goldMultiplier(lv))).join("~");
     dexBody.replaceChildren(
       el("h3", {}, T("일반 몬스터")),
       el("div", { className: "rule" }, T("강한 종류일수록 자주 나와요. 금색 테두리 카드는 지금 층에 나오는 몬스터예요. 처치 골드 {0} (이번 층).", gold("normal"))),
-      el("div", { className: "rule" }, T("깊은 층일수록 강해져요: {0}층부터 한 층마다 HP +{1}%, 공격력 +{2}%, 방어력 +{3}. ", M.FLOOR.from, Math.round(M.FLOOR.hp * 100), Math.round(M.FLOOR.atk * 100), M.FLOOR.def) +
+      el("div", { className: "rule" }, T("깊은 층일수록 강해져요: {0}층부터 한 층마다 HP +{1}%, 공격력 +{2}%, 방어력 +{3}. ", F(M.FLOOR.from), Math.round(M.FLOOR.hp * 150), Math.round(M.FLOOR.atk * 150), +(M.FLOOR.def * 1.5).toFixed(1)) +
         T("능력치는 지금 층(아직 안 나오는 몬스터는 처음 나오는 층) 기준이에요.")),
       el("div", { className: "dex-grid" }, normal),
       el("h3", { style: { color: ELITE_COLOR } }, T("정예")),
       el("div", { className: "rule" },
-        T("{0}층부터 {1}%, 층마다 {2}%p씩 올라 최대 {3}% (지금 층 {4}%). ", E.from, Math.round(E.base * 100), Math.round(E.perFloor * 100), Math.round(E.max * 100), Math.round(M.eliteChance(depth) * 100)) +
-        T("HP {0}배, 공격력 {1}배, 방어력 +{2}, 경험치 {3}배, 장비 드롭 {4}%, 처치 골드 {5} (이번 층).", E.hpMul, E.atkMul, E.defAdd, E.xpMul, Math.round(RLItems.DROPS.elite.chance * 100), gold("elite"))),
+        T("{0}층부터 {1}%, 층마다 {2}%p씩 올라 최대 {3}% (지금 층 {4}%). ", F(E.from), Math.round(E.base * 100), +(E.perFloor * 150).toFixed(1), Math.round(E.max * 100), Math.round(M.eliteChance(lv) * 100)) +
+        T("HP {0}배, 공격력 {1}배, 방어력 +{2}, 경험치 {3}배, 장비 드롭 {4}%, 처치 골드 {5} (이번 층).", E.hpMul, E.atkMul, E.defAdd, E.xpMul, Math.round(Math.min(1, RLItems.DROPS.elite.chance * dropMul()) * 100), gold("elite"))),
       el("h3", { style: { color: G.color } }, M.GOLDEN.ranks.normal.name),
       el("div", { className: "rule" },
         T("공격하지 않고 달아나요. 처음 보인 뒤 정해진 턴 안에 잡지 못하면 도망쳐요. ") +
-        T("{0}층부터 정예(금색 테두리), {1}층부터 왕(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 때리면 연막을 터뜨려 순간이동하기도 해요. ", R.elite.from, R.king.from) +
+        T("{0}층부터 정예(금색 테두리), {1}층부터 왕(빨간 테두리)이 섞여 나와요. 더 단단하고 빨리 도망치고, 때리면 연막을 터뜨려 순간이동하기도 해요. ", F(R.elite.from), F(R.king.from)) +
         T("HP는 그 층에서 가장 튼튼한 몬스터의 절반부터, 방어력은 그 층 최고 방어력 +{0}부터. 능력치는 지금 층(아직 안 나오면 처음 나오는 층) 기준이에요. ", G.defAdd) +
         T("처치 골드 {0} (정예 {1}배, 왕 {2}배).", gold("golden"), R.elite.goldMul, R.king.goldMul)),
       el("div", { className: "dex-grid" }, goldenCards),
@@ -7193,7 +7217,7 @@
     renderMarket();
     try {
       const ref = { seed: item.seed, src: item.src, lvl: item.lvl, v: item.v, enh: item.enh || 0, id: item.id, tries: item.tries || 0, ...(item.r ? { r: item.r } : {}), ...(item.ar ? { ar: item.ar } : {}), ...(item.rf?.length ? { rf: item.rf } : {}) };
-      const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: Math.max(bestDepth, depth || 0) } });
+      const r = await marketCall("market_list", { body: { item: ref, gold, cash, stage: RLMonsters.effLevel(Math.max(bestDepth, inNM() || inHell() || inGold() ? 0 : depth || 0)) } });   // 아이템 레벨 상한 (일반 던전 층 → 레벨, dc#98)
       Inv.remove(item.id, "list", { listing: r.listing.id, gold, cash });
       Market.sel = null;
       log(T("거래소에 {0}을(를) {1}에 올렸다.", name, priceText(gold, cash)), "info");
@@ -7579,12 +7603,12 @@
 
   // 예전 규칙(v1~v3) 장비를 가진 사용자에게 한 번 안내: 최대 층, v4 규칙, 새로 파밍 권장 (계정·게스트마다 한 번)
   const isLegacy = (it) => !(it.v >= RLItems.RULES_VERSION);
-  // 이번 판에 예전(v3까지) 장비를 한 번이라도 끼면 그 판은 v4 베타 랭킹에서 제외 (가방에 두는 건 괜찮음)
+  // 이번 판에 예전(v3까지) 장비를 한 번이라도 끼면 그 판은 정식 v1 랭킹에서 제외 (가방에 두는 건 괜찮음)
   function noteOldGear(quiet = false) {
     if (!player || player.oldGear) return;
     if (!Object.values(Inv.equipped()).some(it => it && isLegacy(it))) return;
     player.oldGear = true;
-    if (!quiet) log(T("예전(v3까지) 장비를 껴서 이번 판은 v4 베타 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."), "bad");
+    if (!quiet) log(T("예전(v3까지) 장비를 껴서 이번 판은 정식 v1 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."), "bad");
   }
   // 안내 창 (계정·게스트마다 한 번): 예전 장비가 있으면 규칙 변경 안내, 아니면 이미 하던 사람에게 75층·드롭 변경 안내
   function legacyNotice() {
@@ -7637,8 +7661,8 @@
       T("아이템 규칙이 v{0}로 바뀌었어요. 부위마다 붙는 능력치가 다르고, 치명타 같은 % 능력치는 등급별로 정해진 범위예요.", RLItems.RULES_VERSION),
       T("가지고 계신 예전 장비 {0}개는 그대로 쓸 수 있지만, % 능력치는 새 기준 최대치까지만 적용돼요. (인벤토리에 \"적용 N%\"로 보여요)", old),
       T("지금 장비로는 {0}층까지 가기 어려울 수 있어요. 새 장비를 다시 파밍하는 걸 권장해요.", RLMonsters.MAX_FLOOR),
-      T("지금까지의 랭킹 기록은 랭킹 화면의 \"v3 베타\"에 그대로 남아요. \"v4 베타\" 랭킹은 새로 시작해요."),
-      T("예전 장비를 끼고 한 판은 v4 베타 랭킹에 기록되지 않아요. 가방에 보관하거나 거래소에 파는 건 괜찮아요."),
+      T("지금까지의 랭킹 기록은 랭킹 화면의 \"클로즈 베타\"에 그대로 남아요. \"정식 v1\" 랭킹은 새로 시작해요."),
+      T("예전 장비를 끼고 한 판은 정식 v1 랭킹에 기록되지 않아요. 가방에 보관하거나 거래소에 파는 건 괜찮아요."),
     ]);
   }
 

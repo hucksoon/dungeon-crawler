@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies) => JSON.stringify({ rid, d, z, turn: 0, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 2, py: 2, shop: null, enemies, items: [] });
-const save = (d, rid) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell" } });
+const save = (d, rid) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: d, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell" } });
 // 한국어로 만든 몬스터들 (멀리 놓아서 싸우지 않음)
 const at = (m, x, y) => ({ ...m, x, y, hp: 1e9, maxHp: 1e9, atk: 0 });
 const gumi = M.makeNamedBoss(20);

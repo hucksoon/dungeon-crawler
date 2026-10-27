@@ -25,7 +25,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -56,7 +56,7 @@ const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], st
 
 
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
-const saveB = (d, rid, best, g) => JSON.stringify({ v: 1, season: 4, best, run: { d, hp: 900, mh: 1000, a: 30, g, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const saveB = (d, rid, best, g) => JSON.stringify({ v: 1, f50: 1, season: 4, best, run: { d, hp: 900, mh: 1000, a: 30, g, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 // 포탈로 마을에 온 뒤 시간 상점 문으로 걸어가 ↑
 async function toHourShop(page) {
   // 새로고침 직후에는 키를 아직 안 받을 수 있음 → 마을에 올 때까지 P
@@ -82,14 +82,15 @@ check("rules: same hour → same stock, next hour / reroll → different", I.lob
   && I.lobbyShopStock(I.ownerTag("g:a"), 500001, 30).map(i => i.id).join() !== A.map(i => i.id).join() && I.lobbyShopStock(I.ownerTag("g:a"), 500000, 30, 1)[0].seed.endsWith("|r1|s0"));
 
 let bought, boughtN;
+const LV = M.effLevel(34);   // 최고 34층 = 레벨 51 (50층 기준, 1.5 × 층, dc#98)
 try {
   const DEV = "hstest-a00", tag = I.ownerTag(`g:${DEV}`);
   let { ctx, page, errors } = await open(DEV, { rl_save: saveB(20, "hsA", 34, 20000), rl_level: lv(20, "hsA", "normal"), "rl_inv:g:DEV": inv() });
   await toHourShop(page);
   const h0 = await page.evaluate(() => Math.floor(Date.now() / 3600000));
-  const want = I.lobbyShopStock(tag, h0, 34);
+  const want = I.lobbyShopStock(tag, h0, LV);
   check("walking into the lobby building opens 시간 상점", await inLobby(page) && !(await page.locator("#shop-modal").isHidden()) && (await page.locator("#shop-title").innerText()) === "시간 상점");
-  check("sub text says it changes on the hour, with minutes left and item level", /매 시간 정각에 진열이 새로 바뀌어요 \(다음 갱신까지 \d+분\)\. 아이템 레벨 34\./.test(await page.locator("#shop-sub").innerText()), await page.locator("#shop-sub").innerText());
+  check("sub text says it changes on the hour, with minutes left and item level", /매 시간 정각에 진열이 새로 바뀌어요 \(다음 갱신까지 \d+분\)\. 아이템 레벨 51\./.test(await page.locator("#shop-sub").innerText()), await page.locator("#shop-sub").innerText());
   check("stock = lobbyShopStock(my tag, this hour, best floor)", (await cards(page)).join("|") === want.map(I.itemName).join("|"), (await cards(page)).join("|"));
   await page.screenshot({ path: path.join(OUT, "hourshop.png") });
   // 구매
@@ -97,7 +98,7 @@ try {
   await page.locator("#shop-items .shop-card").nth(0).locator("button").click(); await sleep(150);
   const bag = JSON.parse(await page.evaluate((d) => localStorage.getItem(`rl_inv:g:${d}`), DEV)).bag;
   check("buy: gold goes down by the dungeon shop price, item in bag", (await gold(page)) === g0 - price && bag.some(x => x.id === want[0].id) && (await page.locator("#shop-msg").innerText()).includes("골드에 샀어요"));
-  check("buy: card shows 판매 완료, saved per owner", (await page.locator("#shop-items .shop-card").nth(0).innerText()).includes("판매 완료") && JSON.stringify((await hs(page)).b) === "[0]" && (await hs(page)).h === h0 && (await hs(page)).lv === 34);
+  check("buy: card shows 판매 완료, saved per owner", (await page.locator("#shop-items .shop-card").nth(0).innerText()).includes("판매 완료") && JSON.stringify((await hs(page)).b) === "[0]" && (await hs(page)).h === h0 && (await hs(page)).lv === LV);
   bought = bag.find(x => x.id === want[0].id);
   // 닫고 다시 열기 / 새로고침해도 같은 진열, 산 칸 유지
   await press(page, "Escape"); await sleep(100);
@@ -105,15 +106,15 @@ try {
   await reloadToShop(page);
   check("after reload: same stock, slot still sold", (await cards(page)).join("|") === want.map(I.itemName).join("|") && (await page.locator("#shop-items .shop-card").nth(0).innerText()).includes("판매 완료"));
   // 진열 바꾸기
-  const g1 = await gold(page), rc = I.rerollCost(34, 0);
+  const g1 = await gold(page), rc = I.rerollCost(LV, 0);
   await page.locator("#shop-reroll").click(); await sleep(150);
-  const want1 = I.lobbyShopStock(tag, h0, 34, 1);
+  const want1 = I.lobbyShopStock(tag, h0, LV, 1);
   check("reroll: same cost as the dungeon shop, new stock, sold marks reset", (await gold(page)) === g1 - rc && (await cards(page)).join("|") === want1.map(I.itemName).join("|") && !(await page.locator("#shop-items").innerText()).includes("판매 완료") && (await hs(page)).r === 1);
   // 정각이 지난 뒤 (창을 연 채로) 누르면 사지 않고 새 진열
   await shift(page, 3600000);
   const g2 = await gold(page);
   await page.locator("#shop-items .shop-card").nth(1).locator("button").click(); await sleep(150);
-  const want2 = I.lobbyShopStock(tag, h0 + 1, 34);
+  const want2 = I.lobbyShopStock(tag, h0 + 1, LV);
   check("past the hour with the window open: click is ignored, new stock shown", (await gold(page)) === g2 && (await page.locator("#shop-msg").innerText()).includes("정각이 지나") && (await cards(page)).join("|") === want2.map(I.itemName).join("|"));
   check("new hour: rerolls back to 3", (await page.locator("#shop-reroll").innerText()).includes("남은 횟수 3/3"));
   // 같은 아이템을 다시 사려고 하면 막음 (다른 기기에서 이미 산 경우)
@@ -133,20 +134,20 @@ try {
   // 던전 상점은 예전 그대로 (같은 창을 같이 씀)
   ({ ctx, page, errors } = await open("hstest-c00", { rl_save: saveB(4, "hsC", 4, 5000), rl_level: lv(4, "hsC", "normal", [], { shop: { x: 11, y: 10 } }), "rl_inv:g:DEV": inv() }));
   await press(page, "ArrowRight"); await sleep(150);
-  const ds = I.shopStock("hsC", 4, 0);
+  const ds = I.shopStock("hsC", 4, 0, { tag: "e", level: 6 });   // 4층 = 레벨 6 (dc#98)
   check("dungeon shop: title 상점, floor text, stock by (run, floor)", (await page.locator("#shop-title").innerText()) === "상점" && (await page.locator("#shop-sub").innerText()).includes("이 층에서만") && (await cards(page)).join("|") === ds.map(I.itemName).join("|"));
   const dg = await gold(page);
   await page.locator("#shop-items .shop-card").nth(2).locator("button").click(); await sleep(150);
   const run = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save"))).run;
   check("dungeon shop: buy saves in the run (not the hourly state)", (await gold(page)) === dg - I.shopPrice(ds[2]) && JSON.stringify(run.sb) === "[2]" && !(await page.evaluate(() => localStorage.getItem("rl_hourshop:g:hstest-c00"))));
   await page.locator("#shop-reroll").click(); await sleep(150);
-  check("dungeon shop: reroll → (run, floor, 1)", (await cards(page)).join("|") === I.shopStock("hsC", 4, 1).map(I.itemName).join("|") && JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save"))).run.sr === 1);
+  check("dungeon shop: reroll → (run, floor, 1)", (await cards(page)).join("|") === I.shopStock("hsC", 4, 1, { tag: "e", level: 6 }).map(I.itemName).join("|") && JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save"))).run.sr === 1);
   check("no page errors (dungeon shop)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
   // 나이트메어 기록이 있으면 나이트메어 아이템 (레벨 75 + 나이트메어 최고 층), 가격·바꾸기 ×2
   const hourNow = Math.floor(Date.now() / 3600000);
-  ({ ctx, page, errors } = await open("hstest-n00", { "rl_hourshop:g:DEV": JSON.stringify({ h: hourNow, lv: 75, b: [0, 1], r: 2 }), rl_save: JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d: 20, hp: 900, mh: 1000, a: 30, g: 50000, l: 20, x: 0, xn: 1e12, rid: "hsN", k: 0, pp: 0 } }), rl_level: lv(20, "hsN", "normal"), "rl_inv:g:DEV": inv() }));
+  ({ ctx, page, errors } = await open("hstest-n00", { "rl_hourshop:g:DEV": JSON.stringify({ h: hourNow, lv: 75, b: [0, 1], r: 2 }), rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d: 20, hp: 900, mh: 1000, a: 30, g: 50000, l: 20, x: 0, xn: 1e12, rid: "hsN", k: 0, pp: 0 } }), rl_level: lv(20, "hsN", "normal"), "rl_inv:g:DEV": inv() }));
   await toHourShop(page);
   const hn = await page.evaluate(() => Math.floor(Date.now() / 3600000));
   // (상태는 이 시간에 업데이트 전 형식으로 이미 저장돼 있었음 → n이 없으면 새로 만듦: 아래 open에서 미리 넣음)
@@ -176,17 +177,17 @@ const me = (guest) => fetch(`http://127.0.0.1:8107/api.php?r=me`, { headers: { O
 const player = async (guest) => (await fetch(`http://127.0.0.1:8107/api.php?r=player&id=${(await me(guest)).id}`, { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
 const ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: 4, enh: 0, id: it.id, r: it.r });
 try {
-  await post("hs-guest-0001", { stage: 34, plvl: 20, gear: [ref(bought)] });
+  await post("hs-guest-0001", { stage: 34, fl: 50, plvl: 20, gear: [ref(bought)] });
   const p1 = await player("hs-guest-0001");
   check("server: bought lobby item accepted", p1.gear?.items?.some(x => x.slot === bought.slot) && !p1.gear.rejected, JSON.stringify(p1.gear));
   const future = I.lobbyShopStock(I.ownerTag("g:z"), I.hourIndex() + 5, 30)[0];
-  await post("hs-guest-0002", { stage: 34, plvl: 20, gear: [ref(future)] });
+  await post("hs-guest-0002", { stage: 34, fl: 50, plvl: 20, gear: [ref(future)] });
   check("server: item from a future hour rejected", (await player("hs-guest-0002")).gear.rejected === 1);
   const high = I.lobbyShopStock(I.ownerTag("g:z"), I.hourIndex(), 60)[0];
-  await post("hs-guest-0003", { stage: 34, plvl: 20, gear: [ref(high)] });
+  await post("hs-guest-0003", { stage: 34, fl: 50, plvl: 20, gear: [ref(high)] });
   check("server: level above best floor rejected", (await player("hs-guest-0003")).gear.rejected === 1);
   const fake = { ...ref(bought), seed: bought.seed.replace(/^lobby\|/, "lobby|zz") };
-  await post("hs-guest-0004", { stage: 34, plvl: 20, gear: [fake] });
+  await post("hs-guest-0004", { stage: 34, fl: 50, plvl: 20, gear: [fake] });
   check("server: bad lobby seed rejected", (await player("hs-guest-0004")).gear.rejected === 1);
   await post("hs-guest-0005", { stage: 76, nm: 10, plvl: 30, gear: [ref(boughtN)] });
   const p5 = await (async () => { const id = (await me("hs-guest-0005")).id; return (await fetch(`http://127.0.0.1:8107/api.php?r=player&id=${id}&season=nm`, { headers: { Origin: ORIGIN.slice(0, -1) } })).json(); })();

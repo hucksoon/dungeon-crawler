@@ -31,7 +31,7 @@ async function open(storage) {
   return { ctx, page, errors };
 }
 // 장비 없는 저장 판: Lv l, 경험치 x / xn, 기본 최대 HP mh, 공격력 a
-const save = (l, x, xn, mh, a) => JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: mh, mh, a, g: 120, p: 2, l, x, xn, rid: "lvl-run", k: 0, pp: 0 } });
+const save = (l, x, xn, mh, a) => JSON.stringify({ v: 1, f50: 1, best: 4, run: { d: 4, hp: mh, mh, a, g: 120, p: 2, l, x, xn, rid: "lvl-run", k: 0, pp: 0 } });
 const st = (page) => page.evaluate(() => window.__t.s());
 const logText = (page) => page.locator("#log").innerText();
 const restart = async (page) => { await page.evaluate(() => window.__t.die()); await page.locator("#death-restart").click(); await sleep(150); return st(page); };

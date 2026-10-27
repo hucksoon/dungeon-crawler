@@ -227,10 +227,10 @@ Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주�
 
 ## 랭킹 관리 (admin.php)
 
-지금 시즌(v4 베타) 기록을 보거나, 규칙에 맞지 않는 기록(예: 예전 장비를 끼고 올라간 기록)을 지울 때 써요. 서버에서 명령으로만 실행돼요.
+지금 시즌(정식 v1, 표 이름 v4) 기록을 보거나, 규칙에 맞지 않는 기록(예: 예전 장비를 끼고 올라간 기록)을 지울 때 써요. 서버에서 명령으로만 실행돼요.
 
 ```bash
-sudo -u www-data php admin.php list [개수] [시즌]      # 층 랭킹: 순위, 이름, 최고 층, 공개 ID (시즌 v4 기본, nm 나이트메어, v3)
+sudo -u www-data php admin.php list [개수] [시즌]      # 층 랭킹: 순위, 이름, 최고 층, 공개 ID (시즌 v4 = 정식 v1 기본, nm 나이트메어, v3 = 클로즈 베타)
 sudo -u www-data php admin.php remove <공개ID> [시즌]  # 그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로)
 sudo -u www-data php admin.php webhooks [개수]         # Xsolla 웹훅 기록 최근 순 (종류, 주문·거래 번호, sandbox 여부, SKU×수량, 금액)
 sudo -u www-data php admin.php boxes                   # 장비 상자 시드: 좁혔는지, 서버 기록 수 (지급·환불·예전 등록)
@@ -248,6 +248,12 @@ sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp
 ```
 
 DB 표는 다음 요청 때 새 칸이 자동으로 추가돼요.
+
+일반 던전이 50층이 된 업데이트(dc#98)는 첫 요청 때 정식 v1 표(`players_v4`)의 기록 층을 50층 기준으로 한 번 바꿔요 (`meta` 표에 `floors50`으로 남아서 다시 하지 않음. 클로즈 베타·나이트메어·헬 표는 그대로). 덮어쓰기 전에 DB 폴더를 웹 루트 밖에 복사해 두면 안전해요:
+
+```bash
+sudo cp -a /var/www/html/ranking/data ~/ranking-data-before50
+```
 
 PATH_INFO를 지원하는 서버면 `api.php/api/score` 형식도 돼요. 게임은 주소가 `.php`로 끝나면 `?r=` 형식을 써요.
 

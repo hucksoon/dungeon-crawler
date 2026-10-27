@@ -25,7 +25,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -55,7 +55,7 @@ const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], st
 
 
 const plain = I.generate("tp|d70|k1", "golden", 70);
-const saveB = (d, rid, best, extra = {}) => JSON.stringify({ v: 1, season: 4, best, ...extra, run: { d, hp: 900, mh: 1000, a: 30, g: 777, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const saveB = (d, rid, best, extra = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best, ...extra, run: { d, hp: 900, mh: 1000, a: 30, g: 777, l: 20, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
 try {
   // 1. 포탈(P) → 바로 로비 (턴 없음), 로비 파란 포탈로 떠난 자리로
@@ -88,16 +88,16 @@ try {
   check("leaving from floor 1: no lobby portal (nothing to return to)", await inLobby(page) && !(await logs(page)).includes("파란 포탈로"));
   check("no right door (best − 10) in the town anymore", await page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "skip")));
   await goDoor(page, "waypoint"); await sleep(200);
-  check("best 40 but never stepped on a waypoint: 25층 locked", await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "25층" }).isDisabled());
+  check("best 40 but never stepped on a waypoint: 10층 locked", await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "10층" }).isDisabled());
   await ctx.close();
 
-  // 3. 75층 완료자: 웨이포인트가 모두 켜져 있음 → 75층부터, 포탈 층이 있으면 확인 창 (사라진다는 안내)
-  ({ ctx, page, errors } = await open("tptest-d", { rl_save: saveB(75, "tpD", 76, { clr: 1 }), rl_level: lv(75, "tpD", "normal"), "rl_inv:g:DEV": inv(plain) }));
+  // 3. 50층 완료자: 웨이포인트가 모두 켜져 있음 → 40층부터, 포탈 층이 있으면 확인 창 (사라진다는 안내)
+  ({ ctx, page, errors } = await open("tptest-d", { rl_save: saveB(50, "tpD", 50, { clr: 1 }), rl_level: lv(50, "tpD", "normal"), "rl_inv:g:DEV": inv(plain) }));
   let dlg = ""; page.on("dialog", d => { dlg = d.message(); });
   await press(page, "p"); await sleep(200);
   await goDoor(page, "waypoint"); await sleep(200);
-  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "50층" }).click(); await sleep(300);
-  check("cleared: waypoint 50 (on for completed players), confirms that the portal floor goes away", (await page.locator("#depth").innerText()) === "50" && dlg.includes("50층부터 새로 들어갈까요?") && dlg.includes("75층"), dlg);
+  await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "40층" }).click(); await sleep(300);
+  check("cleared: waypoint 40 (on for completed players), confirms that the portal floor goes away", (await page.locator("#depth").innerText()) === "40" && dlg.includes("40층부터 새로 들어갈까요?") && dlg.includes("50층"), dlg);
   check("no page errors (doors)", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally { await browser.close(); php.kill(); }

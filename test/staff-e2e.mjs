@@ -33,7 +33,7 @@ const L = findN("stl|d60", it => it.rarity === "legendary" && !it.ancient && [..
 const chest = findN("stc|d60", it => it.slot === "chest" && I.socketCount(it) >= 2, 60);
 const MAP_W = 32, MAP_H = 24;
 const lv = (d, rid) => { const mm = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1))); mm[20][28] = 2; return JSON.stringify({ rid, d, z: "normal", turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies: [], items: [] }); };
-const save = (rid) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, ld: { d: 37, z: "nm" }, run: { d: 5, hp: 3000, mh: 3000, a: 30, g: 0, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
+const save = (rid) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, ld: { d: 37, z: "nm" }, run: { d: 5, hp: 3000, mh: 3000, a: 30, g: 0, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0 } });
 const accL = (() => { for (let i = 0; ; i++) { const it = I.generate(`stacc${i}|j30|k${i}`, "boss", 155); if (I.isAccessory(it) && it.rarity === "legendary" && !it.ancient) return it; } })();
 const uq7 = (() => { for (let i = 0; ; i++) { const it = I.generateUnique(`stu${i}|j10|u${i}`, 135); if (!it.ancient) return it; } })();
 const inv = () => JSON.stringify({ bag: [{ ...L, ar: 20 }, chest, accL, uq7, { ...findN("ste|d60", it => it.rarity === "epic" && !I.rollEnhance({ ...it, enh: 10 }).ok), enh: 10 }], equip: Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), log: [], stones: 0, nmStones: 0, gems: {} });
@@ -216,11 +216,11 @@ try {
   // 운영자 기기의 게스트 기록: 등록하면 지우고, 그 뒤로는 랭킹에 안 올라감 (다른 게스트는 그대로)
   const gcall = async (route, gid, body) => { const r = await fetch(`${API}?r=${route}`, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", Origin: ORIGIN.slice(0, -1), "X-Guest-Id": gid }, body: body && JSON.stringify(body) }); return { status: r.status, body: await r.json() }; };
   const names = async () => (await gcall("ranking", "other-guest-0001")).body.rows.map(x => x.name);
-  const gs1 = await gcall("score", "gphone-0000-3333", { stage: 9 }), go1 = await gcall("score", "other-guest-0001", { stage: 7 });
+  const gs1 = await gcall("score", "gphone-0000-3333", { stage: 9, fl: 50 }), go1 = await gcall("score", "other-guest-0001", { stage: 7, fl: 50 });
   check("guest on a not-yet-staff phone is ranked", gs1.body.ranked === true && go1.body.ranked === true && (await names()).includes("게스트 #gphone"), JSON.stringify([gs1, go1]));
   const addOut = admin("devices", "add", "gphone-0000-3333", "핸드폰2");
   check("devices add: removes that device's guest ranking rows", addOut.includes("(3/3)") && addOut.includes("게스트 랭킹 기록 1줄을 지웠어요") && !(await names()).includes("게스트 #gphone") && (await names()).includes("게스트 #other-"), addOut);
-  const gs2 = await gcall("score", "gphone-0000-3333", { stage: 12 });
+  const gs2 = await gcall("score", "gphone-0000-3333", { stage: 12, fl: 50 });
   check("staff-device guest: score not ranked (reason staff_device), stays off the board", gs2.body.ranked === false && gs2.body.reason === "staff_device" && !(await names()).includes("게스트 #gphone"), JSON.stringify(gs2));
   const gme = await gcall("me", "gphone-0000-3333");
   check("staff-device guest: me says 운영자 기기 (excluded)", gme.body.developer === true && gme.body.staffDevice === true, JSON.stringify(gme));

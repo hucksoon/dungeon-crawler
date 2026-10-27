@@ -26,7 +26,7 @@ const jwt = (sub) => { const h = b64u(JSON.stringify({ alg: "HS256" })), p = b64
 const BUYER = "e5f6a7b8-0000-4000-8000-0000000000ee";
 const apiCall = (route, method = "GET", body) => fetch(`http://127.0.0.1:8134/api.php?r=${route}`, { method, headers: { Authorization: `Bearer ${jwt(BUYER)}`, "Content-Type": "application/json", Origin: ORIGIN.slice(0, -1) }, body: body && JSON.stringify(body) }).then(r => r.json());
 // 게임에 로그인해서 저장한 적 있는 사용자 (최고 층 30)
-await apiCall("profile", "POST", { rev: 0, data: { v: 1, save: { v: 1, best: 30, run: null, dead: null }, inv: { bag: [], equip: {}, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [] } });
+await apiCall("profile", "POST", { rev: 0, data: { v: 1, save: { v: 1, f50: 1, best: 30, run: null, dead: null }, inv: { bag: [], equip: {}, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [] } });
 // Xsolla가 보내는 웹훅 흉내 (나뉜 방식, 캐시로 산 상자)
 const sendHook = async (orderId, sku) => {
   const raw = JSON.stringify({ notification_type: "order_paid", items: [{ sku, type: "virtual_good", quantity: 1 }], order: { id: orderId, mode: "default", currency_type: "virtual", currency: "cash", amount: "10" }, user: { external_id: BUYER, email: "buyer@example.com" } });
@@ -65,7 +65,7 @@ async function open() {
     }
     return json(r, { errorCode: 0, errorMessage: "not mocked " + p }, 404); });
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  await ctx.addInitScript(([auth]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); localStorage.setItem("rl_auth", auth); localStorage.setItem("rl_lang", "ko"); localStorage.setItem("rl_save", JSON.stringify({ v: 1, best: 30 })); },
+  await ctx.addInitScript(([auth]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); localStorage.setItem("rl_auth", auth); localStorage.setItem("rl_lang", "ko"); localStorage.setItem("rl_save", JSON.stringify({ v: 1, f50: 1, best: 30 })); },
     [JSON.stringify({ access: jwt(BUYER), refresh: "r", exp: Date.now() + 7200_000 })]);
   await page.goto(ORIGIN + "shop.html");
   return { ctx, page, errors };

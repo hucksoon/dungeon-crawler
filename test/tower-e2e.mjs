@@ -14,7 +14,7 @@ const FIRE = [513, 806].map(k => I.generate(`fx|n20|k${k}`, "golden", 95));
 const invOf = (its) => { const e = Object.fromEntries(I.SLOTS.map(x => [x, null])); for (const it of its) e[it.slot] = it; return JSON.stringify({ bag: [], equip: e, log: [], stones: 0 }); };
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const save = (run = {}) => JSON.stringify({ v: 1, best: 3, run: { d: 3, hp: 500, mh: 500, a: 5, g: 10, p: 1, l: 5, x: 0, xn: 1e9, rid: "tower-run", k: 0, pp: 0, ...run } });
+const save = (run = {}) => JSON.stringify({ v: 1, f50: 1, best: 3, run: { d: 3, hp: 500, mh: 500, a: 5, g: 10, p: 1, l: 5, x: 0, xn: 1e9, rid: "tower-run", k: 0, pp: 0, ...run } });
 // 3층 빈 방 (포탈 P로 로비에 나오면 로비 포탈 바로 위 (16,13)에 서서, 걸어갈 길이 늘 같음)
 const MAP_W = 32, MAP_H = 24;
 const level = () => JSON.stringify({ rid: "tower-run", d: 3, turn: 3, map: Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x < 2 || y < 2 || x > 14 || y > 10 ? 0 : 1)).join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 5, py: 5, shop: null, enemies: [], items: [] });

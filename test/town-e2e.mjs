@@ -33,7 +33,7 @@ const st = (page) => page.evaluate(() => window.__t.s());
 const logText = (page) => page.locator("#log").innerText();
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
 const hold = async (page, key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); };
-const save = (d, extra = {}) => JSON.stringify({ v: 1, best: d, ...extra, run: { d, hp: 300, mh: 300, a: 50, g: 500, p: 2, l: 5, x: 0, xn: 1e9, rid: "town-run", k: 0, pp: 0 } });
+const save = (d, extra = {}) => JSON.stringify({ v: 1, f50: 1, best: d, ...extra, run: { d, hp: 300, mh: 300, a: 50, g: 500, p: 2, l: 5, x: 0, xn: 1e9, rid: "town-run", k: 0, pp: 0 } });
 // 같은 판에서 다시 마을로: 던전에서 포탈(P) → 파란 포탈 문 앞
 const back = async (page) => { await page.keyboard.press("Escape"); await sleep(100); if (!(await inLobby(page))) { await page.keyboard.press("p"); await sleep(300); } };
 
@@ -85,7 +85,7 @@ try {
   check("대장간 door → inventory as 대장간", !(await N.page.locator("#inv-modal").isHidden()) && (await N.page.locator("#inv-title").innerText()) === "대장간");
   await N.page.keyboard.press("Escape"); await sleep(100);
   // 닫힌 문: 안내만, 마을에 그대로
-  for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 75층을 완료해야"], ["nightmare", "75층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
+  for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 50층을 완료해야"], ["nightmare", "50층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
     await goDoor(N.page, id);
     check(`closed door ${id}: stays in the town with a note`, await inLobby(N.page) && (await logText(N.page)).includes(msg), (await logText(N.page)).split("\n").slice(-1)[0]);
   }

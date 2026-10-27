@@ -72,6 +72,8 @@ async function call(method, route, { token, guest, body, raw, origin = "https://
   if (token) headers.Authorization = `Bearer ${token}`;
   if (guest) headers["X-Guest-Id"] = guest;
   if (body !== undefined || raw !== undefined) headers["Content-Type"] = "application/json";
+  // 점수는 지금 게임처럼 50층 기준(fl: 50)으로 보냄 (예전 75층 기준 바꾸기는 drops-e2e·maxfloor-e2e)
+  if (route === "score" && body && typeof body === "object" && !("fl" in body)) body = { fl: 50, ...body };
   const res = await fetch(`${base}?r=${route}${query}`, { method, headers, body: raw !== undefined ? raw : body === undefined ? undefined : JSON.stringify(body) });
   const text = await res.text();
   let json = null; try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }

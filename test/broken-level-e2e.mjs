@@ -8,7 +8,7 @@ const REPO = process.argv[2], OUT = process.argv[3];
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://game.apacimtest.com/";
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
-const MAP_W = 32, MAP_H = 24, D = 70;  // 최대 층(75) 안의 깊은 보스 층
+const MAP_W = 32, MAP_H = 24, D = 45;  // 최대 층(50) 안의 깊은 보스 층
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x < 2 || y < 2 || x > 20 || y > 14 ? 0 : 1)));
 map[12][19] = 2;
 // 꽉 찬 층: 바닥 대부분에 몬스터, 보스는 좌표 없이 (예전 버그: { ...null, ...boss })
@@ -19,7 +19,7 @@ enemies.push({ ...boss });                       // x, y 없음
 enemies.push({ x: 0, y: 0, ...M.makeMonster(M.MONSTERS[38], "normal", D) });  // 벽 위
 const items = [{ type: "potion" }, { x: 6, y: 5, type: "gold", amount: 10 }];
 const level = JSON.stringify({ rid: "brk-run", d: D, turn: 3, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 5, py: 5, shop: null, enemies, items });
-const save = JSON.stringify({ v: 1, best: D, run: { d: D, hp: 50000, mh: 50000, a: 900, g: 1567139, p: 84, l: 31, x: 0, xn: 1e9, rid: "brk-run", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, best: D, run: { d: D, hp: 50000, mh: 50000, a: 900, g: 1567139, p: 84, l: 31, x: 0, xn: 1e9, rid: "brk-run", k: 0, pp: 0 } });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 try {
   for (const [name, opts] of [["desktop", { viewport: { width: 1100, height: 1000 } }], ["phone", { ...devices["iPhone 13"] }]]) {

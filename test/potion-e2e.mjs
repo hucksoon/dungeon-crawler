@@ -24,7 +24,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -82,8 +82,8 @@ try {
   await press(page, "ArrowRight"); await sleep(80);
   await press(page, "ArrowRight"); await sleep(80);
   const bag = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_inv:g:pottest-b"))).bag;
-  const exp0 = I.generate("potB|d30|p0", "golden", 30), exp1 = I.generate("potB|d30|p1", "golden", 30);
-  check("treasure gives a rare+ item (golden table, seed |d30|p0, lvl 30, r3)", bag.length === 2 && bag[0].id === exp0.id && bag[1].id === exp1.id && bag.every(b => b.src === "golden" && b.lvl === 30 && b.r === I.RULES_REV && b.rarity !== "common" && b.rarity !== "uncommon"), JSON.stringify(bag.map(b => [b.seed, b.src, b.rarity])));
+  const exp0 = I.generate("potB|e30|p0", "golden", 45), exp1 = I.generate("potB|e30|p1", "golden", 45);   // 30층 = 레벨 45 (dc#98)
+  check("treasure gives a rare+ item (golden table, seed |e30|p0, lvl 45)", bag.length === 2 && bag[0].id === exp0.id && bag[1].id === exp1.id && bag.every(b => b.src === "golden" && b.lvl === 45 && b.r === I.RULES_REV && b.rarity !== "common" && b.rarity !== "uncommon"), JSON.stringify(bag.map(b => [b.seed, b.src, b.rarity])));
   check("treasure log", (await logs(page)).includes("보물을 발견했다!"));
   check("no page errors (treasure)", errors.length === 0, errors.join("; "));
   await ctx.close();
@@ -93,7 +93,7 @@ try {
   await press(page, "ArrowRight"); await sleep(250);
   const L = await level(page);
   const tr = L.items.filter(i => i.type === "treasure").length;
-  check(`new floor has 1~3 treasures, no potions (${tr})`, L.d === 31 && tr >= 1 && tr <= 3 && !L.items.some(i => i.type === "potion"));
+  check(`new floor has 2~4 treasures (drops ×1.5, dc#98), no potions (${tr})`, L.d === 31 && tr >= 2 && tr <= 4 && !L.items.some(i => i.type === "potion"));
   await ctx.close();
 
   // 4. 서버: 보물 아이템 검증 (r3만), 예전 포션 자리 드롭은 그대로

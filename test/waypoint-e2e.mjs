@@ -1,4 +1,4 @@
-// 웨이포인트·묘비 (dc#97): 25·50·75층(나이트메어·헬 10~50층) 웨이포인트를 밟으면 활성화 → 마을 웨이포인트에서 그 층부터,
+// 웨이포인트·묘비 (dc#97): 일반 던전·나이트메어·헬 모두 10·20·30·40·50층 (dc#98, 전에는 일반 25·50·75층) 웨이포인트를 밟으면 활성화 → 마을 웨이포인트에서 그 층부터,
 // 쓰러진 뒤 새로 시작하면 쓰러진 자리에 묘비 → 그 층에 다시 가서 밟으면 골드 90%
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -39,60 +39,60 @@ async function open(storage, scene = "dungeon") {
 }
 const SEASON = 4;
 // 장비 없는 저장: run(d, z, g), extra(clr·nclr·wp·tb…)
-const save = (d, { z, g = 100, hp = 5000 } = {}, extra = {}) => JSON.stringify({ v: 1, season: SEASON, best: Math.max(d, 30), ...extra, run: { d, hp, mh: hp, a: 900, g, p: 2, l: 30, x: 0, xn: 99999, rid: `wp-${d}-${z || "n"}`, k: 0, pp: 0, ...(z ? { z } : {}) } });
+const save = (d, { z, g = 100, hp = 5000 } = {}, extra = {}) => JSON.stringify({ v: 1, f50: 1, season: SEASON, best: Math.max(d, 30), ...extra, run: { d, hp, mh: hp, a: 900, g, p: 2, l: 30, x: 0, xn: 99999, rid: `wp-${d}-${z || "n"}`, k: 0, pp: 0, ...(z ? { z } : {}) } });
 const st = (page) => page.evaluate(() => window.__t.s());
 const logText = (page) => page.locator("#log").innerText();
 const savedJson = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("rl_save")));
 
 try {
-  // ---- 일반 던전 25층: 시작 자리 옆 웨이포인트 → 밟으면 활성화 ----
-  const A = await open({ rl_device_id: "wp-a", rl_save: save(25, { g: 1000 }), rl_tips: JSON.stringify(["intro", "dungeon", "gear", "lowhp"]) });
+  // ---- 일반 던전 10층: 시작 자리 옆 웨이포인트 → 밟으면 활성화 ----
+  const A = await open({ rl_device_id: "wp-a", rl_save: save(10, { g: 1000 }), rl_tips: JSON.stringify(["intro", "dungeon", "gear", "lowhp"]) });
   await A.page.evaluate(() => window.__t.calm());
   let s = await st(A.page);
-  check("floor 25: a waypoint next to the start", !!s.wpSpot && Math.abs(s.wpSpot.x - s.x) + Math.abs(s.wpSpot.y - s.y) === 1, JSON.stringify(s.wpSpot));
-  check("floor 25: log says step on it to activate", (await logText(A.page)).includes("바로 옆에 웨이포인트가 있다"));
+  check("floor 10: a waypoint next to the start", !!s.wpSpot && Math.abs(s.wpSpot.x - s.x) + Math.abs(s.wpSpot.y - s.y) === 1, JSON.stringify(s.wpSpot));
+  check("floor 10: log says step on it to activate", (await logText(A.page)).includes("바로 옆에 웨이포인트가 있다"));
   await A.page.screenshot({ path: path.join(SHOTS, "wp-floor.png") });
   const key = s.wpSpot.x > s.x ? "ArrowRight" : s.wpSpot.x < s.x ? "ArrowLeft" : s.wpSpot.y > s.y ? "ArrowDown" : "ArrowUp";
   await A.page.keyboard.press(key); await sleep(250);
   s = await st(A.page);
-  check("stepping on it activates floor 25", s.wp.normal.join() === "25" && (await logText(A.page)).includes("웨이포인트 활성화"), JSON.stringify(s.wp));
-  check("saved in the account save (wp.n)", (await savedJson(A.page)).wp?.n?.join() === "25");
+  check("stepping on it activates floor 10", s.wp.normal.join() === "10" && (await logText(A.page)).includes("웨이포인트 활성화"), JSON.stringify(s.wp));
+  check("saved in the account save (wp.n)", (await savedJson(A.page)).wp?.n?.join() === "10");
   await A.page.keyboard.press(key === "ArrowRight" ? "ArrowLeft" : key === "ArrowLeft" ? "ArrowRight" : key === "ArrowUp" ? "ArrowDown" : "ArrowUp"); await sleep(150);
   const n1 = (await logText(A.page)).split("웨이포인트 활성화").length;
   await A.page.keyboard.press(key); await sleep(200);
-  check("stepping on it again doesn't activate twice", (await logText(A.page)).split("웨이포인트 활성화").length === n1 && (await st(A.page)).wp.normal.join() === "25");
+  check("stepping on it again doesn't activate twice", (await logText(A.page)).split("웨이포인트 활성화").length === n1 && (await st(A.page)).wp.normal.join() === "10");
   // 새로고침해도 이어서 (층 저장에 웨이포인트 자리)
   await A.page.reload(); await A.page.waitForFunction(() => window.__t);
   s = await st(A.page);
-  check("reload: same waypoint spot, still active", !!s.wpSpot && s.wp.normal.join() === "25");
+  check("reload: same waypoint spot, still active", !!s.wpSpot && s.wp.normal.join() === "10");
 
-  // ---- 마을 웨이포인트 → 25층부터 ----
+  // ---- 마을 웨이포인트 → 10층부터 ----
   await A.page.keyboard.press("p"); await sleep(400);
   await goDoor(A.page, "waypoint");
   check("town waypoint opens the picker", await A.page.locator("#wp-modal").isVisible());
   const btn = (z, n) => A.page.locator("#wp-list .wp-row").nth(["normal", "nm", "hell"].indexOf(z)).locator("button", { hasText: `${n}층` });
-  check("picker: 25 enabled, 50·75 and nightmare/hell locked", await btn("normal", 25).isEnabled() && !(await btn("normal", 50).isEnabled()) && !(await btn("normal", 75).isEnabled()) && !(await btn("nm", 10).isEnabled()) && !(await btn("hell", 10).isEnabled()));
+  check("picker: 10 enabled, 20~50 and nightmare/hell locked", await btn("normal", 10).isEnabled() && !(await btn("normal", 20).isEnabled()) && !(await btn("normal", 50).isEnabled()) && (await btn("normal", 75).count()) === 0 && !(await btn("nm", 10).isEnabled()) && !(await btn("hell", 10).isEnabled()));
   await A.page.screenshot({ path: path.join(SHOTS, "wp-picker.png") });
   await A.page.keyboard.press("Escape"); await sleep(150);
   check("Esc closes the picker", await A.page.locator("#wp-modal").isHidden());
   await A.page.keyboard.press("ArrowUp"); await sleep(250);
-  await btn("normal", 25).click(); await sleep(500);
+  await btn("normal", 10).click(); await sleep(500);
   s = await st(A.page);
-  check("25층 button → normal dungeon floor 25 with a waypoint", s.scene === "dungeon" && s.depth === 25 && s.zone === "normal" && !!s.wpSpot && (await logText(A.page)).includes("웨이포인트를 타고 25층에 왔다"), JSON.stringify(s));
+  check("10층 button → normal dungeon floor 10 with a waypoint", s.scene === "dungeon" && s.depth === 10 && s.zone === "normal" && !!s.wpSpot && (await logText(A.page)).includes("웨이포인트를 타고 10층에 왔다"), JSON.stringify(s));
 
-  // ---- 묘비: 골드 1000을 들고 쓰러짐 → 새로 시작 → 25층 쓰러진 자리에 묘비, 밟으면 900 ----
+  // ---- 묘비: 골드 1000을 들고 쓰러짐 → 새로 시작 → 10층 쓰러진 자리에 묘비, 밟으면 900 ----
   await A.page.evaluate(() => { window.__t.calm(); window.__t.gold(1000); });
   const deadAt = await st(A.page);
   await A.page.evaluate(() => window.__t.die());
   check("death modal: a tombstone keeps 900 gold (90%)", (await A.page.locator("#death-sub").innerText()).includes("묘비가 남아요. 다시 와서 밟으면 골드 900(90%)"));
   await A.page.locator("#death-restart").click(); await sleep(300);
   s = await st(A.page);
-  check("restart: gold 0, tombstone on floor 25 at the death spot with 900", s.scene === "lobby" && s.gold === 0 && s.tomb?.d === 25 && s.tomb.z === "normal" && s.tomb.g === 900 && s.tomb.x === deadAt.x && s.tomb.y === deadAt.y, JSON.stringify(s.tomb));
-  check("restart log tells where the tombstone is", (await logText(A.page)).includes("25층의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 900"));
+  check("restart: gold 0, tombstone on floor 10 at the death spot with 900", s.scene === "lobby" && s.gold === 0 && s.tomb?.d === 10 && s.tomb.z === "normal" && s.tomb.g === 900 && s.tomb.x === deadAt.x && s.tomb.y === deadAt.y, JSON.stringify(s.tomb));
+  check("restart log tells where the tombstone is", (await logText(A.page)).includes("10층의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 900"));
   check("tombstone saved (tb)", (await savedJson(A.page)).tb?.g === 900);
-  await goDoor(A.page, "waypoint"); await btn("normal", 25).click(); await sleep(500);
+  await goDoor(A.page, "waypoint"); await btn("normal", 10).click(); await sleep(500);
   s = await st(A.page);
-  check("back on floor 25 via waypoint: tombstone placed on a floor tile near the death spot", s.depth === 25 && !!s.grave && (await logText(A.page)).includes("내 묘비가 있다. 찾아서 밟으면 골드 900"), JSON.stringify([s.grave, s.tomb]));
+  check("back on floor 10 via waypoint: tombstone placed on a floor tile near the death spot", s.depth === 10 && !!s.grave && (await logText(A.page)).includes("내 묘비가 있다. 찾아서 밟으면 골드 900"), JSON.stringify([s.grave, s.tomb]));
   await A.page.evaluate(() => window.__t.calm());
   await A.page.screenshot({ path: path.join(SHOTS, "wp-grave.png") });
   await A.page.evaluate(() => window.__t.on(window.__t.s().grave));
@@ -119,12 +119,12 @@ try {
   await A.ctx.close();
 
   // ---- 웨이포인트를 밟기 전에는 계단이 안 열림, 밟으면 열림 (꼭 지나가게, dc#97) ----
-  const G = await open({ rl_device_id: "wp-g", rl_save: save(25) });
+  const G = await open({ rl_device_id: "wp-g", rl_save: save(10) });
   let down = await G.page.evaluate(() => window.__t.stairsDown());
-  check("before stepping on the waypoint, the stairs stay closed", down.depth === 25 && (await logText(G.page)).includes("웨이포인트를 먼저 밟아야 계단이 열린다"), JSON.stringify(down));
+  check("before stepping on the waypoint, the stairs stay closed", down.depth === 10 && (await logText(G.page)).includes("웨이포인트를 먼저 밟아야 계단이 열린다"), JSON.stringify(down));
   await G.page.evaluate(() => window.__t.on(window.__t.s().wpSpot));
   down = await G.page.evaluate(() => window.__t.stairsDown());
-  check("after stepping on it, the stairs open (floor 26)", down.depth === 26, JSON.stringify(down));
+  check("after stepping on it, the stairs open (floor 11)", down.depth === 11, JSON.stringify(down));
   await G.ctx.close();
 
   // ---- 24층에는 웨이포인트 없음 ----
@@ -159,8 +159,23 @@ try {
   // ---- 이미 완료한 사람: 그 던전 웨이포인트는 모두 켜져 있음 (dc#97) ----
   const F = await open({ rl_device_id: "wp-f", rl_save: save(3, {}, { clr: 1, nb: 50, nclr: 1 }) }, "lobby");
   const fw = (await st(F.page)).wp;
-  check("completed normal + nightmare: their waypoints all on, hell not", fw.normal.join() === "25,50,75" && fw.nm.join() === "10,20,30,40,50" && fw.hell.length === 0, JSON.stringify(fw));
+  check("completed normal + nightmare: their waypoints all on, hell not", fw.normal.join() === "10,20,30,40,50" && fw.nm.join() === "10,20,30,40,50" && fw.hell.length === 0, JSON.stringify(fw));
   await F.ctx.close();
+
+  // ---- 예전 75층 기준 저장 (f50 없음) → 50층 기준으로 한 번 바꿈 (dc#98): 층 = 올림(층 ÷ 1.5), 웨이포인트는 그 아래 10층 단위 ----
+  const old = JSON.stringify({ v: 1, season: SEASON, best: 70, wp: { n: [25, 50], m: [10] }, tb: { d: 45, z: "normal", g: 300, x: 3, y: 3 },
+    run: { d: 60, hp: 5000, mh: 5000, a: 900, g: 100, p: 2, l: 30, x: 0, xn: 99999, rid: "wp-old", k: 0, pp: 0 } });
+  const H = await open({ rl_device_id: "wp-h", rl_save: old });
+  const h = await st(H.page);
+  await H.page.evaluate(() => window.__t.calm()); await H.page.keyboard.press("ArrowLeft"); await H.page.keyboard.press("ArrowRight"); await sleep(250);   // 한 걸음 → 저장
+  const hs = await savedJson(H.page);
+  check("old save: run floor 60 → 40, best 70 → 47, waypoints 25·50 → 10·30, nightmare 10 kept, tombstone 45 → 30", h.depth === 40 && (await H.page.locator("#best").innerText()).startsWith("47") && h.wp.normal.join() === "10,30" && h.wp.nm.join() === "10" && h.tomb?.d === 30,
+    JSON.stringify([h.depth, await H.page.locator("#best").innerText(), h.wp, h.tomb]));
+  check("old save: saved again with the f50 mark (converted only once)", hs.f50 === 1 && hs.best === 47 && hs.run.d === 40, JSON.stringify(hs).slice(0, 200));
+  await H.page.reload(); await H.page.waitForFunction(() => window.__t);
+  check("reload: not converted twice", (await st(H.page)).depth === 40 && (await savedJson(H.page)).best === 47);
+  check("H: no page errors", H.errors.length === 0, H.errors.join("; "));
+  await H.ctx.close();
 
   // ---- 처음 사람: 웨이포인트 창에 안내 ----
   const E = await open({ rl_device_id: "wp-e", rl_save: save(3) }, "lobby");

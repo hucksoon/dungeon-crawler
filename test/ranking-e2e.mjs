@@ -51,7 +51,7 @@ async function serveApi(route) {
 
 // 다른 플레이어 기록을 미리 넣어 둠
 async function seed(headers, body) {
-  const r = await fetch(API + "?r=score", { method: "POST", headers: { "Content-Type": "application/json", ...headers, Origin: "https://hucksoon.github.io" }, body: JSON.stringify(body) });
+  const r = await fetch(API + "?r=score", { method: "POST", headers: { "Content-Type": "application/json", ...headers, Origin: "https://hucksoon.github.io" }, body: JSON.stringify({ fl: 50, ...body }) });
   if (!r.ok) throw new Error(await r.text());
 }
 const epicAxe = find("epic", "rk-e"), legHelm = find("legendary", "rk-l");
@@ -82,7 +82,7 @@ async function open(browser, { config = API, storage = {}, ctxOpts = { viewport:
 }
 const db = new DatabaseSync(DBF);
 const rows = () => db.prepare("SELECT * FROM players_v4").all();
-const save = (d) => JSON.stringify({ v: 1, season: 4, best: d, run: { d, hp: 40, mh: 40, a: 5, g: 10, p: 1, l: 3, x: 0, xn: 30, rid: "e2e" + d, k: 0, pp: 0 } });
+const save = (d) => JSON.stringify({ v: 1, f50: 1, season: 4, best: d, run: { d, hp: 40, mh: 40, a: 5, g: 10, p: 1, l: 3, x: 0, xn: 30, rid: "e2e" + d, k: 0, pp: 0 } });
 const notices = (dev) => Object.fromEntries(["rl_notice_v4", "rl_notice_75", "rl_notice_1021g", "rl_notice_1021h", "rl_notice_1021i", "rl_notice_1021j", "rl_notice_1022a", "rl_notice_1022b", "rl_notice_1023a", "rl_notice_1023b", "rl_notice_1023c", "rl_notice_1023d", "rl_notice_1025a"].map(k => [`${k}:${dev}`, "1"]));
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });

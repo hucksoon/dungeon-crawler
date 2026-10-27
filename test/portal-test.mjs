@@ -45,7 +45,7 @@ async function stepIn(page) {
   await page.keyboard.press(L.tp.x > L.px ? "ArrowRight" : L.tp.x < L.px ? "ArrowLeft" : L.tp.y > L.py ? "ArrowDown" : "ArrowUp");
   await sleep(150);
 }
-const save = (d, gold, l = 5) => JSON.stringify({ v: 1, best: d, run: { d, hp: 300, mh: 300, a: 50, g: gold, p: 2, l, x: 0, xn: 1e9, rid: "portal-run", k: 0, pp: 0 } });
+const save = (d, gold, l = 5) => JSON.stringify({ v: 1, f50: 1, best: d, run: { d, hp: 300, mh: 300, a: 50, g: gold, p: 2, l, x: 0, xn: 1e9, rid: "portal-run", k: 0, pp: 0 } });
 
 try {
   // ---- 처음 온 사람 ----
@@ -103,7 +103,7 @@ try {
 
   // ---- 쓰러지면 로비에서 새로 시작 ----
   // Lv 5 (필요 경험치 49), 경험치 20: 새로 시작하면 4를 잃고 Lv 5 그대로 (dc#95)
-  const D = await open({ rl_device_id: "dier", rl_save: JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: 36, mh: 36, a: 7, g: 210, p: 2, l: 5, x: 20, xn: 49, rid: "portal-run", k: 0, pp: 0 } }) }, { scene: "dungeon" });
+  const D = await open({ rl_device_id: "dier", rl_save: JSON.stringify({ v: 1, f50: 1, best: 4, run: { d: 4, hp: 36, mh: 36, a: 7, g: 210, p: 2, l: 5, x: 20, xn: 49, rid: "portal-run", k: 0, pp: 0 } }) }, { scene: "dungeon" });
   await D.page.evaluate(() => window.__t.die());
   check("death modal with village restart", await D.page.locator("#death-modal").isVisible() && (await D.page.locator("#death-restart").innerText()) === "로비에서 새로 시작 (R)" && (await D.page.locator("#death-modal").innerText()).includes("골드는 처음으로 돌아가고, 경험치를 4 잃어요"));
   check("old 로비로 나가기 button removed", (await D.page.locator("#death-lobby").count()) === 0);
@@ -118,7 +118,7 @@ try {
   await D.ctx.close();
 
   // 쓰러진 채로 로비에 온 경우: 입구에서 쓰러진 창
-  const dead = JSON.stringify({ v: 1, best: 5, run: null, dead: { d: 5, hp: 0, mh: 30, a: 5, g: 99, p: 0, l: 3, x: 0, xn: 30, rid: "dead-run", k: 0, pp: 0 } });
+  const dead = JSON.stringify({ v: 1, f50: 1, best: 5, run: null, dead: { d: 5, hp: 0, mh: 30, a: 5, g: 99, p: 0, l: 3, x: 0, xn: 30, rid: "dead-run", k: 0, pp: 0 } });
   const E = await open({ rl_device_id: "dead-one", rl_save: dead });
   check("dead run: village, right door closed", (await st(E.page)).scene === "lobby" && (await st(E.page)).resume === 0 && await E.page.locator("#death-modal").isHidden());
   await goDoor(E.page, "start");

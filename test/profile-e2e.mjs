@@ -30,7 +30,7 @@ await sleep(700);
 const b64u = (s) => Buffer.from(s).toString("base64url");
 const jwt = (sub, email) => { const h = b64u(JSON.stringify({ alg: "HS256", typ: "JWT" })), p = b64u(JSON.stringify({ sub, email, exp: Math.floor(Date.now() / 1000) + 7200, xsolla_login_project_id: "30375188-893b-4b1a-ba1b-c8ba692fa5e3" })); return `${h}.${p}.${crypto.createHmac("sha256", SECRET).update(`${h}.${p}`).digest("base64url")}`; };
 const authOf = (sub, email) => JSON.stringify({ access: jwt(sub, email), refresh: "r", exp: Date.now() + 7200_000 });
-const save = (gold, best = 5, rid = "pf-" + gold) => JSON.stringify({ v: 1, best, run: { d: best, hp: 300, mh: 300, a: 50, g: gold, p: 2, l: 5, x: 0, xn: 1e9, rid, k: 0, pp: 0 } });
+const save = (gold, best = 5, rid = "pf-" + gold) => JSON.stringify({ v: 1, f50: 1, best, run: { d: best, hp: 300, mh: 300, a: 50, g: gold, p: 2, l: 5, x: 0, xn: 1e9, rid, k: 0, pp: 0 } });
 const inv = (bag, stones = 0) => JSON.stringify({ bag, equip: Object.fromEntries(RL.SLOTS.map(s => [s, null])), log: [{ ev: "get", id: "old-log" }], stones });
 const find = (pred, tag) => { for (let n = 0; n < 200000; n++) { const it = RL.generate(`${tag}${n}|shop|d5|s${n % 6}`, "golden", 5); if (pred(it)) return it; } };
 const rare = find(x => x.rarity === "rare", "pa");

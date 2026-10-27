@@ -102,7 +102,7 @@ async function portalOut(page) {
 }
 // 포탈로 마을에 나와서 헬 문(dx 1) / 층 고르기 문(dx 5)까지 걸어가 ↑
 async function walkToHell(page, dx = 1) { await portalOut(page); await goDoor(page, dx === 5 ? "hellPick" : "hell"); await sleep(100); }
-const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
+const save = (d, rid, extra = {}, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: d, ...extra, run: { d, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, z: "hell", ...run } });
 const neck = findA("j30", 155, it => it.slot === "neck" && it.rarity === "legendary"), r1 = findA("j35", 160, it => it.slot === "ring" && it.rarity === "legendary"), r2 = findA("j40", 165, it => it.slot === "ring" && it.rarity === "epic"), r3 = findA("j45", 170, it => it.slot === "ring" && it.rarity === "rare");
 const invAcc = () => JSON.stringify({ bag: [neck, r1, r2, r3], equip: Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), log: [], stones: 0 });
 try {

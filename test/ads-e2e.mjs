@@ -62,7 +62,7 @@ const press = async (page, k, n) => { for (let i = 0; i < n; i++) { await page.k
 import { goDoor } from "./town.mjs";
 const walkTo = (page, tx) => goDoor(page, { 5: "market", 15: "start" }[tx]);
 const user = (sub, email, gold, extra = {}) => ({ rl_device_id: sub + "-dev", rl_auth: JSON.stringify({ access: jwt(sub, email), refresh: "r", exp: Date.now() + 7200_000 }),
-  rl_save: JSON.stringify({ v: 1, best: 4, run: { d: 4, hp: 300, mh: 300, a: 50, g: gold, p: 2, l: 5, x: 0, xn: 1e9, rid: "ads-" + sub, k: 0, pp: 0 } }), ...extra });
+  rl_save: JSON.stringify({ v: 1, f50: 1, best: 4, run: { d: 4, hp: 300, mh: 300, a: 50, g: gold, p: 2, l: 5, x: 0, xn: 1e9, rid: "ads-" + sub, k: 0, pp: 0 } }), ...extra });
 async function call(route, token, body) {
   const r = await fetch(`${API}?r=${route}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, Origin: "https://hucksoon.github.io" }, body: JSON.stringify(body) });
   return r.json();

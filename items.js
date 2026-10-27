@@ -779,10 +779,11 @@
   }
 
   // 처치 1회(또는 포션 자리 1곳)의 결과: 드롭 없으면 null. kind: "normal" | "elite" | "boss"
-  function rollDrop(seed, level, kind = "normal") {
+  // mul: 드롭 확률 배율 (일반 던전 50층은 1.5, dc#98. 서버는 시드 |e층|이면 같은 배율로 검증)
+  function rollDrop(seed, level, kind = "normal", mul = 1) {
     const { chance, table } = DROPS[kind];
     const rng = rngFrom(`v${RULES_VERSION}|drop?|${seed}`);
-    return rng() < chance ? generate(seed, table, level) : null;
+    return rng() < Math.min(1, chance * mul) ? generate(seed, table, level) : null;
   }
 
   // ---- 판매 / 강화 ----
@@ -961,7 +962,7 @@
   const RECOMMEND = {
     tiers: ["normal", "nightmare", "hell"],
     normal: {
-      name: "일반", goal: "일반 75층",
+      name: "일반", goal: "일반 50층",
       targets: { res: 0, lifesteal: 20, crit: 75, legendary: 7, enh: 10, acc: 3 },
       slots: recSlots("atk", Object.fromEntries(Object.keys(REC_ARMOR_MAIN).map(slot => [slot, ["hp", "def", ...CRIT3]]))),
       acc: "공격력·방어력·최대 HP가 높은 것 +10 강화 (일반 던전에서는 저항 줄이 필요 없어요)",

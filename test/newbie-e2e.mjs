@@ -33,7 +33,7 @@ const level = (items = [], enemies = [], stairs = [28, 20]) => { const m = floor
 const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const rat = (x, y) => ({ ...M.makeMonster(M.MONSTERS.find(m => m.id === "rat"), "normal", 3), x, y, hp: 1, maxHp: 1, atk: 0 });
 const tipText = (page) => page.locator("#tip-text").innerText();
-const save = (d, hp, extra = {}) => JSON.stringify({ v: 1, season: 4, best: d, ...extra, run: { d, hp, mh: 300, a: 20, g: 100, p: 1, l: 5, x: 0, xn: 100, rid: "nb", k: 0, pp: 0 } });
+const save = (d, hp, extra = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: d, ...extra, run: { d, hp, mh: 300, a: 20, g: 100, p: 1, l: 5, x: 0, xn: 100, rid: "nb", k: 0, pp: 0 } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])); for (const it of its) e[it.slot === "ring" ? "ring1" : it.slot] = it; return e; };
 const dagger = find(x => x.slot === "weapon" && x.type === "dagger" && x.rarity === "rare", "nd");
 const strong = find(x => x.slot === "weapon" && x.type === "dagger" && x.rarity === "legendary", "nl");
@@ -127,10 +127,10 @@ try {
   check("equipping finishes ③ → ④ next", (await tipText(o.page)).includes("④ HP 회복"), await tipText(o.page));
   await o.ctx.close();
 
-  // ---- ⑤ 웨이포인트: 25층 시작 자리 옆 ◎를 밟으면 끝, 그 뒤로는 튜토리얼 없음 ----
-  const L25 = JSON.parse(level()); L25.d = 25; L25.wp = { x: 11, y: 12 };
-  o = await open({ rl_save: save(25, 300), rl_level: JSON.stringify(L25), ["rl_inv:g:" + DEV]: JSON.stringify({ bag: [], equip: eqOf(dagger), log: [], stones: 0 }), rl_tut: did("enter", "attack", "walk", "map", "stairs", "inv", "equip", "heal") }, { scene: "dungeon" });
-  check("⑤ shows last", (await tipText(o.page)).includes("⑤ 웨이포인트") && (await tipText(o.page)).includes("☐ 일반 던전 25층"), await tipText(o.page));
+  // ---- ⑤ 웨이포인트: 10층 시작 자리 옆 ◎를 밟으면 끝, 그 뒤로는 튜토리얼 없음 ----
+  const L25 = JSON.parse(level()); L25.d = 10; L25.wp = { x: 11, y: 12 };
+  o = await open({ rl_save: save(10, 300), rl_level: JSON.stringify(L25), ["rl_inv:g:" + DEV]: JSON.stringify({ bag: [], equip: eqOf(dagger), log: [], stones: 0 }), rl_tut: did("enter", "attack", "walk", "map", "stairs", "inv", "equip", "heal") }, { scene: "dungeon" });
+  check("⑤ shows last", (await tipText(o.page)).includes("⑤ 웨이포인트") && (await tipText(o.page)).includes("☐ 일반 던전 10층"), await tipText(o.page));
   await o.page.keyboard.press("ArrowRight"); await sleep(300);
   check("stepping on the waypoint finishes ⑤ (no next)", (await tipText(o.page)).includes("잘했어요") && !(await tipText(o.page)).includes("다음"), await tipText(o.page));
   await sleep(1700);

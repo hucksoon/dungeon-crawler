@@ -35,7 +35,7 @@ function level(enemies = [], { unseen = [], start = [10, 8] } = {}) {
   const seen = Array.from({ length: W * H }, (_, i) => (unseen.includes(i) ? "0" : "1")).join("");
   return JSON.stringify({ rid: "wk", d: 3, turn: 1, map: m.map(r => r.join("")).join(""), seen, px: start[0], py: start[1], shop: null, enemies, items: [] });
 }
-const save = JSON.stringify({ v: 1, season: 4, best: 30, run: { d: 3, hp: 5000, mh: 5000, a: 200, g: 0, p: 1, l: 30, x: 0, xn: 1e9, rid: "wk", k: 0, pp: 0 } });
+const save = JSON.stringify({ v: 1, f50: 1, season: 4, best: 30, run: { d: 3, hp: 5000, mh: 5000, a: 200, g: 0, p: 1, l: 30, x: 0, xn: 1e9, rid: "wk", k: 0, pp: 0 } });
 const inv = JSON.stringify({ bag: [], equip: Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), log: [], stones: 0 });
 const pos = (page) => page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")); return { x: L.px, y: L.py, enemies: L.enemies }; });
 const tap = async (page, x, y) => { const p = await page.evaluate(([x, y]) => window.RLWalk.screenOf(x, y), [x, y]); await page.mouse.click(p.x, p.y); };

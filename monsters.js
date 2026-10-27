@@ -76,13 +76,18 @@
   // 일반 던전 최대 층: 이 층 보스를 쓰러뜨리면 완료 → 로비로, 포탈 문으로 같은 층의 새 구역에 들어가 계속 파밍
   // 아이템은 얻은 층이 레벨이라 이 층보다 강한 아이템은 나오지 않음. 그 뒤는 나이트메어 던전
   // (150층 → 75층: 끝까지 가는 시간을 1/4로 줄이고, 대신 드롭을 늘려 75층까지 예전 150층만큼 좋은 장비가 나오게 함)
-  const MAX_FLOOR = 75;
-  // 랭킹 기록값: 최대 층 보스까지 쓰러뜨리면 MAX_FLOOR + 1 ("75층 완료")
+  // (75층 → 50층, dc#98: 층 수만 줄이고 강함·아이템 레벨·골드는 예전 75층 곡선을 그대로 압축. 새 층 n = 예전 1.5n층 수준 (effLevel),
+  //  새 50층 = 예전 75층. 보스는 그대로 5층마다. 한 판에 만나는 몬스터가 2/3라 장비 드롭 ×1.5 (index.html NORMAL_DROP_MUL))
+  const MAX_FLOOR = 50;
+  // 랭킹 기록값: 최대 층 보스까지 쓰러뜨리면 MAX_FLOOR + 1 ("50층 완료")
   const CLEAR_STAGE = MAX_FLOOR + 1;
+  // 일반 던전 층 → 강함·아이템 레벨에 쓰는 레벨 (예전 75층 곡선). 나이트메어·헬·골드 던전은 이 레벨(75) 위에서 시작
+  const EFF_MAX = 75;
+  const effLevel = (d) => Math.min(EFF_MAX, Math.round(d * EFF_MAX / MAX_FLOOR));
   // 골드 던전 (일반 던전 완료 후, 로비 나이트메어 옆): 75층과 같은 몬스터·보스가 있는 한 층.
   // 보스를 쓰러뜨리고 계단을 밟으면 완료 보상 = 75레벨 레전더리 고대 굴리기 rewardRolls번 비용 (items.js에서 계산)
   // 장비·보물·황금 고블린은 나오지 않음. presence: 접속자 목록에 보내는 층 번호 (2000 + 층)
-  const GOLD_DUNGEON = { floor: MAX_FLOOR, rewardRolls: 20, presence: 2000 };
+  const GOLD_DUNGEON = { floor: EFF_MAX, rewardRolls: 20, presence: 2000 };   // 75 = 예전 75층(지금 50층)과 같은 난이도
   const BOSS_SCALE = 0.3;
   const BOSS_COLOR = "#ff5a5a";
   const BOSSES = [
@@ -180,12 +185,13 @@
   // 계단: 플레이어 주변 이 거리(가로 칸 + 세로 칸) 안에 몬스터가 있으면 내려갈 수 없음
   const STAIRS_BLOCK_RADIUS = 4;
 
-  function makeBoss(d) {
-    const i = d / BOSS_EVERY - 1;
+  // d: 보스 층 (어느 보스인지), lvl: 강함을 정하는 레벨 (일반 던전은 effLevel(d), dc#98)
+  function makeBoss(d, lvl = d) {
+    const i = d / BOSS_EVERY - 1, il = lvl / BOSS_EVERY - 1;
     const base = BOSSES[Math.min(i, BOSSES.length - 1)];
-    const scale = 1 + BOSS_SCALE * Math.max(0, i - (BOSSES.length - 1));
+    const scale = 1 + BOSS_SCALE * Math.max(0, il - (BOSSES.length - 1));
     // 보스도 일반 몬스터와 같은 층 보정을 받음
-    const f = floorScale(d);
+    const f = floorScale(lvl);
     const stat = (v, mul = 1) => Math.round(v * scale * mul);
     const hp = stat(base.hp, f.hp);
     return {
@@ -204,7 +210,7 @@
   // 몬스터에 속성이 붙으면서(3단계) 일반·정예 공격 배율 2 → 1.6: 75층 장비로 들어가도 한 층 포션이 속성 전과 비슷하게(약 4~6개).
   // 보스 공격 1.3 → 1.1: 포션을 마시는 데 한 턴이 드는 것까지 넣고 다시 보니 1층 보스에게 3번 중 1번 쓰러짐 → 1.1이면 4%, 50층 9%
   const NIGHTMARE = {
-    floors: 50, perFloor: 0.02, perFloor2: 0.003, base: MAX_FLOOR, itemBase: MAX_FLOOR,
+    floors: 50, perFloor: 0.02, perFloor2: 0.003, base: EFF_MAX, itemBase: EFF_MAX,
     // 공격력만 층 배율의 제곱 항을 낮게 (HP는 perFloor2 그대로): 40층 ×6.3 → ×4.8, 50층 ×9.2 → ×6.8
     // 장비는 아이템 레벨만큼만(완만하게) 강해져서, 고대 장비로도 40층에서 몰려오는 몬스터에게 100% 쓰러졌음 (시뮬레이션)
     atkPerFloor2: 0.002,
@@ -391,7 +397,7 @@
   }
 
   const api = {
-    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, BOSS_SCALE,
+    MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
     nameOf, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

@@ -35,7 +35,7 @@ const level = (d, enemies, extra = {}) => {
   map[20][28] = 2;
   return JSON.stringify({ rid: "mon-run", d, turn: 0, map: map.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra });
 };
-const save = (d) => JSON.stringify({ v: 1, best: d, run: { d, hp: 5000, mh: 5000, a: 50, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "mon-run", k: 0, pp: 0 } });
+const save = (d) => JSON.stringify({ v: 1, f50: 1, best: d, run: { d, hp: 5000, mh: 5000, a: 50, g: 100, p: 3, l: 30, x: 0, xn: 1e9, rid: "mon-run", k: 0, pp: 0 } });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 async function open(d, lvl) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 1000 } }); const page = await ctx.newPage(); const errors = [];
@@ -56,20 +56,20 @@ try {
   // 깊은 층(보스 층 포함)을 여러 번 새로 만들어도 오류 없음, 새 몬스터가 나옴
   const ids = new Set();
   let errs = [];
-  for (const d of [45, 95, 120, 125, 150, 200]) for (let i = 0; i < 3; i++) {
+  for (const d of [30, 40, 45, 50, 120, 200]) for (let i = 0; i < 3; i++) {   // 50층 넘는 판은 50층으로 (레벨 75, dc#98)
     const { page, errors } = await open(d, null);
     await page.keyboard.press("."); await sleep(150);  // 한 턴 쉬면 층이 저장됨
     errs.push(...errors);
     (await L(page))?.enemies?.forEach(e => ids.add(e.id));
     await page.context().close();
   }
-  check("deep floors (45~200, boss floors) build without errors", errs.length === 0, errs.slice(0, 3).join("; "));
-  check("new monsters appear on deep floors", ["ancient_dragon", "void_lord", "manticore"].some(id => ids.has(id)), [...ids].join(","));
+  check("deep floors (30~50, boss floors, old 120·200 → 50) build without errors", errs.length === 0, errs.slice(0, 3).join("; "));
+  check("new monsters appear on deep floors", ["manticore", "phoenix", "shadow_dragon"].some(id => ids.has(id)), [...ids].join(","));
   check("bosses still spawn on deep boss floors", [...ids].some(id => ["goblin_king", "ogre_chief", "lich_lord"].includes(id)));
 
   // 황금 고블린 왕: 잡으면 장비 4개
-  const king = { x: 11, y: 10, ...M.makeGolden(60, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
-  let { page, errors } = await open(60, level(60, [king]));
+  const king = { x: 11, y: 10, ...M.makeGolden(40, "king"), hp: 1, maxHp: 1, def: 0, fleeAt: 99 };
+  let { page, errors } = await open(40, level(40, [king]));
   await page.screenshot({ path: path.join(OUT, "golden-king.png") });
   await page.keyboard.press("ArrowRight"); await sleep(300);
   let lv = await L(page);
@@ -80,8 +80,8 @@ try {
   await page.context().close();
 
   // 정예 황금 고블린: 맞고 살아남으면 순간이동 (확률 1로 고정한 저장본)
-  const elite = { x: 11, y: 10, ...M.makeGolden(60, "elite"), hp: 99999, maxHp: 99999, def: 0, blink: 1, fleeAt: 99 };
-  ({ page, errors } = await open(60, level(60, [elite])));
+  const elite = { x: 11, y: 10, ...M.makeGolden(40, "elite"), hp: 99999, maxHp: 99999, def: 0, blink: 1, fleeAt: 99 };
+  ({ page, errors } = await open(40, level(40, [elite])));
   await page.keyboard.press("ArrowRight"); await sleep(300);
   lv = await L(page);
   const g = lv.enemies[0];

@@ -25,7 +25,7 @@ await sleep(700);
 const MAP_W = 32, MAP_H = 24;
 const map = Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1 ? 0 : 1)));
 const lv = (d, rid, z, enemies = [], extra = {}, stairs = [28, 20]) => { const mm = map.map(r => r.slice()); mm[stairs[1]][stairs[0]] = 2; return JSON.stringify({ rid, d, z, turn: 0, map: mm.map(r => r.join("")).join(""), seen: "1".repeat(MAP_W * MAP_H), px: 10, py: 10, shop: null, enemies, items: [], ...extra }); };
-const save = (d, rid, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const save = (d, rid, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 10, run: { d, hp: 300, mh: 1000, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const eqOf = (...its) => { const e = Object.fromEntries(I.SLOTS.map(s => [s, null])); for (const it of its) e[it.slot] = it; return e; };
 const foe = (x, y, extra = {}) => ({ x, y, id: "titan", ch: "I", name: "악몽의 타이탄", color: "#fdd835", kind: "normal", hp: 1e7, maxHp: 1e7, atk: 0, def: 0, xp: 1, nm: 1, ...extra });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
@@ -54,7 +54,7 @@ const level = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("rl_
 const press = async (page, k, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(k); await sleep(30); } };
 const inv = (...eq) => JSON.stringify({ bag: [], equip: eqOf(...eq), log: [], stones: 0 });
 const inLobby = (page) => page.evaluate(() => document.body.classList.contains("in-lobby"));
-const saveG = (d, rid, g, extra = {}, run = {}) => JSON.stringify({ v: 1, season: 4, best: 75, clr: 1, ...extra, run: { d, hp: 5000, mh: 5000, a: 300, g, l: 60, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
+const saveG = (d, rid, g, extra = {}, run = {}) => JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, ...extra, run: { d, hp: 5000, mh: 5000, a: 300, g, l: 60, x: 0, xn: 1e12, rid, k: 0, pp: 0, ...run } });
 const gold = async (page) => Number(await page.locator("#gold").innerText());
 const REWARD = I.goldDungeonReward(75, 20);
 const pick = async (page, it) => { await page.locator(".bag-item", { hasText: I.itemName(it) }).first().click(); await sleep(120); };
@@ -89,7 +89,7 @@ try {
   ({ ctx, page, errors } = await open("gdtest-b00", { rl_save: saveG(20, "gdB", 100, { best: 40, clr: 0 }), rl_level: lv(20, "gdB", "normal"), "rl_inv:g:DEV": inv() }));
   await press(page, "p"); await sleep(200);
   await goDoor(page, "golddungeon"); await sleep(150);
-  check("not cleared: gold dungeon closed", await inLobby(page) && (await logs(page)).includes("골드 던전은 일반 던전 75층을 완료해야"));
+  check("not cleared: gold dungeon closed", await inLobby(page) && (await logs(page)).includes("골드 던전은 일반 던전 50층을 완료해야"));
   await page.screenshot({ path: path.join(OUT, "gd-lobby-closed.png") });
   await ctx.close();
 
