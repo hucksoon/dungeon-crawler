@@ -1133,5 +1133,8 @@
     "소리 설정": "Sound settings",
     "효과음 크기": "Sound effects volume",
     "배경 음악 크기": "Music volume",
+    // 포털 빌드 (dc#102)
+    "광고 보고 부활": "Watch an ad to revive",
+    "광고를 끝까지 보지 않았거나 지금은 광고를 불러올 수 없어요.": "The ad was not finished, or no ad is available right now.",
   } });
 })(typeof self !== "undefined" ? self : this);

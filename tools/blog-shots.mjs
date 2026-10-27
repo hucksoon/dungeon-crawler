@@ -43,7 +43,7 @@ const json = (r, o, status = 200) => r.fulfill({ status, contentType: "applicati
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
 // touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false }) {
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false, portal = false }) {
   const dev = "blogshot-device-1";
   const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage(); const errors = [];
@@ -74,6 +74,8 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.route(/googlesyndication|doubleclick|google-analytics|googletagmanager/, r => r.abort());
   const b64u = (s) => Buffer.from(s).toString("base64url");
   const auth = loggedIn ? JSON.stringify({ access: `${b64u('{"alg":"none"}')}.${b64u(JSON.stringify({ sub: "blog-shot-user", exp: 4e9 }))}.x`, refresh: "r", exp: Date.now() + 36e5 }) : null;
+  // portal: 포털 빌드(dc#102)처럼 window.RL_PORTAL을 넣음 (광고는 바로 끝남)
+  if (portal) await ctx.addInitScript(() => { window.RL_PORTAL = { name: "blog", loadingDone() {}, gameplay() {}, commercialBreak: async () => {}, rewardedBreak: async () => true }; });
   await ctx.addInitScript(([seed, dev, scene, N, lang, auth]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", scene);
     localStorage.setItem("rl_device_id", dev); for (const k of N) localStorage.setItem(`${k}:g:${dev}`, "1");
     localStorage.setItem("rl_game_lang", lang); localStorage.setItem("rl_lang", lang); if (auth) localStorage.setItem("rl_auth", auth);
@@ -318,6 +320,12 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-snd"), "rl_inv:g:DEV": inv(g40) } });
     await o.page.locator("#sound-btn").click(); await sleep(300);
     return { ...o, shot: ".sound-modal" }; }],
+  // 포털 빌드 (dc#102): 혼자 하는 버전의 쓰러진 창 — 캐시·계정 대신 "광고 보고 부활"
+  ["portal-death", "포털 버전: 쓰러지면 광고를 보고 부활", async () => {
+    const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-portal", k: 40, pp: 0 };
+    const o = await open({ portal: true, seed: { rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 40, clr: 1, nb: 50, nclr: 1, hb: 20, dead }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
+    await sleep(600);
+    return o; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };
