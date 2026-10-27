@@ -644,7 +644,7 @@
   <span class="touch-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 왼쪽 끝 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
+  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 가운데 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
   <a href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
 </div>
 
@@ -820,7 +820,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
-<script src="jump.js?v=98"></script>
+<script src="jump.js?v=100"></script>
 <script src="sound.js"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
@@ -927,7 +927,7 @@
         note: () => T("마을에 가면 HP가 다 차요") },
       waypoint: { title: () => T("⑤ 웨이포인트"),
         steps: () => [["wp", T("일반 던전 10층 시작 자리 옆 ◎ 밟기")]],
-        note: () => T("◎은 꼭 밟고 지나가요 (밟아야 계단이 열려요) · 마을 왼쪽 끝 ◎에서 그 층부터 · 쓰러지면 묘비 †에서 골드 90%") },
+        note: () => T("◎은 꼭 밟고 지나가요 (밟아야 계단이 열려요) · 마을 가운데 ◎에서 그 층부터 · 쓰러지면 묘비 †에서 골드 90%") },
     };
     const ORDER = ["intro", "dungeon", "gear", "heal", "waypoint"];
     const read = (k) => { try { return JSON.parse(store.get(k)) || []; } catch { return []; } };
@@ -1712,7 +1712,7 @@
   let lastDeath = null;
   const markLastSpot = () => { lastDeath = { d: depth, z: player.zone || "normal", ...(player.gn ? { gn: player.gn } : {}) }; };
   // 웨이포인트 (dc#97): 일반 던전 25·50·75층, 나이트메어·헬 10·20·30·40·50층. 그 층 시작 자리 옆 웨이포인트(◎)를 밟으면 활성화
-  // → 마을 왼쪽 끝 웨이포인트에서 활성화한 층부터 바로 시작. 새로 시작해도 남음 (시즌이 바뀌면 처음부터)
+  // → 마을 가운데 웨이포인트에서 활성화한 층부터 바로 시작. 새로 시작해도 남음 (시즌이 바뀌면 처음부터)
   const WAYPOINTS = { normal: [10, 20, 30, 40, 50], nm: [10, 20, 30, 40, 50], hell: [10, 20, 30, 40, 50] };
   const WP_COLOR = "#5fd4ff";
   let waypoints = { normal: [], nm: [], hell: [] };
@@ -1822,7 +1822,7 @@
   const ELITE_COLOR = "#ffcf5c";
   const SHOP_COLOR = "#5ee7ff";
   // 로비 건물 벽돌색 [벽, 줄눈]
-  const BUILDING_COLORS = { jumptower: ["#2a3550", "#1c2438"], market: ["#24443f", "#1a302c"], nightmare: ["#2e1a3a", "#1f1028"], hourshop: ["#1d3a44", "#132a32"], golddungeon: ["#4a3d16", "#33290c"], forge: ["#42291c", "#2c1a10"] };
+  const BUILDING_COLORS = { market: ["#24443f", "#1a302c"], nightmare: ["#2e1a3a", "#1f1028"], hourshop: ["#1d3a44", "#132a32"], golddungeon: ["#4a3d16", "#33290c"], forge: ["#42291c", "#2c1a10"] };
   const FORGE_COLOR = "#ff9f5c";
   const bossAlive = () => enemies.some(e => e.kind === "boss");
 
@@ -2091,7 +2091,7 @@
     const z = wpZone();
     if (!z || waypoints[z].includes(depth)) return;
     waypoints[z] = [...waypoints[z], depth].sort((a, b) => a - b);
-    log(T("◎ 웨이포인트 활성화! 이제 마을 왼쪽 끝 웨이포인트에서 언제든 {0}부터 시작할 수 있다.", floorName()), "rainbow");
+    log(T("◎ 웨이포인트 활성화! 이제 마을 가운데 웨이포인트에서 언제든 {0}부터 시작할 수 있다.", floorName()), "rainbow");
     Sfx("waypoint");
     Tips.step("wp");
     showDamage(player, T("웨이포인트"), true, WP_COLOR);
@@ -3559,7 +3559,7 @@
       portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
       clear: [T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
       death: [T("로비에서 새로 시작한다. 골드는 처음으로 돌아갔고, 레벨과 장비는 그대로다."), "info"],
-      start: [T("로비에 들어왔다. 던전 입구는 1층부터, 마을 왼쪽 끝 웨이포인트는 밟아 둔 층부터 들어간다.{0}", backTo()), "info"],
+      start: [T("로비에 들어왔다. 던전 입구는 1층부터, 마을 가운데 웨이포인트는 밟아 둔 층부터 들어간다.{0}", backTo()), "info"],
     }[from];
     log(msg[0], msg[1]);
     render();
@@ -4545,7 +4545,7 @@
   // 시험판이라 지금 판(던전 진행)과 따로: HP는 들어올 때 가득, 쓰러지면 이 층을 처음부터. 경험치·골드·아이템은 아직 없음
   const Tower = (() => {
     const J = window.RLJump, STEP = 1 / 120, ZT = 2, TURN = 0.5;   // 화면은 가까이 보기처럼 2배 (16×12칸)
-    let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0, lastDoubled = 0;
+    let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0, lastDoubled = 0, lastJumped = 0;
     let burn = null, slowTo = 0, iceFree = 0;   // 헬 몬스터 원소: 화상 { dmg, left, next }, 느려짐(턴까지), 얼음 면역(턴까지)
     let mobs = [], hp = 0, maxHp = 1, turnAcc = 0, turnN = 0, cd = {}, pops = [], fx = [], hurtT = -1, portalOpen = false;
     const held = { left: false, right: false, up: false, down: false, jump: false };
@@ -4582,7 +4582,7 @@
       map = J.parse(J.MAPS[mapId].rows);
       restart();
       best = Number(store.get(bestKey())) || null;
-      Town.place(id === "hell50" ? "towerHell" : "jumptower");   // 나오면 들어간 문 앞
+      Town.place("towerHell");   // 나오면 들어간 문 앞
       closeShop();
       setScene("jump");
       updateStats();
@@ -4595,7 +4595,7 @@
     }
     // 층을 처음부터: 몬스터 새로, HP 가득
     function restart() {
-      st = J.newState(map); cleared = null; lastLanded = 0; lastDoubled = 0; for (const k in held) held[k] = false;
+      st = J.newState(map); cleared = null; lastLanded = 0; lastDoubled = 0; lastJumped = 0; for (const k in held) held[k] = false;
       const depth = J.MAPS[mapId].depth;
       // 헬: 던전 헬과 같은 몬스터 (나이트메어 종류, 원소, 정예 확률 그대로). 보스·네임드는 아직 없음
       const make = () => (hell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), Math.random() < RLMonsters.eliteChance(NM.base) ? "elite" : "normal", depth)
@@ -4639,7 +4639,8 @@
         }
         if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
         // 더블 점프: 발밑에 하얀 고리
-        if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; fx.push({ kind: "ring", x: st.x, y: st.y, r: 0.7, color: "rgba(255, 255, 255, 0.85)", t0: performance.now() }); }
+        if (st.jumped !== lastJumped) { lastJumped = st.jumped; Sfx("jump"); }
+        if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; Sfx("jump2"); fx.push({ kind: "ring", x: st.x, y: st.y, r: 0.7, color: "rgba(255, 255, 255, 0.85)", t0: performance.now() }); }
         if (portalOpen && !cleared && Math.abs(st.x - map.portal.x) < 0.8 && Math.abs(st.y - map.portal.y) < 0.6) clear();
         // 시간차 일, 날아가는 화염구
         const now = performance.now();
@@ -5014,7 +5015,7 @@
   // 다른 사람은 받은 x 자리의 바닥에 (기사 그림), 나는 낀 장비 그림. 서버에는 x(0~63칸)·y(바닥 10)로 알림
   const Town = (() => {
     const J = window.RLJump, TW = J?.TOWN, STEP = 1 / 120, ZT = 2, G = TW?.ground ?? 10;
-    let map = null, st = null, raf = 0, last = 0, acc = 0, lastDraw = 0, landT = -1, lastLanded = 0, lastDoubled = 0, fx = [];
+    let map = null, st = null, raf = 0, last = 0, acc = 0, lastDraw = 0, landT = -1, lastLanded = 0, lastDoubled = 0, lastJumped = 0, fx = [];
     const held = { left: false, right: false, up: false, down: false, jump: false };
     let jumpTap = false;
     const seen = new Map();   // 다른 사람이 보는 쪽 (지난 x와 비교)
@@ -5055,7 +5056,8 @@
       acc += dt;
       while (acc >= STEP) { J.step(map, st, input(), STEP); acc -= STEP; }
       if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
-      if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; fx.push({ x: st.x, y: st.y, t0: performance.now() }); }
+      if (st.jumped !== lastJumped) { lastJumped = st.jumped; Sfx("jump"); }   // 점프 소리 (dc#100)
+      if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; Sfx("jump2"); fx.push({ x: st.x, y: st.y, t0: performance.now() }); }
       sync();
       Lobby.step(dt);
       // 움직이는 중이면 매 프레임, 서 있으면 초당 20번 (불빛·다른 사람 움직임) — 휴대폰 배터리
@@ -5071,7 +5073,6 @@
         case "start": enterDungeon("start"); break;
         case "resume": enterDungeon("resume"); break;
         case "towerHell": Tower.enter("hell50"); break;
-        case "jumptower": Tower.enter("hunt1"); break;
         case "market": openMarket("buy"); break;
         case "mailbox": openMarket("mail"); break;
         case "hourshop": openHourShop(); break;
@@ -5149,8 +5150,8 @@
         ctx.fillStyle = mortar; ctx.fillRect(x * TILE + TILE / 2 - 0.5, top + TILE * 0.9, 1, TILE * 0.7);
       }
       // 간판 (건물 이름)
-      const name = { jumptower: T("점프 던전"), forge: T("대장간"), market: T("거래소"), hourshop: T("{0} {1}분", T("시간 상점"), HourShop.minutesLeft()), gate: T("던전 입구"), golddungeon: T("골드 던전"), nightmare: T("나이트메어") }[b.id];
-      const color = { jumptower: "#8fd3ff", forge: FORGE_COLOR, market: "#5ee7c8", hourshop: SHOP_COLOR, gate: "#ffcf5c", golddungeon: cleared ? "#ffcf5c" : "#7a6a3a", nightmare: cleared ? "#d07bff" : "#7a5a8a" }[b.id];
+      const name = { forge: T("대장간"), market: T("거래소"), hourshop: T("{0} {1}분", T("시간 상점"), HourShop.minutesLeft()), gate: T("던전 입구"), golddungeon: T("골드 던전"), nightmare: T("나이트메어") }[b.id];
+      const color = { forge: FORGE_COLOR, market: "#5ee7c8", hourshop: SHOP_COLOR, gate: "#ffcf5c", golddungeon: cleared ? "#ffcf5c" : "#7a6a3a", nightmare: cleared ? "#d07bff" : "#7a5a8a" }[b.id];
       if (name) {
         ctx.font = 'bold 9px "Courier New", monospace';
         const tw = ctx.measureText(name).width + 10, sy = top + 3;
@@ -5171,7 +5172,6 @@
         case "nightmare50": return { open: nmOpen, color: nmOpen ? (reduceMotion ? "#ff6bd3" : rainbowColor(d.x)) : "#7a5a8a", label: nmOpen ? T("{0}층 룬", NM.floors) : T("닫힘") };
         case "hell": return { open: nmOpen, color: nmOpen ? fire : "#6a3a30", label: nmOpen ? T("1층") : T("닫힘") };
         case "hellPick": { const o = nmOpen && hellMilestones().length > 0; return { open: o, color: o ? fire : "#6a3a30", label: o ? T("층 고르기") : T("닫힘") }; }
-        case "jumptower": return { open: true, color: "#8fd3ff" };
         case "forge": return { open: true, color: FORGE_COLOR };
         case "market": return { open: true, color: "#5ee7c8" };
         case "hourshop": return { open: true, color: SHOP_COLOR };

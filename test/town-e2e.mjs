@@ -60,7 +60,7 @@ try {
   check("Space jumps (> 2.5 tiles) and lands back on the ground", h1 > 2.5 && (await pos(N.page)).ground && (await pos(N.page)).y === 10, String(h1));
   check("Space again in the air = double jump (higher)", h2 > h1 + 1.5, `${h1} → ${h2}`);
   // 벽: 끝까지 걸어도 마을 밖으로 안 나감 (서버 칸 0~63)
-  await goDoor(N.page, "jumptower", { enter: false }); await hold(N.page, "ArrowLeft", 1500); await sleep(200);
+  await goDoor(N.page, "forge", { enter: false }); await hold(N.page, "ArrowLeft", 1500); await sleep(200);
   p = await pos(N.page);
   check("left wall stops you inside the town", p.x >= 1 && p.x < 2 && (await st(N.page)).lx >= 0, String(p.x));
   await N.page.screenshot({ path: path.join(SHOTS, "town-left.png") });
@@ -89,13 +89,16 @@ try {
     await goDoor(N.page, id);
     check(`closed door ${id}: stays in the town with a note`, await inLobby(N.page) && (await logText(N.page)).includes(msg), (await logText(N.page)).split("\n").slice(-1)[0]);
   }
+  // 웨이포인트는 마을 정가운데 (dc#100): 폭 64칸의 가운데, 왼쪽은 던전 입구, 오른쪽은 골드 던전
+  check("waypoint stands in the middle of the town (between the dungeon gate and the gold dungeon)", await N.page.evaluate(() => { const T = window.RLJump.TOWN, w = T.rows[0].length, wp = T.doors.find(d => d.id === "waypoint"), b = (id) => T.buildings.find(x => x.id === id);
+    return Math.abs(wp.x - w / 2) <= 0.5 && b("gate").x1 < wp.x && b("golddungeon").x0 > wp.x; }));
   // 파란 포탈 문: 돌아갈 층이 없으면 안 보이고, 그 자리에 서도 문이 아님
   await goDoor(N.page, "resume", { enter: false });
   check("no portal floor: no blue portal door", (await pos(N.page)).near === null && (await st(N.page)).resume === 0);
   await N.page.keyboard.press("ArrowUp"); await sleep(150);
   check("↑ there does nothing", await inLobby(N.page));
-  // 점프 던전은 운영자만 (dc#96): 다른 사람은 그 자리에 문이 없어 ↑ 해도 마을 그대로 (운영자 입장은 tower-e2e)
-  await goDoor(N.page, "jumptower");
+  // 점프 던전(헬 50층 시험)은 운영자만 (dc#96, dc#100 왼쪽 끝 한 칸 문): 다른 사람은 문이 없어 ↑ 해도 마을 그대로 (운영자 입장은 tower-e2e)
+  await goDoor(N.page, "towerHell");
   check("점프 던전 door is staff-only: ↑ there stays in the town", !(await N.page.evaluate(() => document.body.classList.contains("in-tower"))) && await inLobby(N.page) && (await pos(N.page)).near === null);
   // Enter도 들어가기: 1층 문
   await goDoor(N.page, "start", { enter: false });

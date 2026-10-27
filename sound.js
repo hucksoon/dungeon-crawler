@@ -153,6 +153,9 @@
     whirl() { noise("bandpass", 500, 1800, 0.14, 0.22, 0, sfxBus, 1.3); noise("bandpass", 1800, 500, 0.14, 0.2, 0.12, sfxBus, 1.3); },
     // 처치 폭발
     blast() { noise("lowpass", 1600, 80, 0.45, 0.42); tone("sine", 140, 40, 0.35, 0.3); },
+    // 점프 (dc#100): 마리오처럼 위로 '뿅' 미끄러지는 네모파. 공중 점프(더블 점프)는 더 높고 짧게
+    jump() { tone("square", 260, 1040, 0.16, 0.22, 0, sfxBus, { lp: 3500 }); },
+    jump2() { tone("square", 520, 1560, 0.12, 0.2, 0, sfxBus, { lp: 4000 }); tone("triangle", 1560, 2080, 0.08, 0.1, 0.05); },
     // ---- 아이템·진행 ----
     gold() { tone("square", 988, 988, 0.07, 0.07, 0, sfxBus, { lp: 3500 }); tone("square", 1319, 1319, 0.16, 0.07, 0.06, sfxBus, { lp: 3500 }); },
     pickup() { tone("triangle", 660, 990, 0.09, 0.12); },
@@ -175,7 +178,7 @@
     enhance() { tone("square", 400, 400, 0.05, 0.1, 0, sfxBus, { lp: 2000 }); noise("highpass", 2000, 2000, 0.05, 0.15); tone("triangle", 1500, 2400, 0.25, 0.1, 0.05); },
   };
   // 같은 소리를 다시 낼 수 있는 최소 간격 (초). 여러 마리를 한 번에 때려도 귀가 아프지 않게
-  const GAP = { hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1 };
+  const GAP = { jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1 };
 
   function play(name, ...args) {
     recent.push(name); if (recent.length > 60) recent.shift();

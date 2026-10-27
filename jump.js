@@ -48,10 +48,10 @@
     "########################################",
   ];
   // ---- 마을 (dc#90): 옆에서 보는 로비. 폭 64 × 높이 12, 바닥 윗면 y=10 (서버는 로비 위치를 0~63칸으로 받음) ----
-  // 건물은 왼쪽부터 점프 던전 · 대장간 · 거래소(+우편함) · 시간 상점 · 던전 입구 · 골드 던전 · 나이트메어 · 헬. 문 앞에서 ↑로 들어감
+  // 건물은 왼쪽부터 대장간 · 거래소(+우편함) · 시간 상점 · 던전 입구 · [가운데 웨이포인트] · 골드 던전 · 나이트메어 · 헬. 문 앞에서 ↑로 들어감
   // doors: id(하는 일), x(문 가운데), staff(운영자만 보이고 열림). buildings: x0~x1칸, h(바닥에서 몇 칸 높이), staff(운영자만 보임)
-  // 점프 던전은 운영자만 (dc#96: 평가가 좋지 않아 다른 사람에게는 건물·문을 숨김). 왼쪽 끝은 웨이포인트 (dc#97)
-  // 던전 입구의 오른쪽 문(최고 층 − 10층)·운영자 문은 웨이포인트가 생기면서 없앰 (dc#97)
+  // 웨이포인트는 자주 쓰니 마을 정가운데 (dc#100, 전에는 왼쪽 끝 dc#97). 던전 입구의 오른쪽 문(최고 층 − 10층)·운영자 문은 dc#97에서 없앰
+  // 점프 던전은 운영자만 (dc#96): 건물 없이 왼쪽 끝 한 칸 문으로 헬 50층 시험만 (dc#100)
   const TOWN_ROWS = [
     "#..............................................................#",
     "#..............................................................#",
@@ -69,19 +69,18 @@
   const TOWN = {
     rows: TOWN_ROWS, ground: 10,
     buildings: [
-      { id: "jumptower", x0: 4, x1: 7, h: 5, staff: true }, { id: "forge", x0: 9, x1: 13, h: 4 }, { id: "market", x0: 15, x1: 19, h: 4 },
-      { id: "hourshop", x0: 23, x1: 26, h: 4 }, { id: "gate", x0: 28, x1: 36, h: 6 }, { id: "golddungeon", x0: 39, x1: 43, h: 4 },
-      { id: "nightmare", x0: 45, x1: 50, h: 5 }, { id: "hell", x0: 52, x1: 61, h: 6 },
+      { id: "forge", x0: 4, x1: 8, h: 4 }, { id: "market", x0: 10, x1: 14, h: 4 }, { id: "hourshop", x0: 17, x1: 20, h: 4 },
+      { id: "gate", x0: 22, x1: 30, h: 6 }, { id: "golddungeon", x0: 35, x1: 39, h: 4 }, { id: "nightmare", x0: 41, x1: 46, h: 5 },
+      { id: "hell", x0: 49, x1: 58, h: 6 },
     ],
     doors: [
-      { id: "waypoint", x: 2.5 }, { id: "jumptower", x: 5, staff: true }, { id: "towerHell", x: 7, staff: true }, { id: "forge", x: 11.5 },
-      { id: "market", x: 17.5 }, { id: "mailbox", x: 21.5 }, { id: "hourshop", x: 24.5 },
-      { id: "start", x: 30.5 }, { id: "resume", x: 33 },
-      { id: "golddungeon", x: 40.5 }, { id: "golddungeonNM", x: 42.5 }, { id: "nightmare", x: 46.5 }, { id: "nightmare50", x: 49.5 },
-      { id: "hell", x: 54.5 }, { id: "hellPick", x: 59.5 },
+      { id: "towerHell", x: 1.5, staff: true }, { id: "forge", x: 6.5 }, { id: "market", x: 12.5 }, { id: "mailbox", x: 15.5 }, { id: "hourshop", x: 18.5 },
+      { id: "start", x: 24.5 }, { id: "resume", x: 27 }, { id: "waypoint", x: 32 },
+      { id: "golddungeon", x: 36.5 }, { id: "golddungeonNM", x: 38.5 }, { id: "nightmare", x: 42.5 }, { id: "nightmare50", x: 45.5 },
+      { id: "hell", x: 51.5 }, { id: "hellPick", x: 56.5 },
     ],
     // 처음 들어올 때 서는 곳 (이 사이 아무 데나)
-    spawn: [20, 40],
+    spawn: [26, 38],
   };
 
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)
