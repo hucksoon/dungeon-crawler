@@ -5,13 +5,34 @@
 //   몬스터·아이템은 늘 나를 보는 그림(빌보드). 그림은 빛을 받지 않아서 횃불과 같은 비율로 거리에 따라 직접 어둡게
 //   index.html의 View3D가 import()로 처음 3D를 켤 때만 불러옴 (2D로 하는 사람은 받지 않음)
 import * as THREE from "./vendor/three/three.module.min.js";
+import { GLTFLoader } from "./vendor/three/addons/loaders/GLTFLoader.js";
+import { EffectComposer } from "./vendor/three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "./vendor/three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "./vendor/three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "./vendor/three/addons/postprocessing/OutputPass.js";
 
 export const WALL_H = 1.5, EYE = 0.62;
 const AMBIENT = { normal: [0x5a6070, 0.85], nm: [0x5a3d80, 0.9], hell: [0x8a3018, 1.0], gold: [0x7a6420, 0.9] };
 const FOG = { normal: 0.2, nm: 0.22, hell: 0.2, gold: 0.18 };
 const TORCH = { color: 0xffb36b, intensity: 4.2, distance: 10, decay: 1.05 };
 
-export function createView(host, { sheet, S, before = null }) {
+// 손에 드는 무기 (dc#112): KayKit Fantasy Weapons Bits (CC0) 모델. 종류 · 등급 → 모델, 화면에서의 높이(1인칭 카메라 기준)
+//   등급이 높을수록 더 화려한 모양. 모델은 손잡이가 원점, 위(+y)로 서 있음
+const WEAPON_MODELS = {
+  longsword: [["sword_A", "common", "uncommon"], ["sword_B", "rare"], ["sword_C", "epic"], ["sword_D", "legendary", "set"], ["sword_E", "unique"]],
+  axe: [["axe_A", "common", "uncommon", "rare"], ["axe_C", "epic"], ["axe_B", "legendary", "set", "unique"]],
+  dagger: [["dagger_A", "common", "uncommon", "rare"], ["dagger_B", "epic", "legendary", "set", "unique"]],
+  staff: [["staff_A", "common", "uncommon", "rare"], ["staff_B", "epic", "legendary", "set", "unique"]],
+  shield: [["shield_A", "common", "uncommon", "rare"], ["shield_B", "epic"], ["shield_C", "legendary", "set", "unique"]],
+};
+const WEAPON_SIZE = { longsword: 0.56, axe: 0.46, dagger: 0.34, staff: 0.72, shield: 0.32 };
+export function weaponModel(type, rarity) {
+  const list = WEAPON_MODELS[type];
+  if (!list) return null;
+  return (list.find(([, ...r]) => r.includes(rarity)) || list[0])[0];
+}
+
+export function createView(host, { sheet, S, before = null, bloom = true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -186,10 +207,17 @@ export function createView(host, { sheet, S, before = null }) {
 
   // ---- 번쩍임 (스킬·맞음): 잠깐 커지며 사라지는 빛 ----
   const flashes = [];
+  // 이펙트는 몬스터 그림(같은 자리의 빌보드)에 가려지지 않게 카메라 쪽으로 조금 당김
+  function toCam(px, pz, d = 0.4) {
+    const dx = camera.position.x - px, dz = camera.position.z - pz, l = Math.hypot(dx, dz) || 1;
+    return [px + dx / l * Math.min(d, l * 0.5), pz + dz / l * Math.min(d, l * 0.5)];
+  }
   function burst(x, y, color, r = 1, ms = 420, h = 0.5) {
     const s = glowObj();
     s.material.color.set(color);
-    s.position.set(x + 0.5, h, y + 0.5);
+    const [px, pz] = toCam(x + 0.5, y + 0.5);
+    s.position.set(px, h, pz);
+    s.renderOrder = 5;
     scene.add(s);
     flashes.push({ s, t0: performance.now(), ms, r });
   }
@@ -204,7 +232,39 @@ export function createView(host, { sheet, S, before = null }) {
     scene.add(line);
     flashes.push({ s: line, t0: performance.now(), ms: 280, line: true });
   }
+  // 속성 입자 (dc#111): flame 불꽃(위로 피어오름) · shard 얼음 조각(튀었다 떨어짐) · spark 전기(빠르게 번쩍)
+  const parts = [];
+  function sparks(x, y, color, kind = "flame", n = 8) {
+    for (let i = 0; i < n; i++) {
+      const s = glowObj();
+      s.material.color.set(color);
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 0.25, [cx, cz] = toCam(x + 0.5, y + 0.5, 0.3);
+      s.position.set(cx + Math.cos(a) * r, 0.25 + Math.random() * 0.5, cz + Math.sin(a) * r);
+      s.renderOrder = 5;
+      const sp = kind === "shard" ? 1.4 : kind === "spark" ? 2.2 : 0.35;
+      const v = kind === "flame" ? [Math.cos(a) * 0.15, 0.9 + Math.random() * 0.6, Math.sin(a) * 0.15]
+        : [Math.cos(a) * sp * Math.random(), kind === "shard" ? 0.8 + Math.random() : (Math.random() - 0.5) * 2, Math.sin(a) * sp * Math.random()];
+      const size = kind === "spark" ? 0.09 + Math.random() * 0.05 : kind === "shard" ? 0.09 + Math.random() * 0.05 : 0.14 + Math.random() * 0.08;
+      s.scale.set(size, size, 1);
+      scene.add(s);
+      parts.push({ s, v, kind, size, t0: performance.now(), ms: kind === "spark" ? 380 + Math.random() * 200 : kind === "shard" ? 700 : 700 + Math.random() * 300 });
+    }
+  }
+  function tickParts(now, dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i], k = (now - p.t0) / p.ms;
+      if (k >= 1) { scene.remove(p.s); p.s.material.dispose(); parts.splice(i, 1); continue; }
+      if (p.kind === "shard") p.v[1] -= 4 * dt;   // 얼음 조각은 떨어짐
+      if (p.kind === "spark" && Math.random() < 0.4) p.v = [(Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3];   // 전기는 이리저리 튐
+      p.s.position.x += p.v[0] * dt; p.s.position.y = Math.max(0.03, p.s.position.y + p.v[1] * dt); p.s.position.z += p.v[2] * dt;
+      const sz = p.size * (p.kind === "flame" ? 1 - k * 0.7 : 1);
+      p.s.scale.set(sz, sz, 1);
+      p.s.material.opacity = (p.kind === "spark" ? (Math.random() < 0.7 ? 0.9 : 0.2) : 1 - k) * 0.85;
+    }
+  }
+  let lastT = performance.now();
   function tickFlashes(now) {
+    tickParts(now, Math.min(0.1, (now - lastT) / 1000)); lastT = now;
     for (let i = flashes.length - 1; i >= 0; i--) {
       const f = flashes[i], p = (now - f.t0) / f.ms;
       if (p >= 1) { scene.remove(f.s); f.s.material.dispose(); f.s.geometry?.dispose?.(); flashes.splice(i, 1); continue; }
@@ -213,11 +273,91 @@ export function createView(host, { sheet, S, before = null }) {
     }
   }
 
-  // ---- 그리기 ----
+  // ---- 손에 든 무기 (dc#112): 따로 그리는 장면(1인칭 손). 벽에 파묻히지 않게 던전 위에 덧그림 ----
+  const vm = new THREE.Scene(), vmCam = new THREE.PerspectiveCamera(55, 4 / 3, 0.01, 10);
+  const vmAmb = new THREE.AmbientLight(0xffffff, 0.9), vmTorch = new THREE.PointLight(0xffb36b, 2.2, 3, 1.2), vmGlow = new THREE.PointLight(0xffffff, 0, 1.2, 1.5);
+  vmTorch.position.set(0.5, 0.2, 0.1); vm.add(vmAmb, vmTorch, vmGlow);
+  const loader = new GLTFLoader(), models = new Map();
+  const loadModel = (name) => {
+    if (!models.has(name)) models.set(name, new Promise(ok => loader.load(`models/weapons/${name}.gltf`, g => ok(g.scene), undefined, () => ok(null))));
+    return models.get(name);
+  };
+  // 오른손·왼손: 손 위치(rest)와 지금 든 것 { key, obj, mats }
+  const hands = { r: { key: null, obj: null, mats: [], want: null, root: new THREE.Group() }, l: { key: null, obj: null, mats: [], want: null, root: new THREE.Group() } };
+  vm.add(hands.r.root, hands.l.root);
+  // 장갑 낀 주먹 (손잡이를 쥔 자리): 어두운 가죽 상자 두 개
+  const fist = () => {
+    const g = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: 0x3a281c }), m2 = new THREE.MeshLambertMaterial({ color: 0x4f535c });
+    const a = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.065, 0.07), m); g.add(a);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.08, 0.075), m2); b.position.set(0, -0.07, 0.02); g.add(b);   // 손목 보호대
+    return g;
+  };
+  const fistR = fist(), fistL = fist();
+  hands.r.root.add(fistR); hands.l.root.add(fistL);
+  // 무기 바꾸기: type(longsword…shield)·rarity → 모델. 불러오는 동안은 예전 것 그대로
+  function setHand(side, item) {
+    const h = hands[side], name = item ? weaponModel(item.type, item.rarity) : null, key = name && `${name}|${item.type}`;
+    if (key === h.want) return;
+    h.want = key;
+    if (!key) { if (h.obj) h.root.remove(h.obj); h.obj = null; h.key = null; h.mats = []; return; }
+    loadModel(name).then(src => {
+      if (h.want !== key || !src) return;
+      if (h.obj) h.root.remove(h.obj);
+      const obj = src.clone(true), box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3());
+      obj.scale.setScalar((WEAPON_SIZE[item.type] || 0.5) / Math.max(size.y, 0.01));
+      h.mats = [];
+      obj.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); h.mats.push(o.material); } });   // 속성 빛을 손마다 따로
+      h.root.add(obj); h.obj = obj; h.key = key; h.type = item.type;
+    });
+  }
+  // 손 자세 (카메라 기준 좌표). p: { kr 오른손 휘두름 0~1, kl 왼손, kb 방패 막기, bob, glowR/glowL 속성 색, t 시간 }
+  function poseHands(p) {
+    const t = p.t / 1000, sway = Math.sin(t * 1.3) * 0.006, bob = (p.bob || 0) * 0.6;
+    const R = hands.r, L = hands.l;
+    // 오른손: 비스듬히 세워 들고, 휘두르면 오른쪽 위에서 왼쪽 아래로 베어 내림
+    const kr = p.kr || 0;
+    R.root.visible = !!R.obj;
+    R.root.position.set(0.24 - 0.2 * kr, -0.27 + bob + sway + 0.06 * Math.sin(kr * Math.PI), -0.6 - 0.1 * kr);
+    R.root.rotation.set(-0.25 - 1.5 * kr, 0.3 - 0.5 * kr, -0.3 + 1.1 * kr);
+    // 왼손: 방패는 앞을 막듯이, 막으면 가운데로 들어 올림. 보조 무기는 오른손의 거울
+    const kb = p.kb || 0, kl = p.kl || 0;
+    L.root.visible = !!L.obj;
+    if (L.type === "shield") {
+      L.root.position.set(-0.3 + 0.27 * kb, -0.3 + 0.18 * kb + bob - sway, -0.68 + 0.12 * kb);
+      L.root.rotation.set(0.05 - 0.15 * kb, 0.55 - 0.55 * kb, 0.05);
+      fistL.position.set(0, 0, 0.06);
+    } else {
+      L.root.position.set(-0.24 + 0.2 * kl, -0.27 + bob - sway + 0.06 * Math.sin(kl * Math.PI), -0.6 - 0.1 * kl);
+      L.root.rotation.set(-0.25 - 1.5 * kl, -0.3 + 0.5 * kl, 0.3 - 1.1 * kl);
+      fistL.position.set(0, 0, 0);
+    }
+    // 속성 빛: 무기가 그 색으로 달아오르고(번쩍임 섞어) 주변을 비춤
+    const glow = (h, c) => { for (const m of h.mats) { if (c) { m.emissive.set(c); m.emissiveIntensity = 0.28 + 0.12 * Math.sin(t * 6 + (h === L ? 1 : 0)); } else m.emissive.setRGB(0, 0, 0); } };
+    glow(R, p.glowR); glow(L, p.glowL);
+    const gc = p.glowR || p.glowL;
+    vmGlow.intensity = gc ? 0.9 + 0.3 * Math.sin(t * 6) : 0;
+    if (gc) { vmGlow.color.set(gc); vmGlow.position.set(p.glowR ? 0.25 : -0.25, -0.1, -0.5); }
+    vmTorch.intensity = 2.2 * (p.torch ?? 1);
+  }
+
+  // ---- 그리기: 던전 → 손(깊이만 지우고 위에) → 빛 번짐(블룸) → 색 변환 ----
+  let composer = null, bloomPass = null;
+  if (bloom) {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const handPass = new RenderPass(vm, vmCam); handPass.clear = false; handPass.clearDepth = true;
+    composer.addPass(handPass);
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(320, 240), 0.55, 0.3, 0.82);   // 세기 · 퍼짐 · 밝은 곳만(문턱)
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+  }
   let w0 = 0, h0 = 0;
   function fit() {
     const w = Math.round(canvas.parentElement ? canvas.clientWidth || host.clientWidth : 640), h = Math.round(w * 0.75);
-    if (w && (w !== w0 || h !== h0)) { w0 = w; h0 = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+    if (w && (w !== w0 || h !== h0)) {
+      w0 = w; h0 = h; renderer.setSize(w, h, false); camera.aspect = vmCam.aspect = w / h; camera.updateProjectionMatrix(); vmCam.updateProjectionMatrix();
+      if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); bloomPass.resolution.set(w / 2, h / 2); }
+    }
   }
   // st: { x, y (칸 단위, 소수), yaw (0 = 위쪽(−y), 오른쪽으로 돌면 +), pitch, bob, torch(0~1 일렁임), bills: [...] }
   function frame(st) {
@@ -231,7 +371,12 @@ export function createView(host, { sheet, S, before = null }) {
     syncBills(st.bills || [], st.x, st.y);
     alignBars();
     tickFlashes(performance.now());
-    renderer.render(scene, camera);
+    if (st.hands) { setHand("r", st.hands.right); setHand("l", st.hands.left); poseHands({ ...st.hands, bob: st.bob, torch: st.torch, t: performance.now() }); }
+    if (composer) composer.render();
+    else {
+      renderer.autoClear = true; renderer.render(scene, camera);
+      renderer.autoClear = false; renderer.clearDepth(); renderer.render(vm, vmCam); renderer.autoClear = true;
+    }
   }
   // 3D의 한 점(칸 x, y, 높이 h) → 캔버스 안의 화면 좌표 (뒤에 있으면 null)
   const v3 = new THREE.Vector3();
@@ -245,5 +390,10 @@ export function createView(host, { sheet, S, before = null }) {
     renderer.dispose();
     canvas.remove();
   }
-  return { canvas, setLevel, frame, project, burst, bolt, dispose, renderer };
+  return { canvas, setLevel, frame, project, burst, bolt, sparks, dispose, renderer, get partCount() { return parts.length; },
+    // 손에 든 모델 (시험용): 오른손·왼손 모델 이름, 다 불러왔는지
+    get hands() {
+      return { r: hands.r.key, l: hands.l.key, ready: hands.r.key === hands.r.want && hands.l.key === hands.l.want, bloom: !!composer,
+        glow: vmGlow.intensity > 0 ? "#" + vmGlow.color.getHexString() : null, lx: hands.l.root.position.x, lrx: hands.l.root.rotation.x, rrx: hands.r.root.rotation.x };
+    } };
 }

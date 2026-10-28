@@ -93,6 +93,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.addInitScript(([seed, dev, scene, N, lang, auth]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", scene);
     localStorage.setItem("rl_device_id", dev); for (const k of N) localStorage.setItem(`${k}:g:${dev}`, "1");
     localStorage.setItem("rl_game_lang", lang); localStorage.setItem("rl_lang", lang); if (auth) localStorage.setItem("rl_auth", auth);
+    if (!("rl_3d" in seed)) localStorage.setItem("rl_3d", "0");   // 3D가 기본이 된 뒤(dc#111)에도 예전 장면은 2D로 (3D 장면은 seed에 rl_3d "1")
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v); }, [seed, dev, scene, NOTICES, lang, auth]);
   await page.goto(ORIGIN + file); await sleep(900);
   return { ctx, page, errors };
@@ -115,7 +116,7 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
 // 3D 화면 (dc#109): 시작 자리에서 가장 길게 트인 쪽에 몬스터를 세우고 그쪽을 봄. 시간이 흐르니 몬스터가 다가옴
 async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" } = {}) {
   const o = await open({ ...opts, seed: { ...opts.seed, rl_3d: "1", rl_3dmap: map } });
-  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.waitForFunction(() => window.RLView3D?.ready && localStorage.getItem("rl_level"), null, { timeout: 15000 });   // 층이 저장될 때까지 (첫 턴)
   await o.page.evaluate(([mobs, reveal]) => {
     const L = JSON.parse(localStorage.getItem("rl_level")), W = 32, open = (x, y) => x > 0 && y > 0 && x < W - 1 && L.map[y * W + x] !== "0";
     // 지도 그림용: 시작 자리에서 가까운 곳(약 14칸)까지 둘러본 것처럼
@@ -132,6 +133,7 @@ async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" }
   }, [mobs, reveal]);
   await o.page.reload();
   await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.waitForFunction(() => window.RLView3D.hands?.ready, null, { timeout: 15000 }).catch(() => {});   // 손에 든 3D 무기까지
   await o.page.evaluate(() => window.RLView3D.look(Number(localStorage.getItem("blog_yaw")), -0.05));
   await sleep(wait);
   return { ...o, shot: "#stage" };
@@ -180,6 +182,19 @@ const SCENES = [
     await o.page.keyboard.press("Space"); await sleep(140); return { ...o, nowait: true }; }],
   ["view3d-map", "3D 화면에 겹쳐 보는 지도: Tab으로 작게 → 크게 → 끄기", async () => view3d({ seed: { rl_save: save(12, "blog-3dm", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }], { wait: 700, reveal: true, map: "big" })],
+  // 손에 든 장비 (dc#111): 번개 피해가 붙은 장검(노란 빛)과 방패. 때리면 번개가 튀고 숫자도 번개 색
+  ["view3d-elem", "3D 화면: 속성 무기는 그 색으로 빛나고, 때리면 불꽃·얼음 조각·전기가 튀어요", async () => {
+    const pick = (pred) => { for (let i = 0; i < 20000; i++) { const it = I.generate(`blog3d|n10|k${i}`, "boss", 90); if (pred(it)) return it; } };
+    const w = pick(it => it.slot === "weapon" && it.lines.some(([k]) => k === "boltDmg")), sh = pick(it => it.type === "shield");
+    const o = await view3d({ seed: { rl_save: save(12, "blog-3de", { hp: 2000, mh: 2000, a: 300 }), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: { ...Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), weapon: w, offhand: sh }, log: [], stones: 0 }) } },
+      [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 1 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, at: 2, burn: { at: 1, left: 99, dmg: 1 } }], { wait: 500 });
+    await o.page.keyboard.press("Space"); await sleep(90); return { ...o, nowait: true }; }],
+  ["view3d-block", "3D 화면: 방패로 막으면 방패를 들어 올려요", async () => {
+    const pick = (pred) => { for (let i = 0; i < 20000; i++) { const it = I.generate(`blog3d|n10|k${i}`, "boss", 90); if (pred(it)) return it; } };
+    const w = pick(it => it.slot === "weapon" && it.type === "axe"), sh = pick(it => it.type === "shield");
+    const o = await view3d({ seed: { rl_save: save(12, "blog-3db", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: { ...Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), weapon: w, offhand: sh }, log: [], stones: 0 }) } },
+      [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 1 }], { wait: 400 });
+    await o.page.evaluate(() => window.RLView3D.fx("block")); await sleep(200); return { ...o, nowait: true }; }],
   ["view3d-hell", "3D 화면: 헬 던전은 붉은 빛", async () => view3d({ seed: { rl_save: save(10, "blog-3dh", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } },
     [{ ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5, at: 4 }], { wait: 700 })],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],

@@ -17,7 +17,14 @@
 
 - **three.js** r170 — MIT 라이선스 (`vendor/three/three.module.min.js`, 라이선스 전문 `vendor/three/LICENSE`)
   - 출처: https://threejs.org · https://www.npmjs.com/package/three
+  - 같이 쓰는 three.js 예제 모듈(MIT): GLTFLoader · BufferGeometryUtils · EffectComposer · RenderPass · UnrealBloomPass · OutputPass (`vendor/three/addons/`, `'three'` 가져오기만 상대 경로로 바꿈)
 - 3D 벽·바닥·몬스터·아이템 그림은 위의 픽셀 그림(`img/sprites.png`)을 그대로 씀
+
+## 3D 모델
+
+- **KayKit: Fantasy Weapons Bits 1.0** — Kay Lousberg (www.kaylousberg.com), CC0 (`models/weapons/`, 라이선스 `models/weapons/LICENSE-KayKit-FantasyWeaponsBits.txt`)
+  - 1인칭 손에 드는 검·도끼·단검·지팡이·방패 (dc#112)
+  - CC0이라 표시 의무는 없지만, 만든 사람이 부탁한 대로 이름을 남겨요
 
 ## 소리 (`sound.js`)
 
