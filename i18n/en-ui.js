@@ -1158,5 +1158,14 @@
     "🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.": "🎉 Bonus! ◆{0} cash arrived in your mailbox.",
     // 장비 상자 확률 공개 (dc#107)
     "장비 상자 확률": "Equipment box drop rates",
+    // 3D 화면 (dc#109)
+    "공격": "Attack",
+    "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space<br>": "3D view (beta): V &nbsp;·&nbsp; forward/back W·S &nbsp;·&nbsp; strafe A·D &nbsp;·&nbsp; look: mouse or ← → &nbsp;·&nbsp; attack: click or Space<br>",
+    "2D 화면 (V)": "2D view (V)",
+    "3D 화면 (V)": "3D view (V)",
+    "이 기기에서는 3D 화면을 쓸 수 없어서 2D로 돌아왔다.": "3D view isn't available on this device, so you're back in 2D.",
+    "3D 화면 (시험판): 화면 왼쪽을 끌면 이동, 오른쪽을 끌면 둘러보기, 공격 버튼(또는 오른쪽을 톡)으로 공격. 시간이 흐르니 몬스터가 먼저 다가온다!": "3D view (beta): drag the left side to move, drag the right side to look around, and use the Attack button (or tap the right side) to attack. Time keeps moving, so monsters will come to you!",
+    "3D 화면 (시험판): W·S 앞뒤 · A·D 옆걸음 · 마우스(또는 ← →)로 둘러보기 · 클릭·Space로 공격. 시간이 흐르니 몬스터가 먼저 다가온다!": "3D view (beta): W·S forward/back · A·D strafe · mouse (or ← →) to look around · click or Space to attack. Time keeps moving, so monsters will come to you!",
+    "2D 화면으로 돌아왔다.": "Back to the 2D view.",
   } });
 })(typeof self !== "undefined" ? self : this);

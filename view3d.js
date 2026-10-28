@@ -1,0 +1,249 @@
+// 3D 화면 (dc#109, 시험판): 던전을 1인칭 3D로 그리기만 함. 게임 규칙·상태(지도, 몬스터, 아이템, 싸움)는 index.html 그대로
+//   좌표: 1칸 = 1. 지도 칸 (x, y) → 3D (x + 0.5, 높이, y + 0.5). 벽 높이 WALL_H, 눈높이 EYE
+//   벽·바닥은 픽셀 그림 모음(img/sprites.png)의 칸을 그대로 무늬로 (가까이 가도 뭉개지지 않게 Nearest)
+//   빛: 내가 든 횃불 하나(일렁임) + 옅은 주변광 + 검은 안개 → 다크앤다커처럼 어두운 복도. 구역마다 주변광 색이 다름
+//   몬스터·아이템은 늘 나를 보는 그림(빌보드). 그림은 빛을 받지 않아서 횃불과 같은 비율로 거리에 따라 직접 어둡게
+//   index.html의 View3D가 import()로 처음 3D를 켤 때만 불러옴 (2D로 하는 사람은 받지 않음)
+import * as THREE from "./vendor/three/three.module.min.js";
+
+export const WALL_H = 1.5, EYE = 0.62;
+const AMBIENT = { normal: [0x5a6070, 0.85], nm: [0x5a3d80, 0.9], hell: [0x8a3018, 1.0], gold: [0x7a6420, 0.9] };
+const FOG = { normal: 0.2, nm: 0.22, hell: 0.2, gold: 0.18 };
+const TORCH = { color: 0xffb36b, intensity: 4.2, distance: 10, decay: 1.05 };
+
+export function createView(host, { sheet, S, before = null }) {
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const canvas = renderer.domElement;
+  canvas.id = "game3d";
+  canvas.style.removeProperty("display");   // three.js가 넣는 display: block을 빼서 CSS(던전·3D일 때만 보임)를 따름
+  host.insertBefore(canvas, before);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.FogExp2(0x000000, FOG.normal);
+  const camera = new THREE.PerspectiveCamera(72, 4 / 3, 0.05, 40);
+  camera.rotation.order = "YXZ";
+  const ambient = new THREE.AmbientLight(...AMBIENT.normal);
+  const torch = new THREE.PointLight(TORCH.color, TORCH.intensity, TORCH.distance, TORCH.decay);
+  scene.add(ambient, torch);
+
+  // ---- 무늬: 그림 모음의 한 칸 → 텍스처 (이름마다 하나) ----
+  const texCache = new Map();
+  function tex(name, repeat = false) {
+    const key = repeat ? name + "|r" : name;
+    if (texCache.has(key)) return texCache.get(key);
+    const c = S.map[name];
+    if (!c) return null;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = S.size;
+    cv.getContext("2d").drawImage(sheet, c[0] * S.size, c[1] * S.size, S.size, S.size, 0, 0, S.size, S.size);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestMipmapLinearFilter;
+    if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    texCache.set(key, t);
+    return t;
+  }
+  // 둥근 빛 (아이템 아래 등급 빛, 스킬 번쩍임)
+  const glowTex = (() => {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+    const g = cv.getContext("2d"), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.35, "rgba(255,255,255,0.55)"); r.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+
+  // ---- 층 (벽·바닥·천장·계단): 층이 바뀔 때만 다시 만듦 ----
+  let level = new THREE.Group();
+  scene.add(level);
+  const wallGeo = new THREE.BoxGeometry(1, WALL_H, 1);
+  { // 옆면 무늬를 높이만큼 반복 (늘어나 보이지 않게): 면 순서 +x, −x, +y, −y, +z, −z (면마다 꼭짓점 4개)
+    const uv = wallGeo.attributes.uv;
+    for (const f of [0, 1, 4, 5]) for (let i = 0; i < 4; i++) uv.setY(f * 4 + i, uv.getY(f * 4 + i) * WALL_H);
+    uv.needsUpdate = true;
+  }
+  const floorGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  function setLevel({ map, W, H, zone, tileVar, WALL, STAIRS }) {
+    scene.remove(level);
+    level.traverse(o => { if (o.isMesh && o.geometry !== wallGeo && o.geometry !== floorGeo) o.geometry.dispose(); if (o.material && o.material !== stairsMat) o.material.dispose?.(); });
+    level = new THREE.Group();
+    const [ac, ai] = AMBIENT[zone] || AMBIENT.normal;
+    ambient.color.setHex(ac); ambient.intensity = ai;
+    scene.fog.density = FOG[zone] || FOG.normal;
+    const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && map[y][x] !== WALL;
+    const walls = [[], [], [], []], floors = [[], [], [], []], stairs = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const v = tileVar(x, y) & 3;
+      if (map[y][x] === WALL) { if (open(x - 1, y) || open(x + 1, y) || open(x, y - 1) || open(x, y + 1)) walls[v].push([x, y]); }
+      else { floors[v].push([x, y]); if (map[y][x] === STAIRS) stairs.push([x, y]); }
+    }
+    const m4 = new THREE.Matrix4();
+    const inst = (geo, mat, cells, yy) => {
+      if (!cells.length) return;
+      const im = new THREE.InstancedMesh(geo, mat, cells.length);
+      cells.forEach(([x, y], i) => im.setMatrixAt(i, m4.makeTranslation(x + 0.5, yy, y + 0.5)));
+      im.instanceMatrix.needsUpdate = true;
+      level.add(im);
+    };
+    for (let v = 0; v < 4; v++) {
+      const wt = tex(`wall_${zone}_${v}`, true) || tex(`wall_normal_${v}`, true), ft = tex(`floor_${zone}_${v}`) || tex(`floor_normal_${v}`);
+      inst(wallGeo, new THREE.MeshLambertMaterial({ map: wt }), walls[v], WALL_H / 2);
+      inst(floorGeo, new THREE.MeshLambertMaterial({ map: ft }), floors[v], 0);
+    }
+    // 천장: 벽 무늬를 어둡게, 지도 전체에 한 장
+    const ct = (tex(`wall_${zone}_0`, true) || tex("wall_normal_0", true)).clone();
+    ct.repeat.set(W, H); ct.needsUpdate = true;
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ map: ct, color: 0x6a6258 }));
+    ceil.position.set(W / 2, WALL_H, H / 2);
+    level.add(ceil);
+    // 계단: 바닥보다 살짝 위에, 빛을 받지 않고 은은하게 밝게 (어두워도 보이게)
+    for (const [x, y] of stairs) {
+      const s = new THREE.Mesh(floorGeo, stairsMat);
+      s.position.set(x + 0.5, 0.004, y + 0.5);
+      level.add(s);
+    }
+    scene.add(level);
+  }
+  const stairsMat = new THREE.MeshBasicMaterial({ map: tex("stairs"), color: 0xffe0a0, transparent: true, alphaTest: 0.2 });
+
+  // ---- 빌보드 (몬스터·아이템·상점·웨이포인트 등): 매 프레임 목록으로 맞춤. key가 같으면 같은 그림을 다시 씀 ----
+  const bills = new Map();
+  const light = (d) => Math.max(0.1, Math.min(1, 1.5 / (1 + 0.1 * d * d)));   // 횃불 거리 감쇠와 비슷하게
+  const tmpColor = new THREE.Color();
+  function billboard(key, make) {
+    let o = bills.get(key);
+    if (!o) { o = make(); scene.add(o.root); bills.set(key, o); }
+    o.used = true;
+    return o;
+  }
+  function spriteObj(name) {
+    const root = new THREE.Group();
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(name), transparent: true, alphaTest: 0.35, fog: true }));
+    s.center.set(0.5, 0);   // 발이 바닥에
+    root.add(s);
+    return { root, s, name };
+  }
+  function bar() {
+    const g = new THREE.Group();
+    const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x000000, opacity: 0.75, transparent: true, depthTest: true, fog: false }));
+    const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x4fd16a, fog: false }));
+    fg.center.set(0, 0.5);   // 채운 부분은 왼쪽 끝 기준 (alignBars가 막대 왼쪽 끝에 놓음)
+    g.add(bg, fg);
+    return { g, bg, fg };
+  }
+  function glowObj() {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true }));
+    return s;
+  }
+  // list: [{ key, sprite, x, y, w, h, flash(0~1), alpha, tint, hp(0~1|null), barColor, glow(색|null), lift }]
+  function syncBills(list, cx, cy) {
+    for (const o of bills.values()) o.used = false;
+    for (const b of list) {
+      const o = billboard(b.key, () => spriteObj(b.sprite));
+      if (o.name !== b.sprite) { const t = tex(b.sprite); if (t) { o.s.material.map = t; o.s.material.needsUpdate = true; } o.name = b.sprite; }
+      o.root.position.set(b.x + 0.5, b.lift || 0, b.y + 0.5);
+      o.s.scale.set(b.w, b.h, 1);
+      const k = light(Math.hypot(b.x + 0.5 - cx, b.y + 0.5 - cy));
+      tmpColor.setRGB(k, k * 0.92, k * 0.82);   // 횃불빛이라 살짝 노랗게
+      if (b.tint) tmpColor.multiply(new THREE.Color(b.tint));
+      if (b.flash > 0) tmpColor.lerp(new THREE.Color(1, 0.25, 0.2), Math.min(1, b.flash));
+      o.s.material.color.copy(tmpColor);
+      o.s.material.opacity = b.alpha ?? 1;
+      // HP 막대 (맞았거나 정예·보스)
+      if (b.hp != null) {
+        if (!o.bar) { o.bar = bar(); o.root.add(o.bar.g); }
+        o.bar.g.visible = true;
+        const bw = o.bar.bw = Math.max(0.4, b.w * 0.6);
+        o.bar.g.position.set(0, b.h + 0.08, 0);
+        o.bar.bg.scale.set(bw, 0.04, 1);
+        o.bar.fg.scale.set(Math.max(0.01, bw * b.hp), 0.026, 1);
+        o.bar.fg.material.color.set(b.barColor || 0x4fd16a);
+      } else if (o.bar) o.bar.g.visible = false;
+      if (b.glow) {
+        if (!o.glow) { o.glow = glowObj(); o.root.add(o.glow); }
+        o.glow.visible = true;
+        o.glow.material.color.set(b.glow);
+        o.glow.material.opacity = 0.35 + 0.25 * Math.sin(performance.now() / 300 + b.x);
+        o.glow.position.set(0, 0.06, 0);
+        o.glow.scale.set(b.w * 1.6, b.w * 0.9, 1);
+      } else if (o.glow) o.glow.visible = false;
+    }
+    for (const [k, o] of bills) if (!o.used) {
+      scene.remove(o.root);
+      o.root.traverse(c => c.material?.dispose());
+      bills.delete(k);
+    }
+  }
+  // HP 막대의 채운 부분: 막대 왼쪽 끝(화면 기준)에 놓음. 그림(Sprite)은 늘 화면과 나란해서 카메라 오른쪽 방향으로 반 칸만큼 밀면 됨
+  const right = new THREE.Vector3();
+  function alignBars() {
+    right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    for (const o of bills.values()) if (o.bar?.g.visible) o.bar.fg.position.set(-right.x * o.bar.bw / 2, -right.y * o.bar.bw / 2, -right.z * o.bar.bw / 2);
+  }
+
+  // ---- 번쩍임 (스킬·맞음): 잠깐 커지며 사라지는 빛 ----
+  const flashes = [];
+  function burst(x, y, color, r = 1, ms = 420, h = 0.5) {
+    const s = glowObj();
+    s.material.color.set(color);
+    s.position.set(x + 0.5, h, y + 0.5);
+    scene.add(s);
+    flashes.push({ s, t0: performance.now(), ms, r });
+  }
+  function bolt(a, b, color) {   // 두 칸 사이 번개 선
+    const pts = [];
+    const n = 7;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, j = i && i < n ? (Math.random() - 0.5) * 0.35 : 0;
+      pts.push(new THREE.Vector3(a.x + 0.5 + (b.x - a.x) * t + j, 0.55 + (Math.random() - 0.5) * 0.2 * (i && i < n), a.y + 0.5 + (b.y - a.y) * t - j));
+    }
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true }));
+    scene.add(line);
+    flashes.push({ s: line, t0: performance.now(), ms: 280, line: true });
+  }
+  function tickFlashes(now) {
+    for (let i = flashes.length - 1; i >= 0; i--) {
+      const f = flashes[i], p = (now - f.t0) / f.ms;
+      if (p >= 1) { scene.remove(f.s); f.s.material.dispose(); f.s.geometry?.dispose?.(); flashes.splice(i, 1); continue; }
+      if (f.line) f.s.material.opacity = 1 - p;
+      else { const k = f.r * (0.6 + 1.6 * p); f.s.scale.set(k, k, 1); f.s.material.opacity = 1 - p; }
+    }
+  }
+
+  // ---- 그리기 ----
+  let w0 = 0, h0 = 0;
+  function fit() {
+    const w = Math.round(canvas.parentElement ? canvas.clientWidth || host.clientWidth : 640), h = Math.round(w * 0.75);
+    if (w && (w !== w0 || h !== h0)) { w0 = w; h0 = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  }
+  // st: { x, y (칸 단위, 소수), yaw (0 = 위쪽(−y), 오른쪽으로 돌면 +), pitch, bob, torch(0~1 일렁임), bills: [...] }
+  function frame(st) {
+    fit();
+    camera.position.set(st.x, EYE + (st.bob || 0), st.y);
+    camera.rotation.set(st.pitch || 0, -st.yaw, st.roll || 0);
+    // 횃불: 오른손에 든 것처럼 살짝 앞·오른쪽·아래
+    const fx = Math.sin(st.yaw), fz = -Math.cos(st.yaw);
+    torch.position.set(st.x + fx * 0.25 - fz * 0.18, EYE + 0.15, st.y + fz * 0.25 + fx * 0.18);
+    torch.intensity = TORCH.intensity * (st.torch ?? 1);
+    syncBills(st.bills || [], st.x, st.y);
+    alignBars();
+    tickFlashes(performance.now());
+    renderer.render(scene, camera);
+  }
+  // 3D의 한 점(칸 x, y, 높이 h) → 캔버스 안의 화면 좌표 (뒤에 있으면 null)
+  const v3 = new THREE.Vector3();
+  function project(x, y, h = 0.8) {
+    v3.set(x, h, y).project(camera);
+    if (v3.z > 1 || v3.z < -1) return null;
+    return { x: (v3.x + 1) / 2 * canvas.clientWidth, y: (1 - v3.y) / 2 * canvas.clientHeight };
+  }
+  function dispose() {
+    for (const t of texCache.values()) t.dispose();
+    renderer.dispose();
+    canvas.remove();
+  }
+  return { canvas, setLevel, frame, project, burst, bolt, dispose, renderer };
+}
