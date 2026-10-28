@@ -717,8 +717,9 @@
   <div class="modal notice sound-modal" role="dialog" aria-modal="true" aria-labelledby="sound-title">
     <h2 id="sound-title" data-t>🔊 소리</h2>
     <label class="snd-row"><input type="checkbox" id="sfx-on"><span data-t>효과음</span><input type="range" id="sfx-vol" min="0" max="100" step="5" aria-label="효과음 크기" data-t-aria></label>
+    <label class="snd-row"><input type="checkbox" id="steps-on"><span data-t>발소리</span></label>
     <label class="snd-row"><input type="checkbox" id="bgm-on"><span data-t>배경 음악</span><input type="range" id="bgm-vol" min="0" max="100" step="5" aria-label="배경 음악 크기" data-t-aria></label>
-    <p class="meta" data-t>공격·속성·스킬·처치·좋은 장비마다 효과음이 나고, 마을·던전·나이트메어·헬·골드 던전·보스마다 배경 음악이 달라요. 설정은 이 기기에 저장돼요.</p>
+    <p class="meta" data-t>공격·속성·스킬·처치·좋은 장비마다 효과음이 나고, 마을·던전·나이트메어·헬·골드 던전·보스마다 배경 음악이 달라요. 걸을 때 발소리, 점프하고 내려설 때 착지 소리도 나요. 설정은 이 기기에 저장돼요.</p>
     <button id="sound-test" type="button" data-t>효과음 들어 보기</button>
     <button id="sound-close" type="button" data-t>닫기</button>
   </div>
@@ -855,6 +856,15 @@
   const popups = document.getElementById("popups");
   // 소리 (dc#99, sound.js): 효과음 이름으로 내기. 소리를 못 내는 환경이면 아무 일 없음
   const Sfx = (name, ...args) => window.RLSound?.play(name, ...args);
+  // 발소리 (dc#104): 옆에서 보는 마을·점프 던전. 땅을 한 칸 걸을 때마다 왼발·오른발 번갈아 (뜨거나 사다리면 쉼)
+  function footsteps(kind) {
+    let x0 = null, foot = 0;
+    return (s) => {
+      if (!s.ground || s.climbing) { x0 = null; return; }
+      if (x0 == null) x0 = s.x;
+      else if (Math.abs(s.x - x0) >= 1) { x0 = s.x; foot ^= 1; Sfx("step", foot, kind); }
+    };
+  }
 
   // 피해 숫자: 맞은 칸 위에 떠올랐다 사라짐. 치명타는 굵고 크게
   // color: 속성 피해(화상·번개 튕김)는 그 속성 색
@@ -2058,6 +2068,7 @@
   }
 
   // ---- 플레이어 액션 ----
+  let stepFoot = 0;   // 던전 발소리: 왼발·오른발
   function tryMove(dx, dy) {
     if (scene === "lobby") return;   // 마을은 Town (← → 걷기, ↑ 들어가기)
     if (gameOver) return;
@@ -2070,6 +2081,7 @@
     const foe = enemies.find(e => e.x === nx && e.y === ny);
     if (foe) { attack(player, foe); }
     else {
+      Sfx("step", stepFoot ^= 1, "dungeon");   // 발소리 (dc#104)
       // 천하무적 텔레포트: 보이는 적이 없으면 한 번에 N칸 (지나가는 칸의 아이템도 주움). 벽·몬스터·상점·계단 앞에서 멈춤
       const steps = stats().rw.teleport && !enemies.some(e => e.hp > 0 && visible[e.y]?.[e.x]) ? RW_FX.teleport.steps : 1;
       for (let k = 1; k < steps; k++) {
@@ -2148,6 +2160,7 @@
     if (enemies.some(e => e.x === nx && e.y === ny)) { log(T("내려설 칸에 몬스터가 있다."), "bad"); updateStats(); return; }
     Anim.newTurn();
     Anim.jump(player, nx, ny);
+    Sfx("jump"); setTimeout(() => Sfx("land"), 290);   // 뛰고 내려설 때 (dc#104)
     player.jumpCd = JUMP.cooldown;
     log(T("점프!"));
     if (arrive(nx, ny)) return;
@@ -4564,6 +4577,7 @@
   const Tower = (() => {
     const J = window.RLJump, STEP = 1 / 120, ZT = 2, TURN = 0.5;   // 화면은 가까이 보기처럼 2배 (16×12칸)
     let map = null, st = null, mapId = "hunt1", raf = 0, last = 0, acc = 0, best = null, cleared = null, landT = -1, lastLanded = 0, lastDoubled = 0, lastJumped = 0;
+    const towerSteps = footsteps("dungeon");
     let burn = null, slowTo = 0, iceFree = 0;   // 헬 몬스터 원소: 화상 { dmg, left, next }, 느려짐(턴까지), 얼음 면역(턴까지)
     let mobs = [], hp = 0, maxHp = 1, turnAcc = 0, turnN = 0, cd = {}, pops = [], fx = [], hurtT = -1, portalOpen = false;
     const held = { left: false, right: false, up: false, down: false, jump: false };
@@ -4655,7 +4669,8 @@
           turnAcc += STEP;
           if (turnAcc >= TURN) { turnAcc -= TURN; combatTurn(); if (cleared || hp <= 0) break; }
         }
-        if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
+        if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); Sfx("land"); }
+        towerSteps(st);
         // 더블 점프: 발밑에 하얀 고리
         if (st.jumped !== lastJumped) { lastJumped = st.jumped; Sfx("jump"); }
         if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; Sfx("jump2"); fx.push({ kind: "ring", x: st.x, y: st.y, r: 0.7, color: "rgba(255, 255, 255, 0.85)", t0: performance.now() }); }
@@ -5034,6 +5049,7 @@
   const Town = (() => {
     const J = window.RLJump, TW = J?.TOWN, STEP = 1 / 120, ZT = 2, G = TW?.ground ?? 10;
     let map = null, st = null, raf = 0, last = 0, acc = 0, lastDraw = 0, landT = -1, lastLanded = 0, lastDoubled = 0, lastJumped = 0, fx = [];
+    const townSteps = footsteps("town");
     const held = { left: false, right: false, up: false, down: false, jump: false };
     let jumpTap = false;
     const seen = new Map();   // 다른 사람이 보는 쪽 (지난 x와 비교)
@@ -5073,7 +5089,8 @@
       if (blocked()) release();
       acc += dt;
       while (acc >= STEP) { J.step(map, st, input(), STEP); acc -= STEP; }
-      if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); }
+      if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); Sfx("land"); }   // 착지 '툭' (dc#104)
+      townSteps(st);   // 발소리 (dc#104)
       if (st.jumped !== lastJumped) { lastJumped = st.jumped; Sfx("jump"); }   // 점프 소리 (dc#100)
       if (st.doubled !== lastDoubled) { lastDoubled = st.doubled; Sfx("jump2"); fx.push({ x: st.x, y: st.y, t0: performance.now() }); }
       sync();
@@ -7035,11 +7052,11 @@
 
   // 소리 설정 (dc#99): 효과음·배경 음악 켜기와 크기. 바꾸면 바로 저장 (sound.js)
   const soundModal = document.getElementById("sound-modal"), soundBtn = document.getElementById("sound-btn");
-  const sfxOn = document.getElementById("sfx-on"), sfxVol = document.getElementById("sfx-vol"), bgmOn = document.getElementById("bgm-on"), bgmVol = document.getElementById("bgm-vol");
+  const sfxOn = document.getElementById("sfx-on"), sfxVol = document.getElementById("sfx-vol"), bgmOn = document.getElementById("bgm-on"), bgmVol = document.getElementById("bgm-vol"), stepsOn = document.getElementById("steps-on");
   function syncSound() {
     const c = window.RLSound?.settings;
     if (!c) { soundBtn.hidden = true; return; }
-    sfxOn.checked = c.sfxOn; bgmOn.checked = c.bgmOn;
+    sfxOn.checked = c.sfxOn; bgmOn.checked = c.bgmOn; stepsOn.checked = c.steps !== false; stepsOn.disabled = !c.sfxOn;
     sfxVol.value = Math.round(c.sfx * 100); bgmVol.value = Math.round(c.bgm * 100);
     sfxVol.disabled = !c.sfxOn; bgmVol.disabled = !c.bgmOn;
     soundBtn.textContent = c.sfxOn || c.bgmOn ? "🔊" : "🔇";
@@ -7051,6 +7068,7 @@
   soundModal.addEventListener("click", (e) => { if (e.target === soundModal) closeSound(); });
   sfxOn.addEventListener("change", () => { window.RLSound.set({ sfxOn: sfxOn.checked }); syncSound(); });
   bgmOn.addEventListener("change", () => { window.RLSound.set({ bgmOn: bgmOn.checked }); syncSound(); });
+  stepsOn.addEventListener("change", () => { window.RLSound.set({ steps: stepsOn.checked }); syncSound(); });
   sfxVol.addEventListener("input", () => window.RLSound.set({ sfx: sfxVol.value / 100 }));
   bgmVol.addEventListener("input", () => window.RLSound.set({ bgm: bgmVol.value / 100 }));
   document.getElementById("sound-test").addEventListener("click", () => {
@@ -7760,7 +7778,8 @@
         Tips.want("intro");   // 마을에서 던전 입구로 들어갈 때까지 보임
         return;
       }
-      if (store.get(floorKey)) return;
+      // 포털 버전(dc#102)은 원본 사이트의 업데이트 기록을 보여 주지 않음 (혼자 하는 버전이라 맞지 않는 내용이 많음, dc#104)
+      if (PORTAL || store.get(floorKey)) return;
       document.getElementById("update-text").innerHTML = "";
       document.getElementById("update-text").append(
         Object.assign(document.createElement("b"), { textContent: T("업데이트: ") }),

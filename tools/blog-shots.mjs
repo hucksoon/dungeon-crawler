@@ -320,6 +320,11 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-snd"), "rl_inv:g:DEV": inv(g40) } });
     await o.page.locator("#sound-btn").click(); await sleep(300);
     return { ...o, shot: ".sound-modal" }; }],
+  // 발소리 (dc#104): 소리 설정에 "발소리" 켜기·끄기가 생김
+  ["sound-steps", "🔊 소리 설정: 효과음과 따로 발소리만 끌 수 있어요", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(40, "blog-steps"), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.locator("#sound-btn").click(); await sleep(300);
+    return { ...o, shot: ".sound-modal" }; }],
   // 포털 빌드 (dc#102): 혼자 하는 버전의 쓰러진 창 — 캐시·계정 대신 "광고 보고 부활"
   ["portal-death", "포털 버전: 쓰러지면 광고를 보고 부활", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-portal", k: 40, pp: 0 };

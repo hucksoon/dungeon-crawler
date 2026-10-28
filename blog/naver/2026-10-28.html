@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 게임 포털용 표지를 만들고, 블로그에서 내려받게 했어요</title>
-<meta name="description" content="Poki·CrazyGames에 올릴 썸네일과 스크린샷, 설명 문구를 만들었어요. 같은 그림을 블로그의 새 &quot;게임 이미지&quot; 페이지에서 보고 내려받을 수 있어요.">
+<title>[네이버 옮기기] 포털용 표지와 블로그 이미지 페이지, 그리고 발소리</title>
+<meta name="description" content="Poki·CrazyGames에 올릴 썸네일과 스크린샷, 설명 문구를 만들고 블로그의 새 &quot;게임 이미지&quot; 페이지에서 내려받게 했어요. 걸을 때 '톡톡' 발소리도 생겼어요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-10-28.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 게임 포털용 표지를 만들고, 블로그에서 내려받게 했어요">
-<meta property="og:description" content="Poki·CrazyGames에 올릴 썸네일과 스크린샷, 설명 문구를 만들었어요. 같은 그림을 블로그의 새 &quot;게임 이미지&quot; 페이지에서 보고 내려받을 수 있어요.">
+<meta property="og:title" content="[네이버 옮기기] 포털용 표지와 블로그 이미지 페이지, 그리고 발소리">
+<meta property="og:description" content="Poki·CrazyGames에 올릴 썸네일과 스크린샷, 설명 문구를 만들고 블로그의 새 &quot;게임 이미지&quot; 페이지에서 내려받게 했어요. 걸을 때 '톡톡' 발소리도 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-28.html">
 
 <style>
@@ -67,12 +67,12 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-10-28.html">블로그 글 보기</a></nav>
-<h1 id="title-text">게임 포털용 표지를 만들고, 블로그에서 내려받게 했어요</h1>
-<p class="meta">2026년 10월 28일 (수) · 태그: 개발일기, 게임 포털, 썸네일, 블로그, Claude Code</p>
+<h1 id="title-text">포털용 표지와 블로그 이미지 페이지, 그리고 발소리</h1>
+<p class="meta">2026년 10월 28일 (수) · 태그: 개발일기, 게임 포털, 썸네일, 사운드, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 2장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/store-cover.jpg" download="2026-10-28-1-store-cover.jpg">1. 가로 표지: 헬 던전에서 화염구가 터지는 순간과 게임 로고</a> · <a href="../images/media-page.png" download="2026-10-28-2-media-page.png">2. 블로그의 게임 이미지 페이지: 누르면 원래 크기, 내려받기 버튼과 전체 zip</a></p>
+<p class="steps">이미지 3장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/store-cover.jpg" download="2026-10-28-1-store-cover.jpg">1. 가로 표지: 헬 던전에서 화염구가 터지는 순간과 게임 로고</a> · <a href="../images/media-page.png" download="2026-10-28-2-media-page.png">2. 블로그의 게임 이미지 페이지: 누르면 원래 크기, 내려받기 버튼과 전체 zip</a> · <a href="../images/sound-steps.png" download="2026-10-28-3-sound-steps.png">3. 🔊 소리 설정: 효과음과 따로 발소리만 끌 수 있어요</a></p>
 <div id="paper">
 <p>어제 던전 크롤러를 Poki·CrazyGames 같은 게임 포털에 올릴 수 있게 혼자 하는 HTML5 버전을 만들었어요. 그런데 포털에 게임을 등록하려면 게임 파일만으로는 부족해요. 게임 목록에 보일 표지(썸네일), 게임 화면 캡처, 소개 글과 조작법도 필요해요.</p>
 <p><br></p>
@@ -107,9 +107,26 @@
 <p><br></p>
 <p>원래 그림은 장마다 1MB가 넘어서 그대로 보여 주면 페이지가 무거워요. 그래서 페이지에는 작은 미리보기를 쓰고, 원래 크기는 누르거나 내려받을 때만 받게 했어요.</p>
 <p><br></p>
+<p><b><span style="font-size:24px;">걸을 때 '톡톡' 발소리</span></b></p>
+<p>소리를 넣은 뒤로 공격·스킬·점프에는 소리가 났는데, 정작 걸을 때는 조용했어요. 그래서 마리오 같은 8비트 발소리를 만들었어요.</p>
+<p><br></p>
+<p>• 짧게 떨어지는 네모파에 작은 흙 소리를 섞은 '톡' 소리예요. 왼발과 오른발 높이를 조금 다르게 해서 걷는 느낌이 나요</p>
+<p>• 마을 돌길은 밝게, 던전은 낮고 둔하게 들려요</p>
+<p>• 던전에서는 빈 칸으로 한 칸 걸을 때마다 나요. 몬스터에게 부딪혀 공격할 때는 나지 않아요</p>
+<p>• 마을에서는 땅을 한 칸 걸을 때마다 나고, 공중에서는 쉬어요. 점프하고 내려서면 '툭' 하는 착지 소리가 나요</p>
+<p>• 던전 점프(Space + 방향)에도 이제 뛰는 소리와 착지 소리가 있어요</p>
+<p><br></p>
+<p>계속 걸으면 발소리가 귀찮을 수도 있어서, 소리 설정에 &quot;발소리&quot; 켜기·끄기를 따로 넣었어요. 발소리만 꺼도 다른 효과음은 그대로 나요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/sound-steps.png" alt="🔊 소리 설정: 효과음과 따로 발소리만 끌 수 있어요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">🔊 소리 설정: 효과음과 따로 발소리만 끌 수 있어요</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">포털 버전의 업데이트 안내는 숨겼어요</span></b></p>
+<p>포털 버전에서 한 번 해 본 사람이 다시 들어오면, 원래 사이트 사람들에게 보여 주던 긴 업데이트 안내가 위쪽에 뜰 수 있었어요. 포털 버전은 혼자 하는 버전이라 맞지 않는 내용이 많아서, 포털에서는 띄우지 않게 고쳤어요.</p>
+<p><br></p>
 <p><b><span style="font-size:24px;">다음에 할 것</span></b></p>
 <p>• 포털 등록 화면에서 받는 크기를 확인하고, 다르면 그 크기로 다시 만들기</p>
-<p>• 포털 버전에서 한 번 해 본 사람이 다시 들어오면, 원래 사이트용 긴 업데이트 안내가 뜰 수 있어요. 포털에서는 숨기려고 해요</p>
+<p>• 포털에 올리고 Poki·CrazyGames의 확인 도구로 광고와 플레이 알림 확인하기</p>
 <p><br></p>
 <p><br></p>
 <p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-10-28.html">https://game.apacimtest.com/blog/2026-10-28.html</a></p>
