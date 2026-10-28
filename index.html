@@ -4666,7 +4666,7 @@
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=2"), sheetReady()]).then(([m, sheet]) => {
+      loading ||= Promise.all([import("./view3d.js?v=3"), sheetReady()]).then(([m, sheet]) => {
         // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
         view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
@@ -4774,7 +4774,7 @@
     function loop(t) {
       requestAnimationFrame(loop);
       if (!active()) { last = 0; return; }
-      const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
+      const dt = last ? Math.min(0.2, (t - last) / 1000) : 0;   // 느린 기기에서도 걷는 속도가 너무 느려지지 않게 (한 프레임 최대 0.2초, 0.5칸)
       last = t;
       if (levelRef !== map) { view.setLevel({ map, W: MAP_W, H: MAP_H, zone: zoneArt(), tileVar, WALL, STAIRS }); snap(); levelRef = map; hpSeen = player.hp; drawn = []; }
       else if (!tile || player.x !== tile.x || player.y !== tile.y) snap();   // 점프·텔레포트·되살아남
@@ -5018,7 +5018,9 @@
     return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
       get ready() { return active() && levelRef === map; },
       get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수
-      get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
+      get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델
+      get walls() { return view?.walls || null; },          // 시험용: 3D 벽 모듈
+      get handPose() { const h = handState(performance.now()); return { kr: h.kr, kl: h.kl, kb: h.kb, swingL: swingLT, swingR: swingT }; },   // 시험용: 지금 손 자세 값 (그리는 속도와 상관없이)   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
       get pos() { return { ...pos, yaw, pitch }; },
       // 시험용: 보는 방향·자리 바꾸기
       look(a, p = 0) { yaw = a; pitch = p; } };

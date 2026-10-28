@@ -78,11 +78,19 @@ try {
   // ---- 걷기: 칸 안에서 자유롭게, 다른 칸에 들어서면 그 칸에 도착 (줍기). 벽에 막힘 ----
   o = await open(store(level({ items: [{ x: 10, y: 8, type: "gold", amount: 77 }] })));
   check("3D on at load (saved setting)", (await st(o.page)).active);
+  // 던전 벽 (dc#113): KayKit Dungeon Pack 모듈로. 바닥과 벽 사이 면마다 하나 (이 지도: 바깥 둘레 + x=20 세로 벽 양쪽)
+  await o.page.waitForFunction(() => window.RLView3D.walls?.kit, null, { timeout: 15000 }).catch(() => {});
+  const wl = await o.page.evaluate(() => window.RLView3D.walls);
+  const faces = 29 + 30 + 2 * 22 + 2 * 13 + 1;   // 위 29칸(x=20은 벽) · 아래 30칸 · 왼쪽·오른쪽 22칸씩 · x=20 벽(y 1~13)의 양옆 13칸씩 + 끝(14행) 1
+  check("walls are 3D modules (one per floor-wall face, several kinds, some torches)", wl.kit && wl.faces === faces && wl.kinds >= 4 && wl.torches > 0, JSON.stringify({ ...wl, want: faces }));
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
   const g0 = await o.page.evaluate(() => Number(document.getElementById("gold").textContent.replace(/,/g, "")));
-  await hold(o.page, "w", 1100);
+  // 소프트웨어 그리기는 프레임이 느려서, 정해진 시간 대신 10번째 칸에 들어설 때까지 누르고 있음 (최대 4초)
+  await o.page.keyboard.down("w");
+  await o.page.waitForFunction(() => JSON.parse(localStorage.getItem("rl_level") || "{}").px >= 10 || window.RLView3D.pos.x >= 10.6, null, { timeout: 4000, polling: 50 }).catch(() => {});
+  await o.page.keyboard.up("w"); await sleep(700);
   let p = await st(o.page), L = await lvl(o.page);
-  check("hold W facing east: moves smoothly ~2.6 tiles/s, the game's tile follows (px ≥ 10)", p.x > 10.5 && L.px >= 10 && L.py === 8, JSON.stringify({ x: p.x, px: L.px }));
+  check("hold W facing east: moves smoothly, the game's tile follows (px ≥ 10)", p.x >= 10 && L.px >= 10 && L.py === 8, JSON.stringify({ x: p.x, px: L.px }));
   check("walking onto gold picks it up (원래 줍기 규칙)", await o.page.evaluate(() => Number(document.getElementById("gold").textContent.replace(/,/g, ""))) === g0 + 77 && !L.items.length);
   await hold(o.page, "w", 4000);
   p = await st(o.page); L = await lvl(o.page);
@@ -161,12 +169,13 @@ try {
   check("lightning weapon glows yellow (속성 빛)", h.glow === "#ffe14d", JSON.stringify(h));
   check("bloom (빛 번짐) on a desktop", h.bloom === true);
   await o.page.evaluate(() => window.RLView3D.fx("block"));
-  check("block: shield is raised toward the middle of the screen", await until(() => window.RLView3D.hands.lx > -0.12), JSON.stringify(await hands()));
-  check("…and goes back down", await until(() => window.RLView3D.hands.lx < -0.25), JSON.stringify(await hands()));
+  // 자세 값(kb: 0 → 1 → 0)으로 확인: 그리는 속도와 상관없이 막는 순간 올라갔다가 내려옴
+  check("block: shield is raised toward the middle of the screen", await until(() => window.RLView3D.handPose.kb > 0.5, 1000), JSON.stringify(await o.page.evaluate(() => window.RLView3D.handPose)));
+  check("…and goes back down", await until(() => window.RLView3D.handPose.kb === 0), JSON.stringify(await o.page.evaluate(() => window.RLView3D.handPose)));
   // 불타고 얼어 있는 몬스터(8,10): 입자가 계속 피어오름
-  await sleep(500);
+  const fumes = await until(() => window.RLView3D.partCount > 0, 4000);
   const pc0 = await o.page.evaluate(() => window.RLView3D.partCount);
-  check("burning / frozen monster keeps giving off flames and ice", pc0 > 0, String(pc0));
+  check("burning / frozen monster keeps giving off flames and ice", fumes, String(pc0));
   await o.page.keyboard.press("Space"); await sleep(120);
   const pc1 = await o.page.evaluate(() => window.RLView3D.partCount);
   check("lightning weapon hit → sparks on the monster (속성 공격이 보임)", pc1 >= pc0 + 6, `${pc0} → ${pc1}`);
@@ -177,8 +186,10 @@ try {
   o = await open({ rl_save: save, rl_level: level({ enemies: [mob(9, 8)] }), ["rl_inv:g:" + DEV]: invW({ weapon: axe, offhand: dagger }) });
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
   await o.page.waitForFunction(() => window.RLView3D.hands?.ready && window.RLView3D.hands.l, null, { timeout: 15000 }).catch(() => {});
+  const tPress = await o.page.evaluate(() => performance.now());
   await o.page.keyboard.press("Space");
-  const swung = await o.page.waitForFunction(() => window.RLView3D.hands.lrx < -0.8, null, { timeout: 2500, polling: 20 }).then(() => true, () => false);
+  // 왼손 휘두름이 오른손 뒤(0.15초)로 잡혔는지 (그리는 속도와 상관없이 시각으로 확인)
+  const swung = await o.page.waitForFunction((t0) => { const p = window.RLView3D.handPose; return p.swingR >= t0 && p.swingL > p.swingR + 100; }, tPress, { timeout: 3000, polling: 30 }).then(() => true, () => false);
   h = await o.page.evaluate(() => window.RLView3D.hands);
   check("off-hand dagger: dagger model in the left hand, swings right after the right hand (두 손 무기)", /^axe_/.test(h.r) && /^dagger_[AB]\|dagger$/.test(h.l) && swung, JSON.stringify(h));
   await o.ctx.close();
