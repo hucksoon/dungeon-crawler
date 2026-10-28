@@ -4666,8 +4666,9 @@
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=1"), sheetReady()]).then(([m, sheet]) => {
-        view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups") });
+      loading ||= Promise.all([import("./view3d.js?v=2"), sheetReady()]).then(([m, sheet]) => {
+        // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
+        view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
         document.body.classList.add("view-3d");
         levelRef = null;
@@ -4830,8 +4831,9 @@
       if (grave) bills.push({ key: "grave", sprite: "item_treasure", x: grave.x, y: grave.y, w: 0.5, h: 0.5, tint: "#9aa0b0", glow: "#c8ccd8" });
       const bob = bobT ? Math.sin(bobT * 9) * 0.025 : 0;
       const flick = reduceMotion ? 1 : 0.9 + 0.07 * Math.sin(t / 90) + 0.05 * Math.sin(t / 37 + 1.3);
-      view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills });
-      drawHands(now, bob);
+      const hs = handState(now);
+      view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills, hands: hs });
+      drawHands(now, bob, hs);
       drawMap();
     }
     // 손에 든 장비: 오른손 무기(오른쪽 아래), 왼손 보조 무기·방패(왼쪽 아래)
@@ -4850,10 +4852,19 @@
       }
       return elemCache.el;
     }
-    function drawHands(now, bob) {
-      const eq = Inv.equipped(), w = eq.weapon, off = eq.offhand;
+    // 손 상태: 든 장비, 휘두름(0~1, 오른손·왼손), 방패 막기, 속성 빛 색. 3D 손(view3d.js)과 그림 손(3D 모델을 못 불러왔을 때) 둘 다 씀
+    const arcAt = (now, t, ms) => { const p = (now - t) / ms; return p >= 0 && p < 1 ? Math.sin(p * Math.PI) : 0; };
+    function handState(now) {
+      const eq = Inv.equipped(), w = eq.weapon, off = eq.offhand, el = weaponElement(now), c = el && EL.colors[el];
+      return { right: w, left: off, kr: arcAt(now, swingT, 300), kl: arcAt(now, swingLT, 300), kb: arcAt(now, blockT, 420),
+        glowR: w ? c : null, glowL: off && off.type !== "shield" ? c : null };
+    }
+    function drawHands(now, bob, hs) {
+      const eq = Inv.equipped(), vh = view.hands;
+      // 3D 손을 다 불러왔으면 그림 손은 숨김 (못 불러오면 예전처럼 그림)
+      const w = vh.r ? null : eq.weapon, off = vh.l ? null : eq.offhand;
       art(hand, w); art(handL, off);
-      const arc = (t, ms) => { const p = (now - t) / ms; return p >= 0 && p < 1 ? Math.sin(p * Math.PI) : 0; };
+      const arc = (t, ms) => arcAt(now, t, ms);
       const idle = `translateY(${bob * 300}px)`;
       if (w) {
         const k = arc(swingT, 260);
@@ -4942,8 +4953,8 @@
       if (kind === "elem") {   // 무기 속성 피해: 맞은 몬스터에 속성마다 입자
         const d = disp.get(a), x = d ? d.x : a.x, y = d ? d.y : a.y;
         const top = ["fire", "ice", "bolt"].reduce((p, k) => (b[k] > (b[p] || 0) ? k : p), null);
-        if (top) view.burst(x, y, EL.colors[top], 1.8, 480, 0.55);   // 맞는 순간 속성 색으로 번쩍
-        for (const k of ["fire", "ice", "bolt"]) if (b[k] > 0) view.sparks(x, y, EL.colors[k], ELEM_PART[k], k === top ? 18 : 8);
+        if (top) view.burst(x, y, EL.colors[top], 1.1, 420, 0.55);   // 맞는 순간 속성 색으로 번쩍
+        for (const k of ["fire", "ice", "bolt"]) if (b[k] > 0) view.sparks(x, y, EL.colors[k], ELEM_PART[k], k === top ? 12 : 6);
         return;
       }
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
@@ -5006,7 +5017,8 @@
     requestAnimationFrame(loop);
     return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
       get ready() { return active() && levelRef === map; },
-      get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
+      get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수
+      get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
       get pos() { return { ...pos, yaw, pitch }; },
       // 시험용: 보는 방향·자리 바꾸기
       look(a, p = 0) { yaw = a; pitch = p; } };

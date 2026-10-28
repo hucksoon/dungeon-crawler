@@ -150,15 +150,19 @@ try {
   const invW = (equip) => JSON.stringify({ bag: [], equip: { ...nulls, ...equip }, log: [], stones: 0 });
   o = await open({ rl_save: save, rl_level: level({ enemies: [mob(9, 8, { hp: 1e6, maxHp: 1e6 }), mob(8, 10, { burn: { at: 1, left: 99, dmg: 1 }, slow: 99 })] }), ["rl_inv:g:" + DEV]: invW({ weapon: boltW, offhand: shield }) });
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
-  const hands = () => o.page.evaluate(() => { const r = document.getElementById("hand3d"), l = document.getElementById("hand3d-l"); return { r: !r.hidden && getComputedStyle(r).display !== "none", l: !l.hidden && getComputedStyle(l).display !== "none", shield: l.classList.contains("shield"), lt: l.style.transform, rf: r.style.filter }; });
+  // 3D 손 (dc#112): KayKit Fantasy Weapons Bits 모델. 다 불러올 때까지 기다림
+  await o.page.waitForFunction(() => window.RLView3D.hands?.ready && window.RLView3D.hands.r, null, { timeout: 15000 }).catch(() => {});
+  const hands = () => o.page.evaluate(() => window.RLView3D.hands);
+  // 헤드리스(소프트웨어 그리기)에서는 프레임이 느려서 상태가 바뀔 때까지 기다렸다가 읽음
+  const until = (fn, ms = 2500) => o.page.waitForFunction(fn, null, { timeout: ms, polling: 30 }).then(() => true, () => false);
+  await until(() => document.getElementById("hand3d").hidden && document.getElementById("hand3d-l").hidden);
   let h = await hands();
-  check("hands: weapon in the right hand, shield in the left", h.r && h.l && h.shield, JSON.stringify(h));
-  check("weapon with lightning damage glows (속성 빛)", /drop-shadow/.test(h.rf) && /255, 225, 77|ffe14d|fff27a|#[0-9a-f]{6}/i.test(h.rf), h.rf);
-  await o.page.evaluate(() => window.RLView3D.fx("block")); await sleep(180);
-  h = await hands();
-  check("block: shield is raised to the middle of the screen", /scale\(1\.[1-9]/.test(h.lt) && /translate\(/.test(h.lt), h.lt);
-  await sleep(600);
-  check("…and goes back down", !/scale/.test((await hands()).lt), (await hands()).lt);
+  check("3D hands: longsword model in the right hand, shield model in the left (2D picture hands hidden)", /^sword_[A-E]\|longsword$/.test(h.r) && /^shield_[A-C]\|shield$/.test(h.l) && await o.page.evaluate(() => document.getElementById("hand3d").hidden && document.getElementById("hand3d-l").hidden), JSON.stringify(h));
+  check("lightning weapon glows yellow (속성 빛)", h.glow === "#ffe14d", JSON.stringify(h));
+  check("bloom (빛 번짐) on a desktop", h.bloom === true);
+  await o.page.evaluate(() => window.RLView3D.fx("block"));
+  check("block: shield is raised toward the middle of the screen", await until(() => window.RLView3D.hands.lx > -0.12), JSON.stringify(await hands()));
+  check("…and goes back down", await until(() => window.RLView3D.hands.lx < -0.25), JSON.stringify(await hands()));
   // 불타고 얼어 있는 몬스터(8,10): 입자가 계속 피어오름
   await sleep(500);
   const pc0 = await o.page.evaluate(() => window.RLView3D.partCount);
@@ -172,9 +176,11 @@ try {
   // 보조 무기(단검): 왼손에 거울처럼, 두 손이면 왼손도 휘두름
   o = await open({ rl_save: save, rl_level: level({ enemies: [mob(9, 8)] }), ["rl_inv:g:" + DEV]: invW({ weapon: axe, offhand: dagger }) });
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
-  await o.page.keyboard.press("Space"); await sleep(260);
-  h = await hands();
-  check("off-hand dagger: shown mirrored in the left hand and swings after the right hand", h.l && !h.shield && /scaleX\(-1\)/.test(h.lt) && /rotate\(-[1-9]/.test(h.lt), JSON.stringify(h));
+  await o.page.waitForFunction(() => window.RLView3D.hands?.ready && window.RLView3D.hands.l, null, { timeout: 15000 }).catch(() => {});
+  await o.page.keyboard.press("Space");
+  const swung = await o.page.waitForFunction(() => window.RLView3D.hands.lrx < -0.8, null, { timeout: 2500, polling: 20 }).then(() => true, () => false);
+  h = await o.page.evaluate(() => window.RLView3D.hands);
+  check("off-hand dagger: dagger model in the left hand, swings right after the right hand (두 손 무기)", /^axe_/.test(h.r) && /^dagger_[AB]\|dagger$/.test(h.l) && swung, JSON.stringify(h));
   await o.ctx.close();
 
   // ---- 계단: 밟으면 원래처럼 다음 층, 3D도 새 층으로 ----

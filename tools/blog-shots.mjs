@@ -116,7 +116,7 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
 // 3D 화면 (dc#109): 시작 자리에서 가장 길게 트인 쪽에 몬스터를 세우고 그쪽을 봄. 시간이 흐르니 몬스터가 다가옴
 async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" } = {}) {
   const o = await open({ ...opts, seed: { ...opts.seed, rl_3d: "1", rl_3dmap: map } });
-  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.waitForFunction(() => window.RLView3D?.ready && localStorage.getItem("rl_level"), null, { timeout: 15000 });   // 층이 저장될 때까지 (첫 턴)
   await o.page.evaluate(([mobs, reveal]) => {
     const L = JSON.parse(localStorage.getItem("rl_level")), W = 32, open = (x, y) => x > 0 && y > 0 && x < W - 1 && L.map[y * W + x] !== "0";
     // 지도 그림용: 시작 자리에서 가까운 곳(약 14칸)까지 둘러본 것처럼
@@ -133,6 +133,7 @@ async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" }
   }, [mobs, reveal]);
   await o.page.reload();
   await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.waitForFunction(() => window.RLView3D.hands?.ready, null, { timeout: 15000 }).catch(() => {});   // 손에 든 3D 무기까지
   await o.page.evaluate(() => window.RLView3D.look(Number(localStorage.getItem("blog_yaw")), -0.05));
   await sleep(wait);
   return { ...o, shot: "#stage" };
