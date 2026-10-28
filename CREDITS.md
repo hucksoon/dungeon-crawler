@@ -25,6 +25,9 @@
 - **KayKit: Fantasy Weapons Bits 1.0** — Kay Lousberg (www.kaylousberg.com), CC0 (`models/weapons/`, 라이선스 `models/weapons/LICENSE-KayKit-FantasyWeaponsBits.txt`)
   - 1인칭 손에 드는 검·도끼·단검·지팡이·방패 (dc#112)
   - CC0이라 표시 의무는 없지만, 만든 사람이 부탁한 대로 이름을 남겨요
+- **KayKit: Dungeon Pack 1.1** — Kay Lousberg (www.kaylousberg.com), CC0 (`models/dungeon/`, 라이선스 `models/dungeon/LICENSE-KayKit-Dungeon.txt`)
+  - 3D 던전 벽 모듈 9종: 평범한 벽 · 아치 · 금 간 벽 · 부서진 벽 · 선반 · 닫힌 창 · 기둥 · 쇠창살 (dc#113)
+- 바닥·천장 돌 무늬와 벽 횃불은 코드로 그림 (`view3d.js`)
 
 ## 소리 (`sound.js`)
 

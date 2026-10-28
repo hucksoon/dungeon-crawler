@@ -10,9 +10,15 @@ import { EffectComposer } from "./vendor/three/addons/postprocessing/EffectCompo
 import { RenderPass } from "./vendor/three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "./vendor/three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "./vendor/three/addons/postprocessing/OutputPass.js";
+import { mergeGeometries } from "./vendor/three/addons/utils/BufferGeometryUtils.js";
 
-export const WALL_H = 1.5, EYE = 0.62;
-const AMBIENT = { normal: [0x5a6070, 0.85], nm: [0x5a3d80, 0.9], hell: [0x8a3018, 1.0], gold: [0x7a6420, 0.9] };
+export const WALL_H = 1.3, EYE = 0.62;
+// 던전 벽 (dc#113): KayKit Dungeon Pack (CC0) 벽 모듈. 모듈은 폭 4 · 높이 4 · 두께 1(앞면 +z)이라 한 칸 폭에 맞춰 줄임
+//   [이름, 나오는 비율]. 평범한 벽이 대부분이고 아치·금 간 벽·부서진 벽·선반·창·기둥·쇠창살이 섞임 (칸마다 정해짐)
+const WALL_MODULES = [["wall", 58], ["wall_arched", 9], ["wall_cracked", 6], ["wall_broken", 6], ["wall_shelves", 5], ["wall_window_closed", 5], ["wall_pillar", 5], ["wall_archedwindow_gated", 3], ["wall_gated", 3]];
+const WALL_TINT = { normal: 0x9a948c, nm: 0x7a6aa0, hell: 0xa0503c, gold: 0xb8a060 };   // 구역마다 벽 색
+const FLOOR_TINT = { normal: 0x6c6862, nm: 0x5a4f74, hell: 0x74382a, gold: 0x84744a };
+const AMBIENT = { normal: [0x5a6070, 0.5], nm: [0x5a3d80, 0.55], hell: [0x8a3018, 0.6], gold: [0x7a6420, 0.55] };
 const FOG = { normal: 0.2, nm: 0.22, hell: 0.2, gold: 0.18 };
 const TORCH = { color: 0xffb36b, intensity: 4.2, distance: 10, decay: 1.05 };
 
@@ -87,9 +93,55 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
     uv.needsUpdate = true;
   }
   const floorGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-  function setLevel({ map, W, H, zone, tileVar, WALL, STAIRS }) {
+  // 벽 모듈 불러오기: 모듈마다 메시를 하나로 합친 모양 + 같이 쓰는 재질 하나. 다 불러오면 지금 층을 다시 지음
+  let kit = null, lastLevel = null;
+  const kitLoader = new GLTFLoader();
+  Promise.all(WALL_MODULES.map(([name]) => new Promise(ok => kitLoader.load(`models/dungeon/${name}.gltf`, g => ok([name, g.scene]), undefined, () => ok([name, null])))))
+    .then(list => {
+      const geos = {}; let material = null;
+      for (const [name, sceneObj] of list) {
+        if (!sceneObj) continue;
+        sceneObj.updateMatrixWorld(true);
+        const parts = [];
+        sceneObj.traverse(o => { if (o.isMesh) { parts.push(o.geometry.clone().applyMatrix4(o.matrixWorld)); material ||= o.material; } });
+        if (parts.length) geos[name] = parts.length > 1 ? mergeGeometries(parts) : parts[0];
+      }
+      if (!material || !geos.wall) return;
+      kit = { geos, material };
+      if (lastLevel) setLevel(lastLevel);
+    });
+  // 바닥·천장 돌 무늬 (코드로 그림): 4×4칸에 판석 8×8장, 틈은 어둡게, 판석마다 밝기와 얼룩이 조금씩 다름
+  const stoneTex = (() => {
+    const N = 512, cv = document.createElement("canvas"); cv.width = cv.height = N;
+    const g = cv.getContext("2d");
+    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    g.fillStyle = "#2a2826"; g.fillRect(0, 0, N, N);
+    const S = N / 12;
+    for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) {
+      const off = (j % 2) * S * 0.5, x = i * S + off, y = j * S, v = 150 + rnd() * 60;
+      for (const dx of [0, -N]) {
+        g.fillStyle = `rgb(${v},${v * 0.97},${v * 0.93})`;
+        g.fillRect(x + dx + 1.5, y + 1.5, S - 3, S - 3);
+        for (let k = 0; k < 40; k++) {   // 얼룩과 긁힌 자국
+          const a = rnd() * 0.18;
+          g.fillStyle = rnd() < 0.5 ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a * 0.6})`;
+          g.fillRect(x + dx + 3 + rnd() * (S - 10), y + 3 + rnd() * (S - 10), 2 + rnd() * 10, 2 + rnd() * 6);
+        }
+      }
+    }
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+    return t;
+  })();
+  // 벽 횃불: 벽에 달린 받침과 일렁이는 불꽃. 진짜 빛은 가까운 것 몇 개만 (무거워서)
+  const torches = [], torchLights = [0, 1, 2].map(() => { const l = new THREE.PointLight(0xff9a48, 0, 4.5, 1.6); scene.add(l); return l; });
+  const bracketGeo = new THREE.BoxGeometry(0.05, 0.16, 0.08), bracketMat = new THREE.MeshLambertMaterial({ color: 0x2b2420 });
+  function setLevel(args) {
+    lastLevel = args;
+    const { map, W, H, zone, tileVar, WALL, STAIRS } = args;
     scene.remove(level);
-    level.traverse(o => { if (o.isMesh && o.geometry !== wallGeo && o.geometry !== floorGeo) o.geometry.dispose(); if (o.material && o.material !== stairsMat) o.material.dispose?.(); });
+    const keep = new Set([wallGeo, floorGeo, bracketGeo, ...(kit ? Object.values(kit.geos) : [])]);   // 여러 층에서 같이 쓰는 모양은 남김
+    level.traverse(o => { if (o.isMesh && !keep.has(o.geometry)) o.geometry.dispose(); if (o.material && o.material !== stairsMat && o.material !== bracketMat) o.material.dispose?.(); });
     level = new THREE.Group();
     const [ac, ai] = AMBIENT[zone] || AMBIENT.normal;
     ambient.color.setHex(ac); ambient.intensity = ai;
@@ -109,17 +161,65 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
       im.instanceMatrix.needsUpdate = true;
       level.add(im);
     };
-    for (let v = 0; v < 4; v++) {
-      const wt = tex(`wall_${zone}_${v}`, true) || tex(`wall_normal_${v}`, true), ft = tex(`floor_${zone}_${v}`) || tex(`floor_normal_${v}`);
-      inst(wallGeo, new THREE.MeshLambertMaterial({ map: wt }), walls[v], WALL_H / 2);
-      inst(floorGeo, new THREE.MeshLambertMaterial({ map: ft }), floors[v], 0);
+    torches.length = 0;
+    if (kit) {
+      // 벽 모듈: 바닥 칸과 벽 칸 사이의 면마다 하나, 바닥 쪽을 보게. 두께만큼 벽 칸 안으로 밀어 앞면이 칸 경계에
+      const per = Object.fromEntries(WALL_MODULES.map(([n]) => [n, []])), total = WALL_MODULES.reduce((a, [, w]) => a + w, 0);
+      const pick = (h) => { let r = h % total; for (const [n, w] of WALL_MODULES) { if (r < w) return kit.geos[n] ? n : "wall"; r -= w; } return "wall"; };
+      const q = new THREE.Quaternion(), sc = new THREE.Vector3(0.25, WALL_H / 4, 0.25), pv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!open(x, y)) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (open(x + dx, y + dy)) continue;
+          const h = ((x * 73856093) ^ (y * 19349663) ^ ((dx + 2) * 83492791) ^ ((dy + 2) * 2654435761)) >>> 0;
+          const name = pick(h);
+          q.setFromAxisAngle(up, Math.atan2(-dx, -dy));   // 앞면(+z)이 바닥 칸 쪽으로
+          pv.set(x + 0.5 + dx * 0.625, 0, y + 0.5 + dy * 0.625);
+          per[name].push(new THREE.Matrix4().compose(pv, q, sc));
+          // 평범한 벽 일부에 횃불 (벽 앞 0.06, 높이 0.78)
+          if (name === "wall" && h % 11 === 0) torches.push({ x: x + 0.5 + dx * 0.44, y: y + 0.5 + dy * 0.44, dx, dy });
+        }
+      }
+      // 가벼운 Lambert 재질로 (모델의 PBR 재질보다 휴대폰에서 빠르고, 횃불 빛 느낌도 다른 벽과 같음)
+      const mat = new THREE.MeshLambertMaterial({ map: kit.material.map, color: WALL_TINT[zone] || WALL_TINT.normal });
+      for (const [name, list] of Object.entries(per)) {
+        if (!list.length) continue;
+        const im = new THREE.InstancedMesh(kit.geos[name], mat, list.length);
+        list.forEach((m, i) => im.setMatrixAt(i, m));
+        im.instanceMatrix.needsUpdate = true;
+        level.add(im);
+      }
+      // 바닥: 돌 판석 한 장 (4칸마다 무늬 반복), 천장: 같은 무늬를 어둡게
+      const ft = stoneTex.clone(); ft.repeat.set(W / 4, H / 4); ft.needsUpdate = true;   // 4칸에 판석 12장 (한 장 ⅓칸)
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: ft, color: FLOOR_TINT[zone] || FLOOR_TINT.normal }));
+      floor.position.set(W / 2, 0, H / 2);
+      level.add(floor);
+      const ct = stoneTex.clone(); ct.repeat.set(W / 3, H / 3); ct.needsUpdate = true;
+      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ map: ct, color: 0x24211e }));
+      ceil.position.set(W / 2, WALL_H, H / 2);
+      level.add(ceil);
+      // 횃불 받침
+      for (const t of torches) {
+        const b = new THREE.Mesh(bracketGeo, bracketMat);
+        b.position.set(t.x, 0.7, t.y);
+        level.add(b);
+        t.flame = glowObj(); t.flame.material.color.set(0xffa040); t.flame.position.set(t.x, 0.82, t.y); t.flame.scale.set(0.16, 0.24, 1);
+        t.halo = glowObj(); t.halo.material.color.set(0xff7a20); t.halo.material.opacity = 0.35; t.halo.position.set(t.x, 0.8, t.y); t.halo.scale.set(0.6, 0.6, 1);
+        level.add(t.flame, t.halo);
+      }
+    } else {
+      // 모듈을 아직 못 불러왔으면 예전처럼 픽셀 그림 상자 벽
+      for (let v = 0; v < 4; v++) {
+        const wt = tex(`wall_${zone}_${v}`, true) || tex(`wall_normal_${v}`, true), ft = tex(`floor_${zone}_${v}`) || tex(`floor_normal_${v}`);
+        inst(wallGeo, new THREE.MeshLambertMaterial({ map: wt }), walls[v], WALL_H / 2);
+        inst(floorGeo, new THREE.MeshLambertMaterial({ map: ft }), floors[v], 0);
+      }
+      const ct = (tex(`wall_${zone}_0`, true) || tex("wall_normal_0", true)).clone();
+      ct.repeat.set(W, H); ct.needsUpdate = true;
+      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ map: ct, color: 0x6a6258 }));
+      ceil.position.set(W / 2, WALL_H, H / 2);
+      level.add(ceil);
     }
-    // 천장: 벽 무늬를 어둡게, 지도 전체에 한 장
-    const ct = (tex(`wall_${zone}_0`, true) || tex("wall_normal_0", true)).clone();
-    ct.repeat.set(W, H); ct.needsUpdate = true;
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ map: ct, color: 0x6a6258 }));
-    ceil.position.set(W / 2, WALL_H, H / 2);
-    level.add(ceil);
     // 계단: 바닥보다 살짝 위에, 빛을 받지 않고 은은하게 밝게 (어두워도 보이게)
     for (const [x, y] of stairs) {
       const s = new THREE.Mesh(floorGeo, stairsMat);
@@ -368,6 +468,13 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
     const fx = Math.sin(st.yaw), fz = -Math.cos(st.yaw);
     torch.position.set(st.x + fx * 0.25 - fz * 0.18, EYE + 0.15, st.y + fz * 0.25 + fx * 0.18);
     torch.intensity = TORCH.intensity * (st.torch ?? 1);
+    // 벽 횃불: 불꽃이 일렁이고, 가까운 3개만 진짜 빛 (멀리 있는 횃불은 불꽃만 보임)
+    const now = performance.now();
+    if (torches.length) {
+      torches.forEach((t, i) => { const f = 0.85 + 0.15 * Math.sin(now / 70 + i * 2.1) + 0.08 * Math.sin(now / 23 + i); t.flame.scale.set(0.15 * f, 0.24 * f, 1); t.f = f; t.d = (t.x - st.x) ** 2 + (t.y - st.y) ** 2; });
+      const near = torches.slice().sort((a, b) => a.d - b.d);
+      torchLights.forEach((l, i) => { const t = near[i]; if (t && t.d < 64) { l.position.set(t.x + t.dx * -0.15, 0.85, t.y + t.dy * -0.15); l.intensity = 1.6 * t.f; } else l.intensity = 0; });
+    } else torchLights.forEach(l => { l.intensity = 0; });
     syncBills(st.bills || [], st.x, st.y);
     alignBars();
     tickFlashes(performance.now());
@@ -392,6 +499,12 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   }
   return { canvas, setLevel, frame, project, burst, bolt, sparks, dispose, renderer, get partCount() { return parts.length; },
     // 손에 든 모델 (시험용): 오른손·왼손 모델 이름, 다 불러왔는지
+    // 벽 (시험용): 모듈을 불러왔는지, 이 층의 벽 면 수·모듈 종류 수·횃불 수
+    get walls() {
+      let faces = 0, kinds = 0;
+      level.traverse(o => { if (o.isInstancedMesh && kit && Object.values(kit.geos).includes(o.geometry)) { faces += o.count; kinds++; } });
+      return { kit: !!kit, faces, kinds, torches: torches.length };
+    },
     get hands() {
       return { r: hands.r.key, l: hands.l.key, ready: hands.r.key === hands.r.want && hands.l.key === hands.l.want, bloom: !!composer,
         glow: vmGlow.intensity > 0 ? "#" + vmGlow.color.getHexString() : null, lx: hands.l.root.position.x, lrx: hands.l.root.rotation.x, rrx: hands.r.root.rotation.x };
