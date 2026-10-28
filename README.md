@@ -31,6 +31,7 @@
 - 로비(마을): 점프 던전처럼 옆에서 보는 마을 거리. ← → 걷기 · Space 점프(더블 점프) · 문 앞에서 ↑(Enter) 들어가기, 휴대폰은 왼손 ◀ ▶ · ▲ 들어가기 · 오른손 큰 점프 버튼. 같이 접속한 사람도 거리에 보이고, 건물 문으로 던전 입구(1층부터 / 파란 포탈 = 포탈 층으로)·대장간·거래소·우편함·시간 상점·골드 던전·나이트메어·헬. 지도·건물·문 자리는 `jump.js`의 `TOWN`
 - 포털 빌드(Poki·CrazyGames): `window.RL_PORTAL`이 있으면 혼자 하는 버전 (계정·결제·랭킹·거래소 없음, 광고는 포털 SDK, 게임 안의 확인 창). 빌드는 비공개 저장소 `dungeon-crawler-html5`가 이 저장소를 가져와 만들어요
 - Xsolla 로그인(이메일·문자 인증)과 결제, 캐시로 부활·거래 수수료, 광고 보상
+- 무료 선물: 3시간마다 광고를 보면 진행에 맞춘 세트·유니크 3개 중 하나를 골라 받음 (게임 화면 오른쪽 위 반짝이는 배너, 로그인 계정은 10% 확률로 캐시 1~3개 보너스). 포털 빌드는 이 기기에서
 - 로그인하면 가방과 진행 상황을 서버에 저장해서 다른 기기에서도 이어서 해요
 
 ## 폴더
@@ -44,7 +45,7 @@
 | `shop.html`, `ranking.html`, `privacy.html` | 상점, 랭킹, 개인정보처리방침 |
 | `i18n.js`, `i18n/` | 다국어 틀과 영어·일본어 문구 ([용어집](docs/i18n-glossary.md)). 화면 문구는 한국어 원문이 키(`T("…")`), 빠진 번역은 `node tools/i18n-check.mjs` (안 쓰는 문구는 `--unused`). 게임 언어는 직접 고른 언어 → IP 나라(서버 `r=geo`) → 브라우저 언어, `?lang=en` / `?lang=ja` / `?lang=ko`로 그 탭만 미리 보기 |
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |
-| `ranking-php/` | 게임 서버 (PHP): 랭킹, 로비, 거래소, 하루 입장·광고, 계정 저장 → [README](ranking-php/README.md) |
+| `ranking-php/` | 게임 서버 (PHP): 랭킹, 로비, 거래소, 하루 입장·광고, 무료 선물, 계정 저장 → [README](ranking-php/README.md) |
 | `ranking/` | 랭킹 서버 Cloudflare Workers 버전 (예전) |
 | `test/` | 회귀 테스트 (게임 화면·PHP 서버·아이템 규칙). `bash test/run.sh`, 결과는 `test/results/`에 최근 3번만 ([test/README.md](test/README.md)) |
 | `site/` | apacimtest.com 첫 화면 (게임 소개, AdSense 신청용) → [README](site/README.md) |

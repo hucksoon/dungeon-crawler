@@ -38,6 +38,14 @@ function rankingRows() {
   return names.map((name, i) => { const it = I.generate(`blogrank|${i}`, "golden", 70 - i * 6);
     return { rank: i + 1, id: `b${i}`.padEnd(16, "0"), name, guest: name.startsWith("게스트"), stage: 51 - i * 5, bought: false, itemBought: false, item: { rarity: it.rarity, enh: 10 - i, lvl: it.lvl, name: I.itemName(it), ref: null } }; });
 }
+// 블로그용 무료 선물: 헬 30층까지 간 사람 (구미호의 유니크 + 지옥의 세트 2개, 서버 bonus_make와 같은 시드 모양)
+function giftOffers() {
+  const id = "b10950b10950b109", ref = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: 4, enh: 0, r: I.RULES_REV, id: it.id });
+  const uq = Object.keys(I.UNIQUE.items).find(k => I.UNIQUE.items[k].boss === 20 && !I.UNIQUE.items[k].acc), U = I.UNIQUE.items[uq];
+  let u = null; for (let i = 0; !u; i++) { const it = I.generateUnique(`bonus|${id}|j${U.boss}|u${i}`, M.HELL.itemBase + U.boss); if (it.uq === uq) u = it; }
+  const sets = []; for (let k = 1; sets.length < 2; k++) for (let i = 0; i < 5000; i++) { const it = I.generate(`bonus|${id}|j30|s${k}_${i}`, "boss", M.HELL.itemBase + 30); if (it.rarity === "set" && !sets.some(x => x.slot === it.slot) && it.slot !== u.slot) { sets.push(it); break; } }
+  return [sets[0], u, sets[1]].map(ref);
+}
 const json = (r, o, status = 200) => r.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" }, body: JSON.stringify(o) });
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -60,6 +68,11 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     if (route === "lobby" && staff) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950", unlimited: true }, players: [], mail: 0 });
     if (route === "lobby" && others) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950" }, players: others.map(([name, x]) => ({ id: name.slice(-6).padEnd(16, "0"), name, scene: "lobby", x, y: 10 })), mail: 0 });
     if (route === "geo") return json(r, { country: lang === "ja" ? "JP" : lang === "en" ? "US" : "KR" });
+    // 무료 선물 (dc#105): 받을 수 있음 → 광고 → 헬 선물 (유니크 1 + 지옥의 세트 2)
+    if (route === "bonus_status") return json(r, { hours: 3, ready: true, pending: null, nextAt: Date.now(), tier: "hell", cash: { chance: 0.1, min: 1, max: 3 } });
+    if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adMinSeconds: 1 });
+    if (route === "ad_start") return json(r, { ticket: "0".repeat(16), minSeconds: 1, left: 7 });
+    if (route === "bonus_open") return json(r, { hours: 3, ready: false, nextAt: null, tier: "hell", cash: { chance: 0.1, min: 1, max: 3 }, pending: { id: "b10950b10950b109", tier: "hell", offers: giftOffers(), createdAt: Date.now() } });
     if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: 8, enh: 0, id: it.id }; }) });
     return json(r, {}); });
   await ctx.route(STORE + "/**", r => { const p = new URL(r.request().url()).pathname.replace("/api/v2/project/317991", "");
@@ -336,6 +349,17 @@ const SCENES = [
     const o = await open({ file: "blog/media.html", viewport: { width: 900, height: 900 } });
     await o.page.evaluate(async () => { const list = [...document.images]; list.forEach(i => { i.loading = "eager"; }); await Promise.all(list.map(i => i.decode().catch(() => {}))); });
     return o; }],
+  // 무료 선물 (dc#105): 게임 화면 오른쪽 위에 반짝이는 배너 → 광고 → 3개 중 하나 고르기
+  ["gift-banner", "받을 수 있으면 게임 화면 오른쪽 위에 반짝이는 배너", async () => {
+    const o = await open({ scene: "lobby", api: true, dsf: 1.6, seed: { rl_save: save(40, "blog-gift"), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.locator("#gift-banner").waitFor({ state: "visible", timeout: 5000 }); await sleep(600);
+    return { ...o, shot: "#stage" }; }],
+  ["gift-pick", "광고를 보고 나면 세트·유니크 3개 중 하나를 골라요", async () => {
+    const o = await open({ scene: "lobby", api: true, dsf: 1.6, seed: { rl_save: save(40, "blog-gift"), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.locator("#gift-banner").click();
+    await o.page.locator("#ad-claim:not([disabled])").waitFor({ timeout: 5000 }); await o.page.locator("#ad-claim").click();
+    await o.page.locator("#gift-modal").waitFor({ state: "visible", timeout: 5000 }); await sleep(300);
+    return { ...o, shot: ".modal.gift" }; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };
