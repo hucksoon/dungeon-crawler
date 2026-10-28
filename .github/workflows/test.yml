@@ -22,8 +22,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: PHP 확인 (pdo_sqlite·curl·mbstring·openssl)
@@ -52,7 +52,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: 실패하면 로그·화면 캡처 올리기
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results-${{ matrix.shard }}
           path: test/results/

@@ -47,7 +47,7 @@
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |
 | `ranking-php/` | 게임 서버 (PHP): 랭킹, 로비, 거래소, 하루 입장·광고, 무료 선물, 계정 저장 → [README](ranking-php/README.md) |
 | `ranking/` | 랭킹 서버 Cloudflare Workers 버전 (예전) |
-| `test/` | 회귀 테스트 (게임 화면·PHP 서버·아이템 규칙). `bash test/run.sh`, 결과는 `test/results/`에 최근 3번만 ([test/README.md](test/README.md)) |
+| `test/` | 회귀 테스트 (게임 화면·PHP 서버·아이템 규칙). `bash test/run.sh`, 결과는 `test/results/`에 최근 3번만 ([test/README.md](test/README.md)). 브랜치에 올리면 GitHub Actions가 자동으로 (`.github/workflows/test.yml`, 4조각 약 6분) |
 | `site/` | apacimtest.com 첫 화면 (게임 소개, AdSense 신청용) → [README](site/README.md) |
 | `tools/` | 문서 생성, 블로그, 픽셀 그림 모음 만들기, Xsolla 카탈로그 관리 |
 | `vendor/` | Xsolla Headless Checkout SDK |
