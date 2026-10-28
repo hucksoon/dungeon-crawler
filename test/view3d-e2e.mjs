@@ -15,7 +15,10 @@ const DEV = "bbbb2222-0000-4000-8000-00000000cafe";
 // 헤드리스에서도 WebGL (SwiftShader)
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 async function open(storage = {}, { scene = "dungeon", d3 = true } = {}) {
+  // d3: true → rl_3d "1" · false → "0"(2D로 바꾼 사람) · "default" → 아무것도 넣지 않음 (처음 온 사람, 테스트 기본값 2D도 끔)
+  globalThis.RL_TEST_3D_DEFAULT = d3 === "default";
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 950 }, locale: "ko-KR" }); const page = await ctx.newPage(); const errors = [];
+  globalThis.RL_TEST_3D_DEFAULT = false;
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.replace("/hucksoon/", "") || "index.html";
     if (f === "ranking-config.js") return r.fulfill({ contentType: "text/javascript", body: `window.RANKING_API = "";` });
@@ -23,10 +26,10 @@ async function open(storage = {}, { scene = "dungeon", d3 = true } = {}) {
     r.fulfill({ contentType: { ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp" }[path.extname(f)] || "text/html", body: fs.readFileSync(p) }); });
   await ctx.addInitScript(([s, dev, scene, d3]) => { if (sessionStorage.getItem("s")) return; sessionStorage.setItem("s", 1);
     localStorage.setItem("rl_device_id", dev); localStorage.setItem("rl_lang", "ko"); localStorage.setItem("rl_tips", JSON.stringify(["intro", "dungeon", "gear", "lowhp"]));
-    if (d3) localStorage.setItem("rl_3d", "1");
+    if (d3 === true || d3 === false) localStorage.setItem("rl_3d", d3 ? "1" : "0");
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem("rl_scene", scene); }, [storage, DEV, scene, d3]);
   await page.goto(ORIGIN);
-  if (d3) await page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 }).catch(() => {});
+  if (d3 !== false) await page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 }).catch(() => {});
   else await sleep(700);
   await sleep(300);
   return { ctx, page, errors };
@@ -52,9 +55,15 @@ const store = (lv) => ({ rl_save: save, rl_level: lv, ["rl_inv:g:" + DEV]: inv }
 
 try {
   // ---- 꺼져 있으면 2D 그대로 ----
-  let o = await open(store(level()), { d3: false });
-  check("off by default: 2D canvas, no 3D canvas, button says 3D 화면 (V)", await o.page.locator("#game").isVisible() && !(await o.page.locator("#game3d").count()) && (await o.page.locator("#view3d-btn").innerText()) === "3D 화면 (V)");
-  check("off: three.js isn't downloaded", !(await o.page.evaluate(() => performance.getEntriesByType("resource").some(r => r.name.includes("three.module")))));
+  // ---- 처음 온 사람은 3D (dc#111부터 기본) ----
+  let o = await open(store(level()), { d3: "default" });
+  check("3D is the default for a new player (nothing saved): 3D canvas, button says 2D 화면 (V)", (await st(o.page)).active && await o.page.locator("#game3d").isVisible() && !(await o.page.locator("#game").isVisible()) && (await o.page.locator("#view3d-btn").innerText()) === "2D 화면 (V)");
+  check("no page errors (default)", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+  // ---- 2D로 바꾼 사람은 2D 그대로 ----
+  o = await open(store(level()), { d3: false });
+  check("switched to 2D before (rl_3d 0): 2D canvas, no 3D canvas, button says 3D 화면 (V)", await o.page.locator("#game").isVisible() && !(await o.page.locator("#game3d").count()) && (await o.page.locator("#view3d-btn").innerText()) === "3D 화면 (V)");
+  check("2D: three.js isn't downloaded", !(await o.page.evaluate(() => performance.getEntriesByType("resource").some(r => r.name.includes("three.module")))));
   // V로 켜기
   await o.page.keyboard.press("v");
   await o.page.waitForFunction(() => window.RLView3D.ready, null, { timeout: 15000 }).catch(() => {});
@@ -62,7 +71,7 @@ try {
   check("V → 3D: 3D canvas shown, 2D canvas hidden, button says 2D 화면 (V), saved on this device", await o.page.locator("#game3d").isVisible() && !(await o.page.locator("#game").isVisible()) && (await o.page.locator("#view3d-btn").innerText()) === "2D 화면 (V)" && await o.page.evaluate(() => localStorage.getItem("rl_3d") === "1"));
   { const n = await lit(o.page); check("3D canvas actually draws the lit room (WebGL)", n > 400, String(n)); }
   await o.page.keyboard.press("v"); await sleep(300);
-  check("V again → back to 2D (setting removed)", await o.page.locator("#game").isVisible() && !(await o.page.locator("#game3d").isVisible()) && await o.page.evaluate(() => localStorage.getItem("rl_3d") === null));
+  check("V again → back to 2D (saved as 0, stays 2D next time)", await o.page.locator("#game").isVisible() && !(await o.page.locator("#game3d").isVisible()) && await o.page.evaluate(() => localStorage.getItem("rl_3d") === "0"));
   check("no page errors (toggle)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
 
@@ -83,9 +92,9 @@ try {
   const p2 = await st(o.page);
   // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래, 처음) → 크게 → 끄기 (Tab), 기기에 저장
   const mapInfo = () => o.page.evaluate(() => { const c = document.getElementById("map3d"), s = document.getElementById("game3d").getBoundingClientRect(), r = c.getBoundingClientRect(), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
-    return { mode: window.RLView3D.mapMode, shown: getComputedStyle(c).display !== "none", w: r.width, bl: r.left - s.left < 20 && s.bottom - r.bottom < 20, mid: Math.abs((r.left + r.width / 2) - (s.left + s.width / 2)) < 4, n }; });
+    return { mode: window.RLView3D.mapMode, shown: getComputedStyle(c).display !== "none", w: r.width, tr: s.right - r.right < 20 && r.top - s.top < 20, mid: Math.abs((r.left + r.width / 2) - (s.left + s.width / 2)) < 4, n }; });
   let mi = await mapInfo();
-  check("map: small map in the bottom-left by default, drawn", mi.mode === "small" && mi.shown && mi.bl && mi.w > 100 && mi.w < 260 && mi.n > 500, JSON.stringify(mi));
+  check("map: small map in the top-right by default, drawn", mi.mode === "small" && mi.shown && mi.tr && mi.w > 100 && mi.w < 260 && mi.n > 500, JSON.stringify(mi));
   await o.page.keyboard.press("Tab"); await sleep(150); mi = await mapInfo();
   check("Tab → big map over the middle of the screen", mi.mode === "big" && mi.shown && mi.mid && mi.w > 450, JSON.stringify(mi));
   await o.page.locator("#stage").screenshot({ path: path.join(SHOTS, "view3d-map-big.png") });
@@ -132,6 +141,40 @@ try {
   check("damage number shows on the 3D screen (over the monster)", !!pop && pop.x > 0 && pop.x < pop.w && pop.y > 0 && pop.y < pop.h, JSON.stringify(pop));
   await o.page.locator("#stage").screenshot({ path: path.join(SHOTS, "view3d-fight.png") });
   check("no page errors (attack)", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+
+  // ---- 손에 든 장비 (dc#111): 오른손 무기 · 왼손 방패, 방패 막기, 무기 속성 빛, 속성 공격·상태 입자 ----
+  const nulls = Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null]));
+  const find = (pred) => { for (let i = 0; i < 20000; i++) { const it = I.generate(`t3d|n10|k${i}`, "boss", 90); if (pred(it)) return it; } return null; };
+  const boltW = find(it => it.slot === "weapon" && it.lines.some(([k]) => k === "boltDmg")), shield = find(it => it.type === "shield"), dagger = find(it => it.slot === "offhand" && it.type === "dagger"), axe = find(it => it.slot === "weapon" && it.type === "axe");   // 장검은 방패 전용이라 두 손은 도끼로
+  const invW = (equip) => JSON.stringify({ bag: [], equip: { ...nulls, ...equip }, log: [], stones: 0 });
+  o = await open({ rl_save: save, rl_level: level({ enemies: [mob(9, 8, { hp: 1e6, maxHp: 1e6 }), mob(8, 10, { burn: { at: 1, left: 99, dmg: 1 }, slow: 99 })] }), ["rl_inv:g:" + DEV]: invW({ weapon: boltW, offhand: shield }) });
+  await o.page.evaluate((a) => window.RLView3D.look(a), E);
+  const hands = () => o.page.evaluate(() => { const r = document.getElementById("hand3d"), l = document.getElementById("hand3d-l"); return { r: !r.hidden && getComputedStyle(r).display !== "none", l: !l.hidden && getComputedStyle(l).display !== "none", shield: l.classList.contains("shield"), lt: l.style.transform, rf: r.style.filter }; });
+  let h = await hands();
+  check("hands: weapon in the right hand, shield in the left", h.r && h.l && h.shield, JSON.stringify(h));
+  check("weapon with lightning damage glows (속성 빛)", /drop-shadow/.test(h.rf) && /255, 225, 77|ffe14d|fff27a|#[0-9a-f]{6}/i.test(h.rf), h.rf);
+  await o.page.evaluate(() => window.RLView3D.fx("block")); await sleep(180);
+  h = await hands();
+  check("block: shield is raised to the middle of the screen", /scale\(1\.[1-9]/.test(h.lt) && /translate\(/.test(h.lt), h.lt);
+  await sleep(600);
+  check("…and goes back down", !/scale/.test((await hands()).lt), (await hands()).lt);
+  // 불타고 얼어 있는 몬스터(8,10): 입자가 계속 피어오름
+  await sleep(500);
+  const pc0 = await o.page.evaluate(() => window.RLView3D.partCount);
+  check("burning / frozen monster keeps giving off flames and ice", pc0 > 0, String(pc0));
+  await o.page.keyboard.press("Space"); await sleep(120);
+  const pc1 = await o.page.evaluate(() => window.RLView3D.partCount);
+  check("lightning weapon hit → sparks on the monster (속성 공격이 보임)", pc1 >= pc0 + 6, `${pc0} → ${pc1}`);
+  await o.page.locator("#stage").screenshot({ path: path.join(SHOTS, "view3d-hands.png") });
+  check("no page errors (hands)", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+  // 보조 무기(단검): 왼손에 거울처럼, 두 손이면 왼손도 휘두름
+  o = await open({ rl_save: save, rl_level: level({ enemies: [mob(9, 8)] }), ["rl_inv:g:" + DEV]: invW({ weapon: axe, offhand: dagger }) });
+  await o.page.evaluate((a) => window.RLView3D.look(a), E);
+  await o.page.keyboard.press("Space"); await sleep(260);
+  h = await hands();
+  check("off-hand dagger: shown mirrored in the left hand and swings after the right hand", h.l && !h.shield && /scaleX\(-1\)/.test(h.lt) && /rotate\(-[1-9]/.test(h.lt), JSON.stringify(h));
   await o.ctx.close();
 
   // ---- 계단: 밟으면 원래처럼 다음 층, 3D도 새 층으로 ----

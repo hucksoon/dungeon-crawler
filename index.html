@@ -220,20 +220,24 @@
   body.in-lobby .dungeon-only { display: none !important; }
   /* 3D 화면 (dc#109): 던전에서만 2D 캔버스 대신 3D 캔버스, 손에 든 무기·가운데 점·맞으면 붉은 가장자리 */
   #game3d { display: none; border: 1px solid var(--border); border-radius: 8px; background: #000; box-shadow: 0 8px 30px rgba(0,0,0,0.6); width: 640px; max-width: 100%; aspect-ratio: 4 / 3; height: auto; touch-action: none; cursor: crosshair; }
-  #hand3d, #aim3d, #hurt3d, .view3d-only { display: none; }
+  .hand3d, #aim3d, #hurt3d, .view3d-only { display: none; }
   body.view-3d:not(.in-lobby):not(.in-tower) #game { display: none; }
   body.view-3d:not(.in-lobby):not(.in-tower) #game3d { display: block; }
   body.view-3d:not(.in-lobby):not(.in-tower) #aim3d, body.view-3d:not(.in-lobby):not(.in-tower) #hurt3d { display: block; }
-  body.view-3d:not(.in-lobby):not(.in-tower) #hand3d:not([hidden]) { display: block; }
-  #hand3d { position: absolute; right: 6%; bottom: 0; width: 24%; aspect-ratio: 1; background-image: url(img/sprites.png); background-size: 1600% 800%; image-rendering: pixelated; transform-origin: 85% 100%; pointer-events: none; filter: brightness(0.8) sepia(0.25) drop-shadow(0 0 12px rgba(255, 170, 90, 0.25)); }
+  body.view-3d:not(.in-lobby):not(.in-tower) .hand3d:not([hidden]) { display: block; }
+  .hand3d { position: absolute; bottom: 0; width: 24%; aspect-ratio: 1; background-image: url(img/sprites.png); background-size: 1600% 800%; image-rendering: pixelated; pointer-events: none; }
+  #hand3d { right: 6%; transform-origin: 85% 100%; }
+  #hand3d-l { left: 6%; transform-origin: 15% 100%; }
+  #hand3d-l.shield { width: 28%; bottom: -4%; transform-origin: 50% 100%; }
   #aim3d { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(255, 235, 200, 0.7); pointer-events: none; }
-  #hurt3d { position: absolute; inset: 0; pointer-events: none; border-radius: 8px; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(200, 20, 10, 0.55) 100%); opacity: 0; }
+  #hurt3d { --hurt: #c8140a; position: absolute; inset: 0; pointer-events: none; border-radius: 8px; background: radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--hurt) 60%, transparent) 100%); opacity: 0; }
   #hurt3d.on { animation: hurt3d 420ms ease-out; }
   @keyframes hurt3d { from { opacity: 1; } to { opacity: 0; } }
   #view3d-btn.on { border-color: var(--accent); color: var(--accent); }
   /* 3D 지도 (dc#110): 작게는 왼쪽 아래, 크게는 화면 가운데에 반투명으로 겹침 */
   #map3d { display: none; position: absolute; pointer-events: none; border-radius: 6px; }
-  body.view-3d:not(.in-lobby):not(.in-tower) #map3d.small { display: block; left: 8px; bottom: 8px; border: 1px solid rgba(214, 200, 150, 0.35); }
+  body.view-3d:not(.in-lobby):not(.in-tower) #map3d.small { display: block; right: 8px; top: 8px; border: 1px solid rgba(214, 200, 150, 0.35); }
+  #gift-banner:not([hidden]) ~ #map3d.small { top: 46px; }   /* 선물 배너가 있으면 그 아래 */
   body.view-3d:not(.in-lobby):not(.in-tower) #map3d.big { display: block; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.35); }
   body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 던전: 포션·지도 없음 (점프·포탈(나가기)만) */
   /* 옆에서 보는 화면(점프 던전 dc#89 · 마을 dc#90) 휴대폰 배치: 왼손 엄지 ◀ ▶ (아래에 점프 던전은 ▼ 발판 아래로, 마을은 ▲ 들어가기)
@@ -2256,6 +2260,7 @@
         const around = s.splash ? enemies.filter(e => e !== target && near8(e, target) === 1) : [];
         const sm = RLItems.SPLASH.mul;
         hitEnemy(target, raw, crit, s, i ? T("왼손 ") : "", elem);
+        if (elemPct) fx3d?.("elem", target, s.elem);   // 3D: 속성 공격이 맞은 자리에 불꽃·얼음 조각·전기
         for (const e of around) if (enemies.includes(e)) hitEnemy(e, raw * sm, crit, s, T("광란 "), elem * sm);
         playerElements(target, s);
       });
@@ -2265,6 +2270,7 @@
       if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
         showDamage(target, T("피함"), false, RLItems.RARITIES.unique.color);
         Anim.dodge(target, attacker, at);
+        fx3d?.("dodge");
         Sfx("dodge");
         log(T("{0}의 공격을 피했다! (홀림)", attacker.name), "good");
         return;
@@ -2273,6 +2279,7 @@
       if (s.parry && Math.random() * 100 < s.parry) {
         showDamage(target, T("막음"), false);
         Anim.block(target, attacker, at);
+        fx3d?.("block");
         Sfx("block");
         log(T("{0}의 공격을 방패로 막아냈다! (패링)", attacker.name), "good");
         // 업경대: 막아도 받을 피해의 %를 되돌림
@@ -2445,6 +2452,7 @@
   function monsterElement(m, s, dealt) {
     const cut = (k) => 1 - s.res[k] / 100;
     Sfx(m.el);
+    fx3d?.("hurtEl", m.el);
     if (m.el === "fire") burnOn(player, Math.round(dealt * EL.burn.mul * cut("fire")));
     else if (m.el === "ice") {
       if (chill(player, EL.ice.chance * cut("ice"))) log(T("몸이 얼어붙었다! {0}턴 동안 느려진다 (2턴에 한 번만 움직임).", EL.ice.turns), "bad");
@@ -2463,7 +2471,9 @@
     const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMix(target, s))) * shockMul(target) * bossMul(target, s));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
     target.hp -= dmg;
-    showDamage(target, dmg, crit);
+    // 속성 피해가 섞이면 피해 숫자를 가장 센 속성 색으로 (불 주황 · 얼음 하늘 · 번개 노랑, dc#111)
+    const elKey = elem > 0 ? ["fire", "ice", "bolt"].reduce((a, k) => (s.elem[k] > s.elem[a] ? k : a), "fire") : null;
+    showDamage(target, dmg, crit, elKey ? EL.colors[elKey] : undefined);
     Anim.hit(target, player);
     Sfx(crit ? "crit" : "hit");
     let left = target.kind !== "normal" ? T(" (남은 HP {0}/{1}", Math.max(0, target.hp), target.maxHp) : "";
@@ -4635,18 +4645,22 @@
   // 그리기는 view3d.js (three.js). 처음 3D를 켤 때만 받고, 못 쓰면(WebGL 없음) 2D로 돌아감. 켜고 끄기는 기기에 저장 (rl_3d)
   const View3D = (() => {
     const KEY = "rl_3d", TURN = 0.6, SPEED = 2.6, TURN_SPEED = 2.2, R = 0.24, REACH = 1.6, SENS = 0.0026;
-    let on = store.get(KEY) === "1", view = null, loading = null;
+    // dc#111부터 3D가 기본 (2D로 바꾼 사람만 "0"). 포털 빌드는 2D (three.js를 넣지 않음)
+    let on = !PORTAL && store.get(KEY) !== "0", view = null, loading = null;
     let pos = { x: 0.5, y: 0.5 }, yaw = 0, pitch = 0, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, bobT = 0, hpSeen = 0, swingT = -1e9;
+    let swingLT = -1e9, blockT = -1e9, dodgeT = -1e9, elemCache = { t: -1e9, el: null }, hurtEl = null;   // 왼손 휘두름 · 방패 막기 · 피하기 · 무기 속성 색
     const held = { f: 0, b: 0, l: 0, r: 0, tl: 0, tr: 0, atk: false };
     const joy = { id: null, x0: 0, y0: 0, dx: 0, dy: 0 }, look = { id: null, x: 0, y: 0, moved: 0, t0: 0 };
     const disp = new WeakMap();   // 몬스터를 그리는 자리 (칸을 옮기면 그 사이를 부드럽게)
     let drawn = [];               // 지난 프레임에 그린 몬스터 (쓰러지면 연기)
     const stage = document.getElementById("stage"), btn = document.getElementById("view3d-btn");
-    const hand = el("div", { id: "hand3d", hidden: true }), hurt = el("div", { id: "hurt3d" }), aim = el("div", { id: "aim3d" });
+    // 손: 오른손 무기, 왼손 보조 무기·방패 (dc#111)
+    const hand = el("div", { id: "hand3d", className: "hand3d", hidden: true }), handL = el("div", { id: "hand3d-l", className: "hand3d", hidden: true });
+    const hurt = el("div", { id: "hurt3d" }), aim = el("div", { id: "aim3d" });
     // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래) → 크게(화면 전체에 반투명) → 끄기. Tab · 휴대폰 지도 버튼. 기기에 저장 (rl_3dmap)
     const mapCv = el("canvas", { id: "map3d" }), MAP_MODES = ["small", "big", "off"];
     let mapMode = MAP_MODES.includes(store.get("rl_3dmap")) ? store.get("rl_3dmap") : "small";
-    stage.append(hand, hurt, aim, mapCv);
+    stage.append(handL, hand, hurt, aim, mapCv);
     const label = () => { btn.textContent = on ? T("2D 화면 (V)") : T("3D 화면 (V)"); btn.classList.toggle("on", on); };
     const active = () => on && !!view && scene === "dungeon";
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
@@ -4660,14 +4674,14 @@
         render();
       }).catch((e) => {
         console.warn("3D", e);
-        on = false; store.del(KEY); loading = null; label();
+        on = false; store.set(KEY, "0"); loading = null; label();
         log(T("이 기기에서는 3D 화면을 쓸 수 없어서 2D로 돌아왔다."), "bad");
       });
       return loading;
     }
     function toggle() {
       on = !on;
-      if (on) store.set(KEY, "1"); else store.del(KEY);
+      store.set(KEY, on ? "1" : "0");
       label();
       document.body.classList.toggle("view-3d", on && !!view);
       if (on) {
@@ -4750,6 +4764,7 @@
       atkReady = now + TURN * 1000;
       swingT = now;
       const e = target();
+      if (stats().dual) swingLT = now + 150;   // 두 손 무기: 왼손도 조금 뒤에 휘두름
       if (!e) { Sfx("swing"); return; }
       attack(player, e);
       if (scene === "dungeon" && !gameOver) { computeFOV(); updateStats(); }
@@ -4773,7 +4788,10 @@
     }
     function draw(t) {
       const now = performance.now();
-      if (player.hp < hpSeen) { hurt.classList.remove("on"); void hurt.offsetWidth; hurt.classList.add("on"); }   // 맞으면 화면 가장자리가 붉게
+      if (player.hp < hpSeen) {   // 맞으면 화면 가장자리가 붉게 (속성 몬스터면 그 색)
+        hurt.style.setProperty("--hurt", hurtEl || "#c8140a"); hurtEl = null;
+        hurt.classList.remove("on"); void hurt.offsetWidth; hurt.classList.add("on");
+      }
       hpSeen = player.hp;
       const bills = [];
       // 쓰러진 몬스터: 그 자리에 잠깐 붉은 연기
@@ -4788,10 +4806,18 @@
         d.x = d.fx + (d.tx - d.fx) * p; d.y = d.fy + (d.ty - d.fy) * p;
         const o = Anim.of(e), big = e.named ? 1.35 : e.kind === "boss" ? 1.15 : e.kind === "elite" ? 0.85 : e.kind === "golden" ? 0.7 : 0.75;
         const hurtNow = e.hp < e.maxHp || e.kind !== "normal";
+        // 상태: 불탐(불꽃이 피어오름) · 얼어 느려짐(하늘색) · 감전(노란 빛과 전기). 가끔씩 입자를 뿌림
+        const burning = !!e.burn, frozen = e.slow > 0, shockOn = e.shock > turn;
+        if (!reduceMotion && Math.random() < 0.25) {
+          if (burning) view.sparks(d.x, d.y, EL.colors.fire, "flame", 1);
+          if (frozen) view.sparks(d.x, d.y, EL.colors.ice, "shard", 1);
+          if (shockOn) view.sparks(d.x, d.y, EL.colors.bolt, "spark", 1);
+        }
         bills.push({ key: e, sprite: `mon_${e.id}`, x: d.x + o.x / TILE * 0.6, y: d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha,
+          tint: frozen ? "#9fdcff" : burning ? "#ffc9a0" : shockOn ? "#fff3a0" : null,
           hp: hurtNow ? Math.max(0, e.hp / e.maxHp) : null,
           barColor: e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : e.kind === "golden" ? "#ffd700" : "#e04a3a",
-          glow: e.el ? EL.colors[e.el] : e.kind === "golden" ? "#ffd700" : null });
+          glow: burning ? EL.colors.fire : shockOn ? EL.colors.bolt : frozen ? EL.colors.ice : e.el ? EL.colors[e.el] : e.kind === "golden" ? "#ffd700" : null });
       }
       for (const it of items) {
         const g = it.type === "gear" ? it.item : null;
@@ -4805,16 +4831,48 @@
       const bob = bobT ? Math.sin(bobT * 9) * 0.025 : 0;
       const flick = reduceMotion ? 1 : 0.9 + 0.07 * Math.sin(t / 90) + 0.05 * Math.sin(t / 37 + 1.3);
       view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills });
-      // 손에 든 무기 (오른쪽 아래): 휘두르는 동안 기울어짐
-      const w = Inv.equipped().weapon;
-      hand.hidden = !w;
-      if (w) {
-        const name = itemArt({ type: "gear", item: w }), c = RLSprites.map[name];
-        if (c && hand.dataset.art !== name) { hand.dataset.art = name; hand.style.backgroundPosition = `${c[0] / (RLSprites.cols - 1) * 100}% ${c[1] / (RLSprites.rows - 1) * 100}%`; }
-        const sp = (now - swingT) / 260;
-        hand.style.transform = sp < 1 ? `rotate(${-70 * Math.sin(sp * Math.PI)}deg) translate(${-40 * Math.sin(sp * Math.PI)}px, ${-20 * Math.sin(sp * Math.PI)}px)` : `translateY(${bob * 300}px)`;
-      }
+      drawHands(now, bob);
       drawMap();
+    }
+    // 손에 든 장비: 오른손 무기(오른쪽 아래), 왼손 보조 무기·방패(왼쪽 아래)
+    //   공격하면 오른손을 휘두름 (두 손 무기면 왼손도 조금 뒤에), 방패로 막으면 방패를 화면 가운데로 들어 올림
+    //   무기에 속성 피해가 있으면 가장 센 속성 색으로 빛남 (불 주황 · 얼음 하늘 · 번개 노랑)
+    function art(div, item) {
+      div.hidden = !item;
+      if (!item) return;
+      const name = itemArt({ type: "gear", item }), c = RLSprites.map[name];
+      if (c && div.dataset.art !== name) { div.dataset.art = name; div.style.backgroundPosition = `${c[0] / (RLSprites.cols - 1) * 100}% ${c[1] / (RLSprites.rows - 1) * 100}%`; }
+    }
+    function weaponElement(now) {
+      if (now - elemCache.t > 500) {   // stats()는 무거워서 0.5초마다
+        const e = stats().elem, top = ["fire", "ice", "bolt"].reduce((a, k) => (e[k] > (e[a] || 0) ? k : a), null);
+        elemCache = { t: now, el: top && e[top] > 0 ? top : null };
+      }
+      return elemCache.el;
+    }
+    function drawHands(now, bob) {
+      const eq = Inv.equipped(), w = eq.weapon, off = eq.offhand;
+      art(hand, w); art(handL, off);
+      const arc = (t, ms) => { const p = (now - t) / ms; return p >= 0 && p < 1 ? Math.sin(p * Math.PI) : 0; };
+      const idle = `translateY(${bob * 300}px)`;
+      if (w) {
+        const k = arc(swingT, 260);
+        hand.style.transform = k ? `rotate(${-70 * k}deg) translate(${-40 * k}px, ${-20 * k}px)` : idle;
+      }
+      if (off) {
+        const shield = off.type === "shield", kb = arc(blockT, 420), ks = arc(swingLT, 260);
+        handL.classList.toggle("shield", shield);
+        if (shield) handL.style.transform = kb ? `translate(${85 * kb}%, ${-30 * kb}%) scale(${1 + 0.45 * kb})` : idle;   // 막기: 가운데로 들어 올림
+        else handL.style.transform = `scaleX(-1) ${ks ? `rotate(${-70 * ks}deg) translate(${-40 * ks}px, ${-20 * ks}px)` : idle}`;
+      }
+      const el = weaponElement(now), c = el && EL.colors[el];
+      const glow = c ? `drop-shadow(0 0 ${8 + 4 * Math.sin(now / 160)}px ${c}) drop-shadow(0 0 3px ${c})` : "";
+      hand.style.filter = glow ? `brightness(0.95) ${glow}` : "";
+      if (off && off.type !== "shield") handL.style.filter = hand.style.filter;
+      else handL.style.filter = "";
+      // 피하기: 화면이 옆으로 살짝 흔들림
+      const kd = arc(dodgeT, 300);
+      view.canvas.style.transform = kd ? `translateX(${-14 * kd}px) rotate(${-1.2 * kd}deg)` : "";
     }
     // 지도: 가 본 곳의 바닥과 벽 윤곽 (2D 지도 겹쳐 보기와 같은 모양), 계단 · 상점 · 웨이포인트 · 보이는 아이템과 몬스터,
     //   나는 보는 방향을 가리키는 화살표와 옅은 시야. 위쪽이 북쪽(지도 그대로)
@@ -4874,8 +4932,20 @@
       return p && p.x >= 0 && p.y >= 0 && p.x <= view.canvas.clientWidth && p.y <= view.canvas.clientHeight ? p : { x: mid.x, y: view.canvas.clientHeight * 0.4 };
     }
     // 스킬 이펙트 (Fx와 같은 때): 파이어볼 터짐 · 프로스트 노바 · 체인 라이트닝
+    const ELEM_PART = { fire: "flame", ice: "shard", bolt: "spark" };
     function fx(kind, a, b) {
       if (!active()) return;
+      const now = performance.now();
+      if (kind === "block") { blockT = now; return; }
+      if (kind === "dodge") { dodgeT = now; return; }
+      if (kind === "hurtEl") { hurtEl = EL.colors[a] || null; return; }   // 속성 몬스터에게 맞으면 가장자리가 그 색 (불 주황 · 얼음 하늘 · 번개 노랑)
+      if (kind === "elem") {   // 무기 속성 피해: 맞은 몬스터에 속성마다 입자
+        const d = disp.get(a), x = d ? d.x : a.x, y = d ? d.y : a.y;
+        const top = ["fire", "ice", "bolt"].reduce((p, k) => (b[k] > (b[p] || 0) ? k : p), null);
+        if (top) view.burst(x, y, EL.colors[top], 1.8, 480, 0.55);   // 맞는 순간 속성 색으로 번쩍
+        for (const k of ["fire", "ice", "bolt"]) if (b[k] > 0) view.sparks(x, y, EL.colors[k], ELEM_PART[k], k === top ? 18 : 8);
+        return;
+      }
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
       else if (kind === "nova") view.burst(a.x, a.y, EL.colors.ice, 3.2, 520, 0.3);
       else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, EL.colors.bolt), i * Fx.CHAIN_STEP));
@@ -4935,7 +5005,8 @@
     if (on) load();
     requestAnimationFrame(loop);
     return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
-      get ready() { return active() && levelRef === map; },   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
+      get ready() { return active() && levelRef === map; },
+      get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
       get pos() { return { ...pos, yaw, pitch }; },
       // 시험용: 보는 방향·자리 바꾸기
       look(a, p = 0) { yaw = a; pitch = p; } };

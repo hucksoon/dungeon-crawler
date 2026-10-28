@@ -186,10 +186,17 @@ export function createView(host, { sheet, S, before = null }) {
 
   // ---- 번쩍임 (스킬·맞음): 잠깐 커지며 사라지는 빛 ----
   const flashes = [];
+  // 이펙트는 몬스터 그림(같은 자리의 빌보드)에 가려지지 않게 카메라 쪽으로 조금 당김
+  function toCam(px, pz, d = 0.4) {
+    const dx = camera.position.x - px, dz = camera.position.z - pz, l = Math.hypot(dx, dz) || 1;
+    return [px + dx / l * Math.min(d, l * 0.5), pz + dz / l * Math.min(d, l * 0.5)];
+  }
   function burst(x, y, color, r = 1, ms = 420, h = 0.5) {
     const s = glowObj();
     s.material.color.set(color);
-    s.position.set(x + 0.5, h, y + 0.5);
+    const [px, pz] = toCam(x + 0.5, y + 0.5);
+    s.position.set(px, h, pz);
+    s.renderOrder = 5;
     scene.add(s);
     flashes.push({ s, t0: performance.now(), ms, r });
   }
@@ -204,7 +211,39 @@ export function createView(host, { sheet, S, before = null }) {
     scene.add(line);
     flashes.push({ s: line, t0: performance.now(), ms: 280, line: true });
   }
+  // 속성 입자 (dc#111): flame 불꽃(위로 피어오름) · shard 얼음 조각(튀었다 떨어짐) · spark 전기(빠르게 번쩍)
+  const parts = [];
+  function sparks(x, y, color, kind = "flame", n = 8) {
+    for (let i = 0; i < n; i++) {
+      const s = glowObj();
+      s.material.color.set(color);
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 0.25, [cx, cz] = toCam(x + 0.5, y + 0.5, 0.3);
+      s.position.set(cx + Math.cos(a) * r, 0.25 + Math.random() * 0.5, cz + Math.sin(a) * r);
+      s.renderOrder = 5;
+      const sp = kind === "shard" ? 1.4 : kind === "spark" ? 2.2 : 0.35;
+      const v = kind === "flame" ? [Math.cos(a) * 0.15, 0.9 + Math.random() * 0.6, Math.sin(a) * 0.15]
+        : [Math.cos(a) * sp * Math.random(), kind === "shard" ? 0.8 + Math.random() : (Math.random() - 0.5) * 2, Math.sin(a) * sp * Math.random()];
+      const size = kind === "spark" ? 0.18 + Math.random() * 0.08 : kind === "shard" ? 0.15 + Math.random() * 0.06 : 0.22 + Math.random() * 0.1;
+      s.scale.set(size, size, 1);
+      scene.add(s);
+      parts.push({ s, v, kind, size, t0: performance.now(), ms: kind === "spark" ? 380 + Math.random() * 200 : kind === "shard" ? 700 : 700 + Math.random() * 300 });
+    }
+  }
+  function tickParts(now, dt) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i], k = (now - p.t0) / p.ms;
+      if (k >= 1) { scene.remove(p.s); p.s.material.dispose(); parts.splice(i, 1); continue; }
+      if (p.kind === "shard") p.v[1] -= 4 * dt;   // 얼음 조각은 떨어짐
+      if (p.kind === "spark" && Math.random() < 0.4) p.v = [(Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3];   // 전기는 이리저리 튐
+      p.s.position.x += p.v[0] * dt; p.s.position.y = Math.max(0.03, p.s.position.y + p.v[1] * dt); p.s.position.z += p.v[2] * dt;
+      const sz = p.size * (p.kind === "flame" ? 1 - k * 0.7 : 1);
+      p.s.scale.set(sz, sz, 1);
+      p.s.material.opacity = p.kind === "spark" ? (Math.random() < 0.7 ? 1 : 0.2) : 1 - k;
+    }
+  }
+  let lastT = performance.now();
   function tickFlashes(now) {
+    tickParts(now, Math.min(0.1, (now - lastT) / 1000)); lastT = now;
     for (let i = flashes.length - 1; i >= 0; i--) {
       const f = flashes[i], p = (now - f.t0) / f.ms;
       if (p >= 1) { scene.remove(f.s); f.s.material.dispose(); f.s.geometry?.dispose?.(); flashes.splice(i, 1); continue; }
@@ -245,5 +284,5 @@ export function createView(host, { sheet, S, before = null }) {
     renderer.dispose();
     canvas.remove();
   }
-  return { canvas, setLevel, frame, project, burst, bolt, dispose, renderer };
+  return { canvas, setLevel, frame, project, burst, bolt, sparks, dispose, renderer, get partCount() { return parts.length; } };
 }
