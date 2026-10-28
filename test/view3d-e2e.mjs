@@ -14,10 +14,10 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const DEV = "bbbb2222-0000-4000-8000-00000000cafe";
 // 헤드리스에서도 WebGL (SwiftShader)
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
-async function open(storage = {}, { scene = "dungeon", d3 = true } = {}) {
+async function open(storage = {}, { scene = "dungeon", d3 = true, phone = false } = {}) {
   // d3: true → rl_3d "1" · false → "0"(2D로 바꾼 사람) · "default" → 아무것도 넣지 않음 (처음 온 사람, 테스트 기본값 2D도 끔)
   globalThis.RL_TEST_3D_DEFAULT = d3 === "default";
-  const ctx = await browser.newContext({ viewport: { width: 1100, height: 950 }, locale: "ko-KR" }); const page = await ctx.newPage(); const errors = [];
+  const ctx = await browser.newContext({ ...(phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1100, height: 950 } }), locale: "ko-KR" }); const page = await ctx.newPage(); const errors = [];
   globalThis.RL_TEST_3D_DEFAULT = false;
   page.on("pageerror", e => errors.push(e.message));
   await ctx.route(ORIGIN + "**", r => { const f = new URL(r.request().url()).pathname.replace("/hucksoon/", "") || "index.html";
@@ -204,6 +204,27 @@ try {
   check("walk onto the stairs → next floor (new map), 3D stands on the new start tile", L.d === d0 + 1 && L.rid !== "v3d-x" && Math.floor(p.x) === L.px && Math.floor(p.y) === L.py, JSON.stringify({ d: L.d, px: L.px, py: L.py, x: p.x, y: p.y }));
   check("new floor is drawn (lit)", (await lit(o.page)) > 500);
   check("no page errors (stairs)", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+
+  // ---- 휴대폰 (dc#114): 방향 버튼 ▲▼ 앞뒤 · ◀▶ 돌기, 공격 버튼, 화면을 톡 누르면 공격 ----
+  o = await open(store(level({ enemies: [mob(12, 4, { hp: 1e6, maxHp: 1e6 })] })), { phone: true });
+  const vis = (sel) => o.page.locator(sel).isVisible();
+  check("phone 3D: ▲ ▼ ◀ ▶ buttons and the Attack button are shown (jump hidden)", await vis("#touch-pad .up") && await vis("#touch-pad .down") && await vis("#touch-pad .left") && await vis("#touch-pad .right") && await vis("#tp-attack") && !(await vis("#tp-jump")));
+  check("phone 3D: help line explains the 3D buttons", await vis(".hint-3d") && !(await vis(".hint-2d")));
+  await o.page.evaluate((a) => window.RLView3D.look(a), E);
+  const pressBtn = async (sel, ms) => { const b = o.page.locator(sel); await b.dispatchEvent("pointerdown", { pointerId: 7, pointerType: "touch", isPrimary: true }); await sleep(ms); await b.dispatchEvent("pointerup", { pointerId: 7, pointerType: "touch", isPrimary: true }); };
+  const ph0 = await st(o.page);
+  await pressBtn("#touch-pad .up", 900);
+  const ph1 = await st(o.page);
+  check("▲ held: walks forward (east)", ph1.x > ph0.x + 0.5 && Math.abs(ph1.y - ph0.y) < 0.05, JSON.stringify([ph0.x, ph1.x]));
+  await pressBtn("#touch-pad .left", 500);
+  const ph2 = await st(o.page);
+  check("◀ held: turns left", ph2.yaw < ph1.yaw - 0.3 && Math.abs(ph2.x - ph1.x) < 0.05, JSON.stringify([ph1.yaw, ph2.yaw]));
+  await pressBtn("#touch-pad .down", 600);
+  check("▼ held: steps back", JSON.stringify(await st(o.page)) !== JSON.stringify(ph2));
+  check("no page errors (phone)", !o.errors.length, o.errors.join(" | "));
+  await o.page.locator("#stage").scrollIntoViewIfNeeded();
+  await o.page.screenshot({ path: path.join(SHOTS, "view3d-phone.png") });
   await o.ctx.close();
 
   // ---- 마을은 그대로 옆에서 보는 2D ----
