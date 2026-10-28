@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>포털용 표지, 발소리, 무료 선물, 그리고 자동 테스트 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="포털용 썸네일과 블로그 이미지 페이지, 걸을 때 발소리, 3시간마다 세트·유니크 3개 중 하나를 고르는 무료 선물, 그리고 코드를 올리면 저절로 도는 자동 테스트.">
+<title>포털용 표지, 발소리, 무료 선물, 자동 테스트, 그리고 확률 공개 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="포털용 썸네일과 블로그 이미지 페이지, 걸을 때 발소리, 3시간마다 세트·유니크 3개 중 하나를 고르는 무료 선물, 코드를 올리면 저절로 도는 자동 테스트, 그리고 장비 상자 확률 공개.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-28.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="포털용 표지, 발소리, 무료 선물, 그리고 자동 테스트 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="포털용 썸네일과 블로그 이미지 페이지, 걸을 때 발소리, 3시간마다 세트·유니크 3개 중 하나를 고르는 무료 선물, 그리고 코드를 올리면 저절로 도는 자동 테스트.">
+<meta property="og:title" content="포털용 표지, 발소리, 무료 선물, 자동 테스트, 그리고 확률 공개 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="포털용 썸네일과 블로그 이미지 페이지, 걸을 때 발소리, 3시간마다 세트·유니크 3개 중 하나를 고르는 무료 선물, 코드를 올리면 저절로 도는 자동 테스트, 그리고 장비 상자 확률 공개.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-28.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/store-cover.jpg">
 
@@ -57,7 +57,7 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>포털용 표지, 발소리, 무료 선물, 그리고 자동 테스트</h1>
+<h1>포털용 표지, 발소리, 무료 선물, 자동 테스트, 그리고 확률 공개</h1>
 <p class="meta">2026년 10월 28일 (수) · 개발일기 · 게임 포털 · 사운드 · 광고 보상 · Claude Code</p>
 <p>어제 던전 크롤러를 Poki·CrazyGames 같은 게임 포털에 올릴 수 있게 혼자 하는 HTML5 버전을 만들었어요. 그런데 포털에 게임을 등록하려면 게임 파일만으로는 부족해요. 게임 목록에 보일 표지(썸네일), 게임 화면 캡처, 소개 글과 조작법도 필요해요.</p>
 <h2>표지는 실제 게임 화면으로</h2>
@@ -99,8 +99,16 @@
 <p>이제 GitHub Actions가 대신 돌려요.</p>
 <ul><li>코드를 올리면 GitHub가 테스트를 4조각으로 나눠 컴퓨터 4대에서 동시에 돌려요. 약 6분이면 끝나요</li><li>결과는 실행 화면에 표로 보이고, 실패하면 그때의 기록과 화면 캡처를 내려받을 수 있어요</li><li>가끔 타이밍 때문에 흔들리는 테스트는 한 번 더 돌려 보고, 통과하면 &quot;재시도&quot;라고 남겨요</li><li>머지하기 전에 이 자동 테스트가 통과했는지 꼭 확인하기로 작업 규칙도 바꿨어요</li></ul>
 <p>첫 실행에서 테스트가 하나도 빠짐없이 통과했어요.</p>
+<h2>장비 상자 확률을 공개했어요</h2>
+<p>캐시로 사는 장비 상자는 열어 봐야 뭐가 나올지 아는 아이템이에요. 한국에서는 이런 아이템을 팔면 나올 확률을 알려 줘야 해요. 그래서 상점에 확률 정보를 자세히 붙였어요.</p>
+<ul><li>등급마다 나올 확률과 그중 고대 아이템이 나올 확률</li><li>부위 9칸은 똑같이 11.11%씩</li><li>유니크는 상자에서 나오지 않는다는 것</li><li>상자를 10번, 50번 열면 레전더리나 세트가 하나라도 나올 확률</li><li>확률을 마지막으로 바꾼 날짜</li></ul>
+<p>게임 첫 화면 아래쪽에도 &quot;장비 상자 확률&quot; 링크를 달았어요.</p>
+<figure><img src="images/shop-odds.png" alt="상점 아래에 붙은 장비 상자 확률 정보" loading="lazy"><figcaption>상점 아래에 붙은 장비 상자 확률 정보</figcaption></figure>
+<h3>원래 보여 주던 숫자가 조금 틀렸어요</h3>
+<p>정리하다 보니 상점에 &quot;세트 1% · 레전더리 3%&quot;라고 써 놨는데, 실제로는 조금 달랐어요. 목걸이와 반지에는 세트 아이템이 없어서, 그 칸에서 세트가 뽑히면 레전더리가 나오거든요. 그래서 실제 확률은 세트 0.778%, 레전더리 3.22%예요.</p>
+<p>이제 상점에 보이는 숫자는 손으로 적지 않고, 상자를 여는 규칙에서 바로 계산해요. 그리고 자동 테스트가 상자를 30만 번 열어 보고 그 결과가 보여 주는 확률과 맞는지 확인해요. 규칙을 바꾸면 숫자도 같이 바뀌고, 어긋나면 테스트가 알려 줘요.</p>
 <h2>다음에 할 것</h2>
-<ul><li>포털 등록 화면에서 받는 크기를 확인하고, 다르면 그 크기로 다시 만들기</li><li>포털에 올리고 Poki·CrazyGames의 확인 도구로 광고와 플레이 알림 확인하기</li><li>구글 광고 승인이 나면 무료 선물 광고도 진짜 광고로 바꾸기</li></ul>
+<ul><li>포털 등록 화면에서 받는 크기를 확인하고, 다르면 그 크기로 다시 만들기</li><li>포털에 올리고 Poki·CrazyGames의 확인 도구로 광고와 플레이 알림 확인하기</li><li>구글 광고 승인이 나면 무료 선물 광고도 진짜 광고로 바꾸기</li><li>안드로이드 앱으로 만들어서 구글 플레이에 올리기</li></ul>
 </article>
 <nav class="pager"><span><a href="2026-10-27.html">← 점프 던전은 쉬고, 웨이포인트·묘비, 50층 정식 v1, 소리, 그리고 게임 포털 준비</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>

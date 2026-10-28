@@ -78,6 +78,11 @@ try {
   const btn = page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary');
   await btn.waitFor();
   check("box card shows cash price", (await btn.innerText()).includes("◆ 10"), await btn.innerText());
+  // 확률 공개 (dc#107): 규칙에서 계산한 실제 확률 (목걸이·반지는 세트가 없어서 세트 0.778% · 레전더리 3.22%), 고대, 여러 번 상자
+  const odds = await page.locator("#odds").innerText(), rates = await page.locator("#rates").innerText();
+  check("drop rates shown as the real odds (set 0.778%, legendary 3.22%, sums to 100%)", rates.includes("세트 0.778%") && rates.includes("레전더리 3.22%") && rates.includes("커먼 40.00%") && odds.includes("확률 정보") && odds.includes("세트 없어서") === false && odds.includes("세트가 없어서"), rates + " | " + odds.slice(0, 200));
+  check("odds table: ancient chances, 9 slots each 11.11%, no uniques, multi-box chances (x10 33.52%, x50 87.01%), last changed date", ["0.097%", "0.023%", "11.11%", "유니크는 상자에서 나오지 않아요", "10회 33.52%", "50회 87.01%", "마지막 변경: 2026-10-28"].every(x => odds.includes(x)), odds);
+  await page.locator("#odds").screenshot({ path: path.join(SHOTS, "shop-odds.png") });
   await btn.click();
   check("shows the box items the server opened (10) with the mailbox message", await waitFor(async () => (await page.locator("#box-msg").innerText()).includes("장비 10개를 얻었어요! 게임 우편함") && (await page.locator("#box-items > div").count()) === 10, 15000), await page.locator("#box-msg").innerText());
   const order = state.purchases[0];

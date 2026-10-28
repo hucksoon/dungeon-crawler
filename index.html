@@ -666,7 +666,7 @@
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
   로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 가운데 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
-  <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a></p>
+  <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a> <a id="odds-link" href="shop.html#odds" style="color: inherit" data-t>장비 상자 확률</a></p>
 </div>
 
 <div id="inv-modal" class="overlay" hidden>
@@ -8275,7 +8275,7 @@
   // 포털 빌드 (dc#102): 계정·상점·랭킹·바깥 링크·같이 접속한 사람 칸을 숨기고, 플레이 중인지 포털에 알림
   if (PORTAL) {
     document.body.classList.add("portal");
-    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "lobby-panel"]) {
+    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "odds-link", "lobby-panel"]) {
       const e = document.getElementById(id);
       if (e) e.style.display = "none";
     }

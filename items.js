@@ -1378,6 +1378,22 @@
     return { stats: sum, sets: activeSets, runewords: { names: rwNames, special: rw }, uniques: { names: uqNames, special: uq } };
   }
 
+  // 장비 상자(캐시) 확률 공개 (dc#107, 확률형 아이템 정보 공개): 규칙(TABLES.box · 부위 · 세트 · 고대)에서 정확히 계산
+  //   부위는 9칸이 같은 확률. 목걸이·반지는 세트가 없어서 세트가 뽑히면 레전더리가 됨 → 세트 1% × 7/9, 레전더리 3% + 1% × 2/9
+  //   고대(모든 능력치 최대치)는 레전더리·세트가 나왔을 때 ANCIENT.chance. 유니크는 상자에서 나오지 않음
+  //   at: 상자 하나(1회)의 등급별 확률, ancient: 고대 레전더리·고대 세트, slots: 부위별, atLeast(n, rarities): n회 중 하나 이상
+  function boxOdds() {
+    const table = TABLES.box, sum = Object.values(table).reduce((a, b) => a + b, 0), slots = SLOTS_R7;
+    const at = Object.fromEntries(Object.keys(table).map(r => [r, 0]));
+    for (const slot of slots) for (const [r, w] of Object.entries(table)) {
+      const p = w / sum / slots.length;
+      at[r === "set" && !setsFor(slot, false).length ? "legendary" : r] += p;
+    }
+    const ancient = { legendary: at.legendary * ANCIENT.chance, set: at.set * ANCIENT.chance };
+    const atLeast = (n, rarities) => 1 - Math.pow(1 - rarities.reduce((a, r) => a + at[r], 0), n);
+    return { at, ancient, slots: Object.fromEntries(slots.map(s => [s, 1 / slots.length])), atLeast };
+  }
+
   const api = {
     RULES_VERSION, RULES_REV, ANCIENT, ANCIENT_RARITIES, SLOTS_R7, ACC_SLOTS, EQUIP_SLOTS, equipKeysFor, isAccessory, ACCESSORY, accTier, ANCIENT_REROLL, canRerollAncient, ancientRerollCost, ancientRerollHit, rerollAncient, applyAncientRerolls, SLOTS, SLOT_NAMES, WEAPONS, ARMOR, RARITIES, TABLES, TABLES_OLD, tablesFor, DROPS, DROP_CHANCE, DROP_CHANCE_OLD, STATS, STAT_KEYS, SETS, setsFor, FIREBALL, FROST_NOVA, CHAIN,
     OFFHAND, PARRY, DUAL_WIELD, LIFESTEAL, SHIELD_GUARD, LONGSWORD, SPLASH, isWeaponLike, isShieldOnly, weaponTypes, kindName,
@@ -1386,7 +1402,7 @@
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
-    rngFrom, generate, fromRef, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findCeiling, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
+    rngFrom, generate, fromRef, boxOdds, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findCeiling, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
