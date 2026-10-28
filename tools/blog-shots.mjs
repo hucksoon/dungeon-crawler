@@ -149,6 +149,7 @@ const SCENES = [
   ["builds", "최고 조합 페이지", async () => open({ file: "builds.html" })],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
+  ["shop-odds", "장비 상자 확률 정보: 등급·고대·부위·여러 번 열 때", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator("#odds table").waitFor(); return { ...o, shot: "#odds" }; }],
   ["lang-en", "영어로 바뀐 로비", async () => open({ scene: "lobby", lang: "en", seed: { rl_save: save(40, "blog-en"), "rl_inv:g:DEV": inv(g40) } })],
   ["lang-ja", "일본어로 바뀐 인벤토리", async () => { const o = await open({ lang: "ja", seed: { rl_save: save(30, "blog-ja"), "rl_inv:g:DEV": inv(g40) } }); await press(o.page, ["i"]); return o; }],
   // 픽셀 그림: 게임 화면(캔버스)만 실제 픽셀로. 같은 층을 글자로 보기로도 한 장 더

@@ -537,7 +537,7 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
         return $n >= 1 && $n <= NM_FLOORS && $lvl === NM_ITEM_BASE + $n;
     }
     if (preg_match('/^box\|o[0-9A-Za-z]{1,48}\|(\d{1,2})$/', $seed, $m)) {                   // 장비 상자 (최대 50회)
-        return $src === 'box' && (int)$m[1] < 50 && box_seed_ok($seed);   // 환불 제외, 좁힌 뒤엔 서버 기록이 있는 것만 (market.php)
+        return $src === 'box' && (int)$m[1] < 50 && box_seed_ok($seed, $v, $lvl, $rev);   // 환불 제외, 좁힌 뒤엔 서버 기록이 있는 것만, 연 개정·레벨 그대로 (market.php)
     }
     if (preg_match(R_BONUS_SEED, $seed)) {   // 무료 선물 (dc#105, bonus.php): 서버가 만들어 보여 주고 사용자가 고른 시드만
         return $v === 4 && in_array($src, ['boss', 'unique'], true) && bonus_seed_ok($seed, $src, $lvl, $rev);
@@ -554,7 +554,7 @@ function verify_item($q, int $maxLvl, bool $dev = false): ?array {
     if (!is_array($q)) return null;
     $seed = $q['seed'] ?? null; $src = $q['src'] ?? null; $lvl = $q['lvl'] ?? null; $v = $q['v'] ?? 1; $enh = $q['enh'] ?? 0;
     $rev = $q['r'] ?? 0;  // 같은 버전 안의 규칙 개정 (v4 r1: 고대 3%, r2: 드롭 늘림, r3: 나이트메어 속성 줄, r4: 속성 세트, r5: 장검, r6: 홈)
-    if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6, 7, 8], true) || ($rev > 0 && $v !== 4)) return null;   // r7: 장신구, r8: 장신구 공격력·방어력·최대 HP 고정 수치
+    if (!in_array($rev, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], true) || ($rev > 0 && $v !== 4)) return null;   // r7: 장신구, r8: 장신구 공격력·방어력·최대 HP 고정 수치, r9: 장비 상자 레전더리부터·고대 10%
     if (!is_string($seed) || strlen($seed) > 120 || !is_string($src) || (!isset(R_TABLES[$src]) && $src !== 'unique')) return null;
     // 아이템 레벨은 얻은 층이라 최고 층보다 높을 수 없음 (선택 상자에서 고른 유니크는 산 것이라 예외)
     if (!is_int($lvl) || $lvl < 1 || ($lvl > $maxLvl && !preg_match(R_BUY_SEED, $seed)) || !in_array($v, [1, 2, 3, 4], true)) return null;

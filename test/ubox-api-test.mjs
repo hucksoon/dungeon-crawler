@@ -87,11 +87,11 @@ try {
   check("others cannot open my box", (await call("POST", "mail_claim", B, { id: m1.id, pick: "robe" })).body?.error === "not_found");
   const o1 = await call("POST", "mail_claim", A, { id: m1.id, pick: "robe" });
   const ref1 = o1.body?.mail?.ref;
-  const local = ref1 && RL.generateUnique(ref1.seed, ref1.lvl);
+  const local = ref1 && RL.generateUnique(ref1.seed, ref1.lvl, ref1.r);   // 참조의 개정으로 (게임의 fromRef처럼)
   check("open → ancient 염라의 관복, same item as the game makes", o1.status === 200 && ref1.seed === `buy|m${m1.id}|robe` && ref1.lvl === 175 && local.id === ref1.id && local.ancient && local.uq === "robe" && nameOf(o1.body.mail) === RL.itemName(local), o1.text);
   check("open twice → not_found", (await call("POST", "mail_claim", A, { id: m1.id, pick: "mirror" })).body?.error === "not_found");
   const o2 = await call("POST", "mail_claim", A, { id: m2.id, pick: "eopgyeong" });
-  const it2 = RL.generateUnique(o2.body.mail.ref.seed, o2.body.mail.ref.lvl);
+  const it2 = RL.generateUnique(o2.body.mail.ref.seed, o2.body.mail.ref.lvl, o2.body.mail.ref.r);
   check("second box → ancient 업경 목걸이", o2.status === 200 && it2.uq === "eopgyeong" && it2.ancient, o2.text);
   check("server keeps the chosen seeds", db().prepare("SELECT COUNT(*) n FROM bought_items").get().n === 2);
 
@@ -110,7 +110,7 @@ try {
   const sf = await call("POST", "score", B, { stage: 5, plvl: 3, item: refOf(fake), gear: [refOf(fake)] });
   const rowB = db().prepare("SELECT item_score, stage_gear FROM players_v4 WHERE display <> 'ali***@example.com'").get();
   check("forged buy seed is rejected", sf.status === 200 && rowB.item_score === -1 && JSON.parse(rowB.stage_gear).rejected === 1, JSON.stringify(rowB));
-  const wrongLvl = RL.generateUnique(ref1.seed, 170);
+  const wrongLvl = RL.generateUnique(ref1.seed, 170, ref1.r);
   check("bought seed with a different level is rejected", (await call("POST", "market_list", A, { item: refOf(wrongLvl), gold: 0, cash: 5, stage: 5 })).body?.error === "bad_item");
   const ls = await call("POST", "market_list", A, { item: refOf(robe), gold: 0, cash: 50, stage: 5 });
   check("bought item can be listed on the market", ls.status === 200, ls.text);

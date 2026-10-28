@@ -544,7 +544,7 @@ function mail_count(string $key): int {
 
 // ---- 장비 상자 (캐시): 웹훅 order_paid → 서버가 열어서 우편함으로 ----
 // 결과는 주문 번호로 정해짐 (box|o주문 번호|순번, 상점이 예전에 브라우저에서 열던 것과 같은 시드). 레벨은 계정 저장본의 최고 층
-const BOX_REV = 8;          // 상자 아이템을 만드는 규칙 개정 (items.js RULES_REV)
+const BOX_REV = 9;          // 상자 아이템을 만드는 규칙 개정 (items.js RULES_REV). r9: 레전더리·세트만, 고대 10% (그 전에 산 상자 아이템은 참조의 r 그대로 다시 만듦)
 const BOX_MAX_DRAWS = 50;   // seed_origin_ok: 순번 50 미만
 const BOX_MAX_QTY = 10;
 const BOX_SKU_RE = '/^box_equipment_(\d{1,2})$/';
@@ -601,15 +601,16 @@ function box_revoke(PDO $pdo, string $orderId): int {
     return $taken;
 }
 
-function box_seed_revoked(string $seed): bool {
-    return q_val("SELECT 1 FROM box_items WHERE seed = ? AND state = 'revoked'", [$seed]) !== false;
-}
-
 // 좁힌 뒤(box_strict): 서버가 지급했거나(granted) 예전 것으로 등록한(legacy) 상자 시드만 인정.
 // 좁히기 전: 환불된 것만 빼고 인정 (예전에 브라우저에서 연 상자는 서버 기록이 없어서)
-function box_seed_ok(string $seed): bool {
-    if (!box_strict()) return !box_seed_revoked($seed);
-    return q_val("SELECT 1 FROM box_items WHERE seed = ? AND state IN ('granted', 'legacy')", [$seed]) !== false;
+// 서버가 연 상자는 그때의 아이템 ID가 기록돼 있음 → 다른 개정·레벨로 다시 만든 것은 인정하지 않음
+//   (r9부터 상자는 레전더리부터라, 예전에 연 상자 시드를 r9로 바꿔 내면 다른 아이템이 됨). 기록이 없는 예전 시드는 r8까지만
+function box_seed_ok(string $seed, int $v = 4, int $lvl = 0, int $rev = 0): bool {
+    $row = q_row('SELECT state, item_id FROM box_items WHERE seed = ?', [$seed]);
+    if (!$row) return !box_strict() && $rev < 9;
+    if (!in_array($row['state'], ['granted', 'legacy'], true)) return false;
+    if ($row['item_id'] === '') return $rev < 9;
+    try { return r_generate($v, $seed, 'box', $lvl, $rev)['id'] === $row['item_id']; } catch (InvalidArgumentException $e) { return false; }
 }
 function box_strict(): bool {
     return q_val("SELECT value FROM server_flags WHERE name = 'box_strict'") === '1';

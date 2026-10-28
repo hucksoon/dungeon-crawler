@@ -25,7 +25,7 @@ await sleep(700);
 
 // ---- 규칙 ----
 const findA = (tag, lvl, pred) => { for (let i = 0; ; i++) { const it = I.generate(`acc${i}|${tag}|k${i}`, "boss", lvl); if (I.isAccessory(it) && pred(it)) return it; } };
-check("r8: rules rev 8, 9 item slots (neck·ring), 10 equip slots", I.RULES_REV === 8 && I.SLOTS_R7.length === 9 && I.EQUIP_SLOTS.join() === "head,chest,arms,pants,boots,weapon,offhand,neck,ring1,ring2");
+check("r8: rules rev 8, 9 item slots (neck·ring), 10 equip slots", I.RULES_REV >= 8 && I.SLOTS_R7.length === 9 && I.EQUIP_SLOTS.join() === "head,chest,arms,pants,boots,weapon,offhand,neck,ring1,ring2");
 const old = I.generate("x|d40|k1", "boss", 40, 4, 6);
 check("r6 items unchanged (no accessory slots)", I.SLOTS.includes(old.slot) && old.r === 6);
 const counts = (tag) => { const c = {}; for (let i = 0; i < 6000; i++) { const it = I.generate(`c${i}|${tag}|k${i}`, "boss", 100); if (I.isAccessory(it)) c[it.lines.length] = (c[it.lines.length] || 0) + 1; } return c; };

@@ -25,7 +25,8 @@ const L2 = find(n => `runG1|d2|k${n}`, "golden", 2, it => it.rarity === "legenda
 const E10a = find(n => `runA|d10|k${n}`, "drop", 10, it => it.rarity === "epic", 0.4);
 const E10b = find(n => `runP|d10|k${n}`, "drop", 10, it => it.rarity === "epic", 0.4);
 const R15 = find(n => `runB${n}|shop|d15|s${n % 6}`, "golden", 15, it => it.rarity === "rare");
-const U6 = find(n => `box|o9${n}|${n % 10}`, "box", 6, it => it.rarity === "uncommon");
+// r9 전에 연 상자 (r9 상자는 레전더리부터, 서버 기록이 없는 예전 상자 시드는 r8까지만 인정)
+const U6 = (() => { for (let n = 0; n < 1000; n++) { const it = RL.generate(`box|o9${n}|${n % 10}`, "box", 6, 4, 8); if (it.rarity === "uncommon") return it; } throw new Error("seed not found"); })();
 const C1 = find(n => `runA|d1|p${n}`, "drop", 1, it => it.rarity === "common", 0.08);
 const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
 const PROJECT = "30375188-893b-4b1a-ba1b-c8ba692fa5e3";

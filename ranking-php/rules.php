@@ -65,7 +65,14 @@ const R_TABLES_R2 = [
     'drop' => ['common' => 45, 'uncommon' => 28, 'rare' => 17, 'epic' => 6.5, 'legendary' => 2.5, 'set' => 1],
     'boss' => ['common' => 10, 'uncommon' => 25, 'rare' => 32, 'epic' => 20, 'legendary' => 9, 'set' => 4],
 ];
-function r_tables_for(int $version, int $rev): array { return ($version === 4 && $rev >= 2) ? array_merge(R_TABLES, R_TABLES_R2) : R_TABLES; }
+// v4 r9부터 장비 상자는 레전더리·세트만, 상자의 레전더리·세트는 고대 R_ANCIENT_BOX (items.js TABLES_R9 · ANCIENT.box)
+const R_TABLES_R9 = ['box' => ['legendary' => 75, 'set' => 25]];
+const R_ANCIENT_BOX = 0.1;
+function r_tables_for(int $version, int $rev): array {
+    if ($version === 4 && $rev >= 9) return array_merge(R_TABLES, R_TABLES_R2, R_TABLES_R9);
+    return ($version === 4 && $rev >= 2) ? array_merge(R_TABLES, R_TABLES_R2) : R_TABLES;
+}
+function r_ancient_chance(string $source, int $rev): float { return $source === 'box' && $rev >= 9 ? R_ANCIENT_BOX : R_ANCIENT_CHANCE; }
 function r_drop_chance_for(int $version, int $rev): array { return ($version === 4 && $rev >= 2) ? R_DROP_CHANCE_R2 : R_DROP_CHANCE; }
 const R_STAT_KEYS = ['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp'];
 const R_STAT_KEYS_V4 = ['atk', 'def', 'hp', 'crit', 'critDmg', 'atkPct', 'lifesteal', 'gold', 'xp'];
@@ -621,10 +628,10 @@ function r_generate_unique(string $seed, int $level, int $rev): array {
 
 function r_generate(int $version, string $seed, string $source, int $level, int $rev = 0): array {
     if ($source === 'unique') {
-        if ($version !== 4 || ($rev < 6 || $rev > 8)) throw new InvalidArgumentException('bad unique rev');
+        if ($version !== 4 || ($rev < 6 || $rev > 9)) throw new InvalidArgumentException('bad unique rev');
         return r_generate_unique($seed, $level, $rev);
     }
-    if ($rev !== 0 && !($rev >= 1 && $rev <= 8 && $version === 4)) throw new InvalidArgumentException('bad rev');
+    if ($rev !== 0 && !($rev >= 1 && $rev <= 9 && $version === 4)) throw new InvalidArgumentException('bad rev');
     if (!isset(R_TABLES[$source])) throw new InvalidArgumentException('bad source');
     $lv = max(1, $level);
     if (!in_array($version, [1, 2, 3, 4], true)) throw new InvalidArgumentException('bad version');
@@ -681,7 +688,7 @@ function r_generate(int $version, string $seed, string $source, int $level, int 
     if ($rev) {
         $item['r'] = $rev;
         // 고대 굴림 (items.js와 같은 시드): 걸리면 모든 능력치·패링을 최대치로
-        if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
+        if (($rarity === 'legendary' || $rarity === 'set') && r_rng("anc|{$item['id']}")() < r_ancient_chance($source, $rev)) $item = r_max_out($item);
     }
     if ($nightmare) $item = r_one_element_dmg($item, $stats, "v{$version}|{$seed}");
     $item['ancient'] = r_is_ancient($item);
@@ -697,7 +704,7 @@ function r_generate_accessory(Closure $rng, string $seed, string $source, int $l
     $item['lines'] = [];
     for ($i = 0; $i < $n; $i++) { $k = r_pick($rng, R_ACCESSORY['resKeys']); $item['lines'][] = [$k, r_rand_int($rng, ...r_line_range_of($k, $item))]; }
     $item['id'] = r_id(4, $source, $lv, $seed, $rev);
-    if ($rarity === 'legendary' && r_rng("anc|{$item['id']}")() < R_ANCIENT_CHANCE) $item = r_max_out($item);
+    if ($rarity === 'legendary' && r_rng("anc|{$item['id']}")() < r_ancient_chance($source, $rev)) $item = r_max_out($item);
     $item['ancient'] = r_is_ancient($item);
     return $item;
 }

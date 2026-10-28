@@ -1156,5 +1156,7 @@
     "이미 받았거나 없는 선물이에요.": "This gift was already taken or doesn't exist.",
     "🎁 무료 선물로 {0}을(를) 받았다!": "🎁 Got {0} from the free gift!",
     "🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.": "🎉 Bonus! ◆{0} cash arrived in your mailbox.",
+    // 장비 상자 확률 공개 (dc#107)
+    "장비 상자 확률": "Equipment box drop rates",
   } });
 })(typeof self !== "undefined" ? self : this);

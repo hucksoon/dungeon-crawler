@@ -130,8 +130,9 @@ try {
   check("10 box items put in the buyer's mailbox", mails.length === 10 && mails.every(m => m.state === "new"), String(mails.length));
   const want = Array.from({ length: 10 }, (_, i) => I.generate(`box|o8001|${i}`, "box", 60));
   const refs = mails.map(m => JSON.parse(m.item_ref));
-  check("same items the shop used to open in the browser (seed box|o<order>|i, level 60 = best floor 40 × 1.5)", refs.every(r => r.lvl === 60 && r.src === "box" && r.r === 8) && want.every(w => refs.some(r => r.id === w.id && r.seed === w.seed)), JSON.stringify(refs[0]));
+  check("same items the shop used to open in the browser (seed box|o<order>|i, level 60 = best floor 40 × 1.5)", refs.every(r => r.lvl === 60 && r.src === "box" && r.r === 9) && want.every(w => refs.some(r => r.id === w.id && r.seed === w.seed)), JSON.stringify(refs[0]));
   check("game can rebuild every mailed item (RLItems.fromRef)", refs.every(r => I.fromRef(r)?.id === r.id));
+  check("r9 box: only legendary or set (dc#107)", refs.every(r => ["legendary", "set"].includes(I.fromRef(r).rarity)), refs.map(r => I.fromRef(r).rarity).join());
   check("box_items rows granted, event state granted", sql("SELECT COUNT(*) n FROM box_items WHERE order_id = '8001' AND state = 'granted'")[0].n === 10 && sql("SELECT state FROM xsolla_events WHERE event_key = 'order_paid:8001'")[0].state === "granted");
   check("same webhook again → no second grant", (await hook(boxPaid(8001, [{ sku: "box_equipment_10", quantity: 1 }]))).status === 204 && sql("SELECT COUNT(*) n FROM mail WHERE kind = 'box'")[0].n === 10);
   await hook(boxPaid(8002, [{ sku: "box_equipment_1", quantity: 2 }, { sku: "cash", quantity: 5 }]));
@@ -159,33 +160,35 @@ try {
 
   // 환불 → 회수
   const phpEval = (code) => execFileSync("php", ["-r", `define('RANKING_NO_ROUTE', true); require '${path.join(REPO, "ranking-php/api.php")}'; ${code}`], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString();
-  check("before refund: box seed accepted (seed_origin_ok)", phpEval(`echo seed_origin_ok(4, 'box|o8001|0', 'box', 40, 8) ? 'ok' : 'no';`) === "ok");
+  check("before refund: box seed accepted (seed_origin_ok)", phpEval(`echo seed_origin_ok(4, 'box|o8001|0', 'box', 60, 9) ? 'ok' : 'no';`) === "ok");
   const cancel = await hook({ ...boxPaid(8001, [{ sku: "box_equipment_10", quantity: 1 }]), notification_type: "order_canceled" });
   check("order_canceled → 204, unclaimed box mail revoked", cancel.status === 204 && sql("SELECT COUNT(*) n FROM mail WHERE kind = 'box' AND state = 'revoked'")[0].n === 10 && sql("SELECT state FROM xsolla_events WHERE event_key = 'order_canceled:8001'")[0].state === "revoked");
   check("revoked mail gone from the mailbox, claim → 404", !(await api(BUYER, "market_mine")).body.mail.some(m => mails.some(x => x.id === m.id)) && (await api(BUYER, "mail_claim", { method: "POST", body: { id: mails[0].id } })).status === 404);
-  check("refunded box seed no longer accepted (ranking, market)", phpEval(`echo seed_origin_ok(4, 'box|o8001|0', 'box', 40, 8) ? 'ok' : 'no';`) === "no");
-  check("other orders' and old shop-opened box seeds still accepted", phpEval(`echo seed_origin_ok(4, 'box|o8002|0', 'box', 40, 8) && seed_origin_ok(4, 'box|o424242|3', 'box', 10, 8) ? 'ok' : 'no';`) === "ok");
+  check("refunded box seed no longer accepted (ranking, market)", phpEval(`echo seed_origin_ok(4, 'box|o8001|0', 'box', 60, 9) ? 'ok' : 'no';`) === "no");
+  check("other orders' and old shop-opened box seeds still accepted", phpEval(`echo seed_origin_ok(4, 'box|o8002|0', 'box', 60, 9) && seed_origin_ok(4, 'box|o424242|3', 'box', 10, 8) ? 'ok' : 'no';`) === "ok");
   check("box_order after refund → revoked", (await api(BUYER, "box_order&order=8001")).body.revoked === true);
   await hook({ ...boxPaid(8007, [{ sku: "box_equipment_1", quantity: 1 }]), notification_type: "order_canceled" });
   check("cancel arrives before payment → later order_paid grants nothing", (await hook(boxPaid(8007, [{ sku: "box_equipment_1", quantity: 1 }]))).status === 204 && !sql("SELECT 1 FROM box_items WHERE order_id = '8007'").length && sql("SELECT state FROM xsolla_events WHERE event_key = 'order_paid:8007'")[0].state === "canceled");
   // ---- 예전 상자 시드 좁히기: 서버에 있는 예전 상자 아이템을 등록한 뒤, 서버 기록이 있는 시드만 ----
   const admin = (...a) => execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), ...a], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString();
-  const seedOk = (seed, lvl = 10) => phpEval(`echo seed_origin_ok(4, '${seed}', 'box', ${lvl}, 8) ? 'ok' : 'no';`) === "ok";
+  const seedOk = (seed, lvl = 10, rev = 8) => phpEval(`echo seed_origin_ok(4, '${seed}', 'box', ${lvl}, ${rev}) ? 'ok' : 'no';`) === "ok";
   const OLD = "f6a7b8c9-0000-4000-8000-0000000000ff";
-  const oldBag = I.generate("box|o5551|0", "box", 10), oldEq = I.generate("box|o5551|1", "box", 10), oldBoxMail = I.generate("box|orec77x0|0", "box", 10), oldGift = I.generate("box|o5552|3", "box", 10);
+  const old = (seed) => I.generate(seed, "box", 10, 4, 8);   // r9 전에 브라우저에서 연 상자
+  const oldBag = old("box|o5551|0"), oldEq = old("box|o5551|1"), oldBoxMail = old("box|orec77x0|0"), oldGift = old("box|o5552|3");
   await game(OLD, "POST", JSON.stringify({ rev: 0, data: { v: 1, save: { v: 1, f50: 1, best: 10, run: null, dead: null }, inv: { bag: [oldBag], equip: { head: null, chest: null, arms: null, pants: null, boots: null, weapon: oldEq }, stones: 0 }, dex: { seen: {}, kills: {} }, boxMail: [{ item: oldBoxMail, from: "box" }] } }));
   sql("SELECT 1");   // DB 준비
   { const d = new DatabaseSync(DB); try { d.prepare("INSERT INTO mail (id, owner_key, kind, item_id, item_ref, item_name, rarity, gold, cash, state, created_at) VALUES ('legacygift000001', ?, 'gift', ?, ?, 'x', 'common', 0, 0, 'new', 1)").run(userKey(OLD), oldGift.id, JSON.stringify({ seed: oldGift.seed, src: "box", lvl: 10, v: 4, r: 8, id: oldGift.id })); } finally { d.close(); } }
-  check("boxes: not narrowed yet, forged box seed still accepted", admin("boxes").includes("좁히기 전") && seedOk("box|o999999|0"));
+  check("boxes: not narrowed yet, forged box seed still accepted (r8 only: unrecorded seeds can't be r9 legendary boxes)", admin("boxes").includes("좁히기 전") && seedOk("box|o999999|0") && !seedOk("box|o999999|0", 10, 9));
   const dry = admin("boxes", "legacy");
   check("boxes legacy (dry run): finds old box items in saves and mail, changes nothing", /예전 상자 아이템 4개 .*계정 저장본 3 · 랭킹 0 · 거래소 0 · 우편 1/.test(dry) && dry.includes("확인만 했어요") && admin("boxes").includes("좁히기 전"), dry);
   const applied = admin("boxes", "legacy", "--apply");
   check("--apply: registers them as legacy and narrows", applied.includes("4개를 등록하고 좁혔어요") && admin("boxes").includes("좁힘") && sql("SELECT COUNT(*) n FROM box_items WHERE state = 'legacy'")[0].n === 4, applied);
-  check("narrowed: registered old box items still accepted", [oldBag, oldEq, oldBoxMail, oldGift].every(it => seedOk(it.seed)));
+  check("narrowed: registered old box items still accepted, but not rebuilt as r9", [oldBag, oldEq, oldBoxMail, oldGift].every(it => seedOk(it.seed) && !seedOk(it.seed, 10, 9)));
   check("narrowed: forged / unknown box seed rejected", !seedOk("box|o999999|0") && !seedOk("box|o5551|7"));
-  check("narrowed: server-granted seeds accepted, refunded still rejected", seedOk("box|o8002|0", 40) && !seedOk("box|o8001|0", 40));
+  check("narrowed: server-granted seeds accepted (as opened: r9, level 60), refunded still rejected", seedOk("box|o8002|0", 60, 9) && !seedOk("box|o8001|0", 60, 9));
+  check("granted box seed with another rev or level → rejected", !seedOk("box|o8002|0", 60, 8) && !seedOk("box|o8002|0", 40, 9));
   check("apply again → nothing new", admin("boxes", "legacy", "--apply").includes("0개를 등록"));
-  const ref = await api(OLD, "market_list", { method: "POST", body: { item: { seed: "box|o999999|0", src: "box", lvl: 10, v: 4, r: 8, enh: 0, id: I.generate("box|o999999|0", "box", 10).id }, gold: 100, cash: 0, stage: 10 } });
+  const ref = await api(OLD, "market_list", { method: "POST", body: { item: { seed: "box|o999999|0", src: "box", lvl: 10, v: 4, r: 8, enh: 0, id: old("box|o999999|0").id }, gold: 100, cash: 0, stage: 10 } });
   const okList = await api(OLD, "market_list", { method: "POST", body: { item: { seed: oldBag.seed, src: "box", lvl: 10, v: 4, r: 8, enh: 0, id: oldBag.id }, gold: 100, cash: 0, stage: 10 } });
   check("narrowed: market refuses a forged box item but lists a registered old one", ref.status === 400 && okList.status === 200, JSON.stringify([ref, okList]));
   check("strict off → back to the old rule (escape hatch)", admin("boxes", "strict", "off").includes("껐어요") && seedOk("box|o999999|0") && admin("boxes").includes("좁히기 전"));

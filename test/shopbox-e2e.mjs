@@ -78,12 +78,19 @@ try {
   const btn = page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary');
   await btn.waitFor();
   check("box card shows cash price", (await btn.innerText()).includes("◆ 10"), await btn.innerText());
+  // 확률 공개 (dc#107): 규칙에서 계산한 실제 확률. r9: 레전더리·세트만 (목걸이·반지는 세트가 없어서 세트 19.44% · 레전더리 80.56%), 고대 10%
+  const odds = await page.locator("#odds").innerText(), rates = await page.locator("#rates").innerText();
+  check("drop rates shown as the real odds (legendary 80.56%, set 19.44%, nothing below legendary)", rates.includes("레전더리 80.56%") && rates.includes("세트 19.44%") && !/커먼|레어|에픽/.test(rates) && odds.includes("확률 정보") && odds.includes("세트가 없어서"), rates + " | " + odds.slice(0, 200));
+  check("odds table: ancient 8.06% / 1.94% (10%), 9 slots each 11.11%, no uniques, multi-box (set x10 88.49%, ancient x10 65.13%), last changed date", ["8.06%", "1.94%", "10.00% 확률로", "11.11%", "나오지 않아요", "유니크는 상자에서 나오지 않아요", "10회 88.49%", "10회 65.13%", "50회 99.48%", "50회 >99.99%", "마지막 변경: 2026-10-28"].every(x => odds.includes(x)), odds);
+  check("box card says legendary or set, 10% ancient", (await page.locator("section:has(#boxes) .sub").innerText()).includes("레전더리 또는 세트 장비가 무작위 부위로 나와요 (고대 10%)"));
+  await page.locator("#odds").screenshot({ path: path.join(SHOTS, "shop-odds.png") });
   await btn.click();
   check("shows the box items the server opened (10) with the mailbox message", await waitFor(async () => (await page.locator("#box-msg").innerText()).includes("장비 10개를 얻었어요! 게임 우편함") && (await page.locator("#box-items > div").count()) === 10, 15000), await page.locator("#box-msg").innerText());
   const order = state.purchases[0];
-  const want = Array.from({ length: 10 }, (_, i) => I.generate(`box|o${order}|${i}`, "box", 30)).map(it => I.itemName(it)).sort();
+  // 레벨 45 = 50층 기준 30층 (고대 굴림이 아이템 ID(레벨 포함)에 달려 있어서 레벨까지 같아야 함)
+  const want = Array.from({ length: 10 }, (_, i) => I.generate(`box|o${order}|${i}`, "box", 45)).map(it => I.itemName(it)).sort();
   const shown = (await page.locator("#box-items > div > span").allInnerTexts()).sort();
-  check("shown items = server-made items (seed box|o<order>|i, best floor 30)", JSON.stringify(shown) === JSON.stringify(want), JSON.stringify(shown.slice(0, 3)));
+  check("shown items = server-made items (seed box|o<order>|i, best floor 30 → level 45)", JSON.stringify(shown) === JSON.stringify(want), JSON.stringify(shown.slice(0, 3)));
   check("webhook accepted (204) and 10 box mails for the buyer", state.lastHook === 204 && sql("SELECT COUNT(*) n FROM mail WHERE kind = 'box' AND state = 'new'")[0].n === 10);
   check("shop waited for the webhook (polled box_order more than once)", state.boxOrderCalls >= 2, String(state.boxOrderCalls));
   check("not opened in the browser: no local box mail (rl_mail)", await localMail(page) === 0);
