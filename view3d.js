@@ -414,6 +414,9 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   function poseHands(p) {
     const t = p.t / 1000, sway = Math.sin(t * 1.3) * 0.006, bob = (p.bob || 0) * 0.6;
     const R = hands.r, L = hands.l;
+    // 좁은 화면(휴대폰)에서는 손을 조금 작게 (화면을 덜 가리게)
+    const hs = w0 && w0 < 520 ? 0.8 : 1;
+    R.root.scale.setScalar(hs); L.root.scale.setScalar(hs);
     // 오른손: 비스듬히 세워 들고, 휘두르면 오른쪽 위에서 왼쪽 아래로 베어 내림
     const kr = p.kr || 0;
     R.root.visible = !!R.obj;

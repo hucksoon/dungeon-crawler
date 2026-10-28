@@ -218,6 +218,8 @@
   /* ---- 로비 ---- 로비에서는 던전용 버튼(포션, 포탈)을 숨기고 접속자 목록을 보여줌 */
   body:not(.in-lobby) .lobby-only { display: none; }
   body.in-lobby .dungeon-only { display: none !important; }
+  /* 휴대폰 도움말: 3D 화면이면 3D 조작, 아니면 2D 조작 (dc#114) */
+  body:not(.view-3d) .hint-3d, body.view-3d .hint-2d { display: none !important; }
   /* 3D 화면 (dc#109): 던전에서만 2D 캔버스 대신 3D 캔버스, 손에 든 무기·가운데 점·맞으면 붉은 가장자리 */
   #game3d { display: none; border: 1px solid var(--border); border-radius: 8px; background: #000; box-shadow: 0 8px 30px rgba(0,0,0,0.6); width: 640px; max-width: 100%; aspect-ratio: 4 / 3; height: auto; touch-action: none; cursor: crosshair; }
   .hand3d, #aim3d, #hurt3d, .view3d-only { display: none; }
@@ -287,7 +289,7 @@
   }
   /* 3D 화면 (dc#109): 방향 버튼 대신 화면 왼쪽을 끌어 이동(스틱), 오른쪽을 끌어 둘러보기. 점프 자리에 공격 버튼 */
   @media (pointer: coarse) {
-    body.view-3d:not(.side-view) #touch-pad .dpad button, body.view-3d:not(.side-view) #tp-jump { display: none; }
+    body.view-3d:not(.side-view) #tp-jump { display: none; }   /* 방향 버튼은 그대로 (▲▼ 앞뒤 · ◀▶ 돌기, dc#114) */
     body.view-3d:not(.side-view) #tp-attack { display: block; grid-area: jump; width: 112px; height: 52px; justify-self: end; font-weight: bold; }
   }
   @media (pointer: coarse) and (max-width: 360px) {
@@ -691,7 +693,8 @@
   <div id="log"></div>
   <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="keys-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
-  <span class="touch-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
+  <span class="touch-only hint-3d" data-t>3D 화면: ▲▼ 앞뒤 · ◀▶ 돌기 · 화면을 끌어 둘러보기 · 공격 버튼(또는 화면을 톡)으로 공격<br></span>
+  <span class="touch-only hint-2d" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
   로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 가운데 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
@@ -4666,7 +4669,7 @@
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=3"), sheetReady()]).then(([m, sheet]) => {
+      loading ||= Promise.all([import("./view3d.js?v=4"), sheetReady()]).then(([m, sheet]) => {
         // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
         view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
@@ -4687,7 +4690,7 @@
       document.body.classList.toggle("view-3d", on && !!view);
       if (on) {
         load();
-        log(matchMedia("(pointer: coarse)").matches ? T("3D 화면 (시험판): 화면 왼쪽을 끌면 이동, 오른쪽을 끌면 둘러보기, 공격 버튼(또는 오른쪽을 톡)으로 공격. 시간이 흐르니 몬스터가 먼저 다가온다!")
+        log(matchMedia("(pointer: coarse)").matches ? T("3D 화면: ▲▼ 버튼으로 앞뒤, ◀▶ 버튼으로 돌기, 화면을 끌어 둘러보기, 공격 버튼(또는 화면을 톡)으로 공격. 시간이 흐르니 몬스터가 먼저 다가온다!")
           : T("3D 화면 (시험판): W·S 앞뒤 · A·D 옆걸음 · 마우스(또는 ← →)로 둘러보기 · 클릭·Space로 공격. 시간이 흐르니 몬스터가 먼저 다가온다!"), "info");
       }
       else { if (document.pointerLockElement) document.exitPointerLock(); log(T("2D 화면으로 돌아왔다."), "info"); }
@@ -4977,6 +4980,8 @@
       }
     }
     function release() { for (const k in held) held[k] = typeof held[k] === "boolean" ? false : 0; joy.id = null; joy.dx = joy.dy = 0; look.id = null; }
+    // 휴대폰 방향 버튼 (dc#114): ▲ 앞 · ▼ 뒤 · ◀ ▶ 돌기
+    function hold(dir, on) { const v = on ? 1 : 0; if (dir === "up") held.f = v; else if (dir === "down") held.b = v; else if (dir === "left") held.tl = v; else if (dir === "right") held.tr = v; }
     // ---- 조작: 마우스 (클릭하면 마우스로 둘러보기, Esc로 풀림) · 터치 (왼쪽 절반 이동 스틱, 오른쪽 끌어서 둘러보기·톡 공격) ----
     function bindPointer(cv) {
       cv.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -4989,9 +4994,8 @@
           return;
         }
         e.preventDefault();
-        const r = cv.getBoundingClientRect();
-        if (e.clientX - r.left < r.width * 0.45 && joy.id == null) { joy.id = e.pointerId; joy.x0 = e.clientX; joy.y0 = e.clientY; joy.dx = joy.dy = 0; }
-        else if (look.id == null) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; look.moved = 0; look.t0 = performance.now(); }
+        // 휴대폰 (dc#114): 이동은 방향 버튼, 화면은 어디를 끌든 둘러보기 · 톡 누르면 공격
+        if (look.id == null) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; look.moved = 0; look.t0 = performance.now(); }
         cv.setPointerCapture?.(e.pointerId);
       });
       cv.addEventListener("pointermove", (e) => {
@@ -5015,7 +5019,7 @@
     label();
     if (on) load();
     requestAnimationFrame(loop);
-    return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
+    return { get on() { return on; }, active, toggle, key, release, hold, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
       get ready() { return active() && levelRef === map; },
       get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수
       get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델
@@ -8283,6 +8287,8 @@
       e.preventDefault();
       Walk.stop();
       if (scene === "jump") { btn.classList.add("held"); Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", true); return; }
+      // 3D 화면 (dc#114): ▲ 앞으로 · ▼ 뒤로 · ◀ ▶ 돌기 (누르고 있는 동안)
+      if (View3D.active()) { btn.classList.add("held"); View3D.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", true); return; }
       // 마을: ◀ ▶ 누르고 있는 동안 걷기, ▲ 문 앞이면 들어가기
       if (scene === "lobby") { if (anyModalOpen()) return; btn.classList.add("held"); if (dx) Town.hold(dx < 0 ? "left" : "right", true); else if (dy < 0) Town.enterDoor(); return; }
       stopHold();
@@ -8291,7 +8297,7 @@
       holdTimer = setTimeout(() => { holdTimer = setInterval(step, 130); }, 300);
     });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
-      btn.addEventListener(ev, () => { btn.classList.remove("held"); stopHold(); if (scene === "jump") Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", false); else if (scene === "lobby" && dx) Town.hold(dx < 0 ? "left" : "right", false); });
+      btn.addEventListener(ev, () => { btn.classList.remove("held"); stopHold(); View3D.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", false); if (scene === "jump") Tower.hold(dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down", false); else if (scene === "lobby" && dx) Town.hold(dx < 0 ? "left" : "right", false); });
     }
   }
   pad.addEventListener("contextmenu", (e) => e.preventDefault());  // 길게 눌러도 메뉴가 뜨지 않게
