@@ -13,6 +13,12 @@
    - 계단, 던전 상점, 보물상자, 보석 5가지, 바지
    - 고블린 왕관, 구미호의 아홉 꼬리, 저승사자의 갓, 염라대왕의 면류관
 
+## 3D 화면 (`view3d.js`, dc#109)
+
+- **three.js** r170 — MIT 라이선스 (`vendor/three/three.module.min.js`, 라이선스 전문 `vendor/three/LICENSE`)
+  - 출처: https://threejs.org · https://www.npmjs.com/package/three
+- 3D 벽·바닥·몬스터·아이템 그림은 위의 픽셀 그림(`img/sprites.png`)을 그대로 씀
+
 ## 소리 (`sound.js`)
 
 - 효과음과 배경 음악은 소리 파일 없이 코드로 합성해요 (Web Audio). 이 저장소에서 만든 것이라 따로 출처가 없어요

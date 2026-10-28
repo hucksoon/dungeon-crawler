@@ -48,7 +48,8 @@ function giftOffers() {
 }
 const json = (r, o, status = 200) => r.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" }, body: JSON.stringify(o) });
 
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+// WebGL (3D 화면, dc#109)도 헤드리스에서 그려지게 SwiftShader
+const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
 // touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
 async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false, portal = false }) {
@@ -73,7 +74,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adMinSeconds: 1 });
     if (route === "ad_start") return json(r, { ticket: "0".repeat(16), minSeconds: 1, left: 7 });
     if (route === "bonus_open") return json(r, { hours: 3, ready: false, nextAt: null, tier: "hell", cash: { chance: 0.1, min: 1, max: 3 }, pending: { id: "b10950b10950b109", tier: "hell", offers: giftOffers(), createdAt: Date.now() } });
-    if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: 8, enh: 0, id: it.id }; }) });
+    if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: it.r, enh: 0, id: it.id }; }) });
     return json(r, {}); });
   await ctx.route(STORE + "/**", r => { const p = new URL(r.request().url()).pathname.replace("/api/v2/project/317991", "");
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
@@ -111,6 +112,30 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
   await o.page.reload(); await sleep(900);
   return o;
 }
+// 3D 화면 (dc#109): 시작 자리에서 가장 길게 트인 쪽에 몬스터를 세우고 그쪽을 봄. 시간이 흐르니 몬스터가 다가옴
+async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" } = {}) {
+  const o = await open({ ...opts, seed: { ...opts.seed, rl_3d: "1", rl_3dmap: map } });
+  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.evaluate(([mobs, reveal]) => {
+    const L = JSON.parse(localStorage.getItem("rl_level")), W = 32, open = (x, y) => x > 0 && y > 0 && x < W - 1 && L.map[y * W + x] !== "0";
+    // 지도 그림용: 시작 자리에서 가까운 곳(약 14칸)까지 둘러본 것처럼
+    if (reveal) L.seen = Array.from(L.map, (_, i) => { const x = i % W, y = (i / W) | 0; if (Math.abs(x - L.px) + Math.abs(y - L.py) > 16) return L.seen[i]; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (open(x + dx, y + dy)) return "1"; return L.seen[i]; }).join("");
+    let best = null;
+    for (const [dx, dy, yaw] of [[0, -1, 0], [1, 0, Math.PI / 2], [0, 1, Math.PI], [-1, 0, -Math.PI / 2]]) {
+      let n = 0; while (n < 10 && open(L.px + dx * (n + 1), L.py + dy * (n + 1))) n++;
+      if (!best || n > best.n) best = { dx, dy, yaw, n };
+    }
+    const at = (m, i) => Math.max(1, Math.min(best.n - i, m.at || 3 + i));   // 벽 속에 서지 않게 트인 칸까지만
+    L.enemies = mobs.map((m, i) => ({ ...m, x: L.px + best.dx * at(m, i), y: L.py + best.dy * at(m, i) }));
+    L.items = [];
+    localStorage.setItem("rl_level", JSON.stringify(L)); localStorage.setItem("blog_yaw", String(best.yaw));
+  }, [mobs, reveal]);
+  await o.page.reload();
+  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.evaluate(() => window.RLView3D.look(Number(localStorage.getItem("blog_yaw")), -0.05));
+  await sleep(wait);
+  return { ...o, shot: "#stage" };
+}
 const press = async (page, keys, gap = 60) => { for (const k of keys) { await page.keyboard.press(k); await sleep(gap); } };
 
 // 움직이는 그림 찍기: 페이지 안에서 keys([키, ms])를 누르며 캔버스를 every ms마다, 플레이어 주변 cols×rows칸만
@@ -147,6 +172,16 @@ const SCENES = [
   ["dex", "몬스터 도감", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-dex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); return o; }],
   ["guide", "추천 장비 탭", async () => { const o = await open({ seed: { rl_save: save(30, "blog-guide"), "rl_inv:g:DEV": inv(g40) } }); await press(o.page, ["i"]); await sleep(300); await o.page.locator('.inv-tab[data-tab="guide"]').click().catch(() => {}); await sleep(300); await o.page.locator(".guide-tier").nth(2).click().catch(() => {}); return o; }],
   ["builds", "최고 조합 페이지", async () => open({ file: "builds.html" })],
+  // 3D 화면 (dc#109): 다크앤다커처럼 1인칭, 횃불만 비추는 어두운 던전. 몬스터가 다가오고, 손에 든 무기로 휘두름
+  ["view3d-dungeon", "3D 화면: 횃불 하나로 비추는 어두운 던전, 몬스터가 먼저 다가와요", async () => view3d({ seed: { rl_save: save(12, "blog-3d1", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, at: 6 }], { wait: 900, reveal: true })],
+  ["view3d-fight", "3D 화면: 붙은 몬스터를 휘둘러 공격, 맞으면 화면 가장자리가 붉게", async () => { const o = await view3d({ seed: { rl_save: save(12, "blog-3d2", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 6000, maxHp: 6000, atk: 40, at: 2 }], { wait: 1400 });
+    await o.page.keyboard.press("Space"); await sleep(140); return { ...o, nowait: true }; }],
+  ["view3d-map", "3D 화면에 겹쳐 보는 지도: Tab으로 작게 → 크게 → 끄기", async () => view3d({ seed: { rl_save: save(12, "blog-3dm", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }], { wait: 700, reveal: true, map: "big" })],
+  ["view3d-hell", "3D 화면: 헬 던전은 붉은 빛", async () => view3d({ seed: { rl_save: save(10, "blog-3dh", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } },
+    [{ ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5, at: 4 }], { wait: 700 })],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
   ["shop-odds", "장비 상자 확률 정보: 등급·고대·부위·여러 번 열 때", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator("#odds table").waitFor(); return { ...o, shot: "#odds" }; }],
