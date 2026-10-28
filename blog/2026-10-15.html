@@ -42,6 +42,15 @@
   .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
 </style>
 </head>
 <body>
@@ -79,7 +88,7 @@
 <p>기능을 하나씩 PR로 나눠서 붙이다 보니 하루에 열 개가 됐어요. 다음 날에는 밸런스를 크게 손보고, 드디어 <strong>실제 결제</strong>와 <strong>나만의 랭킹 서버</strong>가 생겨요. 지금 모습은 <a href="https://game.apacimtest.com/">던전 크롤러</a>에서 확인해 보세요.</p>
 </article>
 <nav class="pager"><span><a href="2026-10-14.html">← 첫 삽, HTML 파일 하나로 만든 로그라이크</a></span><span><a href="2026-10-16.html">라이브 결제와 나만의 랭킹 서버 →</a></span></nav>
-<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
 </main>
 </body>
 </html>

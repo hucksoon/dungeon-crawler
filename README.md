@@ -4,7 +4,7 @@
 
 - **게임**: https://game.apacimtest.com/
 - **랭킹**: https://game.apacimtest.com/ranking.html
-- **개발 블로그**: https://game.apacimtest.com/blog/ (일지를 공개용으로 다시 쓴 글, `blog/posts/` → `node tools/blog-build.mjs`. 작업 규칙은 [CLAUDE.md](CLAUDE.md))
+- **개발 블로그**: https://game.apacimtest.com/blog/ (일지를 공개용으로 다시 쓴 글, `blog/posts/` → `node tools/blog-build.mjs`. 작업 규칙은 [CLAUDE.md](CLAUDE.md)). 썸네일·스크린샷 내려받기: https://game.apacimtest.com/blog/media.html (`node tools/media-sync.mjs` → `blog/media/`)
 - **개발 일기**: [docs/devlog.md](docs/devlog.md)
 - **되돌리기 (베타 1.0 백업)**: [docs/rollback.md](docs/rollback.md)
 - **규칙 문서**: [아이템](docs/items.md) · [몬스터](docs/monsters.md) · [경제](docs/economy.md)

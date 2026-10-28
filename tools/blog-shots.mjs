@@ -326,6 +326,11 @@ const SCENES = [
     const o = await open({ portal: true, seed: { rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 40, clr: 1, nb: 50, nclr: 1, hb: 20, dead }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
     await sleep(600);
     return o; }],
+  // 블로그 게임 이미지 페이지 (dc#103): 썸네일 미리보기와 내려받기 버튼, 전체 zip
+  ["media-page", "블로그의 게임 이미지 페이지: 누르면 원래 크기, 내려받기 버튼과 전체 zip", async () => {
+    const o = await open({ file: "blog/media.html", viewport: { width: 900, height: 900 } });
+    await o.page.evaluate(async () => { const list = [...document.images]; list.forEach(i => { i.loading = "eager"; }); await Promise.all(list.map(i => i.decode().catch(() => {}))); });
+    return o; }],
   // 레벨 (dc#95): 쓰러진 창에 잃을 경험치, 위 능력치 줄에 레벨 보너스 %
   ["level-death", "쓰러진 창: 레벨은 그대로, 경험치 10%만 잃어요", async () => {
     const dead = { d: 12, hp: 0, mh: 64, a: 14, g: 3200, l: 12, x: 300, xn: 865, rid: "blog-lvl", k: 40, pp: 0 };

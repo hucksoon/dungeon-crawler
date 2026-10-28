@@ -1,0 +1,90 @@
+{
+  "zip": "dungeon-crawler-media.zip",
+  "groups": [
+    {
+      "title": "썸네일",
+      "note": "게임 포털·소개 글에 쓰는 표지예요. 가로 16:9, 세로 2:3, 정사각형이 있어요.",
+      "items": [
+        {
+          "file": "dungeon-crawler-cover-landscape-1920x1080.png",
+          "preview": "preview/dungeon-crawler-cover-landscape-1920x1080.jpg",
+          "caption": "가로 표지 16:9",
+          "w": 1920,
+          "h": 1080,
+          "bytes": 1475863
+        },
+        {
+          "file": "dungeon-crawler-cover-portrait-800x1200.png",
+          "preview": "preview/dungeon-crawler-cover-portrait-800x1200.jpg",
+          "caption": "세로 표지 2:3",
+          "w": 800,
+          "h": 1200,
+          "bytes": 895748
+        },
+        {
+          "file": "dungeon-crawler-cover-square-800x800.png",
+          "preview": "preview/dungeon-crawler-cover-square-800x800.jpg",
+          "caption": "정사각형 표지",
+          "w": 800,
+          "h": 800,
+          "bytes": 701708
+        },
+        {
+          "file": "dungeon-crawler-cover-square-1200x1200.png",
+          "preview": "preview/dungeon-crawler-cover-square-1200x1200.jpg",
+          "caption": "큰 정사각형 표지",
+          "w": 1200,
+          "h": 1200,
+          "bytes": 1336955
+        }
+      ]
+    },
+    {
+      "title": "스크린샷",
+      "note": "실제 게임 화면이에요 (영어 화면, 포털 버전).",
+      "items": [
+        {
+          "file": "dungeon-crawler-screen-town.png",
+          "preview": "preview/dungeon-crawler-screen-town.jpg",
+          "caption": "마을: 가운데 웨이포인트, 왼쪽 던전 입구, 오른쪽 골드 던전",
+          "w": 1280,
+          "h": 720,
+          "bytes": 173815
+        },
+        {
+          "file": "dungeon-crawler-screen-fight.png",
+          "preview": "preview/dungeon-crawler-screen-fight.jpg",
+          "caption": "헬 던전 10층: 화염의 세트로 화염구",
+          "w": 1280,
+          "h": 720,
+          "bytes": 428246
+        },
+        {
+          "file": "dungeon-crawler-screen-dungeon.png",
+          "preview": "preview/dungeon-crawler-screen-dungeon.jpg",
+          "caption": "일반 던전 12층 탐험",
+          "w": 1280,
+          "h": 720,
+          "bytes": 295969
+        },
+        {
+          "file": "dungeon-crawler-screen-inventory.png",
+          "preview": "preview/dungeon-crawler-screen-inventory.jpg",
+          "caption": "인벤토리: 장비 비교",
+          "w": 1280,
+          "h": 720,
+          "bytes": 148496
+        },
+        {
+          "file": "dungeon-crawler-screen-codex.png",
+          "preview": "preview/dungeon-crawler-screen-codex.jpg",
+          "caption": "몬스터 도감",
+          "w": 1280,
+          "h": 720,
+          "bytes": 176408
+        }
+      ]
+    }
+  ],
+  "zipBytes": 5619958
+}

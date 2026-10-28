@@ -5,6 +5,7 @@
 //   blog/index.html            글 목록 (최신 글이 위)
 //   blog/YYYY-MM-DD.html       글
 //   blog/feed.xml              RSS
+//   blog/media.html            게임 이미지 (썸네일·스크린샷 보기·내려받기). 그림과 목록 blog/media/media.json은 node tools/media-sync.mjs로 가져옴
 //   blog/naver/index.html      네이버 블로그에 옮길 글 목록 (검색 제외)
 //   blog/naver/YYYY-MM-DD.html 제목·본문 복사 버튼 (네이버 에디터에 붙여 넣기, 한국어만)
 // 글 형식: 맨 위 --- title / date / summary / tags --- 다음 Markdown (## ### 문단, - 목록(한 단계 들여쓰기), **굵게**, `코드`, [링크](https://…), > 인용)
@@ -14,7 +15,7 @@ import path from "node:path";
 
 // BLOG_ROOT: 다른 폴더에서 만들기 (테스트용)
 const ROOT = process.env.BLOG_ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const POSTS = path.join(ROOT, "blog/posts"), OUT = path.join(ROOT, "blog"), IMAGES = path.join(ROOT, "blog/images");
+const POSTS = path.join(ROOT, "blog/posts"), OUT = path.join(ROOT, "blog"), IMAGES = path.join(ROOT, "blog/images"), MEDIA = path.join(ROOT, "blog/media");
 const SITE = "https://game.apacimtest.com";
 const BLOG_URL = `${SITE}/blog/`;
 const BLOG_TITLE = "던전 크롤러 개발 블로그";
@@ -140,6 +141,15 @@ const CSS = `
   .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
 `;
 const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
 <html lang="ko">
@@ -163,7 +173,7 @@ ${image ? `<meta property="og:image" content="${image}">\n` : ""}
 <body>
 <main>
 ${body}
-<footer>${esc(BLOG_TITLE)} · <a href="${SITE}/">게임 하기</a> · <a href="${BLOG_URL}feed.xml">RSS</a></footer>
+<footer>${esc(BLOG_TITLE)} · <a href="${SITE}/">게임 하기</a> · <a href="${BLOG_URL}media.html">게임 이미지</a> · <a href="${BLOG_URL}feed.xml">RSS</a></footer>
 </main>
 </body>
 </html>
@@ -186,11 +196,35 @@ ${markdown(p.body, NO_STYLE)}
 function indexPage(posts) {
   return page({
     title: BLOG_TITLE, desc: BLOG_DESC, url: BLOG_URL, image: BANNER,
-    body: `<nav class="nav"><a href="${SITE}/">← 게임 하기</a><a href="feed.xml">RSS</a></nav>
+    body: `<nav class="nav"><a href="${SITE}/">← 게임 하기</a><a href="media.html">게임 이미지 (썸네일·스크린샷)</a><a href="feed.xml">RSS</a></nav>
 <a href="${SITE}/"><img class="banner" src="../img/banner.png" alt="던전 크롤러 (Dungeon Crawler)" width="773" height="253"></a>
 <h1>${esc(BLOG_TITLE)}</h1>
 <p class="meta">${esc(BLOG_DESC)}. 글은 날짜별 개발 일지를 바탕으로 써요.</p>
 ${posts.map(p => `<a class="post" href="${p.slug}.html"><b>${esc(p.title)}</b><p class="meta" style="margin:2px 0 0">${dateText(p.date)}</p><p>${esc(p.summary)}</p>${tagList(p.tags)}</a>`).join("\n")}`,
+  });
+}
+
+// 게임 이미지: 썸네일·스크린샷을 미리보기로 보여 주고, 누르면 원래 크기, 내려받기 버튼과 전체 zip
+const sizeText = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
+function readMedia() {
+  const file = path.join(MEDIA, "media.json");
+  if (!fs.existsSync(file)) return null;
+  const m = JSON.parse(fs.readFileSync(file, "utf8"));
+  for (const f of [m.zip, ...m.groups.flatMap(g => g.items.flatMap(it => [it.file, it.preview]))])
+    if (!/^[\w./-]+$/.test(f) || f.includes("..") || !fs.existsSync(path.join(MEDIA, f))) throw new Error(`게임 이미지 파일이 없어요: blog/media/${f} (node tools/media-sync.mjs)`);
+  return m;
+}
+function mediaPage(m) {
+  const count = m.groups.reduce((s, g) => s + g.items.length, 0), cover = m.groups[0].items[0];
+  const card = (it) => `<figure class="shot"><a class="view" href="media/${it.file}"><img src="media/${it.preview}" alt="${esc(it.caption)}" loading="lazy"></a>` +
+    `<figcaption>${esc(it.caption)}<br><span>${it.w}×${it.h} · PNG · ${sizeText(it.bytes)}</span></figcaption><a class="dl" href="media/${it.file}" download="${it.file}">내려받기</a></figure>`;
+  return page({
+    title: `게임 이미지 — ${BLOG_TITLE}`, desc: "던전 크롤러 썸네일과 스크린샷 보기·내려받기", url: `${BLOG_URL}media.html`, image: `${BLOG_URL}media/${cover.file}`,
+    body: `<nav class="nav"><a href="./">← 글 목록</a><a href="${SITE}/">게임 하기</a></nav>
+<h1>게임 이미지</h1>
+<p class="meta">던전 크롤러의 썸네일과 스크린샷이에요. 그림을 누르면 원래 크기로 보이고, 내려받기 버튼으로 저장해요.</p>
+<p><a class="dl all" href="media/${m.zip}" download="${m.zip}">전체 내려받기 (zip · ${count}장 · ${sizeText(m.zipBytes)})</a></p>
+${m.groups.map(g => `<h2>${esc(g.title)}</h2>\n<p class="meta">${esc(g.note)}</p>\n<div class="media">\n${g.items.map(card).join("\n")}\n</div>`).join("\n")}`,
   });
 }
 
@@ -322,6 +356,8 @@ const newest = [...posts].reverse();
 outputs.set("index.html", indexPage(newest));
 outputs.set("feed.xml", feed(newest));
 outputs.set("naver/index.html", naverIndex(newest));
+const media = readMedia();
+if (media) outputs.set("media.html", mediaPage(media));
 
 // 지금 만든 것 말고 남아 있는 페이지 (지운 글)
 const existing = [];

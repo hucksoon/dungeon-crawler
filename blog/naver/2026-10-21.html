@@ -42,6 +42,15 @@
   .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
   .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
 
   #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
   #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
@@ -213,7 +222,7 @@
   document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
   document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
 </script>
-<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
 </main>
 </body>
 </html>
