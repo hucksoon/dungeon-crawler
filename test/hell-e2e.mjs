@@ -92,7 +92,9 @@ try {
   await goDoor(page, "hell"); await sleep(100);
   let S = await stored(page, "rl_save"), L = await stored(page, "rl_level");
   check("enter hell floor 1: zone 헬, save z:hell, hb 1", !(await inLobby(page)) && (await page.locator("#zone").innerText()).includes("헬") && S.run.z === "hell" && S.run.d === 1 && S.hb === 1, JSON.stringify(S.run));
-  check("hell monsters: 지옥의 + resist on every monster", L.enemies.length >= 15 && L.enemies.every(e => e.name.startsWith("지옥의") && e.res && e.el), JSON.stringify(L.enemies.slice(0, 2).map(e => [e.name, e.res])));
+  // 황금 고블린(어느 층에나 가끔 나오는 보너스 몬스터)은 빼고 셈 — 섞여 나오면 가끔 실패하던 것 (dc#104)
+  const hellMobs = L.enemies.filter(e => e.kind !== "golden");
+  check("hell monsters: 지옥의 + resist on every monster (golden goblin aside)", hellMobs.length >= 15 && hellMobs.every(e => e.name.startsWith("지옥의") && e.res && e.el), JSON.stringify([hellMobs.length, hellMobs.filter(e => !(e.name.startsWith("지옥의") && e.res && e.el)).slice(0, 2).map(e => [e.name, e.kind, e.res])]));
   await press(page, "Escape"); await press(page, "i"); await sleep(150);
   check("player resist −70 from the gear total in hell (stats tab, dc#54)", (await page.locator("#inv-summary").textContent()).includes("속성 저항: 불 -70%") && (await page.locator("#inv-summary").textContent()).includes("장비 합 0/0/0% − 70 (헬)"), await page.locator("#inv-summary").textContent());
   check("no page errors (enter)", errors.length === 0, errors.join("; "));
