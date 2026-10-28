@@ -21,6 +21,9 @@ for (let i = 0; i < Number(process.env.NA || 800); i++) { const f = 10 * (1 + i 
 { const K = Object.keys(I2.UNIQUE.items); for (let i = 0; i < 300; i++) { const k = K[i % K.length]; items.push({ v: 4, r: 8, seed: `buy|m${(0x1000000000000000n + BigInt(i) * 7919n).toString(16)}|${k}`, src: "unique", lvl: I2.boughtLevel(k), enh: i % 13, ar: 0 }); } }
 // r8 (장신구 공격력·방어력·최대 HP 고정 수치): r7의 절반을 r8로 (유니크·유니크 장신구 포함)
 for (const q of items) if (q.r === 7 && hashOdd(q.seed + "r8")) q.r = 8;
+// r9 (장비 상자 레전더리·세트만, 상자 고대 10%): r8의 절반을 r9로 + 상자 시드
+for (const q of items) if (q.r === 8 && hashOdd(q.seed + "r9")) q.r = 9;
+for (let i = 0; i < Number(process.env.NB || 600); i++) items.push({ v: 4, r: 9, seed: `box|o${9100000 + i}|${i % 50}`, src: "box", lvl: 1 + (i * 7) % 130, enh: i % 13, ar: i % 4 === 0 ? 1 + i % 20 : 0, rf: [], g: [] });
 const NN = items.length;
 const sets = [];
 for (let i = 0; i < 600; i++) sets.push({ plvl: 1 + i % 25, items: Array.from({ length: 7 }, (_, j) => (i % 3 || j % 2 ? items[(i * 7 + j) % N] : items[N + (i * 7 + j) % (NN - N)])) });

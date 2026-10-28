@@ -275,7 +275,7 @@
       offerTitle: "🎁 한정 판매", offerSub: "계정당 한 번만 살 수 있어요. 결제하면 게임 우편함으로 들어가요.",
       offerLimit: "계정당 1회", offerSold: "구매 완료",
       offerPaid: "결제 완료! 게임 우편함에 \"고대 유니크 선택 상자\"가 들어갔어요. 우편함에서 열어 유니크를 골라 주세요.",
-      boxTitle: "장비 상자", boxSub: "무기 또는 방어구가 무작위로 나와요. 아이템 레벨은 지금까지 내려간 가장 깊은 층이에요.",
+      boxTitle: "장비 상자", boxSub: "레전더리 또는 세트 장비가 무작위 부위로 나와요 (고대 10%). 아이템 레벨은 지금까지 내려간 가장 깊은 층이에요.",
       rates: "등급별 확률", buy: "구매", buyLogin: "로그인하고 구매", notEnough: "캐시 부족",
       bonus: (n, p) => `+${n} 보너스 (+${p}%)`, total: (n) => `총 ${n} 캐시`,
       who: (n) => `${n} 님`, guest: "로그인하지 않음",
@@ -307,11 +307,12 @@
       oddsAncientNote: (p) => `고대: 레전더리·세트가 나오면 ${p} 확률로 모든 능력치가 최대치인 고대 아이템이에요.`,
       oddsNoUnique: "유니크는 상자에서 나오지 않아요 (헬 네임드 보스만 떨어뜨려요).",
       oddsLevel: "아이템 레벨은 지금까지 내려간 가장 깊은 층의 레벨이에요. 등급 확률은 레벨과 상관없이 같아요.",
-      oddsMulti: (list) => `여러 번 상자는 1회 상자를 그 횟수만큼 따로 여는 것과 같아요. 레전더리 또는 세트가 1개 이상 나올 확률: ${list}.`,
+      oddsNone: "커먼·언커먼·레어·에픽은 나오지 않아요. 원하는 부위·세트·고대가 나오지 않으면 상자를 다시 열어야 해요.",
+      oddsMulti: (set, anc) => `여러 번 상자는 1회 상자를 그 횟수만큼 따로 여는 것과 같아요. 세트가 1개 이상 나올 확률: ${set}. 고대가 1개 이상 나올 확률: ${anc}.`,
       oddsTimes: (n, p) => `${n}회 ${p}`,
       oddsUbox: "고대 유니크 선택 상자는 유니크를 직접 고르는 상자라 무작위가 아니에요 (항상 고대).",
       oddsUpdated: (d) => `확률 정보 마지막 변경: ${d}`,
-      lvl: (n) => `Lv.${n}`,
+      lvl: (n) => `Lv.${n}`, ancient: "고대",
     },
     en: {
       title: "⚔ Dungeon Shop ⚔", back: "Back to game", close: "Close", toGame: "Back to the game to collect",
@@ -319,7 +320,7 @@
       offerTitle: "🎁 Limited offer", offerSub: "One purchase per account. It goes to your in-game mailbox after payment.",
       offerLimit: "1 per account", offerSold: "Purchased",
       offerPaid: "Payment complete! The Ancient Unique Choice Box is in your in-game mailbox. Open it there and pick a unique.",
-      boxTitle: "Equipment boxes", boxSub: "Random weapons or armor. Item level equals the deepest floor you have reached.",
+      boxTitle: "Equipment boxes", boxSub: "A Legendary or Set item for a random slot (10% Ancient). Item level equals the deepest floor you have reached.",
       rates: "Drop rates", buy: "Buy", buyLogin: "Log in to buy", notEnough: "Not enough Cash",
       bonus: (n, p) => `+${n} bonus (+${p}%)`, total: (n) => `${n} Cash in total`,
       who: (n) => n, guest: "Not logged in",
@@ -351,11 +352,12 @@
       oddsAncientNote: (p) => `Ancient: a Legendary or Set item has a ${p} chance to be Ancient (all stats at maximum).`,
       oddsNoUnique: "Uniques never come from boxes (only Hell named bosses drop them).",
       oddsLevel: "Item level is the level of the deepest floor you have reached. Rarity chances are the same at every level.",
-      oddsMulti: (list) => `A multi-box is the same as opening that many single boxes. Chance of at least one Legendary or Set: ${list}.`,
+      oddsNone: "Common, Uncommon, Rare and Epic items never come from boxes. If you don't get the slot, set or Ancient you want, you need to open another box.",
+      oddsMulti: (set, anc) => `A multi-box is the same as opening that many single boxes. Chance of at least one Set: ${set}. Chance of at least one Ancient: ${anc}.`,
       oddsTimes: (n, p) => `x${n} ${p}`,
       oddsUbox: "The Ancient Unique choice box is not random: you pick the Unique (always Ancient).",
       oddsUpdated: (d) => `Drop rates last changed: ${d}`,
-      lvl: (n) => `Lv.${n}`,
+      lvl: (n) => `Lv.${n}`, ancient: "Ancient",
     },
     ja: {
       title: "⚔ ダンジョンショップ ⚔", back: "ゲームに戻る", close: "閉じる", toGame: "ゲームに戻って受け取る",
@@ -363,7 +365,7 @@
       offerTitle: "🎁 限定販売", offerSub: "アカウントごとに1回だけ購入できます。お支払い後、ゲームの郵便受けに届きます。",
       offerLimit: "アカウントごとに1回", offerSold: "購入済み",
       offerPaid: "お支払い完了！「古代ユニーク選択ボックス」がゲームの郵便受けに届きました。郵便受けで開けてユニークを選んでください。",
-      boxTitle: "装備ボックス", boxSub: "武器または防具がランダムで出ます。アイテムレベルはこれまでに到達した最深階です。",
+      boxTitle: "装備ボックス", boxSub: "レジェンダリーまたはセット装備がランダムな部位で出ます (古代10%)。アイテムレベルはこれまでに到達した最深階です。",
       rates: "レア度ごとの確率", buy: "購入", buyLogin: "ログインして購入", notEnough: "キャッシュ不足",
       bonus: (n, p) => `+${n} ボーナス (+${p}%)`, total: (n) => `合計 ${n} キャッシュ`,
       who: (n) => `${n} さん`, guest: "未ログイン",
@@ -395,11 +397,12 @@
       oddsAncientNote: (p) => `古代: レジェンダリー・セットが出ると${p}の確率ですべてのステータスが最大の古代アイテムになります。`,
       oddsNoUnique: "ユニークはボックスから出ません (ヘルのネームドボスだけが落とします)。",
       oddsLevel: "アイテムレベルはこれまでに到達した最深階のレベルです。レア度の確率はレベルに関係なく同じです。",
-      oddsMulti: (list) => `複数回ボックスは1回ボックスをその回数だけ別々に開けるのと同じです。レジェンダリーまたはセットが1個以上出る確率: ${list}。`,
+      oddsNone: "コモン・アンコモン・レア・エピックは出ません。欲しい部位・セット・古代が出なければ、もう一度ボックスを開ける必要があります。",
+      oddsMulti: (set, anc) => `複数回ボックスは1回ボックスをその回数だけ別々に開けるのと同じです。セットが1個以上出る確率: ${set}。古代が1個以上出る確率: ${anc}。`,
       oddsTimes: (n, p) => `${n}回 ${p}`,
       oddsUbox: "古代ユニーク選択ボックスはユニークを自分で選ぶため、ランダムではありません (常に古代)。",
       oddsUpdated: (d) => `確率情報の最終変更: ${d}`,
-      lvl: (n) => `Lv.${n}`,
+      lvl: (n) => `Lv.${n}`, ancient: "古代",
     },
   };
 
@@ -610,10 +613,10 @@
 
   // 확률 공개 (dc#107): 규칙에서 정확히 계산한 값 (RLItems.boxOdds). 위 줄은 요약, 아래 표는 등급·고대·부위·여러 번 상자
   const ODDS_UPDATED = "2026-10-28";   // 확률이 바뀌는 규칙 변경을 하면 같이 바꿈
-  const pctText = (p) => `${(p * 100).toFixed(p < 0.01 ? 3 : 2)}%`;
+  const pctText = (p) => (p >= 0.99995 && p < 1 ? ">99.99%" : `${(p * 100).toFixed(p < 0.01 ? 3 : 2)}%`);   // 100%가 아닌데 100.00%로 보이지 않게
   function renderRates() {
     const odds = RLItems.boxOdds();
-    const order = ["legendary", "set", "epic", "rare", "uncommon", "common"];
+    const order = ["legendary", "set", "epic", "rare", "uncommon", "common"].filter(r => odds.at[r]);   // 나오는 등급만
     $("rates").replaceChildren(el("span", { textContent: t("rates") }),
       ...order.map(r => el("span", { style: `color:${RLItems.RARITIES[r].color}`, textContent: `${t("rarity")[r]} ${pctText(odds.at[r])}` })));
     const row = (r) => el("tr", {}, el("td", { style: `color:${RLItems.RARITIES[r].color}`, textContent: t("rarity")[r] }),
@@ -624,9 +627,9 @@
       el("table", {}, el("thead", {}, el("tr", {}, ...[t("oddsRarity"), t("oddsChance"), t("oddsAncient")].map(h => el("th", { textContent: h })))), el("tbody", {}, ...order.map(row))),
       el("ul", {}, ...[
         t("oddsSlots", pctText(1 / Object.keys(odds.slots).length)),
-        t("oddsAncientNote", pctText(RLItems.ANCIENT.chance)),
-        t("oddsNoUnique"), t("oddsLevel"),
-        t("oddsMulti", draws.map(n => t("oddsTimes", n, pctText(odds.atLeast(n, ["legendary", "set"])))).join(" · ")),
+        t("oddsAncientNote", pctText(odds.ancientChance)),
+        t("oddsNone"), t("oddsNoUnique"), t("oddsLevel"),
+        t("oddsMulti", draws.map(n => t("oddsTimes", n, pctText(odds.atLeast(n, ["set"])))).join(" · "), draws.map(n => t("oddsTimes", n, pctText(odds.atLeastAncient(n)))).join(" · ")),
         t("oddsUbox"), t("oddsUpdated", ODDS_UPDATED),
       ].map(text => el("li", { textContent: text }))));
   }
@@ -737,10 +740,10 @@
     $("box-title").textContent ||= t("boxTitle");
     $("box-msg").replaceChildren(el("div", { className: "msg good", textContent: text }));
     const order = ["legendary", "set", "epic", "rare", "uncommon", "common"];
-    const sorted = [...items].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
+    const sorted = [...items].sort((a, b) => (b.ancient ? 1 : 0) - (a.ancient ? 1 : 0) || order.indexOf(a.rarity) - order.indexOf(b.rarity));   // 고대 먼저
     $("box-items").replaceChildren(...sorted.map((item, i) => el("div", { style: `animation-delay:${Math.min(i, 30) * 60}ms` },
       el("span", { textContent: RLItems.itemName(item), style: `color:${RLItems.RARITIES[item.rarity].color}` }),
-      el("small", { textContent: `${t("rarity")[item.rarity]} · ${t("lvl", item.lvl)}` }))));
+      el("small", { textContent: `${t("rarity")[item.rarity]}${item.ancient ? " · " + t("ancient") : ""} · ${t("lvl", item.lvl)}` }))));
     $("box-modal").hidden = false;
   }
   $("box-close").onclick = () => { $("box-modal").hidden = true; $("box-title").textContent = ""; };
