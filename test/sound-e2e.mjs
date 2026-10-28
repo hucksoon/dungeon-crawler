@@ -49,7 +49,7 @@ const press = async (page, k) => { await page.keyboard.press(k); await sleep(250
 
 try {
   check("sound.js: effects and tracks", (() => { const g = {}; new Function("window", "globalThis", fs.readFileSync(path.join(REPO, "sound.js"), "utf8"))(g, g);
-    const S = g.RLSound; return ["swing", "hit", "crit", "fire", "ice", "bolt", "fireball", "nova", "chain", "kill", "bossKill", "drop", "levelup", "death"].every(n => S.names.includes(n))
+    const S = g.RLSound; return ["step", "land", "jump", "swing", "hit", "crit", "fire", "ice", "bolt", "fireball", "nova", "chain", "kill", "bossKill", "drop", "levelup", "death"].every(n => S.names.includes(n))
       && ["town", "dungeon", "nightmare", "hell", "gold", "boss"].every(t => S.tracks.includes(t)); })());
 
   // ---- 던전: 휘두르기·맞힘·처치, 던전 음악 ----
@@ -67,6 +67,13 @@ try {
     s = await st(page);
     check(`${el} attack → ${el} sound`, s.recent.slice(-6).includes(el), s.recent.slice(-6).join());
   }
+  // 발소리 (dc#104): 몬스터를 때릴 때는 없고, 빈 칸으로 걸으면 '톡'. 점프(Space + 방향)는 뛰는 소리 → 착지 소리
+  check("attacking (bumping a monster) makes no footstep", !(await st(page)).recent.includes("step"), (await st(page)).recent.join());
+  await press(page, "ArrowDown");
+  check("walking a tile in the dungeon → footstep", (await st(page)).recent.slice(-3).includes("step"), (await st(page)).recent.slice(-5).join());
+  await press(page, " "); await press(page, "ArrowLeft"); await sleep(300);
+  s = await st(page);
+  check("dungeon jump → jump, then land sound", s.recent.slice(-6).includes("jump") && s.recent.slice(-6).includes("land") && s.recent.lastIndexOf("land") > s.recent.lastIndexOf("jump"), s.recent.slice(-6).join());
   check("no page errors (attack)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
@@ -103,6 +110,13 @@ try {
   await page.keyboard.down(" "); await sleep(120); await page.keyboard.up(" "); await sleep(160);
   await page.keyboard.down(" "); await sleep(120); await page.keyboard.up(" "); await sleep(200);
   check("double jump in the air → jump2 sound", (await st(page)).recent.includes("jump2"), (await st(page)).recent.join());
+  await sleep(900);
+  check("town: landing after the jump → land sound", (await st(page)).recent.includes("land"), (await st(page)).recent.join());
+  // 마을 걷기: 한 칸마다 발소리 (왼발·오른발)
+  const n0 = (await st(page)).recent.filter(n => n === "step").length;
+  await page.keyboard.down("ArrowLeft"); await sleep(700); await page.keyboard.up("ArrowLeft"); await sleep(200);
+  const n1 = (await st(page)).recent.filter(n => n === "step").length;
+  check("town: walking → a footstep every tile (several in 0.7 s)", n1 - n0 >= 3 && n1 - n0 <= 8, `${n1 - n0} steps`);
   await ctx.close();
   for (const [z, want] of [["nm", "nightmare"], ["hell", "hell"], ["gold", "gold"]]) {
     const d = z === "gold" ? 75 : 3;
@@ -130,6 +144,13 @@ try {
   check("music off: button still 🔊 while effects are on, all off → 🔇", (await page.locator("#sound-btn").innerText()) === "🔊");
   await page.locator("#sfx-on").uncheck();
   check("all off → 🔇", (await page.locator("#sound-btn").innerText()) === "🔇");
+  // 발소리만 끄기 (dc#104): 효과음은 그대로
+  await page.locator("#sfx-on").check();
+  check("footsteps checkbox: on by default", await page.locator("#steps-on").isChecked());
+  await page.locator("#steps-on").uncheck();
+  check("footsteps off: step is silent, other effects still play", await page.evaluate(() => window.RLSound.settings.steps === false && window.RLSound.play("step") === false && window.RLSound.play("hit") === true));
+  await page.locator("#sfx-on").uncheck();
+  check("effects off → footsteps checkbox disabled too", await page.locator("#steps-on").isDisabled());
   check("no page errors (settings)", errors.length === 0, errors.join("; "));
   await ctx.close();
 

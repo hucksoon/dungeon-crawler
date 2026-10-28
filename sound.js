@@ -6,7 +6,7 @@
 (function (root) {
   "use strict";
   const KEY = "rl_sound";
-  const DEFAULTS = { sfxOn: true, bgmOn: true, sfx: 0.7, bgm: 0.45 };
+  const DEFAULTS = { sfxOn: true, bgmOn: true, sfx: 0.7, bgm: 0.45, steps: true };   // steps: 발소리 (dc#104, 효과음과 따로 끌 수 있음)
   let cfg = { ...DEFAULTS };
   try { cfg = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {} };
@@ -163,6 +163,15 @@
     // 점프 (dc#100): 마리오처럼 위로 '뿅' 미끄러지는 네모파. 공중 점프(더블 점프)는 더 높고 짧게
     jump() { tone("square", 260, 1040, 0.16, 0.22, 0, sfxBus, { lp: 3500 }); },
     jump2() { tone("square", 520, 1560, 0.12, 0.2, 0, sfxBus, { lp: 4000 }); tone("triangle", 1560, 2080, 0.08, 0.1, 0.05); },
+    // 발소리 (dc#104): 마리오 같은 8비트 '톡톡'. 짧게 떨어지는 네모파 + 작은 흙 소리, 왼발·오른발(foot 0·1) 높이를 조금 다르게
+    //   kind: "town"(마을 돌길, 밝게) · "dungeon"(던전, 낮고 둔하게)
+    step(foot = 0, kind = "dungeon") {
+      const f = (kind === "town" ? 420 : 300) * (foot ? 1 : 0.86);
+      tone("square", jit(f, 0.03), f * 0.55, 0.045, 0.07, 0, sfxBus, { lp: kind === "town" ? 2600 : 1600 });
+      noise("lowpass", kind === "town" ? 1400 : 900, 250, 0.035, 0.05);
+    },
+    // 착지 (dc#104): 점프하고 내려설 때 '툭'
+    land() { tone("square", 210, 80, 0.08, 0.12, 0, sfxBus, { lp: 1300 }); noise("lowpass", 900, 150, 0.07, 0.1); },
     // ---- 아이템·진행 ----
     gold() { tone("square", 988, 988, 0.07, 0.07, 0, sfxBus, { lp: 3500 }); tone("square", 1319, 1319, 0.16, 0.07, 0.06, sfxBus, { lp: 3500 }); },
     pickup() { tone("triangle", 660, 990, 0.09, 0.12); },
@@ -185,11 +194,12 @@
     enhance() { tone("square", 400, 400, 0.05, 0.1, 0, sfxBus, { lp: 2000 }); noise("highpass", 2000, 2000, 0.05, 0.15); tone("triangle", 1500, 2400, 0.25, 0.1, 0.05); },
   };
   // 같은 소리를 다시 낼 수 있는 최소 간격 (초). 여러 마리를 한 번에 때려도 귀가 아프지 않게
-  const GAP = { jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1 };
+  const GAP = { step: 0.07, land: 0.08, jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1 };
 
   function play(name, ...args) {
     recent.push(name); if (recent.length > 60) recent.shift();
     if (!cfg.sfxOn || !ready() || !SFX[name]) return false;
+    if (name === "step" && !cfg.steps) return false;   // 발소리만 끔
     if (voices > MAX_VOICES) return false;
     const now = ctx.currentTime, gap = GAP[name] ?? 0.03;
     if (lastAt[name] != null && now - lastAt[name] < gap) return false;

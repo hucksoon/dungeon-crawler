@@ -59,6 +59,7 @@ try {
   check("no account / shop / ranking / privacy link / online list", !(await Promise.all(["account-btn", "shop-btn", "rank-btn", "guest-note", "privacy-link", "lobby-panel"].map(id => shown(page, id)))).some(Boolean));
   check("town: no market, mailbox or staff door; waypoint and dungeon gate stay", await page.evaluate(() => { const T = window.RLJump.TOWN, ids = T.doors.map(d => d.id);
     return !ids.includes("market") && !ids.includes("mailbox") && !ids.includes("towerHell") && !T.buildings.some(b => b.id === "market") && ids.includes("waypoint") && ids.includes("start"); }));
+  check("returning portal player: no update banner from the original site (dc#104)", !(await shown(page, "update-note")));
   await page.mouse.click(400, 400); await sleep(700);
   check("gameplay(true) while walking in the town", (await calls(page)).includes("gameplay:true"), (await calls(page)).join());
   await page.screenshot({ path: path.join(OUT, "portal-lobby.png") });
