@@ -26,7 +26,7 @@ async function open(storage = {}, { scene = "dungeon", d3 = true } = {}) {
     if (d3) localStorage.setItem("rl_3d", "1");
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem("rl_scene", scene); }, [storage, DEV, scene, d3]);
   await page.goto(ORIGIN);
-  if (d3) await page.waitForFunction(() => window.RLView3D?.active(), null, { timeout: 15000 }).catch(() => {});
+  if (d3) await page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 }).catch(() => {});
   else await sleep(700);
   await sleep(300);
   return { ctx, page, errors };
@@ -57,7 +57,7 @@ try {
   check("off: three.js isn't downloaded", !(await o.page.evaluate(() => performance.getEntriesByType("resource").some(r => r.name.includes("three.module")))));
   // V로 켜기
   await o.page.keyboard.press("v");
-  await o.page.waitForFunction(() => window.RLView3D.active(), null, { timeout: 15000 }).catch(() => {});
+  await o.page.waitForFunction(() => window.RLView3D.ready, null, { timeout: 15000 }).catch(() => {});
   await sleep(400);
   check("V → 3D: 3D canvas shown, 2D canvas hidden, button says 2D 화면 (V), saved on this device", await o.page.locator("#game3d").isVisible() && !(await o.page.locator("#game").isVisible()) && (await o.page.locator("#view3d-btn").innerText()) === "2D 화면 (V)" && await o.page.evaluate(() => localStorage.getItem("rl_3d") === "1"));
   { const n = await lit(o.page); check("3D canvas actually draws the lit room (WebGL)", n > 400, String(n)); }
@@ -81,6 +81,18 @@ try {
   await o.page.evaluate(() => window.RLView3D.look(Math.PI));   // 남쪽
   await hold(o.page, "d", 600);   // 옆걸음 (남쪽을 보면 D = 서쪽)
   const p2 = await st(o.page);
+  // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래, 처음) → 크게 → 끄기 (Tab), 기기에 저장
+  const mapInfo = () => o.page.evaluate(() => { const c = document.getElementById("map3d"), s = document.getElementById("game3d").getBoundingClientRect(), r = c.getBoundingClientRect(), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+    return { mode: window.RLView3D.mapMode, shown: getComputedStyle(c).display !== "none", w: r.width, bl: r.left - s.left < 20 && s.bottom - r.bottom < 20, mid: Math.abs((r.left + r.width / 2) - (s.left + s.width / 2)) < 4, n }; });
+  let mi = await mapInfo();
+  check("map: small map in the bottom-left by default, drawn", mi.mode === "small" && mi.shown && mi.bl && mi.w > 100 && mi.w < 260 && mi.n > 500, JSON.stringify(mi));
+  await o.page.keyboard.press("Tab"); await sleep(150); mi = await mapInfo();
+  check("Tab → big map over the middle of the screen", mi.mode === "big" && mi.shown && mi.mid && mi.w > 450, JSON.stringify(mi));
+  await o.page.locator("#stage").screenshot({ path: path.join(SHOTS, "view3d-map-big.png") });
+  await o.page.keyboard.press("Tab"); await sleep(150); mi = await mapInfo();
+  check("Tab → map off (saved)", mi.mode === "off" && !mi.shown && await o.page.evaluate(() => localStorage.getItem("rl_3dmap") === "off"));
+  await o.page.keyboard.press("Tab"); await sleep(150);
+  check("Tab → small again", (await mapInfo()).mode === "small");
   check("A·D strafe sideways (facing south, D goes west)", p2.x < p.x - 0.8 && Math.abs(p2.y - p.y) < 0.05, JSON.stringify([p.x, p2.x]));
   check("no page errors (walk)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
@@ -103,14 +115,16 @@ try {
   // ---- 공격: 앞의 몬스터 / 뒤에 붙은 몬스터는 돌아서 때림, 한 턴에 한 번 ----
   o = await open(store(level({ enemies: [mob(9, 8, { hp: 1, maxHp: 400 }), mob(7, 8, { hp: 3000, maxHp: 4000 })] })));
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
-  await o.page.keyboard.press("Space"); await sleep(250);
-  L = await lvl(o.page);
-  check("Space hits the monster in front (east) — it falls", !L.enemies.some(e => e.x === 9 && e.y === 8) && (await o.page.locator("#log").innerText()).includes("처치"));
+  // 저장은 턴이 지날 때라 (0.6초) 기다렸다가 읽음
   await o.page.keyboard.press("Space"); await sleep(100);
-  const hp1 = (await lvl(o.page)).enemies.find(e => e.x === 7)?.hp;
+  await o.page.keyboard.press("Space");   // 바로 다시: 한 턴에 한 번이라 무시
+  await sleep(750);
+  L = await lvl(o.page);
+  check("Space hits the monster in front (east) — it falls", !L.enemies.some(e => e.x === 9 && e.y === 8) && (await o.page.locator("#log").innerText()).includes("처치"),
+    JSON.stringify({ pos: await st(o.page), en: L.enemies.map(e => [e.x, e.y, e.hp]), log: (await o.page.locator("#log").innerText()).split("\n").slice(-4) }));
+  const hp1 = L.enemies.find(e => e.x === 7)?.hp;
   check("one swing per turn (pressing again right away does nothing)", hp1 === 3000, String(hp1));
-  await sleep(700);
-  await o.page.keyboard.press("Space"); await sleep(500);
+  await o.page.keyboard.press("Space"); await sleep(800);
   p = await st(o.page);
   const hp2 = (await lvl(o.page)).enemies.find(e => e.x === 7 && e.y === 8)?.hp;
   check("monster behind you (west): turns around and hits it", hp2 < 3000 && Math.abs(Math.atan2(Math.sin(p.yaw - WEST), Math.cos(p.yaw - WEST))) < 0.2, JSON.stringify({ hp2, yaw: p.yaw }));

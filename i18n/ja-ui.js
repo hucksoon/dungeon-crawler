@@ -1160,7 +1160,7 @@
     "장비 상자 확률": "装備ボックスの確率",
     // 3D 화면 (dc#109)
     "공격": "攻撃",
-    "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space<br>": "3D画面(試験版): V &nbsp;·&nbsp; 前後 W·S &nbsp;·&nbsp; 横移動 A·D &nbsp;·&nbsp; 見回す: マウスまたは ← → &nbsp;·&nbsp; 攻撃: クリックまたは Space<br>",
+    "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br>": "3D画面(試験版): V &nbsp;·&nbsp; 前後 W·S &nbsp;·&nbsp; 横移動 A·D &nbsp;·&nbsp; 見回す: マウスまたは ← → &nbsp;·&nbsp; 攻撃: クリックまたは Space &nbsp;·&nbsp; マップ: Tab (小・大・オフ)<br>",
     "2D 화면 (V)": "2D画面 (V)",
     "3D 화면 (V)": "3D画面 (V)",
     "이 기기에서는 3D 화면을 쓸 수 없어서 2D로 돌아왔다.": "この端末では3D画面を使えないため、2Dに戻った。",

@@ -113,11 +113,13 @@ async function explored(opts, { add = null, reveal = 1 } = {}) {
   return o;
 }
 // 3D 화면 (dc#109): 시작 자리에서 가장 길게 트인 쪽에 몬스터를 세우고 그쪽을 봄. 시간이 흐르니 몬스터가 다가옴
-async function view3d(opts, mobs, { wait = 1200 } = {}) {
-  const o = await open({ ...opts, seed: { ...opts.seed, rl_3d: "1" } });
-  await o.page.waitForFunction(() => window.RLView3D?.active(), null, { timeout: 15000 });
-  await o.page.evaluate((mobs) => {
+async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" } = {}) {
+  const o = await open({ ...opts, seed: { ...opts.seed, rl_3d: "1", rl_3dmap: map } });
+  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
+  await o.page.evaluate(([mobs, reveal]) => {
     const L = JSON.parse(localStorage.getItem("rl_level")), W = 32, open = (x, y) => x > 0 && y > 0 && x < W - 1 && L.map[y * W + x] !== "0";
+    // 지도 그림용: 시작 자리에서 가까운 곳(약 14칸)까지 둘러본 것처럼
+    if (reveal) L.seen = Array.from(L.map, (_, i) => { const x = i % W, y = (i / W) | 0; if (Math.abs(x - L.px) + Math.abs(y - L.py) > 16) return L.seen[i]; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (open(x + dx, y + dy)) return "1"; return L.seen[i]; }).join("");
     let best = null;
     for (const [dx, dy, yaw] of [[0, -1, 0], [1, 0, Math.PI / 2], [0, 1, Math.PI], [-1, 0, -Math.PI / 2]]) {
       let n = 0; while (n < 10 && open(L.px + dx * (n + 1), L.py + dy * (n + 1))) n++;
@@ -127,9 +129,9 @@ async function view3d(opts, mobs, { wait = 1200 } = {}) {
     L.enemies = mobs.map((m, i) => ({ ...m, x: L.px + best.dx * at(m, i), y: L.py + best.dy * at(m, i) }));
     L.items = [];
     localStorage.setItem("rl_level", JSON.stringify(L)); localStorage.setItem("blog_yaw", String(best.yaw));
-  }, mobs);
+  }, [mobs, reveal]);
   await o.page.reload();
-  await o.page.waitForFunction(() => window.RLView3D?.active(), null, { timeout: 15000 });
+  await o.page.waitForFunction(() => window.RLView3D?.ready, null, { timeout: 15000 });
   await o.page.evaluate(() => window.RLView3D.look(Number(localStorage.getItem("blog_yaw")), -0.05));
   await sleep(wait);
   return { ...o, shot: "#stage" };
@@ -172,10 +174,12 @@ const SCENES = [
   ["builds", "최고 조합 페이지", async () => open({ file: "builds.html" })],
   // 3D 화면 (dc#109): 다크앤다커처럼 1인칭, 횃불만 비추는 어두운 던전. 몬스터가 다가오고, 손에 든 무기로 휘두름
   ["view3d-dungeon", "3D 화면: 횃불 하나로 비추는 어두운 던전, 몬스터가 먼저 다가와요", async () => view3d({ seed: { rl_save: save(12, "blog-3d1", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
-    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, at: 6 }], { wait: 900 })],
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, at: 6 }], { wait: 900, reveal: true })],
   ["view3d-fight", "3D 화면: 붙은 몬스터를 휘둘러 공격, 맞으면 화면 가장자리가 붉게", async () => { const o = await view3d({ seed: { rl_save: save(12, "blog-3d2", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 6000, maxHp: 6000, atk: 40, at: 2 }], { wait: 1400 });
     await o.page.keyboard.press("Space"); await sleep(140); return { ...o, nowait: true }; }],
+  ["view3d-map", "3D 화면에 겹쳐 보는 지도: Tab으로 작게 → 크게 → 끄기", async () => view3d({ seed: { rl_save: save(12, "blog-3dm", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 4 }], { wait: 700, reveal: true, map: "big" })],
   ["view3d-hell", "3D 화면: 헬 던전은 붉은 빛", async () => view3d({ seed: { rl_save: save(10, "blog-3dh", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } },
     [{ ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5, at: 4 }], { wait: 700 })],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],

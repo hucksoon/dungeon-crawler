@@ -231,6 +231,10 @@
   #hurt3d.on { animation: hurt3d 420ms ease-out; }
   @keyframes hurt3d { from { opacity: 1; } to { opacity: 0; } }
   #view3d-btn.on { border-color: var(--accent); color: var(--accent); }
+  /* 3D 지도 (dc#110): 작게는 왼쪽 아래, 크게는 화면 가운데에 반투명으로 겹침 */
+  #map3d { display: none; position: absolute; pointer-events: none; border-radius: 6px; }
+  body.view-3d:not(.in-lobby):not(.in-tower) #map3d.small { display: block; left: 8px; bottom: 8px; border: 1px solid rgba(214, 200, 150, 0.35); }
+  body.view-3d:not(.in-lobby):not(.in-tower) #map3d.big { display: block; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.35); }
   body.in-tower #tp-potion, body.in-tower #map-btn { display: none !important; }   /* 점프 던전: 포션·지도 없음 (점프·포탈(나가기)만) */
   /* 옆에서 보는 화면(점프 던전 dc#89 · 마을 dc#90) 휴대폰 배치: 왼손 엄지 ◀ ▶ (아래에 점프 던전은 ▼ 발판 아래로, 마을은 ▲ 들어가기)
      · 오른손 엄지 큰 점프 버튼 · 위에 작게 인벤토리·도감(·포탈). 상자(.dpad·.actions)를 풀어 버튼을 한 격자에 바로 놓음 */
@@ -682,7 +686,7 @@
   </div>
   <div id="log"></div>
   <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
-  <span class="keys-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space<br></span>
+  <span class="keys-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
   <span class="touch-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
   바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
@@ -4129,7 +4133,7 @@
     render();
   }
   overlayLabel();
-  overlayBtn.addEventListener("click", () => { if (scene === "dungeon") toggleOverlay(); overlayBtn.blur(); });
+  overlayBtn.addEventListener("click", () => { if (View3D.active()) View3D.cycleMap(); else if (scene === "dungeon") toggleOverlay(); overlayBtn.blur(); });
   function drawOverlay() {
     ctx.save();
     ctx.setTransform(PX, 0, 0, PX, 0, 0);
@@ -4639,7 +4643,10 @@
     let drawn = [];               // 지난 프레임에 그린 몬스터 (쓰러지면 연기)
     const stage = document.getElementById("stage"), btn = document.getElementById("view3d-btn");
     const hand = el("div", { id: "hand3d", hidden: true }), hurt = el("div", { id: "hurt3d" }), aim = el("div", { id: "aim3d" });
-    stage.append(hand, hurt, aim);
+    // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래) → 크게(화면 전체에 반투명) → 끄기. Tab · 휴대폰 지도 버튼. 기기에 저장 (rl_3dmap)
+    const mapCv = el("canvas", { id: "map3d" }), MAP_MODES = ["small", "big", "off"];
+    let mapMode = MAP_MODES.includes(store.get("rl_3dmap")) ? store.get("rl_3dmap") : "small";
+    stage.append(hand, hurt, aim, mapCv);
     const label = () => { btn.textContent = on ? T("2D 화면 (V)") : T("3D 화면 (V)"); btn.classList.toggle("on", on); };
     const active = () => on && !!view && scene === "dungeon";
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
@@ -4807,6 +4814,54 @@
         const sp = (now - swingT) / 260;
         hand.style.transform = sp < 1 ? `rotate(${-70 * Math.sin(sp * Math.PI)}deg) translate(${-40 * Math.sin(sp * Math.PI)}px, ${-20 * Math.sin(sp * Math.PI)}px)` : `translateY(${bob * 300}px)`;
       }
+      drawMap();
+    }
+    // 지도: 가 본 곳의 바닥과 벽 윤곽 (2D 지도 겹쳐 보기와 같은 모양), 계단 · 상점 · 웨이포인트 · 보이는 아이템과 몬스터,
+    //   나는 보는 방향을 가리키는 화살표와 옅은 시야. 위쪽이 북쪽(지도 그대로)
+    function cycleMap() {
+      mapMode = MAP_MODES[(MAP_MODES.indexOf(mapMode) + 1) % MAP_MODES.length];
+      store.set("rl_3dmap", mapMode);
+      Tips.step("map");
+    }
+    function drawMap() {
+      mapCv.className = mapMode;
+      if (mapMode === "off") return;
+      const big = mapMode === "big", cw = view.canvas.clientWidth, K = big ? Math.floor(Math.min(cw / MAP_W, cw * 0.75 / MAP_H) * 0.92) : Math.max(4, Math.round(cw / 128));
+      const w = MAP_W * K, h = MAP_H * K, dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (mapCv.width !== Math.round(w * dpr)) { mapCv.width = Math.round(w * dpr); mapCv.height = Math.round(h * dpr); mapCv.style.width = `${w}px`; mapCv.style.height = `${h}px`; }
+      const g = mapCv.getContext("2d");
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      if (!big) { g.fillStyle = "rgba(0, 0, 0, 0.55)"; g.fillRect(0, 0, w, h); }
+      const open = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && map[y][x] !== WALL;
+      g.fillStyle = "rgba(214, 200, 150, 0.14)";
+      g.beginPath();
+      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+        if (!seen[y][x] || !open(x, y)) continue;
+        const px = x * K, py = y * K;
+        g.fillRect(px, py, K, K);
+        if (!open(x, y - 1)) { g.moveTo(px, py); g.lineTo(px + K, py); }
+        if (!open(x, y + 1)) { g.moveTo(px, py + K); g.lineTo(px + K, py + K); }
+        if (!open(x - 1, y)) { g.moveTo(px, py); g.lineTo(px, py + K); }
+        if (!open(x + 1, y)) { g.moveTo(px + K, py); g.lineTo(px + K, py + K); }
+      }
+      g.strokeStyle = "rgba(214, 200, 150, 0.85)"; g.lineWidth = big ? 1.5 : 1; g.stroke();
+      const dot = (x, y, color, r = K * 0.32) => { g.fillStyle = color; g.beginPath(); g.arc((x + 0.5) * K, (y + 0.5) * K, Math.max(1.5, r), 0, Math.PI * 2); g.fill(); };
+      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (seen[y][x] && map[y][x] === STAIRS) dot(x, y, "#ffcf5c", K * 0.45);
+      if (shop && seen[shop.y]?.[shop.x]) dot(shop.x, shop.y, SHOP_COLOR, K * 0.45);
+      if (wpSpot && seen[wpSpot.y]?.[wpSpot.x]) dot(wpSpot.x, wpSpot.y, WP_COLOR, K * 0.45);
+      if (grave && seen[grave.y]?.[grave.x]) dot(grave.x, grave.y, "#c8ccd8", K * 0.4);
+      for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : "#ff6bd3", K * 0.22);
+      for (const e of enemies) if (e.hp > 0 && visible[e.y]?.[e.x]) { const d = disp.get(e); dot(d ? d.x : e.x, d ? d.y : e.y, e.named ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : "#ff4a3a", K * 0.34); }
+      // 나: 시야(옅은 부채꼴)와 보는 쪽 화살표
+      const mx = pos.x * K, my = pos.y * K, a = yaw - Math.PI / 2;
+      g.fillStyle = "rgba(255, 200, 120, 0.16)";
+      g.beginPath(); g.moveTo(mx, my); g.arc(mx, my, K * 4, a - 0.6, a + 0.6); g.closePath(); g.fill();
+      g.save(); g.translate(mx, my); g.rotate(yaw);
+      const r = Math.max(5.5, K * 0.6);
+      g.fillStyle = "#ffffff"; g.strokeStyle = "#000"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(0, -r); g.lineTo(r * 0.7, r * 0.7); g.lineTo(0, r * 0.3); g.lineTo(-r * 0.7, r * 0.7); g.closePath(); g.fill(); g.stroke();
+      g.restore();
     }
     // 피해 숫자 자리 (showDamage): 그 몬스터·나의 머리 위
     function popAt(target) {
@@ -4836,6 +4891,7 @@
         case "arrowleft": held.tl = v; return true;
         case "arrowright": held.tr = v; return true;
         case " ": case "f": case "enter": held.atk = down; if (down) swing(); return true;
+        case "tab": if (down) cycleMap(); return true;
         default: return false;
       }
     }
@@ -4878,7 +4934,9 @@
     label();
     if (on) load();
     requestAnimationFrame(loop);
-    return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, get pos() { return { ...pos, yaw, pitch }; },
+    return { get on() { return on; }, active, toggle, key, release, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
+      get ready() { return active() && levelRef === map; },   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
+      get pos() { return { ...pos, yaw, pitch }; },
       // 시험용: 보는 방향·자리 바꾸기
       look(a, p = 0) { yaw = a; pitch = p; } };
   })();

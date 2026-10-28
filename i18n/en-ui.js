@@ -1160,7 +1160,7 @@
     "장비 상자 확률": "Equipment box drop rates",
     // 3D 화면 (dc#109)
     "공격": "Attack",
-    "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space<br>": "3D view (beta): V &nbsp;·&nbsp; forward/back W·S &nbsp;·&nbsp; strafe A·D &nbsp;·&nbsp; look: mouse or ← → &nbsp;·&nbsp; attack: click or Space<br>",
+    "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br>": "3D view (beta): V &nbsp;·&nbsp; forward/back W·S &nbsp;·&nbsp; strafe A·D &nbsp;·&nbsp; look: mouse or ← → &nbsp;·&nbsp; attack: click or Space &nbsp;·&nbsp; map: Tab (small · large · off)<br>",
     "2D 화면 (V)": "2D view (V)",
     "3D 화면 (V)": "3D view (V)",
     "이 기기에서는 3D 화면을 쓸 수 없어서 2D로 돌아왔다.": "3D view isn't available on this device, so you're back in 2D.",
