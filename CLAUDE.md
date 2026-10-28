@@ -22,4 +22,5 @@
 ## 테스트
 
 - `bash test/run.sh [이름 일부]` — 결과는 `test/results/`(최근 3번만, 저장소에 안 올림). `blog-e2e`는 블로그 페이지가 글과 같은지도 확인
+- 자동 테스트 (dc#106): 브랜치에 올리면 GitHub Actions(`.github/workflows/test.yml`)가 전체 회귀 테스트를 4조각으로 나눠 돌림 (약 10분, 흔들리는 테스트는 한 번 재시도). PR을 머지하기 전에 그 브랜치 마지막 커밋의 "회귀 테스트" 실행이 모두 통과했는지 확인 (`actions_list list_workflow_runs`, 실패하면 `get_job_logs`). 로컬 전체 실행은 필요할 때만
 - 비밀값(`.env`, `ranking-php/config.php`, `data/`)은 커밋하지 않는다. 테스트에는 가짜 키만

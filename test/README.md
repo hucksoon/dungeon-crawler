@@ -7,6 +7,7 @@ bash test/run.sh            # 전부 (30~40분)
 bash test/run.sh market     # 이름에 market이 들어간 것만
 ```
 
+- 자동 테스트: 브랜치에 올리면 GitHub Actions(`.github/workflows/test.yml`)가 4조각(`SHARD=1/4`…)으로 나눠 동시에 돌리고, 실패한 테스트는 한 번 더 돌려요(`RETRY=1`, 통과하면 요약에 "재시도"). 결과는 Actions 실행 화면의 요약에, 실패하면 로그·화면 캡처를 `test-results-<조각>`으로 내려받아요
 - 결과는 `test/results/<시각>/`에 테스트마다 로그·화면 캡처·`summary.txt`. **최근 3번만 남기고**(`KEEP=3`) 저장소에는 올리지 않아요 (`.gitignore`)
 - 필요한 것: node 22+, php 8 (`pdo_sqlite`), 전역 설치한 `playwright`(`NODE_PATH`), Chromium (경로가 다르면 `CHROMIUM_PATH`)
 - 브라우저 기본 언어는 한국어(`ko-default.cjs`). 영어·일본어 화면은 테스트가 언어를 직접 정함

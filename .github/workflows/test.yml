@@ -1,0 +1,59 @@
+# 자동 테스트: 브랜치에 올릴 때마다 회귀 테스트(test/run.sh)를 4조각으로 나눠 동시에 돌림
+#   결과는 Actions의 각 실행 요약(Summary)에, 실패하면 로그·화면 캡처를 test-results-<조각>으로 내려받을 수 있음
+#   가끔 흔들리는 타이밍 테스트는 한 번 더 돌려서 통과하면 ok (요약에 "재시도"로 남음)
+#   손으로 다시 돌리기: Actions → 회귀 테스트 → Run workflow
+name: 회귀 테스트
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  test:
+    name: 테스트 ${{ matrix.shard }}/4
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: PHP 확인 (pdo_sqlite·curl·mbstring·openssl)
+        run: |
+          php -v | head -1
+          missing=""
+          for m in pdo_sqlite curl mbstring openssl; do php -m | grep -qix "$m" || missing="$missing $m"; done
+          if [ -n "$missing" ]; then sudo apt-get update -q && sudo apt-get install -y -q php-sqlite3 php-curl php-mbstring; fi
+          php -m | grep -ix pdo_sqlite
+      - name: Playwright와 Chromium
+        run: |
+          npm install -g playwright@1.56.1
+          npx -y playwright@1.56.1 install --with-deps chromium
+          echo "NODE_PATH=$(npm root -g)" >> "$GITHUB_ENV"
+          echo "CHROMIUM_PATH=$(NODE_PATH=$(npm root -g) node -e 'console.log(require("playwright").chromium.executablePath())')" >> "$GITHUB_ENV"
+      - name: 회귀 테스트 (조각 ${{ matrix.shard }}/4)
+        run: SHARD=${{ matrix.shard }}/4 RETRY=1 bash test/run.sh
+      - name: 요약
+        if: always()
+        run: |
+          {
+            echo "### 테스트 조각 ${{ matrix.shard }}/4"
+            echo '```'
+            cat test/results/*/summary.txt 2>/dev/null || echo "(요약 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: 실패하면 로그·화면 캡처 올리기
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results-${{ matrix.shard }}
+          path: test/results/
+          retention-days: 7
