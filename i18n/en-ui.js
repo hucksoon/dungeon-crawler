@@ -1137,5 +1137,24 @@
     // 포털 빌드 (dc#102)
     "광고 보고 부활": "Watch an ad to revive",
     "광고를 끝까지 보지 않았거나 지금은 광고를 불러올 수 없어요.": "The ad was not finished, or no ad is available right now.",
+    // 무료 선물 (dc#105)
+    "🎁 무료 선물": "🎁 Free gift",
+    "나중에 고르기": "Choose later",
+    "아직 무료 선물을 받을 수 없어요. 3시간마다 받을 수 있어요.": "The free gift is not ready yet. You can get one every 3 hours.",
+    "고를 수 없는 선물이에요. 다시 열어 주세요.": "That gift can't be chosen. Please open it again.",
+    "선물을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요.": "Couldn't make the gift. Please try again in a moment.",
+    "🎁 선물 고르기": "🎁 Choose your gift",
+    "🎁 무료 선물 (광고)": "🎁 Free gift (ad)",
+    "광고를 끝까지 보지 않아서 선물이 없어요.": "No gift, because the ad wasn't watched to the end.",
+    "무료 선물": "Free gift",
+    "레벨 {0}": "Lv {0}",
+    "고대": "Ancient",
+    "이걸로 받기": "Take this one",
+    "{0} 선물이에요. 하나만 골라 가방에 넣어요 (나머지는 사라져요). 다음 선물은 광고를 본 때부터 {1}시간 뒤예요.": "{0} gift. Pick one to put in your bag (the others disappear). The next gift comes {1} hours after you watched the ad.",
+    "로그인 계정은 {0}% 확률로 캐시 {1}~{2}개도 우편함으로 와요.": "Signed-in accounts also have a {0}% chance to get {1}~{2} cash in the mailbox.",
+    "가방이 가득 찼어요 ({0}칸). 인벤토리에서 정리한 뒤 골라 주세요.": "Your bag is full ({0} slots). Make room in the inventory, then choose.",
+    "이미 받았거나 없는 선물이에요.": "This gift was already taken or doesn't exist.",
+    "🎁 무료 선물로 {0}을(를) 받았다!": "🎁 Got {0} from the free gift!",
+    "🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.": "🎉 Bonus! ◆{0} cash arrived in your mailbox.",
   } });
 })(typeof self !== "undefined" ? self : this);

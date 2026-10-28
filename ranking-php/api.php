@@ -26,6 +26,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/rules.php';
 require_once __DIR__ . '/market.php';
 require_once __DIR__ . '/ads.php';
+require_once __DIR__ . '/bonus.php';
 require_once __DIR__ . '/profile.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5, 'unique' => 6];
@@ -185,6 +186,7 @@ function db(): PDO {
     // 나중에 추가된 칸: 기존 DB에도 붙임 (이미 있으면 무시)
     market_tables($pdo);
     ads_tables($pdo);
+    bonus_tables($pdo);
     profile_tables($pdo);
     foreach (['pub_id VARCHAR(32)', 'stage_gear TEXT', 'item_json TEXT'] as $col) {
         try { $pdo->exec("ALTER TABLE players ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
@@ -536,6 +538,9 @@ function seed_origin_ok(int $v, string $seed, string $src, int $lvl, int $rev = 
     }
     if (preg_match('/^box\|o[0-9A-Za-z]{1,48}\|(\d{1,2})$/', $seed, $m)) {                   // 장비 상자 (최대 50회)
         return $src === 'box' && (int)$m[1] < 50 && box_seed_ok($seed);   // 환불 제외, 좁힌 뒤엔 서버 기록이 있는 것만 (market.php)
+    }
+    if (preg_match(R_BONUS_SEED, $seed)) {   // 무료 선물 (dc#105, bonus.php): 서버가 만들어 보여 주고 사용자가 고른 시드만
+        return $v === 4 && in_array($src, ['boss', 'unique'], true) && bonus_seed_ok($seed, $src, $lvl, $rev);
     }
     if (preg_match(R_BUY_SEED, $seed, $m)) {   // 고대 유니크 선택 상자 (현금): 서버가 결제를 확인하고 우편함에서 고를 때 기록한 시드만
         return $src === 'unique' && $v === 4 && $rev >= 8 && $lvl === r_bought_level($m[2]) && bought_seed_ok($seed);
@@ -1081,6 +1086,9 @@ try {
     elseif ($route === 'entry' && $method === 'POST') respond(200, entry_start());
     elseif ($route === 'ad_start' && $method === 'POST') respond(200, ad_start());
     elseif ($route === 'revive_ad' && $method === 'POST') respond(200, revive_ad());
+    elseif ($route === 'bonus_status' && $method === 'GET') respond(200, bonus_status());
+    elseif ($route === 'bonus_open' && $method === 'POST') respond(200, bonus_open());
+    elseif ($route === 'bonus_pick' && $method === 'POST') respond(200, bonus_pick());
     elseif ($route === 'profile' && $method === 'GET') respond(200, profile_get());
     elseif ($route === 'profile' && $method === 'POST') respond(200, profile_put());
     elseif ($route === 'geo' && $method === 'GET') respond(200, get_geo());

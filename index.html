@@ -348,6 +348,8 @@
     background: rgba(0, 0, 0, 0.7);
   }
   .overlay[hidden] { display: none; }
+  .overlay { z-index: 5; }   /* 게임 화면 위의 배너(무료 선물)보다 위 */
+  #ask-modal { z-index: 20; }   /* 게임 안의 확인 창(포털)은 다른 창(무료 선물 등) 위에 */
   .modal {
     width: 360px;
     max-width: 100%;
@@ -543,6 +545,25 @@
   #shop-reroll { width: 100%; margin-top: 10px; }
 
   /* ---- 광고 ---- */
+  /* 무료 선물 (dc#105): 받을 수 있으면 게임 화면 오른쪽 위에 반짝이는 배너 */
+  #gift-banner { position: absolute; right: 8px; top: 8px; z-index: 3; line-height: 1.3; font-size: 13px; font-weight: bold; padding: 6px 12px; border-radius: 999px;
+    border: 2px solid #fff0b8; color: #1a1406; background: linear-gradient(110deg, #f0a020 0%, #ffcf5c 35%, #fff6d0 50%, #ffcf5c 65%, #f0a020 100%); background-size: 250% 100%;
+    animation: gift-shine 2.2s linear infinite, gift-pulse 1.6s ease-in-out infinite; cursor: pointer; }
+  #gift-banner[hidden] { display: none; }
+  @media (hover: hover) { #gift-banner:hover:not(:disabled) { color: #1a1406; filter: brightness(1.1); } }
+  @keyframes gift-shine { from { background-position: 120% 0; } to { background-position: -130% 0; } }
+  @keyframes gift-pulse { 0%, 100% { box-shadow: 0 0 6px rgba(255, 207, 92, 0.6); } 50% { box-shadow: 0 0 20px 4px rgba(255, 220, 120, 0.95); } }
+  @media (prefers-reduced-motion: reduce) { #gift-banner { animation: none; box-shadow: 0 0 10px rgba(255, 207, 92, 0.8); } }
+  @media (max-width: 520px) { #gift-banner { font-size: 11.5px; padding: 4px 9px; right: 5px; top: 5px; } }
+  .modal.gift { display: flex; flex-direction: column; gap: 8px; max-width: 760px; width: 100%; }
+  .modal.gift .sub { margin: 0; font-size: 12.5px; opacity: 0.85; }
+  #gift-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; max-height: 62vh; overflow-y: auto; }
+  .gift-card { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 10px; border-width: 2px; border-radius: 8px; font-size: 12px; line-height: 1.45; white-space: normal; }
+  .gift-card b { font-size: 13.5px; }
+  .gift-card .meta { opacity: 0.8; }
+  .gift-card .lines { opacity: 0.95; }
+  .gift-card .pick { margin-top: auto; padding-top: 6px; text-align: center; font-weight: bold; color: var(--accent); }
+  #gift-msg { margin: 0; min-height: 1.2em; font-size: 12.5px; }
   .modal.ad { display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.ad button { width: 100%; padding: 10px; }
   #ad-box { position: relative; padding: 26px 12px 18px; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg); font-size: 12px; line-height: 1.6; opacity: 0.9; }
@@ -614,7 +635,7 @@
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)<small id="lvb"></small></span>
     <span id="status" hidden></span>
   </div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
@@ -763,6 +784,16 @@
     <p id="ad-count"></p>
     <button id="ad-claim" type="button" class="primary" disabled data-t>보상 받기</button>
     <button id="ad-close" type="button" data-t>닫기 (보상 없음)</button>
+  </div>
+</div>
+
+<div id="gift-modal" class="overlay" hidden>
+  <div class="modal gift" role="dialog" aria-modal="true" aria-labelledby="gift-title">
+    <h2 id="gift-title" data-t>🎁 무료 선물</h2>
+    <p class="sub" id="gift-sub"></p>
+    <div id="gift-cards"></div>
+    <p id="gift-msg" role="status"></p>
+    <button id="gift-close" type="button" data-t>나중에 고르기</button>
   </div>
 </div>
 
@@ -3018,6 +3049,7 @@
         cloudReady = true;
         collectMail(true);
         Ranking.schedule();
+        Gift.refresh();   // 계정이 바뀌면 선물 상태도 그 계정 것으로 (dc#105)
         legacyNotice();
       } catch (e) {
         log(T("계정 저장 데이터를 불러오지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
@@ -5863,6 +5895,7 @@
     if (cloudTimer) await flushCloud();
     await Profile.stop();
     Account.logout();
+    Gift.close();
     cloudReady = false;
     store.del(SAVE_KEY);
     Inv.use(inventoryOwner());
@@ -5878,6 +5911,7 @@
     newGame();
     log(T("로그아웃했다. 게스트로 새로 시작한다."), "info");
     renderAccount();
+    Gift.refresh();
   });
 
   // 탭을 닫거나 숨길 때 남은 저장을 바로 보냄
@@ -7111,6 +7145,9 @@
     bad_ticket: T("광고 확인에 실패했어요. 다시 시도해 주세요."),
     ad_too_short: T("광고를 끝까지 봐 주세요."),
     too_many_tickets: T("잠시 뒤 다시 시도해 주세요."),
+    bonus_wait: T("아직 무료 선물을 받을 수 없어요. 3시간마다 받을 수 있어요."),
+    bad_pick: T("고를 수 없는 선물이에요. 다시 열어 주세요."),
+    bonus_failed: T("선물을 만들지 못했어요. 잠시 뒤 다시 시도해 주세요."),
   };
   const Market = {
     tab: "buy", list: null, mine: null, cash: null, sel: null, busy: false, mailCount: 0, mailKnown: false,
@@ -7650,9 +7687,158 @@
     }
   }
 
+  // ---- 무료 선물 (dc#105): 3시간마다 광고를 보면 세트·유니크 3개를 보여 주고 하나를 골라 받음 ----
+  // 원본 사이트: 서버(bonus.php)가 서버에 기록된 진행에 맞춰 만들고, 고른 시드를 기록 (랭킹·거래소에서 인정)
+  //   로그인 사용자는 고를 때 10% 확률로 캐시 1~3개가 우편함으로 (캐시는 Xsolla 계정에 들어가서 게스트는 없음)
+  // 포털 빌드(dc#102): 서버가 없어서 이 기기에서 같은 규칙으로 만들고, 3시간은 이 기기에 저장. 광고는 포털의 보상 광고
+  // 수준: 나이트메어 완료 → 헬(지옥의 세트 + 헬에서 만난 네임드 보스의 유니크), 일반 던전 완료 → 나이트메어 세트, 그 전 → 일반 세트
+  // 받을 수 있으면(또는 아직 안 고른 선물이 있으면) 게임 화면 오른쪽 위에 반짝이는 배너
+  const Gift = (() => {
+    const HOURS = 3, UNIQUE_SHARE = 0.5;
+    const banner = document.getElementById("gift-banner"), modalEl = document.getElementById("gift-modal");
+    const cards = document.getElementById("gift-cards"), msg = document.getElementById("gift-msg");
+    let st = null, busy = false, picking = false;
+    const enabled = () => !!PORTAL || !!RANKING_API;
+    const localKey = () => `rl_gift:${Inv.owner()}`;
+    const readLocal = () => { try { return JSON.parse(store.get(localKey()) || "null") || {}; } catch { return {}; } };
+    function localStatus() {
+      const L = readLocal(), next = (L.at || 0) + HOURS * 3600000;
+      return { hours: HOURS, pending: L.pending || null, ready: !L.pending && Date.now() >= next, nextAt: L.pending ? null : Math.max(Date.now(), next), cash: null, local: true };
+    }
+    // 이 기기의 진행 → 선물 수준 (서버 bonus_tier와 같은 규칙)
+    function localTier() {
+      if (nmCleared) { const n = Math.max(1, Math.min(HELL.floors, hellBest)); return { tier: "hell", z: "j", n, lvl: HELL.itemBase + n }; }
+      if (cleared) { const n = Math.max(1, Math.min(NM.floors, nmBest)); return { tier: "nightmare", z: "n", n, lvl: NM.itemBase + n }; }
+      const n = Math.max(1, Math.min(RLMonsters.MAX_FLOOR, bestDepth));
+      return { tier: "normal", z: "e", n, lvl: RLMonsters.effLevel(n) };
+    }
+    const toRef = (it) => ({ seed: it.seed, src: it.src, lvl: it.lvl, v: 4, enh: 0, r: RLItems.RULES_REV, id: it.id });
+    // 선물 3개 (서버 bonus_make와 같은 규칙: 서로 다른 부위의 세트, 헬은 만난 네임드 보스의 유니크가 반쯤)
+    function localMake(id, t) {
+      const out = [], slots = [], uqs = [];
+      const named = t.tier === "hell" ? Object.keys(RLItems.UNIQUE.items).filter(k => RLItems.UNIQUE.items[k].boss <= t.n) : [];
+      for (let k = 0; k < 3; k++) {
+        const left = named.filter(u => !uqs.includes(u));
+        if (left.length && Math.random() < UNIQUE_SHARE) {
+          const uq = left[Math.floor(Math.random() * left.length)], U = RLItems.UNIQUE.items[uq];
+          let got = null;
+          for (let i = 0; i < 2000 && !got; i++) { const it = RLItems.generateUnique(`bonus|${id}|j${U.boss}|${U.acc ? "a" : "u"}${i}`, HELL.itemBase + U.boss); if (it.uq === uq) got = it; }
+          if (got) { out.push(got); uqs.push(uq); continue; }
+        }
+        for (let i = 0; i < 5000; i++) {
+          const it = RLItems.generate(`bonus|${id}|${t.z}${t.n}|s${k}_${i}`, "boss", t.lvl);
+          if (it.rarity === "set" && (!slots.includes(it.slot) || i > 3000)) { out.push(it); slots.push(it.slot); break; }
+        }
+      }
+      return { id, tier: t.tier, offers: out.map(toRef), createdAt: Date.now() };
+    }
+    const hex16 = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
+
+    async function refresh() {
+      if (!enabled()) { st = null; render(); return null; }
+      if (PORTAL) st = localStatus();
+      else { try { st = await marketCall("bonus_status"); } catch { st = null; } }
+      render();
+      return st;
+    }
+    function render() {
+      const show = !!st && (st.ready || !!st.pending) && scene !== "jump";
+      banner.hidden = !show;
+      if (show) banner.textContent = st.pending ? T("🎁 선물 고르기") : T("🎁 무료 선물 (광고)");
+      banner.disabled = busy;
+    }
+    // 배너 누르기: 고르지 않은 선물이 있으면 바로 창, 아니면 광고를 보고 선물 3개
+    async function claim() {
+      if (busy || !st) return;
+      busy = true; render();
+      try {
+        if (!st.pending) {
+          if (PORTAL) {
+            if (!(await portalAdBreak(true))) throw new Error(T("광고를 끝까지 보지 않아서 선물이 없어요."));
+            const L = readLocal();
+            L.at = Date.now(); L.pending = localMake(hex16(), localTier());
+            store.set(localKey(), JSON.stringify(L));
+            st = localStatus();
+          } else {
+            const ticket = await Ads.watch("bonus", T("무료 선물"));
+            st = await marketCall("bonus_open", { body: { adTicket: ticket } });
+          }
+        }
+        if (st.pending) open();
+      } catch (e) {
+        log(e.message, "bad");
+        if (e.code === "bonus_wait") await refresh();
+      }
+      busy = false; render();
+    }
+    function card(ref, i) {
+      const it = itemFromRef(ref);
+      if (!it) return el("div", {}, "?");
+      const U = it.uq ? RLItems.UNIQUE.items[it.uq] : null, set = it.set ? RLItems.SETS[it.set] : null;
+      const stats = [...(it.main || []), ...(it.lines || [])].map(([k, v]) => RLItems.formatStat(k, v)).join(" · ");
+      return el("button", { type: "button", className: "gift-card", style: { borderColor: rarityColor(it) }, onclick: () => pick(i, it) },
+        el("div", {}, itemIcon(it), el("b", { style: { color: rarityColor(it) } }, RLItems.itemName(it))),
+        el("div", { className: "meta" }, `${RLItems.SLOT_NAMES[it.slot]} · ${T("레벨 {0}", it.lvl)}` + (set ? ` · ${set.name}` : "") + (it.ancient ? ` · ${T("고대")}` : "")),
+        U ? el("div", { className: "meta" }, U.text) : null,
+        el("div", { className: "lines" }, stats),
+        el("div", { className: "pick" }, T("이걸로 받기")));
+    }
+    function open() {
+      if (!st?.pending) return;
+      const tier = { hell: T("헬 (지옥의)"), nightmare: T("나이트메어 (악몽의)"), normal: T("일반 던전") }[st.pending.tier] || "";
+      document.getElementById("gift-sub").textContent = T("{0} 선물이에요. 하나만 골라 가방에 넣어요 (나머지는 사라져요). 다음 선물은 광고를 본 때부터 {1}시간 뒤예요.", tier, HOURS)
+        + (st.cash ? " " + T("로그인 계정은 {0}% 확률로 캐시 {1}~{2}개도 우편함으로 와요.", Math.round(st.cash.chance * 100), st.cash.min, st.cash.max) : "");
+      cards.replaceChildren(...st.pending.offers.map(card));
+      msg.textContent = ""; msg.className = "";
+      modalEl.hidden = false;
+      cards.querySelector("button")?.focus();
+    }
+    const close = () => { modalEl.hidden = true; };
+    const say = (text, cls) => { msg.textContent = text; msg.className = cls ? `msg-${cls}` : ""; };
+    async function pick(i, it) {
+      if (picking || !st?.pending) return;
+      if (Inv.full()) return say(T("가방이 가득 찼어요 ({0}칸). 인벤토리에서 정리한 뒤 골라 주세요.", BAG_SIZE), "bad");
+      if (!(await ask(T("{0}을(를) 고를까요? 고른 뒤에는 바꿀 수 없어요.", RLItems.itemName(it))))) return;
+      picking = true;
+      try {
+        let cash = 0, mail = null;
+        if (PORTAL) {
+          const L = readLocal();
+          if (!L.pending) throw new Error(T("이미 받았거나 없는 선물이에요."));
+          L.pending = null; store.set(localKey(), JSON.stringify(L));
+        } else {
+          const r = await marketCall("bonus_pick", { body: { id: st.pending.id, pick: i } });
+          const got = itemFromRef(r.item);
+          if (!got || got.id !== it.id) throw new Error(T("아이템을 만들 수 없어요. 게임을 새로고침해 주세요."));
+          cash = r.cash || 0; mail = r.mail;
+        }
+        Inv.add(it, { from: "gift" });
+        Sfx("drop", it.rarity);
+        log(T("🎁 무료 선물로 {0}을(를) 받았다!", RLItems.itemName(it)), "good");
+        if (cash) { log(T("🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.", cash), "rainbow"); if (mail != null) setMailCount(mail); }
+        saveGame(true);
+        Ranking.schedule();
+        close();
+      } catch (e) {
+        say(e.message, "bad");
+      }
+      picking = false;
+      await refresh();
+    }
+    banner.addEventListener("click", (e) => { e.currentTarget.blur(); claim(); });
+    document.getElementById("gift-close").addEventListener("click", close);
+    modalEl.addEventListener("click", (e) => { if (e.target === modalEl) close(); });
+    // 시간이 되면 배너가 뜨게 (30초마다 확인, 서버는 시간이 지났을 때만 다시 물어봄)
+    setInterval(() => {
+      if (!st || document.hidden || st.pending || st.ready) return;
+      if (Date.now() >= (st.nextAt || 0)) refresh();
+    }, 30000);
+    return { refresh, render, close, isOpen: () => !modalEl.hidden, status: () => st, claim };
+  })();
+
   // ---- 터치 조작 ----
   // 방향 버튼: 누르면 한 칸, 누르고 있으면 0.3초 뒤부터 계속 이동. 창이 열려 있으면 움직이지 않음
-  const anyModalOpen = () => !hellPickModal.hidden || !wpModal.hidden || !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen();
+  const anyModalOpen = () => !hellPickModal.hidden || !wpModal.hidden || !modal.hidden || !invModal.hidden || !dexModal.hidden || !shopModal.hidden || !marketModal.hidden || Ads.isOpen() || Gift.isOpen();
   const pad = document.getElementById("touch-pad");
   let holdTimer = null;
   const stopHold = () => { clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null; };
@@ -8002,6 +8188,10 @@
       if (e.key === "Escape") { e.preventDefault(); closeSound(); }
       return;
     }
+    if (Gift.isOpen()) {
+      if (e.key === "Escape") { e.preventDefault(); Gift.close(); }
+      return;
+    }
     if (!deathModal.hidden && modal.hidden) {
       const k = e.key.toLowerCase();
       if (k === "r") { e.preventDefault(); startOver(); }
@@ -8075,6 +8265,7 @@
   // 로그인 중이면 서버 저장본과 맞춘 다음에 상자 보관함을 가방으로 (syncAfterLogin 안에서)
   if (Account.configured() && Account.loggedIn()) syncAfterLogin();
   else { collectMail(true); Ranking.schedule(); }
+  Gift.refresh();   // 무료 선물 (dc#105): 받을 수 있으면 오른쪽 위 배너
   // 상점의 "계정 연결하기": 이미 로그인했으면 바로 상점으로, 아니면 로그인 창
   if (new URLSearchParams(location.search).get("login") === "shop") {
     history.replaceState(null, "", location.pathname);
