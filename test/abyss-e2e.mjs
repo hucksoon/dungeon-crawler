@@ -1,5 +1,5 @@
 // 끝이 없는 구멍 (dc#124): 헬을 완료하면 마을 웨이포인트 맨 아래에서, 매번 1층부터. 층마다 네임드 2마리(1~15층 쌍, 16~20층은 몬스터 전부 네임드)
-// 한 층에 +7%, 장비·골드 없이 경험치만, 20층 완료 → 다음 업데이트 안내. 서버: 구멍 랭킹(맨 위), 가장 먼저 완료한 사람에게 칭호 [s1 제페한자] (숨기기 가능)
+// 한 층에 +7%, 장비·골드 없이 경험치만, 20층 완료 → 다음 업데이트 안내. 서버: 구멍 랭킹(맨 위), 가장 먼저 완료한 사람에게 칭호 [s1 제패한자] (숨기기 가능)
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
@@ -149,21 +149,21 @@ try {
   await page.keyboard.press("Enter"); await sleep(200);
   await page.screenshot({ path: `${OUT}/abyss-clear.png` });
   // 랭킹 기록(3초 모아서) → 칭호 알림
-  await page.waitForFunction(() => document.getElementById("notice-title")?.textContent.includes("[s1 제페한자]"), null, { timeout: 9000 }).catch(() => {});
-  check("first clear: title notice [s1 제페한자] in the game", (await page.locator("#notice-title").innerText()).includes("[s1 제페한자]") && (await logs(page)).includes("칭호 [s1 제페한자]을(를) 얻었다"), await page.locator("#notice-title").innerText());
+  await page.waitForFunction(() => document.getElementById("notice-title")?.textContent.includes("[s1 제패한자]"), null, { timeout: 9000 }).catch(() => {});
+  check("first clear: title notice [s1 제패한자] in the game", (await page.locator("#notice-title").innerText()).includes("[s1 제패한자]") && (await logs(page)).includes("칭호 [s1 제패한자]을(를) 얻었다"), await page.locator("#notice-title").innerText());
   const board = await (await fetch(`http://127.0.0.1:${PORT}/api.php?r=ranking&type=stage&season=abyss`, { headers: { Origin: ORIGIN.slice(0, -1) } })).json();
-  check("server: abyss board has 21 (= 20층 완료), name starts with the title", board.season === "abyss" && board.seasonName === "끝이 없는 구멍" && board.rows?.[0]?.stage === 21 && board.rows[0].name.startsWith("[s1 제페한자] "), JSON.stringify(board).slice(0, 300));
+  check("server: abyss board has 21 (= 20층 완료), name starts with the title", board.season === "abyss" && board.seasonName === "끝이 없는 구멍" && board.rows?.[0]?.stage === 21 && board.rows[0].name.startsWith("[s1 제패한자] "), JSON.stringify(board).slice(0, 300));
   check("no page errors (clear)", errors.length === 0, errors.join("; "));
 
   // 4. 랭킹 화면: 맨 앞 탭이 구멍, 내 칭호 숨기기 → 이름 앞 칭호가 빠짐
   await page.goto(ORIGIN + "ranking.html#abyss"); await sleep(800);
   check("ranking page: first tab 끝이 없는 구멍 (selected by #abyss), row shows the title", (await page.locator("#seasons button").first().innerText()).includes("끝이 없는 구멍")
-    && await page.locator("#seasons button").first().getAttribute("aria-selected") === "true" && (await page.locator("#board-stage li").first().innerText()).includes("[s1 제페한자]"));
+    && await page.locator("#seasons button").first().getAttribute("aria-selected") === "true" && (await page.locator("#board-stage li").first().innerText()).includes("[s1 제패한자]"));
   await page.screenshot({ path: `${OUT}/abyss-ranking.png` });
   await page.locator("#title-s1").click(); await sleep(800);
-  check("hide title: ranking row without the title, button says 보이기", !(await page.locator("#board-stage li").first().innerText()).includes("[s1 제페한자]") && (await page.locator("#title-s1").innerText()).includes("보이기"));
+  check("hide title: ranking row without the title, button says 보이기", !(await page.locator("#board-stage li").first().innerText()).includes("[s1 제패한자]") && (await page.locator("#title-s1").innerText()).includes("보이기"));
   await page.locator("#title-s1").click(); await sleep(800);
-  check("show again: title back", (await page.locator("#board-stage li").first().innerText()).includes("[s1 제페한자]"));
+  check("show again: title back", (await page.locator("#board-stage li").first().innerText()).includes("[s1 제패한자]"));
   await ctx.close();
 } finally { await browser.close(); }
 
@@ -182,7 +182,7 @@ try {
   check("someone else cannot hide the title (403)", (await title("abyss-guest-02", { id: "s1", hide: true })).status === 403);
   check("unknown title id → 400", (await title("abyss-guest-02", { id: "zz", hide: true })).status === 400);
   const lobby = await (await fetch(`http://127.0.0.1:${PORT}/api.php?r=lobby`, { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN.slice(0, -1), "X-Guest-Id": "abyss-test-c" }, body: JSON.stringify({ scene: "dungeon", depth: 4003 }) })).json();
-  check("lobby: my name with the title, abyss floor kept (4003)", lobby.me?.name?.startsWith("[s1 제페한자] ") && lobby.players?.find(p => p.id === lobby.me.id)?.depth === 4003, JSON.stringify(lobby.me));
+  check("lobby: my name with the title, abyss floor kept (4003)", lobby.me?.name?.startsWith("[s1 제패한자] ") && lobby.players?.find(p => p.id === lobby.me.id)?.depth === 4003, JSON.stringify(lobby.me));
 } finally { php.kill(); }
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 const pass = results.filter(Boolean).length;

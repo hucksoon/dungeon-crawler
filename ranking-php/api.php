@@ -65,7 +65,7 @@ const HELL_NAMED = [10, 20, 30, 40, 50];
 const ABYSS_FLOORS = 20;
 const ABYSS_CLEAR = ABYSS_FLOORS + 1;
 // 구멍을 가장 먼저 완료한 사람의 칭호: 이름 앞에 붙음 (본인이 랭킹 화면에서 숨길 수 있음). 칭호마다 한 사람
-const TITLES = ['s1' => '[s1 제페한자]'];   // 네임드 보스 층 (monsters.js NAMED): 유니크를 떨어뜨림
+const TITLES = ['s1' => '[s1 제패한자]'];   // 네임드 보스 층 (monsters.js NAMED): 유니크를 떨어뜨림
 const CURRENT_SEASON = 'v4';
 const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
