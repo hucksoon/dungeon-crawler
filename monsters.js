@@ -394,15 +394,23 @@
     return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k), def: Math.round(m.def * k), xp: abyssXp(m.xp, n), abyss: 1 };
   }
   // 네임드 (key: 10·20·30·40·50 = 불가사리…염라대왕). guard: 계단을 지키는 2마리 (나머지는 계단을 막지 않음)
-  function makeAbyssNamed(key, n, guard = true) {
+  // 16~20층의 일반 자리 네임드(guard = false, dc#125): 모습·패턴은 그 네임드, 세기·경험치는 그 층의 일반 몬스터
+  //   (처음에는 지킴이와 같은 세기라 18층 이무기 약 50마리가 같은 턴에 꼬리를 휘둘러 들어가자마자 쓰러졌음)
+  //   phase: 패턴 박자를 마리마다 다르게 (꼬리 휩쓸기가 한꺼번에 오지 않게)
+  function makeAbyssNamed(key, n, guard = true, rand = Math.random) {
     const N = NAMED.bosses[key];
     if (!N) return null;
+    if (!guard) {
+      const m = makeAbyss(pickNightmareType(rand), "normal", n, N.el);
+      return { ...m, id: N.id, ch: N.ch, name: N.name, title: N.title, color: NAMED_COLOR, kind: "elite", named: ABYSS.hellFloor, pattern: N.pattern, [N.pattern]: N[N.pattern],
+        res: hellRes(ABYSS.hellFloor, N.el), mob: 1, phase: Math.floor(rand() * 6) };
+    }
     const b = makeHellBoss(ABYSS.hellFloor, N.el), k = abyssScale(n);
     const hp = Math.round(b.hp * ABYSS.named.hpMul * k);
     return {
       ...b, id: N.id, ch: N.ch, name: N.name, title: N.title, color: NAMED_COLOR, named: ABYSS.hellFloor, pattern: N.pattern, [N.pattern]: N[N.pattern],
       hp, maxHp: hp, atk: Math.round(b.atk * ABYSS.named.atkMul * k), def: Math.round(b.def * k),
-      xp: abyssXp(Math.round(b.xp * ABYSS.named.hpMul), n), abyss: 1, ...(guard ? {} : { mob: 1 }),
+      xp: abyssXp(Math.round(b.xp * ABYSS.named.hpMul), n), abyss: 1,
     };
   }
 
