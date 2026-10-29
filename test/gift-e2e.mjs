@@ -83,6 +83,7 @@ try {
   await page.screenshot({ path: path.join(SHOTS, "gift-banner.png") });
   await banner(page).click();
   check("click → ad first (test ad window)", await waitFor(() => page.locator("#ad-modal").isVisible(), 4000));
+  check("Google ad script blocked (tests) → reason: couldn't load the ad script", (await page.locator("#ad-why").innerText()).endsWith("· script"), await page.locator("#ad-why").innerText());
   await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
   check("after the ad: gift window with 3 set items", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
   const names = await page.locator(".gift-card b").allInnerTexts();
@@ -151,6 +152,7 @@ try {
   ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0003", ...save() }, { h5: "notReady", lang: "?adtest=1" }));
   await waitFor(() => banner(page).isVisible()); await banner(page).click();
   check("h5: no ad to show → 5-second stand-in window instead", await waitFor(() => page.locator("#ad-modal").isVisible(), 6000) && (await page.locator("#ad-box").innerText()).includes("지금은 광고를 불러올 수 없어요"));
+  check("h5 (dc#122): the stand-in window says why — Google's answer notReady", (await page.locator("#ad-why").innerText()).includes("구글이 아직 보여 줄 광고가 없대요 · notReady"), await page.locator("#ad-why").innerText());
   await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
   check("h5: …and the gift still comes", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
   check("h5: ?adtest=1 → Google test ads", (await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.getAttribute("data-adbreak-test"))) === "on");
@@ -180,6 +182,7 @@ try {
     await waitFor(() => banner(page).isVisible()); const t0 = Date.now(); await banner(page).click();
     const shown = await waitFor(() => page.locator("#ad-modal").isVisible(), 12000), took = Date.now() - t0;
     check(`h5 ${mode}: no answer from Google → stand-in window after ~6 s (not stuck)`, shown && took > 4000, `${shown} ${took}ms`);
+    check(`h5 ${mode} (dc#122): reason shown (${mode === "silent" ? "timeout" : "noShow"})`, (await page.locator("#ad-why").innerText()).endsWith(mode === "silent" ? "· timeout" : "· noShow"), await page.locator("#ad-why").innerText());
     await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
     check(`h5 ${mode}: …and the gift still comes`, await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
     check(`no page errors (h5 ${mode})`, errors.length === 0, errors.join("; "));
