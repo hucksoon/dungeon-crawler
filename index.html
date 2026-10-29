@@ -8044,24 +8044,33 @@
         if (adTest) sc.setAttribute("data-adbreak-test", "on");
         sc.onload = () => resolve(true);
         sc.onerror = () => resolve(false);
+        setTimeout(() => resolve(false), H5_WAIT);   // 스크립트가 끝내 안 오면 (느린 망·차단) 기다리지 않음
         document.head.append(sc);
         window.adConfig({ preloadAdBreaks: "on", sound: "on" });
       });
       return h5;
     }
+    // 구글이 아무 답도 안 하면 무한히 기다리지 않게 (dc#119): PC의 광고 차단 확장 프로그램은 광고 스크립트를 오류 없이
+    // 빈 껍데기로 바꿔치기해서 adBreak 콜백이 하나도 오지 않음 → 버튼이 멈춘 것처럼 보였음
+    //   광고를 부르고(또는 보여 달라고 하고) H5_WAIT 안에 광고가 안 뜨면 "광고 없음"으로 보고 안내 화면으로 대신
+    //   광고가 떠 있는 동안은 기다림(사용자가 보는 중), 광고가 닫힌 뒤 adBreakDone이 안 오면 2초 뒤 끝냄
+    const H5_WAIT = 6000;
     function showH5(name) {
       return loadH5().then(ok => !ok ? "unavailable" : new Promise((resolve) => {
-        let viewed = false;
+        let viewed = false, done = false, timer = 0;
         const open = (on) => { h5Open = on; window.RLSound?.pause(on); };
+        const finish = (r) => { if (done) return; done = true; clearTimeout(timer); if (h5Open) open(false); resolve(r); };
+        const wait = (ms, r) => { clearTimeout(timer); timer = setTimeout(() => finish(r()), ms); };
+        wait(H5_WAIT, () => "unavailable");
         window.adBreak({
           type: "reward", name,
-          beforeReward: (showAdFn) => showAdFn(),
-          beforeAd: () => open(true),
-          afterAd: () => open(false),
+          beforeReward: (showAdFn) => { if (done) return; wait(H5_WAIT, () => "unavailable"); showAdFn(); },
+          beforeAd: () => { if (done) return; clearTimeout(timer); open(true); },
+          afterAd: () => { if (done) return; open(false); wait(2000, () => viewed ? "viewed" : "skipped"); },
           adViewed: () => { viewed = true; },
           adDismissed: () => {},
           // breakStatus: viewed · dismissed(중간에 닫음) · notReady·noAdPreloaded·frequencyCapped·timeout·error 등(광고 없음)
-          adBreakDone: (info) => { if (h5Open) open(false); resolve(viewed ? "viewed" : info?.breakStatus === "dismissed" ? "skipped" : "unavailable"); },
+          adBreakDone: (info) => finish(viewed ? "viewed" : info?.breakStatus === "dismissed" ? "skipped" : "unavailable"),
         });
       }));
     }
