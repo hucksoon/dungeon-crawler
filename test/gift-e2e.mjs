@@ -32,6 +32,8 @@ const H5_STUB = `(function () {
     if (!o || o.type !== "reward") return;
     var mode = window.__h5mode || "viewed"; window.__h5calls = (window.__h5calls || 0) + 1;
     if (mode === "silent") return;
+    // late (dc#127): 15초 동안 아무 답도 없다가 16.5초 뒤에야 "광고 없음"
+    if (mode === "late") { setTimeout(function () { o.adBreakDone({ breakStatus: "notReady" }); }, 16500); return; }
     if (mode === "notReady") { setTimeout(function () { o.adBreakDone({ breakStatus: "notReady" }); }, 50); return; }
     if (mode === "noShow") { o.beforeReward(function () {}); return; }
     setTimeout(function () { o.beforeReward(function () {
@@ -186,18 +188,28 @@ try {
   check("h5 cancel: the late ad never shows, no stand-in window, game not paused", !(await page.evaluate(() => window.__h5during)) && await page.locator("#ad-modal").isHidden() && await page.locator("#gift-modal").isHidden() && !(await st(page)).ad && await banner(page).isVisible());
   check("no page errors (h5 cancel)", errors.length === 0, errors.join("; "));
   await ctx.close();
-  // dc#119: PC에서 광고 버튼이 멈춤 — 구글 스크립트가 아무 답도 안 하면 6초 뒤 안내 화면으로 대신
+  // dc#119: PC에서 광고 버튼이 멈춤 — 구글 스크립트가 아무 답도 안 하면 15초(dc#127, 전에는 6초) 뒤 안내 화면으로 대신
   for (const [i, mode] of [[4, "silent"], [5, "noShow"]]) {
     ({ ctx, page, errors } = await open({ rl_device_id: `gifth5-e2e-000${i}`, ...save() }, { h5: mode }));
     await waitFor(() => banner(page).isVisible()); const t0 = Date.now(); await banner(page).click();
-    const shown = await waitFor(() => page.locator("#ad-modal").isVisible(), 12000), took = Date.now() - t0;
-    check(`h5 ${mode}: no answer from Google → stand-in window after ~6 s (not stuck)`, shown && took > 4000, `${shown} ${took}ms`);
+    const shown = await waitFor(() => page.locator("#ad-modal").isVisible(), 22000), took = Date.now() - t0;
+    check(`h5 ${mode}: no answer from Google → stand-in window after ~15 s (not stuck)`, shown && took > 13000, `${shown} ${took}ms`);
+    if (mode === "silent") check("h5 silent (dc#127): reason says 15 seconds", (await page.locator("#ad-why").innerText()).includes("15초 안에 답하지 않았어요"), await page.locator("#ad-why").innerText());
     check(`h5 ${mode} (dc#122): reason shown (${mode === "silent" ? "timeout" : "noShow"})`, (await page.locator("#ad-why").innerText()).endsWith(mode === "silent" ? "· timeout" : "· noShow"), await page.locator("#ad-why").innerText());
     await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
     check(`h5 ${mode}: …and the gift still comes`, await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
     check(`no page errors (h5 ${mode})`, errors.length === 0, errors.join("; "));
     await ctx.close();
   }
+  // dc#127: 기다리다 안내 화면으로 넘어간 뒤 구글 답이 늦게 오면 기록 창에 무엇이 몇 초 뒤에 왔는지
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0010", ...save() }, { h5: "late" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  await waitFor(() => page.locator("#ad-modal").isVisible(), 22000);
+  check("h5 late (dc#127): a late answer is written to the log with the time", await waitFor(async () => /구글 광고 답이 늦게 왔어요: adBreakDone · notReady \(16\.\d초 뒤\)/.test(await page.locator("#log").innerText()), 6000), (await page.locator("#log").innerText()).slice(-300));
+  await waitFor(() => page.locator("#ad-claim").isEnabled(), 6000); await page.locator("#ad-claim").click();
+  check("h5 late: the stand-in gift still comes once", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
+  check("no page errors (h5 late)", errors.length === 0, errors.join("; "));
+  await ctx.close();
 
   // ---- 영어 ----
   ({ ctx, page, errors } = await open({ rl_device_id: "giftguest-e2e-0003", ...save() }, { lang: "?lang=en" }));
