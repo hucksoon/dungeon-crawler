@@ -20,7 +20,7 @@
 <script>
 (function () {
   var cfg = window.ADS || {};
-  if (cfg.provider !== "h5") return;
+  if (cfg.provider !== "h5" || window.RL_PORTAL) return;   // 포털 모드(RL_PORTAL)는 포털 광고만
   window.adsbygoogle = window.adsbygoogle || [];
   window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
   var s = document.createElement("script");
