@@ -96,7 +96,10 @@ try {
   p = await st(o.page); L = await lvl(o.page);
   check("wall stops you (x=20 wall: stays left of it)", p.x < 20 - 0.2 && L.px === 19, JSON.stringify({ x: p.x, px: L.px }));
   await o.page.evaluate(() => window.RLView3D.look(Math.PI));   // 남쪽
-  await hold(o.page, "d", 600);   // 옆걸음 (남쪽을 보면 D = 서쪽)
+  // 옆걸음 (남쪽을 보면 D = 서쪽). 소프트웨어 그리기는 프레임이 느려서, 정해진 시간 대신 서쪽으로 1칸 가까이 갈 때까지 (최대 3초)
+  await o.page.keyboard.down("d");
+  await o.page.waitForFunction((x0) => window.RLView3D.pos.x < x0 - 0.9, p.x, { timeout: 3000, polling: 30 }).catch(() => {});
+  await o.page.keyboard.up("d"); await sleep(100);
   const p2 = await st(o.page);
   // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래, 처음) → 크게 → 끄기 (Tab), 기기에 저장
   const mapInfo = () => o.page.evaluate(() => { const c = document.getElementById("map3d"), s = document.getElementById("game3d").getBoundingClientRect(), r = c.getBoundingClientRect(), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
