@@ -961,6 +961,7 @@
   const between = (lo, hi) => lo + rnd(hi - lo + 1);
   const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
   const near8 = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));  // 대각선도 1칸
+  const CHASE_RANGE = 5;   // 몬스터가 플레이어를 알아채고 쫓아오는 거리 (보이는 곳, 가로+세로 칸 수). dc#115에서 6 → 5
 
   // ---- Xsolla Login 설정 ----
   // Publisher Account → Players → Login 에서 복사해 넣으세요. 공개 값이라 클라이언트에 있어도 됩니다.
@@ -3517,7 +3518,7 @@
       if (dist(e, player) === 1) {
         attack(e, player);
         if (gameOver) return;
-      } else if (visible[e.y]?.[e.x] && dist(e, player) <= 6) {
+      } else if (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE) {
         moveToward(e);
       } else if (rnd(3) === 0) {
         // 가끔 배회
@@ -4647,7 +4648,7 @@
   //   인벤토리·상점 같은 창이 열려 있으면 시간이 멈춤
   // 그리기는 view3d.js (three.js). 처음 3D를 켤 때만 받고, 못 쓰면(WebGL 없음) 2D로 돌아감. 켜고 끄기는 기기에 저장 (rl_3d)
   const View3D = (() => {
-    const KEY = "rl_3d", TURN = 0.6, SPEED = 2.6, TURN_SPEED = 2.2, R = 0.24, REACH = 1.6, SENS = 0.0026;
+    const KEY = "rl_3d", TURN = 0.5, SPEED = 2.6, TURN_SPEED = 2.2, R = 0.24, REACH = 1.6, SENS = 0.0026;
     // dc#111부터 3D가 기본 (2D로 바꾼 사람만 "0"). 포털 빌드는 2D (three.js를 넣지 않음)
     let on = !PORTAL && store.get(KEY) !== "0", view = null, loading = null;
     let pos = { x: 0.5, y: 0.5 }, yaw = 0, pitch = 0, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, bobT = 0, hpSeen = 0, swingT = -1e9;
@@ -5024,6 +5025,7 @@
       get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수
       get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델
       get walls() { return view?.walls || null; },          // 시험용: 3D 벽 모듈
+      get turnSec() { return TURN; },   // 시험용: 한 턴 시간(초)
       get handPose() { const h = handState(performance.now()); return { kr: h.kr, kl: h.kl, kb: h.kb, swingL: swingLT, swingR: swingT }; },   // 시험용: 지금 손 자세 값 (그리는 속도와 상관없이)   // ready: 이 층을 다 지어 그리는 중 (시험·그림 찍기에서 기다림)
       get pos() { return { ...pos, yaw, pitch }; },
       // 시험용: 보는 방향·자리 바꾸기
