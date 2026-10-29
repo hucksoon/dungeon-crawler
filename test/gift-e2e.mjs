@@ -1,5 +1,6 @@
 // 무료 선물 (dc#105) 브라우저 테스트: 오른쪽 위 반짝이는 배너 → 광고 → 세트 3개 → 하나 골라 가방으로, 3시간 동안 배너 없음
 //   원본 사이트(서버 bonus.php)와 포털 빌드(서버 없이 이 기기에서, 포털 보상 광고), 영어 화면
+//   진짜 구글 보상형 광고 (dc#118): 구글 광고 스크립트 대신 가짜 스크립트(H5_STUB)로 끝까지 봄·중간에 닫음·광고 없음(안내 화면으로 대신)
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
@@ -19,11 +20,30 @@ await new Promise(r => mock.listen(8121, "127.0.0.1", r));
 const php = spawn("php", ["-S", "127.0.0.1:8120", "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, RANKING_CONFIG: path.join(DIR, "config.gift-e2e.php"), TEST_JWT_SECRET: "gift-e2e" }, stdio: "ignore" });
 await sleep(700);
 const HOOK = `
-  window.__t = { s: () => ({ scene, bag: Inv.bag().map(i => ({ id: i.id, rarity: i.rarity, seed: i.seed })), x: player.x, y: player.y }) };
+  window.__t = { s: () => ({ scene, bag: Inv.bag().map(i => ({ id: i.id, rarity: i.rarity, seed: i.seed })), x: player.x, y: player.y, ad: Ads.isOpen() }) };
   // ---- 시작 ----`;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-// portal: 포털 빌드처럼 (서버 없음, 보상 광고는 reward 결과)
-async function open(storage, { portal = null, scene = "lobby", lang = "" } = {}) {
+// 가짜 구글 광고 스크립트 (adsbygoogle.js 대신): window.__h5mode = viewed(끝까지 봄) · dismissed(중간에 닫음) · notReady(광고 없음)
+//   광고가 떠 있는 동안 게임이 광고 중인지(Ads.isOpen) window.__h5during에 남김
+const H5_STUB = `(function () {
+  function run(o) {
+    if (!o || o.type !== "reward") return;
+    var mode = window.__h5mode || "viewed"; window.__h5calls = (window.__h5calls || 0) + 1;
+    if (mode === "notReady") { setTimeout(function () { o.adBreakDone({ breakStatus: "notReady" }); }, 50); return; }
+    o.beforeReward(function () {
+      if (o.beforeAd) o.beforeAd();
+      setTimeout(function () { window.__h5during = window.__t.s().ad; }, 100);
+      setTimeout(function () {
+        if (mode === "viewed") { if (o.adViewed) o.adViewed(); } else if (o.adDismissed) o.adDismissed();
+        if (o.afterAd) o.afterAd();
+        o.adBreakDone({ breakStatus: mode === "viewed" ? "viewed" : "dismissed" });
+      }, 400);
+    });
+  }
+  var q = window.adsbygoogle || []; window.adsbygoogle = { push: run }; for (var i = 0; i < q.length; i++) run(q[i]);
+})();`;
+// portal: 포털 빌드처럼 (서버 없음, 보상 광고는 reward 결과). h5: 가짜 구글 광고 모드 (없으면 구글 스크립트를 막아 안내 화면으로 대신)
+async function open(storage, { portal = null, scene = "lobby", lang = "", h5 = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 950 } }); const page = await ctx.newPage(); const errors = [], dialogs = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("dialog", d => { dialogs.push(d.message()); d.accept(); });
@@ -36,6 +56,10 @@ async function open(storage, { portal = null, scene = "lobby", lang = "" } = {})
     const res = await fetch(req.url(), { method: req.method(), headers: req.headers(), body: ["GET", "OPTIONS"].includes(req.method()) ? undefined : req.postData() });
     r.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) }); });
   await ctx.route(/googlesyndication|login\.xsolla|store\.xsolla/, r => r.abort());
+  if (h5) {
+    await ctx.route(/googlesyndication\.com\/pagead\/js\/adsbygoogle\.js/, r => { r.fulfill({ contentType: "text/javascript", body: H5_STUB }); });
+    await ctx.addInitScript((m) => { window.__h5mode = m; }, h5);
+  }
   if (portal) await ctx.addInitScript((reward) => { window.__ads = 0; window.RL_PORTAL = { name: "test", loadingDone() {}, gameplay() {}, commercialBreak: async () => {}, rewardedBreak: async () => { window.__ads++; return window.__reward ?? reward; } }; }, portal.reward);
   await ctx.addInitScript(([s, sc]) => { if (!sessionStorage.getItem("s")) { sessionStorage.setItem("rl_scene", sc); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem("s", 1); } }, [storage, scene]);
   await page.goto(ORIGIN + lang); await page.waitForFunction(() => window.__t); await sleep(500);
@@ -103,6 +127,28 @@ try {
   await page.reload(); await page.waitForFunction(() => window.__t); await sleep(600);
   check("portal: 3 hours later the banner is back", await banner(page).isVisible());
   check("no page errors (portal)", errors.length === 0, errors.join("; "));
+  await ctx.close();
+
+  // ---- 진짜 구글 보상형 광고 (dc#118, ads-config.js provider h5) ----
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0001", ...save() }, { h5: "viewed" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  check("h5: Google reward ad plays (no stand-in window), game counts as 'ad open' while it shows", await waitFor(() => page.evaluate(() => window.__h5during === true), 6000) && await page.locator("#ad-modal").isHidden() && await page.evaluate(() => window.__h5calls) === 1);
+  check("h5: watched to the end → 3 gifts", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3 && !(await st(page)).ad);
+  const src = await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.outerHTML || "");
+  check("h5: our publisher ID, not in test mode", src.includes("client=ca-pub-6503525638904411") && !src.includes("data-adbreak-test"), src);
+  check("no page errors (h5 viewed)", errors.length === 0, errors.join("; "));
+  await ctx.close();
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0002", ...save() }, { h5: "dismissed" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  check("h5: closed the ad early → no gift, message, no stand-in window", await waitFor(async () => (await page.locator("#log").innerText()).includes("광고를 끝까지 보지 않아서"), 6000) && await page.locator("#gift-modal").isHidden() && await page.locator("#ad-modal").isHidden() && !(await st(page)).ad);
+  await ctx.close();
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0003", ...save() }, { h5: "notReady", lang: "?adtest=1" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  check("h5: no ad to show → 5-second stand-in window instead", await waitFor(() => page.locator("#ad-modal").isVisible(), 6000) && (await page.locator("#ad-box").innerText()).includes("지금은 광고를 불러올 수 없어요"));
+  await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
+  check("h5: …and the gift still comes", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
+  check("h5: ?adtest=1 → Google test ads", (await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.getAttribute("data-adbreak-test"))) === "on");
+  check("no page errors (h5 fallback)", errors.length === 0, errors.join("; "));
   await ctx.close();
 
   // ---- 영어 ----

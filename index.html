@@ -809,9 +809,9 @@
     <h2 id="ad-title" data-t>광고</h2>
     <p class="sub" id="ad-sub"></p>
     <div id="ad-box">
-      <div class="ad-tag" data-t>테스트 광고</div>
+      <div class="ad-tag" data-t>광고 대신</div>
       <div class="ad-art">⚔</div>
-      <p data-t>실제 광고가 들어갈 자리예요.<br>구글 광고 승인을 받으면 진짜 광고가 떠요.</p>
+      <p data-t>지금은 광고를 불러올 수 없어요.<br>잠깐만 기다리면 보상을 받아요.</p>
     </div>
     <p id="ad-count"></p>
     <button id="ad-claim" type="button" class="primary" disabled data-t>보상 받기</button>
@@ -8005,12 +8005,14 @@
   // 1층 문으로 새로 시작할 때만 하루 입장 횟수를 셈 (무료 5회, 그 뒤엔 광고를 보고 입장)
   // 부활·거래 수수료도 광고로 대신할 수 있음 (하루 상한: 부활 1회, 수수료 3회). 캐시로 하는 방법은 그대로
   // 횟수와 상한은 서버(ads.php)가 셈. 광고를 시작할 때 서버에서 티켓을 받고, 끝까지 본 뒤 그 티켓으로 보상을 받음
-  // 광고 종류는 ads-config.js (지금은 테스트 광고: 5초 안내 화면)
+  // 광고 종류는 ads-config.js: 구글 H5 게임 광고(보상형, dc#118부터). 광고를 못 불러오면(승인 전·광고 없음·차단) 5초 안내 화면으로 대신
   const Ads = (() => {
     const cfg = window.ADS || { provider: "test" };
     const modalEl = document.getElementById("ad-modal");
     let status = null;  // 오늘 상태 { free, used, left, unlimited, ads: { entry, revive, fee } }
-    let h5 = null;
+    let h5 = null, h5Open = false;   // h5Open: 구글 광고가 화면에 떠 있는 동안 (게임 시간·키·소리 멈춤)
+    // 주소에 ?adtest=1이면 구글 테스트 광고 (실제 사이트에서 광고가 뜨는지 확인용, 수익 없음)
+    const adTest = !!cfg.test || /[?&]adtest=1\b/.test(location.search);
 
     async function loadStatus() {
       if (!RANKING_API) { status = null; renderEntryInfo(); return null; }
@@ -8039,7 +8041,7 @@
         sc.async = true;
         sc.crossOrigin = "anonymous";
         sc.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.client || "")}`;
-        if (cfg.test) sc.setAttribute("data-adbreak-test", "on");
+        if (adTest) sc.setAttribute("data-adbreak-test", "on");
         sc.onload = () => resolve(true);
         sc.onerror = () => resolve(false);
         document.head.append(sc);
@@ -8050,12 +8052,16 @@
     function showH5(name) {
       return loadH5().then(ok => !ok ? "unavailable" : new Promise((resolve) => {
         let viewed = false;
+        const open = (on) => { h5Open = on; window.RLSound?.pause(on); };
         window.adBreak({
           type: "reward", name,
           beforeReward: (showAdFn) => showAdFn(),
+          beforeAd: () => open(true),
+          afterAd: () => open(false),
           adViewed: () => { viewed = true; },
           adDismissed: () => {},
-          adBreakDone: (info) => resolve(viewed ? "viewed" : info?.breakStatus === "dismissed" ? "skipped" : "unavailable"),
+          // breakStatus: viewed · dismissed(중간에 닫음) · notReady·noAdPreloaded·frequencyCapped·timeout·error 등(광고 없음)
+          adBreakDone: (info) => { if (h5Open) open(false); resolve(viewed ? "viewed" : info?.breakStatus === "dismissed" ? "skipped" : "unavailable"); },
         });
       }));
     }
@@ -8081,14 +8087,15 @@
     async function watch(kind, title) {
       const t = await marketCall("ad_start", { body: { kind } });
       const started = Date.now();
-      const r = cfg.provider === "h5" ? await showH5(kind) : await showTest(title, t.minSeconds);
+      let r = cfg.provider === "h5" ? await showH5(kind) : await showTest(title, t.minSeconds);
+      if (r === "unavailable") r = await showTest(title, t.minSeconds);   // 구글 광고를 못 불러옴 → 안내 화면으로 대신 (보상은 그대로)
       if (r !== "viewed") throw new Error(r === "skipped" ? T("광고를 끝까지 보지 않아서 보상이 없어요.") : T("지금은 광고를 불러올 수 없어요. 잠시 뒤 다시 시도해 주세요."));
       // 서버는 광고를 시작하고 최소 시간이 지나야 티켓을 받아 줌
       const wait = t.minSeconds * 1000 - (Date.now() - started) + 200;
       if (wait > 0) await new Promise(res => setTimeout(res, wait));
       return t.ticket;
     }
-    return { loadStatus, setStatus, status: () => status, watch, isOpen: () => !modalEl.hidden };
+    return { loadStatus, setStatus, status: () => status, watch, isOpen: () => !modalEl.hidden || h5Open };
   })();
 
   // 1층 문으로 새로 시작: 오늘 무료 입장이 남았으면 쓰고, 다 썼으면 광고를 보고 입장. 서버에 연결할 수 없으면 막지 않음
