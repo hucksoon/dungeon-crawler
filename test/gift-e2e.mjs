@@ -24,12 +24,15 @@ const HOOK = `
   // ---- 시작 ----`;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 // 가짜 구글 광고 스크립트 (adsbygoogle.js 대신): window.__h5mode = viewed(끝까지 봄) · dismissed(중간에 닫음) · notReady(광고 없음)
+//   silent(아무 답도 안 함: PC 광고 차단 확장 프로그램이 스크립트를 빈 껍데기로 바꾼 경우, dc#119) · noShow(보여 달라고 해도 광고가 안 뜸)
 //   광고가 떠 있는 동안 게임이 광고 중인지(Ads.isOpen) window.__h5during에 남김
 const H5_STUB = `(function () {
   function run(o) {
     if (!o || o.type !== "reward") return;
     var mode = window.__h5mode || "viewed"; window.__h5calls = (window.__h5calls || 0) + 1;
+    if (mode === "silent") return;
     if (mode === "notReady") { setTimeout(function () { o.adBreakDone({ breakStatus: "notReady" }); }, 50); return; }
+    if (mode === "noShow") { o.beforeReward(function () {}); return; }
     o.beforeReward(function () {
       if (o.beforeAd) o.beforeAd();
       setTimeout(function () { window.__h5during = window.__t.s().ad; }, 100);
@@ -150,6 +153,17 @@ try {
   check("h5: ?adtest=1 → Google test ads", (await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.getAttribute("data-adbreak-test"))) === "on");
   check("no page errors (h5 fallback)", errors.length === 0, errors.join("; "));
   await ctx.close();
+  // dc#119: PC에서 광고 버튼이 멈춤 — 구글 스크립트가 아무 답도 안 하면 6초 뒤 안내 화면으로 대신
+  for (const [i, mode] of [[4, "silent"], [5, "noShow"]]) {
+    ({ ctx, page, errors } = await open({ rl_device_id: `gifth5-e2e-000${i}`, ...save() }, { h5: mode }));
+    await waitFor(() => banner(page).isVisible()); const t0 = Date.now(); await banner(page).click();
+    const shown = await waitFor(() => page.locator("#ad-modal").isVisible(), 12000), took = Date.now() - t0;
+    check(`h5 ${mode}: no answer from Google → stand-in window after ~6 s (not stuck)`, shown && took > 4000, `${shown} ${took}ms`);
+    await waitFor(() => page.locator("#ad-claim").isEnabled(), 4000); await page.locator("#ad-claim").click();
+    check(`h5 ${mode}: …and the gift still comes`, await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
+    check(`no page errors (h5 ${mode})`, errors.length === 0, errors.join("; "));
+    await ctx.close();
+  }
 
   // ---- 영어 ----
   ({ ctx, page, errors } = await open({ rl_device_id: "giftguest-e2e-0003", ...save() }, { lang: "?lang=en" }));
