@@ -48,6 +48,8 @@
     "완료한 10·20·30·40·50층 중에서 골라 그 층(네임드 보스 층)부터 들어가요.": "Choose one of the cleared floors 10 · 20 · 30 · 40 · 50 and start from that floor (a named boss floor).",
     "닫기": "Close",
     "광고": "Ad",
+    "광고를 불러오는 중이에요.<br>잠시만 기다려 주세요.": "Loading the ad.<br>Please wait a moment.",
+    "광고를 취소했어요.": "Ad canceled.",
     "광고 대신": "Instead of an ad",
     "지금은 광고를 불러올 수 없어요.<br>잠깐만 기다리면 보상을 받아요.": "No ad could be loaded right now.<br>Just wait a moment to get your reward.",
     "보상 받기": "Claim reward",

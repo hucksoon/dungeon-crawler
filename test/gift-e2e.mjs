@@ -25,6 +25,7 @@ const HOOK = `
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 // 가짜 구글 광고 스크립트 (adsbygoogle.js 대신): window.__h5mode = viewed(끝까지 봄) · dismissed(중간에 닫음) · notReady(광고 없음)
 //   silent(아무 답도 안 함: PC 광고 차단 확장 프로그램이 스크립트를 빈 껍데기로 바꾼 경우, dc#119) · noShow(보여 달라고 해도 광고가 안 뜸)
+//   slow(2.5초 뒤에 광고가 뜸, dc#121: 그동안 기다림 창)
 //   광고가 떠 있는 동안 게임이 광고 중인지(Ads.isOpen) window.__h5during에 남김
 const H5_STUB = `(function () {
   function run(o) {
@@ -33,15 +34,15 @@ const H5_STUB = `(function () {
     if (mode === "silent") return;
     if (mode === "notReady") { setTimeout(function () { o.adBreakDone({ breakStatus: "notReady" }); }, 50); return; }
     if (mode === "noShow") { o.beforeReward(function () {}); return; }
-    o.beforeReward(function () {
+    setTimeout(function () { o.beforeReward(function () {
       if (o.beforeAd) o.beforeAd();
       setTimeout(function () { window.__h5during = window.__t.s().ad; }, 100);
       setTimeout(function () {
-        if (mode === "viewed") { if (o.adViewed) o.adViewed(); } else if (o.adDismissed) o.adDismissed();
+        if (mode !== "dismissed") { if (o.adViewed) o.adViewed(); } else if (o.adDismissed) o.adDismissed();
         if (o.afterAd) o.afterAd();
-        o.adBreakDone({ breakStatus: mode === "viewed" ? "viewed" : "dismissed" });
+        o.adBreakDone({ breakStatus: mode === "dismissed" ? "dismissed" : "viewed" });
       }, 400);
-    });
+    }); }, mode === "slow" ? 2500 : 0);
   }
   var q = window.adsbygoogle || []; window.adsbygoogle = { push: run }; for (var i = 0; i < q.length; i++) run(q[i]);
 })();`;
@@ -154,6 +155,24 @@ try {
   check("h5: …and the gift still comes", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
   check("h5: ?adtest=1 → Google test ads", (await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.getAttribute("data-adbreak-test"))) === "on");
   check("no page errors (h5 fallback)", errors.length === 0, errors.join("; "));
+  await ctx.close();
+  // dc#121: 광고가 늦게 뜨면 그동안 "광고를 불러오는 중" 창 + 취소
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0006", ...save() }, { h5: "slow" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  check("h5 slow: right after the click a 'loading the ad' window with a Cancel button", await waitFor(() => page.locator("#ad-wait").isVisible(), 1500) && (await page.locator("#ad-wait").innerText()).includes("광고를 불러오는 중이에요") && await page.locator("#ad-wait-cancel").isVisible() && (await st(page)).ad);
+  await page.screenshot({ path: path.join(SHOTS, "ad-wait.png") });
+  check("h5 slow: when the ad shows, the loading window closes by itself", await waitFor(() => page.evaluate(() => window.__h5during === true), 6000) && await page.locator("#ad-wait").isHidden());
+  check("h5 slow: …and after the ad, the gift", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3);
+  check("no page errors (h5 slow)", errors.length === 0, errors.join("; "));
+  await ctx.close();
+  ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0007", ...save() }, { h5: "slow" }));
+  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  await waitFor(() => page.locator("#ad-wait").isVisible(), 1500); await sleep(300);
+  await page.locator("#ad-wait-cancel").click();
+  check("h5 cancel: the window closes right away, message, no gift", await waitFor(() => page.locator("#ad-wait").isHidden(), 500) && await waitFor(async () => (await page.locator("#log").innerText()).includes("광고를 취소했어요"), 2000) && await page.locator("#gift-modal").isHidden());
+  await sleep(4000);
+  check("h5 cancel: the late ad never shows, no stand-in window, game not paused", !(await page.evaluate(() => window.__h5during)) && await page.locator("#ad-modal").isHidden() && await page.locator("#gift-modal").isHidden() && !(await st(page)).ad && await banner(page).isVisible());
+  check("no page errors (h5 cancel)", errors.length === 0, errors.join("; "));
   await ctx.close();
   // dc#119: PC에서 광고 버튼이 멈춤 — 구글 스크립트가 아무 답도 안 하면 6초 뒤 안내 화면으로 대신
   for (const [i, mode] of [[4, "silent"], [5, "noShow"]]) {
