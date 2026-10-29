@@ -197,6 +197,9 @@ const SCENES = [
     await o.page.evaluate(() => window.RLView3D.fx("block")); await sleep(200); return { ...o, nowait: true }; }],
   ["view3d-hell", "3D 화면: 헬 던전은 붉은 빛", async () => view3d({ seed: { rl_save: save(10, "blog-3dh", { z: "hell", hp: 21000, mh: 26000, a: 3000 }), "rl_inv:g:DEV": inv(g150) } },
     [{ ...M.makeNamedBoss(10), hp: 2e9, maxHp: 2e9, atk: 5, at: 4 }], { wait: 700 })],
+  // 턴 0.5초·알아채는 거리 5칸 (dc#115): 5칸 앞에 선 해골이 알아채고 다가오는 중
+  ["view3d-chase", "3D 화면: 5칸 안에 들어오면 몬스터가 알아채고 다가와요", async () => view3d({ seed: { rl_save: save(12, "blog-3dc", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
+    [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 5 }], { wait: 0 })],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
   ["shop-odds", "장비 상자 확률 정보: 등급·고대·부위·여러 번 열 때", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator("#odds table").waitFor(); return { ...o, shot: "#odds" }; }],

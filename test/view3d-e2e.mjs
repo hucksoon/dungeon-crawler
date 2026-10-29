@@ -119,7 +119,7 @@ try {
   const t0 = (await lvl(o.page)).turn;
   await sleep(2600);
   L = await lvl(o.page);
-  check("turns pass on their own (0.6 s per turn)", L.turn - t0 >= 3 && L.turn - t0 <= 6, `${t0} → ${L.turn}`);
+  check("turns pass on their own (0.5 s per turn)", await o.page.evaluate(() => window.RLView3D.turnSec) === 0.5 && L.turn - t0 >= 3 && L.turn - t0 <= 7, `${t0} → ${L.turn}`);
   check("monster walks up to you in real time (now next to you)", Math.abs(L.enemies[0].x - L.px) + Math.abs(L.enemies[0].y - L.py) === 1, JSON.stringify([L.enemies[0].x, L.enemies[0].y, L.px, L.py]));
   await o.page.keyboard.press("i"); await sleep(300);
   const tA = (await lvl(o.page)).turn; await sleep(1500); const tB = (await lvl(o.page)).turn;
@@ -132,10 +132,11 @@ try {
   // ---- 공격: 앞의 몬스터 / 뒤에 붙은 몬스터는 돌아서 때림, 한 턴에 한 번 ----
   o = await open(store(level({ enemies: [mob(9, 8, { hp: 1, maxHp: 400 }), mob(7, 8, { hp: 3000, maxHp: 4000 })] })));
   await o.page.evaluate((a) => window.RLView3D.look(a), E);
-  // 저장은 턴이 지날 때라 (0.6초) 기다렸다가 읽음
+  // 저장은 턴이 지날 때라 (0.5초) 저장된 층에서 쥐가 없어질 때까지 기다림 (소프트웨어 그리기는 프레임이 느려 턴이 늦게 지나기도 함)
   await o.page.keyboard.press("Space"); await sleep(100);
   await o.page.keyboard.press("Space");   // 바로 다시: 한 턴에 한 번이라 무시
-  await sleep(750);
+  await sleep(400);
+  await o.page.waitForFunction(() => !JSON.parse(localStorage.getItem("rl_level")).enemies.some(e => e.x === 9 && e.y === 8), null, { timeout: 3000, polling: 50 }).catch(() => {});
   L = await lvl(o.page);
   check("Space hits the monster in front (east) — it falls", !L.enemies.some(e => e.x === 9 && e.y === 8) && (await o.page.locator("#log").innerText()).includes("처치"),
     JSON.stringify({ pos: await st(o.page), en: L.enemies.map(e => [e.x, e.y, e.hp]), log: (await o.page.locator("#log").innerText()).split("\n").slice(-4) }));
