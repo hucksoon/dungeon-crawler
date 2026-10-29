@@ -38,7 +38,9 @@ const H5_STUB = `(function () {
       if (o.beforeAd) o.beforeAd();
       setTimeout(function () { window.__h5during = window.__t.s().ad; }, 100);
       setTimeout(function () {
-        if (mode !== "dismissed") { if (o.adViewed) o.adViewed(); } else if (o.adDismissed) o.adDismissed();
+        // lateDone (dc#126): 광고가 닫히고(afterAd) 3초 뒤에야 끝까지 봄·adBreakDone이 옴 / doneOnly: adViewed 없이 adBreakDone(viewed)만
+        if (mode === "lateDone") { if (o.afterAd) o.afterAd(); setTimeout(function () { if (o.adViewed) o.adViewed(); o.adBreakDone({ breakStatus: "viewed" }); }, 3000); return; }
+        if (mode === "dismissed") { if (o.adDismissed) o.adDismissed(); } else if (mode !== "doneOnly" && o.adViewed) o.adViewed();
         if (o.afterAd) o.afterAd();
         o.adBreakDone({ breakStatus: mode === "dismissed" ? "dismissed" : "viewed" });
       }, 400);
@@ -148,7 +150,15 @@ try {
   ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0002", ...save() }, { h5: "dismissed" }));
   await waitFor(() => banner(page).isVisible()); await banner(page).click();
   check("h5: closed the ad early → no gift, message, no stand-in window", await waitFor(async () => (await page.locator("#log").innerText()).includes("광고를 끝까지 보지 않아서"), 6000) && await page.locator("#gift-modal").isHidden() && await page.locator("#ad-modal").isHidden() && !(await st(page)).ad);
+  check("h5 (dc#126): the message ends with what Google sent", (await page.locator("#log").innerText()).includes("(reward>beforeAd>dismissed>afterAd>done:dismissed)"), await page.locator("#log").innerText());
   await ctx.close();
+  // dc#126: 구글의 "끝까지 봄" 알림이 광고가 닫히고 한참 뒤에 와도 보상 (예전에는 2초만 기다려 "끝까지 안 봄"), adViewed 없이 adBreakDone(viewed)만 와도 보상
+  for (const [i, mode] of [[8, "lateDone"], [9, "doneOnly"]]) {
+    ({ ctx, page, errors } = await open({ rl_device_id: `gifth5-e2e-000${i}`, ...save() }, { h5: mode }));
+    await waitFor(() => banner(page).isVisible()); await banner(page).click();
+    check(`h5 ${mode} (dc#126): watched → 3 gifts, no 'not watched' message, no stand-in`, await waitFor(() => page.locator("#gift-modal").isVisible(), 10000) && !(await page.locator("#log").innerText()).includes("끝까지 보지 않아서") && await page.locator("#ad-modal").isHidden(), await page.locator("#log").innerText());
+    await ctx.close();
+  }
   ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0003", ...save() }, { h5: "notReady", lang: "?adtest=1" }));
   await waitFor(() => banner(page).isVisible()); await banner(page).click();
   check("h5: no ad to show → 5-second stand-in window instead", await waitFor(() => page.locator("#ad-modal").isVisible(), 6000) && (await page.locator("#ad-box").innerText()).includes("지금은 광고를 불러올 수 없어요"));
