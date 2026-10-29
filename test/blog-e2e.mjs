@@ -63,6 +63,9 @@ try {
   check("post pages share their first image (og:image)", fs.readFileSync(path.join(REPO, `blog/${posts.at(-1)}.html`), "utf8").includes('property="og:image" content="https://game.apacimtest.com/blog/images/'));
   const rss = fs.readFileSync(path.join(REPO, "blog/feed.xml"), "utf8");
   check("RSS lists every post with links", posts.every(s => rss.includes(`https://game.apacimtest.com/blog/${s}.html`)) && rss.startsWith("<?xml"));
+  // 애드센스 자동 광고 코드 (dc#120): 공개 페이지(글·목록·게임 이미지)에만, 네이버 옮기기 페이지에는 없음
+  const ads = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes("adsbygoogle.js?client=ca-pub-6503525638904411");
+  check("AdSense code on public blog pages, not on Naver copy pages", ads("index.html") && ads("media.html") && posts.every(s => ads(`${s}.html`)) && !ads("naver/index.html") && posts.every(s => !ads(`naver/${s}.html`)));
   check("Naver pages are hidden from search (noindex)", fs.readFileSync(path.join(REPO, "blog/naver/index.html"), "utf8").includes('content="noindex"') && posts.every(s => fs.readFileSync(path.join(REPO, `blog/naver/${s}.html`), "utf8").includes('content="noindex"')));
 
   // 네이버 옮기기: 제목 복사, 본문 복사(서식 + 원문 링크)

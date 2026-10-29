@@ -13,6 +13,27 @@
 <meta property="og:description" content="브라우저에서 바로 하는 턴제 로그라이크">
 <meta property="og:url" content="https://game.apacimtest.com/">
 <meta property="og:image" content="https://game.apacimtest.com/img/banner.png">
+<!-- 애드센스 (dc#120): 페이지를 열 때 구글 광고 코드를 불러와 보상형 광고(H5 게임 광고)를 미리 준비. AdSense가 사이트의 코드도 알아봄
+     ads-config.js가 provider "h5"일 때만 (포털 빌드는 ads-config.js를 provider "portal"로 바꿔서 구글 광고 코드가 들어가지 않음)
+     자동 광고는 쓰지 않음 (AdSense에서 이 페이지는 자동 광고 끔 · 게임 화면을 덮지 않게). 주소에 ?adtest=1이면 구글 테스트 광고 -->
+<script src="ads-config.js"></script>
+<script>
+(function () {
+  var cfg = window.ADS || {};
+  if (cfg.provider !== "h5" || window.RL_PORTAL) return;   // 포털 모드(RL_PORTAL)는 포털 광고만
+  window.adsbygoogle = window.adsbygoogle || [];
+  window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
+  var s = document.createElement("script");
+  s.async = true;
+  s.crossOrigin = "anonymous";
+  s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + encodeURIComponent(cfg.client || "");
+  if (cfg.test || /[?&]adtest=1\b/.test(location.search)) s.setAttribute("data-adbreak-test", "on");
+  // 게임의 Ads.loadH5가 기다리는 약속: 불러오면 true, 실패(차단)면 false
+  window.RL_ADSENSE = new Promise(function (done) { s.onload = function () { done(true); }; s.onerror = function () { done(false); }; });
+  document.head.appendChild(s);
+  window.adConfig({ preloadAdBreaks: "on", sound: "on" });
+})();
+</script>
 <style>
   :root {
     --bg: #0d0e14;
@@ -897,7 +918,6 @@
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
 <script src="ranking-config.js"></script>
-<script src="ads-config.js"></script>
 <script>
 (() => {
   "use strict";
@@ -8010,9 +8030,7 @@
     const cfg = window.ADS || { provider: "test" };
     const modalEl = document.getElementById("ad-modal");
     let status = null;  // 오늘 상태 { free, used, left, unlimited, ads: { entry, revive, fee } }
-    let h5 = null, h5Open = false;   // h5Open: 구글 광고가 화면에 떠 있는 동안 (게임 시간·키·소리 멈춤)
-    // 주소에 ?adtest=1이면 구글 테스트 광고 (실제 사이트에서 광고가 뜨는지 확인용, 수익 없음)
-    const adTest = !!cfg.test || /[?&]adtest=1\b/.test(location.search);
+    let h5Open = false;   // h5Open: 구글 광고가 화면에 떠 있는 동안 (게임 시간·키·소리 멈춤)
 
     async function loadStatus() {
       if (!RANKING_API) { status = null; renderEntryInfo(); return null; }
@@ -8031,25 +8049,9 @@
           status.left ? "" : el("span", { className: "ad" }, T(" · 광고를 보면 더 들어갈 수 있어요"))));
     }
 
-    // 구글 H5 게임 광고 (ads-config.js에서 provider: "h5"일 때)
-    function loadH5() {
-      if (h5) return h5;
-      h5 = new Promise((resolve) => {
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
-        const sc = document.createElement("script");
-        sc.async = true;
-        sc.crossOrigin = "anonymous";
-        sc.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.client || "")}`;
-        if (adTest) sc.setAttribute("data-adbreak-test", "on");
-        sc.onload = () => resolve(true);
-        sc.onerror = () => resolve(false);
-        setTimeout(() => resolve(false), H5_WAIT);   // 스크립트가 끝내 안 오면 (느린 망·차단) 기다리지 않음
-        document.head.append(sc);
-        window.adConfig({ preloadAdBreaks: "on", sound: "on" });
-      });
-      return h5;
-    }
+    // 구글 H5 게임 광고 (ads-config.js에서 provider: "h5"일 때). 광고 코드는 <head>에서 페이지를 열 때 불러옴 (dc#120, window.RL_ADSENSE)
+    //   스크립트가 끝내 안 오면 (느린 망·차단) H5_WAIT까지만 기다림
+    const loadH5 = () => Promise.race([window.RL_ADSENSE || Promise.resolve(false), new Promise(res => setTimeout(() => res(false), H5_WAIT))]);
     // 구글이 아무 답도 안 하면 무한히 기다리지 않게 (dc#119): PC의 광고 차단 확장 프로그램은 광고 스크립트를 오류 없이
     // 빈 껍데기로 바꿔치기해서 adBreak 콜백이 하나도 오지 않음 → 버튼이 멈춘 것처럼 보였음
     //   광고를 부르고(또는 보여 달라고 하고) H5_WAIT 안에 광고가 안 뜨면 "광고 없음"으로 보고 안내 화면으로 대신
