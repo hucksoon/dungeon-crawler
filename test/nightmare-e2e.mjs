@@ -140,10 +140,10 @@ try {
   check("cleared player: waypoint 50 → starts on floor 50", !(await inLobby(page)) && (await page.locator("#depth").innerText()) === "50" && (await page.locator("#zone").innerText()) === "", await page.locator("#depth").innerText());
   await ctx.close();
 
-  // 8. 랭킹 화면: 탭 3개, 나이트메어 탭
+  // 8. 랭킹 화면: 탭 5개 (끝이 없는 구멍·정식 v1·나이트메어·헬·클로즈 베타, dc#124), 나이트메어 탭
   ({ ctx, page, errors } = await open("nmtest-h", {}, { api: true }));
   await page.goto(ORIGIN + "ranking.html#nm"); await sleep(800);
-  check("ranking: 4 tabs, #nm opens nightmare with 50층 완료 ✓", (await page.locator("#seasons button").count()) === 4 && (await page.locator('#seasons button[aria-selected="true"]').innerText()).startsWith("나이트메어") && (await page.locator("#board-stage").innerText()).includes("50층 완료 ✓"));
+  check("ranking: 5 tabs, #nm opens nightmare with 50층 완료 ✓", (await page.locator("#seasons button").count()) === 5 && (await page.locator('#seasons button[aria-selected="true"]').innerText()).startsWith("나이트메어") && (await page.locator("#board-stage").innerText()).includes("50층 완료 ✓"));
   await page.screenshot({ path: path.join(OUT, "nm-ranking.png") });
   await ctx.close();
 } finally { await browser.close(); }

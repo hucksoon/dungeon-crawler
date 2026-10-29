@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>3D 화면 속도 조절과 세트 스킬 3턴마다 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="3D 화면의 한 턴을 0.5초로, 몬스터가 알아채는 거리는 5칸으로, 세트 스킬은 3턴마다로 바꾸고, 구글 애드센스 승인 뒤 무료 선물에 진짜 광고를 붙였어요.">
+<meta name="description" content="3D 화면의 한 턴을 0.5초로, 몬스터가 알아채는 거리는 5칸으로, 세트 스킬은 3턴마다로 바꾸고, 구글 애드센스 승인 뒤 무료 선물에 진짜 광고를 붙였어요. 헬을 다 깬 사람을 위한 마지막 던전 &quot;끝이 없는 구멍&quot;도 열었어요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-29.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
@@ -12,7 +12,7 @@
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
 <meta property="og:title" content="3D 화면 속도 조절과 세트 스킬 3턴마다 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="3D 화면의 한 턴을 0.5초로, 몬스터가 알아채는 거리는 5칸으로, 세트 스킬은 3턴마다로 바꾸고, 구글 애드센스 승인 뒤 무료 선물에 진짜 광고를 붙였어요.">
+<meta property="og:description" content="3D 화면의 한 턴을 0.5초로, 몬스터가 알아채는 거리는 5칸으로, 세트 스킬은 3턴마다로 바꾸고, 구글 애드센스 승인 뒤 무료 선물에 진짜 광고를 붙였어요. 헬을 다 깬 사람을 위한 마지막 던전 &quot;끝이 없는 구멍&quot;도 열었어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-29.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/view3d-chase.png">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>
@@ -100,8 +100,25 @@
 <p>진짜 광고는 버튼을 누르고 동영상이 뜨기까지 몇 초가 걸리기도 해요. 그동안 화면에 아무 변화가 없으면 눌린 건지 알 수가 없어요.</p>
 <ul><li>누르자마자 &quot;광고를 불러오는 중이에요. 잠시만 기다려 주세요.&quot; 창이 떠요</li><li>광고가 뜨면 이 창은 저절로 닫혀요</li><li>기다리기 싫으면 &quot;취소&quot;를 누르면 돼요. 바로 닫히고 보상은 없어요. 그 뒤에 광고가 늦게 와도 띄우지 않아요</li></ul>
 <p>그런데 실제 사이트에서 눌러 보니 광고 없이 기다림 창이 닫히고 안내 화면으로 넘어갔어요. 구글이 왜 광고를 주지 않았는지 알 수가 없어서, 안내 화면 아래에 그 이유를 작게 적게 했어요. &quot;광고 스크립트를 불러오지 못했어요&quot;, &quot;구글이 아직 보여 줄 광고가 없대요&quot;처럼요. 이걸 보고 광고 설정을 하나씩 확인해 볼 거예요.</p>
+<h2>마지막 도전: 끝이 없는 구멍</h2>
+<p>헬 50층까지 다 깬 사람에게 마지막으로 도전할 곳을 하나 더 만들었어요. 마을 웨이포인트 창의 맨 아래에 &quot;끝이 없는 구멍&quot;이 생겼어요. 헬을 완료하기 전에는 잠겨 있어요.</p>
+<figure><img src="images/abyss-wp.png" alt="마을 웨이포인트 맨 아래에 생긴 끝이 없는 구멍" loading="lazy"><figcaption>마을 웨이포인트 맨 아래에 생긴 끝이 없는 구멍</figcaption></figure>
+<p>만들기 전에 Claude가 네 가지를 물어봤어요.</p>
+<ul><li>한 층에는 무엇이 나올까: 보통 몬스터에 네임드 보스 2마리</li><li>어디가 끝일까: 20층</li><li>얼마나 강해질까: 한 층에 7%씩</li><li>쓰러지면: 매번 1층부터</li></ul>
+<h3>층마다 네임드 보스 2마리</h3>
+<p>헬에서 10층마다 한 마리씩 나오던 네임드 보스(불가사리·구미호·이무기·저승사자·염라대왕)가 이제 층마다 두 마리씩 계단을 지켜요. 두 마리를 다 쓰러뜨려야 계단이 열려요.</p>
+<ul><li>1층은 불가사리 2마리, 2층은 불가사리와 구미호, 3층은 불가사리와 이무기 … 5층은 불가사리와 염라대왕</li><li>6층은 구미호 2마리, 7층은 구미호와 이무기 … 이렇게 15층 염라대왕 2마리까지</li><li>16층부터는 그 층의 몬스터가 모두 한 네임드예요. 16층은 모두 불가사리, 17층은 모두 구미호 … 20층은 모두 염라대왕</li></ul>
+<p>1층의 네임드도 헬 50층의 염라대왕만큼 강하고, 한 층 내려갈 때마다 7%씩 더 강해져요. 20층에서는 1층의 2.33배예요.</p>
+<figure><img src="images/abyss-floor.png" alt="끝이 없는 구멍 2층: 불가사리와 구미호가 함께 계단을 지켜요" loading="lazy"><figcaption>끝이 없는 구멍 2층: 불가사리와 구미호가 함께 계단을 지켜요</figcaption></figure>
+<h3>경험치만 많이</h3>
+<p>여기서는 장비도 골드도 떨어지지 않아요. 대신 경험치를 3배로 받아요. 장비는 헬에서 모으고, 구멍에서는 레벨을 올리는 곳이에요.</p>
+<h3>랭킹 맨 위와 칭호</h3>
+<p>랭킹 화면 맨 앞에 &quot;끝이 없는 구멍&quot; 탭이 생겼어요. 가장 높은 던전이라 맨 앞에 두었어요. 20층의 네임드까지 쓰러뜨리면 &quot;20층 완료&quot;로 기록되고, &quot;다음 업데이트를 기다려 주세요&quot;라는 안내가 떠요.</p>
+<p>가장 먼저 완료한 한 사람에게는 랭킹과 마을에서 이름 앞에 칭호 <strong>[s1 제페한자]</strong>가 붙어요. 칭호가 부담스러우면 랭킹 화면의 &quot;칭호 숨기기&quot; 버튼으로 가릴 수 있고, 다시 보이게 할 수도 있어요.</p>
+<h3>테스트로 확인했어요</h3>
+<ul><li>헬을 완료하기 전에는 구멍 버튼이 잠겨 있고, 완료하면 1층으로 들어가요</li><li>네임드 한 마리만 쓰러뜨리면 계단이 닫혀 있고, 두 마리를 다 쓰러뜨려야 열려요</li><li>몬스터를 쓰러뜨려도 장비와 골드는 그대로고 경험치만 올라요</li><li>16층은 몬스터가 모두 불가사리예요</li><li>쓰러진 뒤 다시 들어가면 1층부터예요</li><li>20층을 완료하면 랭킹에 기록되고, 가장 먼저 완료한 사람만 칭호를 받아요. 칭호 숨기기도 확인했어요</li></ul>
 <h2>다음에 할 것</h2>
-<ul><li>직접 해 보면서 0.5초·5칸·세트 스킬 3턴이 괜찮은지 보기</li><li>최고 조합 페이지를 세트 스킬 3턴으로 다시 계산하기</li><li>진짜 광고가 잘 뜨는지 실제 사이트에서 확인하기</li><li>3D 화면 다듬기: 몬스터를 3D 모델로</li><li>안드로이드 앱으로 만들어서 구글 플레이에 올리기</li></ul>
+<ul><li>직접 해 보면서 0.5초·5칸·세트 스킬 3턴이 괜찮은지 보기</li><li>최고 조합 페이지를 세트 스킬 3턴으로 다시 계산하기</li><li>진짜 광고가 잘 뜨는지 실제 사이트에서 확인하기</li><li>끝이 없는 구멍 16~20층이 너무 어렵지 않은지 직접 내려가 보기</li><li>3D 화면 다듬기: 몬스터를 3D 모델로</li><li>안드로이드 앱으로 만들어서 구글 플레이에 올리기</li></ul>
 </article>
 <nav class="pager"><span><a href="2026-10-28.html">← 3D 화면 시험판, 상자 확률 공개, 무료 선물, 그리고 자동 테스트</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>

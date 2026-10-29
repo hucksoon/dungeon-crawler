@@ -36,6 +36,7 @@
   .seasons button { font: inherit; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
   .seasons button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
   .seasons small { color: var(--muted); margin-left: 4px; }
+  .title-toggle { font: inherit; font-size: 12px; margin-left: 8px; color: #e2d0ff; background: transparent; border: 1px solid #a070ff; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
   .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 760px) { .boards { grid-template-columns: 1fr; } }
   section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-width: 0; }
@@ -152,26 +153,32 @@
   const $ = (id) => document.getElementById(id);
 
   // 랭킹 버전(시즌). 지금 시즌에만 기록이 올라가고, 예전 시즌은 최종 기록으로 그대로 보여줌
+  // 맨 앞은 가장 높은 던전 끝이 없는 구멍 (dc#124). 주소에 #이 없으면 정식 v1(home)
+  const ABYSS = RLMonsters.ABYSS;
   const SEASONS = [
+    { id: "abyss", name: T("끝이 없는 구멍"), note: T("최상위"), current: true, clear: ABYSS.clearStage, max: ABYSS.floors,
+      stageSub: T("헬을 완료한 사람이 끝이 없는 구멍에서 가장 깊이 내려간 순서 · {0}층의 네임드까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", ABYSS.floors),
+      itemSub: T("구멍에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
     { id: "v4", name: T("정식 v1"), note: T("진행 중"), current: true, clear: RLMonsters.CLEAR_STAGE, max: RLMonsters.MAX_FLOOR,
       stageSub: T("가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.MAX_FLOOR),
       itemSub: T("가진 적 있는 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
     { id: "nm", name: T("나이트메어"), note: T("진행 중"), current: true, clear: RLMonsters.NIGHTMARE.clearStage, max: RLMonsters.NIGHTMARE.floors,
       stageSub: T("나이트메어 던전에서 가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.NIGHTMARE.floors),
       itemSub: T("나이트메어에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
-    { id: "hell", name: T("헬"), note: T("최종 목적지"), current: true, clear: RLMonsters.HELL.clearStage, max: RLMonsters.HELL.floors,
+    { id: "hell", name: T("헬"), note: T("진행 중"), current: true, clear: RLMonsters.HELL.clearStage, max: RLMonsters.HELL.floors,
       stageSub: T("헬 던전에서 가장 깊이 내려간 순서 · {0}층 보스까지 쓰러뜨리면 완료 · 같으면 먼저 도달한 사람이 위", RLMonsters.HELL.floors),
       itemSub: T("헬에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순") },
     { id: "v3", name: T("클로즈 베타"), note: T("최종 기록"), current: false,
       stageSub: T("클로즈 베타 최종 랭킹 · 최대 층이 생기기 전까지 가장 깊이 내려간 기록 (더 바뀌지 않아요)"),
       itemSub: T("클로즈 베타 최종 랭킹 · 가진 적 있는 최고 아이템 (더 바뀌지 않아요)") },
   ];
-  let season = SEASONS.find(s => location.hash === `#${s.id}`) || SEASONS[0];
+  const HOME = SEASONS.find(s => s.id === "v4");
+  let season = SEASONS.find(s => location.hash === `#${s.id}`) || HOME;
   function renderSeasons() {
     $("seasons").replaceChildren(...SEASONS.map(s => {
       const b = el("button", {
         type: "button",
-        onclick: () => { if (s === season) return; season = s; history.replaceState(null, "", s === SEASONS[0] ? location.pathname : `#${s.id}`); renderSeasons(); refresh(); },
+        onclick: () => { if (s === season) return; season = s; history.replaceState(null, "", s === HOME ? location.pathname : `#${s.id}`); renderSeasons(); refresh(); },
       }, s.name, el("small", { textContent: s.note }));
       b.setAttribute("role", "tab");
       b.setAttribute("aria-selected", String(s === season));
@@ -207,6 +214,11 @@
   };
   async function get(path, headers = {}) {
     const res = await fetch(url(path), { headers });
+    if (!res.ok) throw new Error(String(res.status));
+    return res.json();
+  }
+  async function post(path, body, headers = {}) {
+    const res = await fetch(url(path), { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
     if (!res.ok) throw new Error(String(res.status));
     return res.json();
   }
@@ -309,17 +321,32 @@
       r.itemBought ? boughtTag() : null);
   }
 
+  // 내 칭호 (끝이 없는 구멍을 가장 먼저 완료한 사람): 이름 앞에 보일지 숨길지
+  function titleToggles(me) {
+    return (me.titles || []).map(t => el("button", {
+      type: "button", className: "title-toggle", id: `title-${t.id}`,
+      textContent: t.hidden ? T("칭호 {0} 보이기", t.text) : T("칭호 {0} 숨기기", t.text),
+      onclick: async (e) => {
+        const ids = identityHeaders();
+        if (!ids || ids === "expired") return;
+        e.target.disabled = true;
+        try { await post("/api/title", { id: t.id, hide: !t.hidden }, ids); } catch { e.target.disabled = false; return; }
+        refresh();
+      },
+    }));
+  }
   function renderMe(me) {
     const box = $("me");
     if (me === "expired") { box.hidden = false; box.textContent = T("로그인이 만료됐어요. 게임을 한 번 열면 내 순위가 보여요."); return; }
     if (!me) { box.hidden = true; return; }
     box.hidden = false;
     if (me.developer) { box.textContent = me.staffDevice ? T("운영자 기기라 랭킹에서 빠져 있어요.") : T("개발자 계정이라 랭킹에서 빠져 있어요."); return; }
-    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: who(me.name) }), season.current ? T(" · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요.") : T(" · {0}에는 기록이 없어요.", season.name)); return; }
+    if (!me.stageRank && !me.itemRank) { box.replaceChildren(el("b", { textContent: who(me.name) }), season.current ? T(" · 아직 기록이 없어요. 한 층 내려가면 랭킹에 올라가요.") : T(" · {0}에는 기록이 없어요.", season.name), ...titleToggles(me)); return; }
     box.replaceChildren(
       el("b", { textContent: who(me.name) }), ` · ${season.name}`,
       T(" · 최고 층 {0}", me.stageRank ? T("{0}위 ({1})", me.stageRank, stageText(me.stage)) : "-"),
       T(" · 최강 아이템 {0}", me.itemRank ? T("{0}위", me.itemRank) : "-"),
+      ...titleToggles(me),
     );
   }
 

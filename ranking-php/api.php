@@ -48,6 +48,7 @@ const E_DROP_MUL = 1.5;   // 일반 던전 50층 시드(|e층|)의 장비 드롭
 const SEASONS = [
     'v4' => ['table' => 'players_v4', 'name' => '정식 v1', 'minItemV' => 4, 'eff' => true],   // eff: 기록 층이 50층 기준 (dc#98에서 한 번 바꿈)
     'nm' => ['table' => 'players_nm', 'name' => '나이트메어', 'minItemV' => 4, 'nightmare' => true],
+    'abyss' => ['table' => 'players_abyss', 'name' => '끝이 없는 구멍', 'minItemV' => 4, 'nightmare' => true, 'abyss' => true],  // 끝이 없는 구멍 (층 = 구멍 층, 20층 완료 = 21), 헬을 완료한 사람만. 가장 높은 던전
     'hell' => ['table' => 'players_hell', 'name' => '헬', 'minItemV' => 4, 'nightmare' => true, 'hell' => true],  // 헬 던전 (층 = 헬 층, 50층 완료 = 51)  // 정식 v1의 나이트메어 던전 (층 = 나이트메어 층)
     'v3' => ['table' => 'players', 'name' => '클로즈 베타', 'minItemV' => 1],
 ];
@@ -59,7 +60,12 @@ const NM_CLEAR = NM_FLOORS + 1;
 const HELL_FLOORS = 50;
 const HELL_ITEM_BASE = NM_ITEM_BASE + NM_FLOORS;
 const HELL_CLEAR = HELL_FLOORS + 1;
-const HELL_NAMED = [10, 20, 30, 40, 50];   // 네임드 보스 층 (monsters.js NAMED): 유니크를 떨어뜨림
+const HELL_NAMED = [10, 20, 30, 40, 50];
+// 끝이 없는 구멍 (monsters.js ABYSS, dc#124): 20층, 장비는 떨어지지 않고 경험치만. 20층 완료 = 21
+const ABYSS_FLOORS = 20;
+const ABYSS_CLEAR = ABYSS_FLOORS + 1;
+// 구멍을 가장 먼저 완료한 사람의 칭호: 이름 앞에 붙음 (본인이 랭킹 화면에서 숨길 수 있음). 칭호마다 한 사람
+const TITLES = ['s1' => '[s1 제페한자]'];   // 네임드 보스 층 (monsters.js NAMED): 유니크를 떨어뜨림
 const CURRENT_SEASON = 'v4';
 const MAX_ENH = 12;   // +11·+12: 대장간 업데이트
 
@@ -160,7 +166,7 @@ function db(): PDO {
         created_at   BIGINT NOT NULL
     )');
     // 정식 v1 시즌 표, 나이트메어 표 (players와 같은 모양)
-    foreach (['players_v4', 'players_nm', 'players_hell'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
+    foreach (['players_v4', 'players_nm', 'players_hell', 'players_abyss'] as $tbl) $pdo->exec("CREATE TABLE IF NOT EXISTS {$tbl} (
         pkey         VARCHAR(64) PRIMARY KEY,
         pub_id       VARCHAR(32),
         kind         VARCHAR(8)  NOT NULL,
@@ -178,6 +184,13 @@ function db(): PDO {
         item_at      BIGINT,
         updated_at   BIGINT NOT NULL
     )");
+    // 칭호 (TITLES): 칭호마다 처음 얻은 사람 한 명 (기본 키라 먼저 넣은 사람만). pkey는 랭킹 표와 같은 HMAC 키
+    $pdo->exec('CREATE TABLE IF NOT EXISTS titles (
+        tid          VARCHAR(16) PRIMARY KEY,
+        pkey         VARCHAR(64) NOT NULL,
+        hidden       INTEGER NOT NULL DEFAULT 0,
+        got_at       BIGINT NOT NULL
+    )');
     $pdo->exec('CREATE TABLE IF NOT EXISTS meta (
         k            VARCHAR(32) PRIMARY KEY,
         v            VARCHAR(64) NOT NULL
@@ -206,6 +219,9 @@ function db(): PDO {
         'CREATE INDEX idx_players_nm_stage ON players_nm (best_stage, stage_at)',
         'CREATE INDEX idx_players_nm_item ON players_nm (item_score, item_at)',
         'CREATE INDEX idx_players_nm_email ON players_nm (email_hmac)',
+        'CREATE INDEX idx_players_abyss_pub ON players_abyss (pub_id)',
+        'CREATE INDEX idx_players_abyss_stage ON players_abyss (best_stage, stage_at)',
+        'CREATE INDEX idx_players_abyss_item ON players_abyss (item_score, item_at)',
     ] as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) { /* 이미 있음 */ }
     }
@@ -679,6 +695,9 @@ function read_score(array $body, int $oldBest, string $key): array {
     $hell = $body['hell'] ?? 0;  // 헬 최고 층 (51 = 완료), 나이트메어를 완료한 사람만
     if (!is_int($hell) || $hell < 0 || $nm < NM_CLEAR) $hell = 0;
     $hell = min($hell, HELL_CLEAR);
+    $abyss = $body['abyss'] ?? 0;  // 끝이 없는 구멍 최고 층 (21 = 완료), 헬을 완료한 사람만
+    if (!is_int($abyss) || $abyss < 0 || $hell < HELL_CLEAR) $abyss = 0;
+    $abyss = min($abyss, ABYSS_CLEAR);
     $maxLvl = max($stageLvl, $oldBest, nm_level($nm), hell_level($hell));
     $stage = min($stage, CLEAR_STAGE);  // 최대 층이 생기기 전 게임(캐시된 예전 화면)이 더 깊은 층을 보내도 완료까지만
     $plvl = $body['plvl'] ?? 1;
@@ -713,7 +732,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     // 지금 시즌보다 예전 규칙의 장비를 끼고 있으면 층 기록은 인정하지 않음 (정식 v1은 v4 장비로만)
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
-    if ($oldGear) { $stage = 0; $nm = 0; $hell = 0; }
+    if ($oldGear) { $stage = 0; $nm = 0; $hell = 0; $abyss = 0; }
     $totals = r_totals($ordered);
     $snapshot = [
         'stage' => $stage,
@@ -723,7 +742,7 @@ function read_score(array $body, int $oldBest, string $key): array {
         'rejected' => $rejected,
         'bal' => SNAPSHOT_BAL,
     ];
-    return [$stage, $item, $snapshot, $nm, $hell];
+    return [$stage, $item, $snapshot, $nm, $hell, $abyss];
 }
 
 function now_ms(): int { return (int)floor(microtime(true) * 1000); }
@@ -742,6 +761,7 @@ function best_level_any(string $key): int {
     $best = 0;
     foreach (SEASONS as $s) {
         $v = (int)(q_val('SELECT best_stage FROM ' . $s['table'] . ' WHERE pkey = ?', [$key]) ?: 0);
+        if (!empty($s['abyss'])) { if ($v > 0) $best = max($best, hell_level(HELL_FLOORS)); continue; }   // 구멍은 장비가 떨어지지 않음 (헬 완료 레벨까지)
         $best = max($best, !empty($s['hell']) ? hell_level($v) : (!empty($s['nightmare']) ? nm_level($v) : (!empty($s['eff']) ? stage_level($v) : $v)));
     }
     return $best;
@@ -762,7 +782,7 @@ function submit_score(): array {
     if (strlen((string)$raw) > 8192) throw new HttpError(413, 'too_large');
     $body = json_decode((string)$raw, true);
     if (!is_array($body)) throw new HttpError(400, 'bad_json');
-    [$stage, $item, $snapshot, $nm, $hell] = read_score($body, best_level_any($who['key']), $who['key']);
+    [$stage, $item, $snapshot, $nm, $hell, $abyss] = read_score($body, best_level_any($who['key']), $who['key']);
     $now = now_ms();
     $snapshot['at'] = $now;
     record_board(season_table(), $who, $stage, $item, json_encode($snapshot, JSON_UNESCAPED_UNICODE), $now);
@@ -770,7 +790,50 @@ function submit_score(): array {
     if ($nm > 0) record_board(season_table('nm'), $who, $nm, $item, json_encode(['stage' => $nm] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
     // 헬 랭킹 (따로)
     if ($hell > 0) record_board(season_table('hell'), $who, $hell, $item, json_encode(['stage' => $hell] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
-    return ['ok' => true, 'ranked' => true];
+    // 끝이 없는 구멍 랭킹 (맨 위). 가장 먼저 완료한 사람에게 칭호
+    $title = null;
+    if ($abyss > 0) {
+        record_board(season_table('abyss'), $who, $abyss, $item, json_encode(['stage' => $abyss] + $snapshot, JSON_UNESCAPED_UNICODE), $now);
+        if ($abyss >= ABYSS_CLEAR) $title = grant_title('s1', $who['key'], $now);
+    }
+    return ['ok' => true, 'ranked' => true] + ($title ? ['title' => $title] : []);
+}
+
+// ---------------------------------------------------------------- 칭호
+// 칭호를 처음 얻는 사람만 기록 (이미 주인이 있으면 그대로). 이 사람이 주인이면 칭호 글자
+function grant_title(string $tid, string $pkey, int $now): ?string {
+    try { db()->prepare('INSERT INTO titles (tid, pkey, hidden, got_at) VALUES (?, ?, 0, ?)')->execute([$tid, $pkey, $now]); }
+    catch (PDOException $e) { /* 이미 주인이 있음 */ }
+    return q_val('SELECT pkey FROM titles WHERE tid = ?', [$tid]) === $pkey ? TITLES[$tid] : null;
+}
+// 이름 앞에 붙일 칭호 { pkey: "[칭호] " } (숨긴 사람은 빼고)
+function title_prefixes(): array {
+    static $map = null;
+    if ($map !== null) return $map;
+    $map = [];
+    foreach (db()->query('SELECT tid, pkey FROM titles WHERE hidden = 0')->fetchAll() as $r) {
+        if (isset(TITLES[$r['tid']])) $map[$r['pkey']] = ($map[$r['pkey']] ?? '') . TITLES[$r['tid']] . ' ';
+    }
+    return $map;
+}
+function titled(string $pkey, string $display): string { return (title_prefixes()[$pkey] ?? '') . $display; }
+// 내 칭호 [{ id, text, hidden }]
+function my_titles(string $pkey): array {
+    $st = db()->prepare('SELECT tid, hidden FROM titles WHERE pkey = ?');
+    $st->execute([$pkey]);
+    $out = [];
+    foreach ($st->fetchAll() as $r) if (isset(TITLES[$r['tid']])) $out[] = ['id' => $r['tid'], 'text' => TITLES[$r['tid']], 'hidden' => (bool)(int)$r['hidden']];
+    return $out;
+}
+// POST api.php?r=title { id, hide }: 내 칭호를 숨기거나 다시 보이기 (주인만)
+function set_title(): array {
+    $who = identify();
+    $body = json_decode((string)file_get_contents('php://input'), true);
+    $tid = is_array($body) ? (string)($body['id'] ?? '') : '';
+    if (!isset(TITLES[$tid])) throw new HttpError(400, 'bad_title');
+    if (q_val('SELECT pkey FROM titles WHERE tid = ?', [$tid]) !== $who['key']) throw new HttpError(403, 'not_owner');
+    db()->prepare('UPDATE titles SET hidden = ? WHERE tid = ? AND pkey = ?')->execute([!empty($body['hide']) ? 1 : 0, $tid, $who['key']]);
+    return ['ok' => true, 'titles' => my_titles($who['key'])];
 }
 
 // 한 랭킹 표에 기록: 층은 더 높을 때, 아이템은 점수가 더 높을 때만 바꿈
@@ -857,7 +920,7 @@ function row_out(array $r, ?int $rank): array {
         'itemBought' => has_bought($r['item_json'] ?? null),      // 최고 아이템이 구매 아이템
         'rank' => $rank,
         'id' => $r['pub_id'] ?? null,
-        'name' => $r['display'],
+        'name' => isset($r['pkey']) ? titled($r['pkey'], $r['display']) : $r['display'],
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'item' => (int)$r['item_score'] >= 0
@@ -877,7 +940,7 @@ function get_ranking(): array {
     // 공개 ID가 없는 예전 행은 채워 넣음
     $missing = db()->query("SELECT pkey FROM {$t} WHERE pub_id IS NULL LIMIT 200")->fetchAll();
     foreach ($missing as $m) db()->prepare("UPDATE {$t} SET pub_id = ? WHERE pkey = ?")->execute([pub_id($m['pkey']), $m['pkey']]);
-    $rows = db()->query("SELECT pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name, stage_gear, item_json FROM {$t} WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
+    $rows = db()->query("SELECT pkey, pub_id, display, kind, best_stage, item_score, item_rarity, item_enh, item_lvl, item_name, stage_gear, item_json FROM {$t} WHERE {$b['where']} ORDER BY {$b['order']} LIMIT {$limit}")->fetchAll();
     $total = (int)q_val("SELECT COUNT(*) FROM {$t} WHERE {$b['where']}");
     $out = [];
     foreach ($rows as $i => $r) $out[] = row_out($r, $i + 1);
@@ -891,7 +954,8 @@ function get_me(): array {
     if (staff_guest($who)) return ['developer' => true, 'staffDevice' => true];
     $t = season_table(req_season());
     $r = q_row("SELECT * FROM {$t} WHERE pkey = ?", [$who['key']]);
-    if (!$r) return ['name' => $who['display'], 'stageRank' => null, 'itemRank' => null];
+    $titles = ['titles' => my_titles($who['key'])];
+    if (!$r) return ['name' => titled($who['key'], $who['display']), 'stageRank' => null, 'itemRank' => null] + $titles;
     $ahead = function (string $sql, array $args): int { return (int)q_val($sql, $args); };
     $stageRank = (int)$r['best_stage'] > 0
         ? 1 + $ahead("SELECT COUNT(*) AS n FROM {$t} WHERE best_stage > ? OR (best_stage = ? AND stage_at < ?)", [$r['best_stage'], $r['best_stage'], $r['stage_at']])
@@ -899,7 +963,7 @@ function get_me(): array {
     $itemRank = (int)$r['item_score'] >= 0
         ? 1 + $ahead("SELECT COUNT(*) AS n FROM {$t} WHERE item_score > ? OR (item_score = ? AND item_at < ?)", [$r['item_score'], $r['item_score'], $r['item_at']])
         : null;
-    return array_merge(row_out($r, null), ['stageRank' => $stageRank, 'itemRank' => $itemRank]);
+    return array_merge(row_out($r, null), ['stageRank' => $stageRank, 'itemRank' => $itemRank], $titles);
 }
 
 // 장비 기록(최고 층을 세운 순간의 장비·능력치)은 그때 계산한 값으로 저장됨. 규칙이 바뀌면 보여줄 때 지금 규칙으로 고침
@@ -931,7 +995,7 @@ function get_player(): array {
     if (!$r) throw new HttpError(404, 'not_found');
     $gear = $r['stage_gear'] ? json_decode($r['stage_gear'], true) : null;
     return [
-        'name' => $r['display'],
+        'name' => titled($r['pkey'], $r['display']),
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'stageAt' => $r['stage_at'] !== null ? (int)$r['stage_at'] : null,
@@ -991,14 +1055,14 @@ function lobby_ping(): array {
     $crowns = top_crowns();
     $players = [];
     foreach ($rows as $r) {
-        $p = ['id' => $r['pub_id'], 'name' => $r['display'], 'scene' => $r['scene']];
+        $p = ['id' => $r['pub_id'], 'name' => titled($r['pkey'], $r['display']), 'scene' => $r['scene']];
         if (isset($crowns[$r['pkey']])) $p['crown'] = $crowns[$r['pkey']];
         if ((int)$r['staff']) $p['staff'] = true;  // 운영자 표시
         if ($r['scene'] === 'lobby') { $p['x'] = (int)$r['x']; $p['y'] = (int)$r['y']; $p['portal'] = (int)$r['depth']; }
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
-    $me = ['id' => $pub, 'name' => $who['display']];
+    $me = ['id' => $pub, 'name' => titled($who['key'], $who['display'])];
     if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
     if ($who['developer']) { $me['staff'] = true; $me['unlimited'] = $who['unlimited']; }   // unlimited: 이 기기가 운영자 기기
     return [
@@ -1072,6 +1136,7 @@ try {
     if ($route === 'score' && $method === 'POST') respond(200, submit_score());
     elseif ($route === 'ranking' && $method === 'GET') respond(200, get_ranking());
     elseif ($route === 'me' && $method === 'GET') respond(200, get_me());
+    elseif ($route === 'title' && $method === 'POST') respond(200, set_title());
     elseif ($route === 'player' && $method === 'GET') respond(200, get_player());
     elseif ($route === 'lobby' && $method === 'POST') respond(200, lobby_ping());
     elseif ($route === 'market' && $method === 'GET') respond(200, market_browse());

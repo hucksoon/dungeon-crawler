@@ -200,6 +200,13 @@ const SCENES = [
   // 턴 0.5초·알아채는 거리 5칸 (dc#115): 5칸 앞에 선 해골이 알아채고 다가오는 중
   ["view3d-chase", "3D 화면: 5칸 안에 들어오면 몬스터가 알아채고 다가와요", async () => view3d({ seed: { rl_save: save(12, "blog-3dc", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "elite", 12), hp: 1e6, maxHp: 1e6, at: 5 }], { wait: 0 })],
+  // 끝이 없는 구멍 (dc#124): 마을 웨이포인트 맨 아래 버튼, 구멍 2층의 네임드 2마리 (불가사리 + 구미호)
+  ["abyss-wp", "마을 웨이포인트 맨 아래에 생긴 끝이 없는 구멍 (헬을 완료하면 열려요)", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(30, "blog-abwp", {}, { hb: 51, hclr: 1 }), "rl_inv:g:DEV": inv(g150) } });
+    await goDoor(o.page, "waypoint"); await sleep(300);
+    return { ...o, shot: "#wp-modal .modal" }; }],
+  ["abyss-floor", "끝이 없는 구멍 2층: 불가사리와 구미호가 함께 계단을 지켜요", async () => { const o = await explored({ dsf: 1.6, seed: { rl_save: save(2, "blog-ab2", { z: "abyss", hp: 90000, mh: 90000, a: 3000 }, { hb: 51, hclr: 1, ab: 2 }), "rl_inv:g:DEV": inv(g150) } },
+    { add: [{ dx: 1, dy: 0, ...M.makeAbyssNamed(10, 2), hp: 2e9, maxHp: 2e9, atk: 5 }, { dx: -1, dy: 1, ...M.makeAbyssNamed(20, 2), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", "."], 150); return { ...o, shot: "#game" }; }],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
   ["shop-odds", "장비 상자 확률 정보: 등급·고대·부위·여러 번 열 때", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator("#odds table").waitFor(); return { ...o, shot: "#odds" }; }],
