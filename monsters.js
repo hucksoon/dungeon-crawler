@@ -290,7 +290,7 @@
     return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
   }
 
-  // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 마지막 50층 던전 (최종 목적지) ----
+  // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 50층 던전 (완료하면 끝이 없는 구멍) ----
   // 몬스터 = 나이트메어 startNm층 몬스터 × 배율 × 층 배율 (나이트메어와 같은 모양의 곡선). 아이템 레벨 = 125 + 헬 층 (126~175, "지옥의" 아이템)
   // 모든 몬스터가 속성과 속성 저항을 가짐: 자기 속성 own%, 다른 속성은 층에 따라 otherFrom% → otherTo%, 보스는 +boss%
   // 헬에서는 플레이어의 속성 저항도 ELEMENTS.zonePenalty.hell%p 낮아짐 (장비 저항 합에서 먼저). 10·20·30·40·50층 보스는 네임드 (아래 NAMED)
@@ -365,6 +365,47 @@
       hp, maxHp: hp, atk: Math.round(b.atk * N.atkMul), xp: Math.round(b.xp * N.hpMul),
     };
   }
+  // ---- 끝이 없는 구멍 (dc#124): 헬 50층을 완료한 사람의 마지막 도전. 마을 웨이포인트 맨 아래에서, 매번 1층부터 ----
+  //   1~15층: 헬 50층 몬스터 + 네임드 보스 2마리가 계단을 지킴. 짝은 불가사리부터 차례로
+  //     (불가사리·불가사리, 불가사리·구미호, 불가사리·이무기, 불가사리·저승사자, 불가사리·염라대왕, 구미호·구미호, 구미호·이무기 … 염라대왕·염라대왕)
+  //   16~20층: 그 층의 몬스터가 모두 한 네임드 (16층 불가사리 … 20층 염라대왕). 20층을 깨면 끝 (다음 업데이트를 기다림)
+  //   1층 = 헬 50층 세기, 한 층 내려갈 때마다 HP·공격력·방어력 +perFloor (선형, 20층 ×2.33)
+  //   네임드는 모두 헬 50층 네임드(염라대왕) 세기: 헬 50층 보스 × named.hpMul·atkMul (패턴은 그 네임드 그대로)
+  //   장비·골드·보석·룬은 떨어지지 않고, 경험치는 헬 50층의 xpMul배 × 층 배율
+  const ABYSS = {
+    floors: 20, perFloor: 0.07, xpMul: 3, hellFloor: 50,
+    named: { hpMul: 3, atkMul: 1.35 },
+    clearStage: 21,     // 랭킹: 20층 완료 = 21
+    presence: 4000,     // 로비 접속자 목록: 4000 + 층 (헬 3000번대와 구분)
+  };
+  const NAMED_KEYS = Object.keys(NAMED.bosses).map(Number);   // 10 불가사리 · 20 구미호 · 30 이무기 · 40 저승사자 · 50 염라대왕
+  const ABYSS_PAIRS = NAMED_KEYS.flatMap((a, i) => NAMED_KEYS.slice(i).map(b => [a, b]));   // 15쌍
+  // n층의 구성: { pair: [네임드 키, 네임드 키] } (1~15층) | { all: 네임드 키 } (16~20층)
+  function abyssPlan(n) {
+    const k = Math.max(1, Math.min(ABYSS.floors, n));
+    return k <= ABYSS_PAIRS.length ? { pair: ABYSS_PAIRS[k - 1] } : { all: NAMED_KEYS[k - ABYSS_PAIRS.length - 1] };
+  }
+  const abyssScale = (n) => 1 + ABYSS.perFloor * (Math.max(1, n) - 1);
+  const abyssXp = (xp, n) => Math.round(xp * ABYSS.xpMul * abyssScale(n));
+  // 일반 몬스터: 헬 50층 몬스터 × 층 배율
+  function makeAbyss(t, kind, n, el = pickElement(Math.random)) {
+    const m = makeHell(t, kind, ABYSS.hellFloor, el), k = abyssScale(n);
+    const hp = Math.round(m.hp * k);
+    return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k), def: Math.round(m.def * k), xp: abyssXp(m.xp, n), abyss: 1 };
+  }
+  // 네임드 (key: 10·20·30·40·50 = 불가사리…염라대왕). guard: 계단을 지키는 2마리 (나머지는 계단을 막지 않음)
+  function makeAbyssNamed(key, n, guard = true) {
+    const N = NAMED.bosses[key];
+    if (!N) return null;
+    const b = makeHellBoss(ABYSS.hellFloor, N.el), k = abyssScale(n);
+    const hp = Math.round(b.hp * ABYSS.named.hpMul * k);
+    return {
+      ...b, id: N.id, ch: N.ch, name: N.name, title: N.title, color: NAMED_COLOR, named: ABYSS.hellFloor, pattern: N.pattern, [N.pattern]: N[N.pattern],
+      hp, maxHp: hp, atk: Math.round(b.atk * ABYSS.named.atkMul * k), def: Math.round(b.def * k),
+      xp: abyssXp(Math.round(b.xp * ABYSS.named.hpMul), n), abyss: 1, ...(guard ? {} : { mob: 1 }),
+    };
+  }
+
   // 염라대왕: 지금 턴의 속성 (every턴마다 다음 속성)
   const judgeElement = (turn, every) => ELEMENTS.list[Math.floor(Math.max(0, turn) / every) % ELEMENTS.list.length];
 
@@ -399,7 +440,8 @@
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
     nameOf, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
-    HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
+    HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
+    ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
     goldMultiplier, rollGold,
   };

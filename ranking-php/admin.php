@@ -139,7 +139,7 @@ $season = $argv[3] ?? CURRENT_SEASON;
 if (!isset(SEASONS[$season])) fail('시즌은 ' . implode(', ', array_keys(SEASONS)) . ' 중 하나예요.');
 $t = season_table($season);
 $name = SEASONS[$season]['name'];
-$clear = !empty(SEASONS[$season]['nightmare']) ? [NM_CLEAR, NM_FLOORS] : [CLEAR_STAGE, MAX_FLOOR];
+$clear = !empty(SEASONS[$season]['abyss']) ? [ABYSS_CLEAR, ABYSS_FLOORS] : (!empty(SEASONS[$season]['nightmare']) ? [NM_CLEAR, NM_FLOORS] : [CLEAR_STAGE, MAX_FLOOR]);
 
 if ($cmd === 'list') {
     $limit = max(1, min(200, (int)($argv[2] ?? 20)));
@@ -155,11 +155,17 @@ if ($cmd === 'list') {
 if ($cmd === 'remove') {
     $id = (string)($argv[2] ?? '');
     if (!preg_match('/^[0-9a-f]{16}$/', $id)) fail('사용법: php admin.php remove <공개ID 16자리> [시즌]');
-    $r = q_row("SELECT display, best_stage FROM {$t} WHERE pub_id = ?", [$id]);
+    $r = q_row("SELECT pkey, display, best_stage FROM {$t} WHERE pub_id = ?", [$id]);
     if (!$r) fail("{$name} 랭킹에 그 공개 ID가 없어요.");
     db()->prepare("DELETE FROM {$t} WHERE pub_id = ?")->execute([$id]);
     echo "{$name} 랭킹에서 {$r['display']} ({$r['best_stage']}층) 기록을 지웠어요. 다른 시즌 기록은 그대로예요.\n";
+    // 구멍 기록을 지우면 그 기록으로 받은 칭호도 거둠 (다음에 가장 먼저 완료한 사람이 받음)
+    if ($season === 'abyss') {
+        $st = db()->prepare('DELETE FROM titles WHERE pkey = ?');
+        $st->execute([$r['pkey']]);
+        if ($st->rowCount()) echo "그 사람의 칭호도 거뒀어요.\n";
+    }
     exit(0);
 }
 
-fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  php admin.php boxes [legacy [--apply] | strict off]\n  시즌: v4(기본), nm(나이트메어), v3");
+fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  php admin.php boxes [legacy [--apply] | strict off]\n  시즌: v4(기본), nm(나이트메어), hell(헬), abyss(끝이 없는 구멍), v3");

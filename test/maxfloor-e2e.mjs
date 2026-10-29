@@ -137,7 +137,7 @@ try {
   ({ ctx, page, errors } = await open({ dev: "mf-dev-e", sv: null, lv: null, inv: null, scene: "lobby" }));
   await page.goto(ORIGIN + "ranking.html"); await sleep(800);
   const board = await page.locator("#board-stage").innerText();
-  check("ranking page: version badge 정식 v1, tabs v4/nm/hell/v3", (await page.locator("#ver").innerText()) === "정식 v1" && (await page.locator("#seasons button").count()) === 4 && (await page.locator("#seasons button", { hasText: "헬" }).count()) === 1 && (await page.locator('#seasons button[aria-selected="true"]').innerText()).startsWith("정식 v1"));
+  check("ranking page: version badge 정식 v1, tabs abyss/v4/nm/hell/v3 (dc#124)", (await page.locator("#ver").innerText()) === "정식 v1" && (await page.locator("#seasons button").count()) === 5 && (await page.locator("#seasons button", { hasText: "헬" }).count()) === 1 && (await page.locator('#seasons button[aria-selected="true"]').innerText()).startsWith("정식 v1"));
   check("v1 tab (default) shows 50층 완료 ✓ and not the old 172 record", board.includes("50층 완료 ✓") && !board.includes("old172"), board);
   await page.screenshot({ path: path.join(OUT, "ranking-clear.png") });
   await page.locator("#seasons button", { hasText: "클로즈 베타" }).click(); await sleep(600);

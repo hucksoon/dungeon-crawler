@@ -174,9 +174,9 @@ ${M.MAX_FLOOR}층을 완료한 사람만 들어가는 더 강한 던전이에요
 ${table(["나이트메어 층", "보스", "보스 HP", "보스 공격", "아이템 레벨"],
   [5, 10, 20, 30, 40, 50].map(n => { const b = M.makeNightmareBoss(n); return [n, b.name, b.hp, b.atk, N.itemBase + n]; }))}
 
-## 헬 던전 (최종 목적지)
+## 헬 던전
 
-나이트메어를 완료한 사람만 들어가는 마지막 50층 던전이에요. 로비 **맨 위의 불타는 헬 던전** 건물이 입구예요.
+나이트메어를 완료한 사람만 들어가는 50층 던전이에요. 완료하면 [끝이 없는 구멍](#끝이-없는-구멍)이 열려요. 로비 **맨 위의 불타는 헬 던전** 건물이 입구예요.
 
 - 들어갈 수 있는 사람: 나이트메어 ${N.floors}층 완료 + 장착한 장비가 모두 v4 이후
 - **왼쪽 문**은 1층부터, **오른쪽 문**은 완료한 ${M.HELL.milestones.join("·")}층 중 골라서 그 층부터 (그 층 보스를 쓰러뜨리고 다음 층에 내려가면 완료, ${M.HELL.floors}층은 헬 완료)
@@ -218,6 +218,22 @@ ${table(["헬 층", "네임드", "속성", "HP", "공격", "HP·공격 배율", 
     reaper: () => `눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 내 흡혈(스킬 흡혈 포함)이 ${pct(N.reaper.lifesteal)}로`,
     judge: () => `${N.judge.every}턴마다 속성이 불 → 얼음 → 번개로 바뀜 (속성 저항도 따라 바뀜), HP ${pct(N.judge.enrageAt)} 이하면 분노해 공격 ×${N.judge.enrageMul}`,
   }[N.pattern]()]; }))}
+
+## 끝이 없는 구멍
+
+헬 ${M.HELL.floors}층을 완료한 사람에게 주는 마지막 도전이에요 (10/29 dc#124). **마을 웨이포인트 맨 아래 "끝이 없는 구멍"** 버튼으로 들어가요.
+
+- **매번 1층부터** (안에는 웨이포인트가 없어요). 쓰러지면 다시 1층부터, ${M.ABYSS.floors}층이 바닥이에요
+- 층마다 **네임드 보스 2마리**가 계단을 지켜요. 둘 다 쓰러뜨려야 계단이 열려요
+- 몬스터: 헬 ${M.ABYSS.hellFloor}층 몬스터 기준 × 층 배율 (층마다 +${pct(M.ABYSS.perFloor)}, ${M.ABYSS.floors}층 ×${M.abyssScale(M.ABYSS.floors).toFixed(2)}). 네임드는 헬 ${M.ABYSS.hellFloor}층 보스 × HP ×${M.ABYSS.named.hpMul} · 공격 ×${M.ABYSS.named.atkMul} × 층 배율. 몬스터 수는 헬 ${M.ABYSS.hellFloor}층과 같아요
+- **장비·골드·보석·룬이 떨어지지 않고** 층 돌파 골드도 없어요. 대신 **경험치 ×${M.ABYSS.xpMul}** (층 배율도 곱함). 상점·황금 고블린·보물 상자도 없어요
+- 랭킹은 **맨 앞의 "끝이 없는 구멍" 탭** (가장 높은 던전). ${M.ABYSS.floors}층 완료 = 서버 기록값 ${M.ABYSS.clearStage}
+- **가장 먼저 완료한 사람**에게 칭호 **[s1 제패한자]**가 붙어요 (랭킹·로비의 이름 앞). 본인이 랭킹 화면에서 숨기거나 다시 보이게 할 수 있어요
+- ${M.ABYSS.floors}층을 완료하면 "다음 업데이트를 기다려 주세요" 안내와 함께 마을로. 파란 포탈은 다시 1층부터
+
+${table(["구멍 층", "계단을 지키는 네임드", "층 배율", "네임드 HP", "네임드 공격"],
+  Array.from({ length: M.ABYSS.floors }, (_, i) => i + 1).map(n => { const P = M.abyssPlan(n), keys = P.pair || [P.all, P.all], b = M.makeAbyssNamed(keys[1], n);
+    return [n, keys.map(k => M.NAMED.bosses[k].name).join(" + ") + (P.all ? " (몬스터 모두)" : ""), `×${M.abyssScale(n).toFixed(2)}`, b.hp, b.atk]; }))}
 
 ## 속성: 불·얼음·번개
 
