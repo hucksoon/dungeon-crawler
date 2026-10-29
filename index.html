@@ -8205,14 +8205,15 @@
     // 빈 껍데기로 바꿔치기해서 adBreak 콜백이 하나도 오지 않음 → 버튼이 멈춘 것처럼 보였음
     //   광고를 부르고(또는 보여 달라고 하고) H5_WAIT 안에 광고가 안 뜨면 "광고 없음"으로 보고 안내 화면으로 대신
     //   광고가 떠 있는 동안은 기다림(사용자가 보는 중), 광고가 닫힌 뒤 adBreakDone이 안 오면 2초 뒤 끝냄
-    const H5_WAIT = 6000;
+    //   dc#127: 6초 → 15초 (진짜 광고는 경매를 거쳐 테스트 광고보다 늦게 올 수 있음). 그 뒤에 온 늦은 답은 기록 창에 남김
+    const H5_WAIT = 15000;
     // 구글 광고가 안 뜬 이유 (dc#122): 안내 화면 아래에 작게 보여 줌 (광고 설정을 확인할 때). breakStatus는 구글 Ad Placement API 값 그대로
     let why = "";
     // 구글 콜백 순서 (dc#126): "끝까지 안 봤다"고 나올 때 무엇이 왔는지 알 수 있게 메시지 끝에 작게 (예: beforeAd>afterAd>done:dismissed)
     let trace = [];
     const whyText = (w) => ({
       script: T("광고 스크립트를 불러오지 못했어요 (광고 차단 프로그램·네트워크)"),
-      timeout: T("구글이 6초 안에 답하지 않았어요 (광고 차단 프로그램일 수 있어요)"),
+      timeout: T("구글이 {0}초 안에 답하지 않았어요 (광고 차단 프로그램일 수 있어요)", H5_WAIT / 1000),
       noShow: T("광고를 보여 달라고 했지만 뜨지 않았어요"),
       notReady: T("구글이 아직 보여 줄 광고가 없대요"),
       noAdPreloaded: T("구글이 아직 보여 줄 광고가 없대요"),
@@ -8223,6 +8224,9 @@
       return loadH5().then(ok => ui.cancelled?.() ? "cancelled" : !ok ? (why = "script", "unavailable") : new Promise((resolve) => {
         let viewed = false, dismissed = false, done = false, timer = 0;
         trace = [];
+        const t0 = Date.now();
+        // 이미 끝낸 뒤(기다리다 안내 화면으로 넘어간 뒤 등)에 온 구글 답: 기록 창에 몇 초 뒤에 무엇이 왔는지 (dc#127)
+        const late = (what) => { if (!done) return false; log(T("구글 광고 답이 늦게 왔어요: {0} ({1}초 뒤)", what, ((Date.now() - t0) / 1000).toFixed(1)), "info"); return true; };
         const open = (on) => { h5Open = on; window.RLSound?.pause(on); };
         const finish = (r) => { if (done) return; done = true; clearTimeout(timer); if (h5Open) open(false); resolve(r); };
         const wait = (ms, r) => { clearTimeout(timer); timer = setTimeout(() => finish(r()), ms); };
@@ -8230,8 +8234,8 @@
         ui.cancelable?.(() => finish("cancelled"));
         window.adBreak({
           type: "reward", name,
-          beforeReward: (showAdFn) => { trace.push("reward"); if (done) return; wait(H5_WAIT, () => (why = "noShow", "unavailable")); showAdFn(); },
-          beforeAd: () => { trace.push("beforeAd"); if (done) return; clearTimeout(timer); ui.shown?.(); open(true); },
+          beforeReward: (showAdFn) => { trace.push("reward"); if (late("beforeReward")) return; wait(H5_WAIT, () => (why = "noShow", "unavailable")); showAdFn(); },
+          beforeAd: () => { trace.push("beforeAd"); if (late("beforeAd")) return; clearTimeout(timer); ui.shown?.(); open(true); },
           // 광고가 닫힌 뒤 adBreakDone을 기다림 (전에는 2초만 기다려서, 구글의 끝까지 봄 알림이 늦게 오면 "끝까지 안 봄"이 될 수 있었음, dc#126)
           //   adBreakDone이 끝내 안 오면: 끝까지 봄(adViewed)이 왔으면 보상, 닫음(adDismissed)이 왔거나 아무 알림이 없으면 보상 없음
           afterAd: () => { trace.push("afterAd"); if (done) return; open(false); wait(8000, () => viewed ? "viewed" : "skipped"); },
@@ -8241,6 +8245,7 @@
           adBreakDone: (info) => {
             const bs = info?.breakStatus;
             trace.push(`done:${bs || "?"}`);
+            if (late(`adBreakDone · ${bs || "?"}`)) return;
             if (bs === "viewed") viewed = true;   // adViewed 콜백이 안 와도 구글이 끝까지 봤다고 하면 보상
             if (!viewed && bs !== "dismissed" && !dismissed) why = String(bs || "other");
             finish(viewed ? "viewed" : bs === "dismissed" || dismissed ? "skipped" : "unavailable");
