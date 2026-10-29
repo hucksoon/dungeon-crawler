@@ -150,10 +150,14 @@ const CSS = `
   .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
 `;
 // 애드센스 자동 광고 코드 (dc#120): 공개 글·목록·게임 이미지 페이지에만. 네이버 옮기기 페이지(noindex)는 뺌
-//   어디에 광고를 넣을지는 AdSense의 자동 광고 설정(게임 첫 화면·상점·랭킹은 제외 페이지로)
+//   자동 광고는 AdSense에서 사이트 전체 끔 (게임 화면 양옆에 붙어서, dc#128). 광고는 글 끝 광고 칸(AD_UNIT)과 게임의 보상형 광고만
 const ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>';
+// 블로그 글 끝 디스플레이 광고 단위 "블로그 글" (dc#128): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그 글에만 이 칸을 직접 넣음
+const AD_UNIT = `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>`;
 const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -192,6 +196,7 @@ function postPage(p, prev, next) {
 <p class="meta">${dateText(p.date)}${p.tags.length ? " · " + p.tags.map(esc).join(" · ") : ""}</p>
 ${markdown(p.body, NO_STYLE)}
 </article>
+${AD_UNIT}
 <nav class="pager"><span>${prev ? `<a href="${prev.slug}.html">← ${esc(prev.title)}</a>` : ""}</span><span>${next ? `<a href="${next.slug}.html">${esc(next.title)} →</a>` : ""}</span></nav>`,
   });
 }

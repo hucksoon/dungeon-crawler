@@ -66,6 +66,9 @@ try {
   // 애드센스 자동 광고 코드 (dc#120): 공개 페이지(글·목록·게임 이미지)에만, 네이버 옮기기 페이지에는 없음
   const ads = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes("adsbygoogle.js?client=ca-pub-6503525638904411");
   check("AdSense code on public blog pages, not on Naver copy pages", ads("index.html") && ads("media.html") && posts.every(s => ads(`${s}.html`)) && !ads("naver/index.html") && posts.every(s => !ads(`naver/${s}.html`)));
+  // 블로그 글 끝 광고 칸 (dc#128): 공개 글에만, 네이버 옮기기·목록에는 없음
+  const unit = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes('data-ad-slot="6983849276"');
+  check("display ad unit at the end of public posts only", posts.every(s => unit(`${s}.html`)) && !unit("index.html") && posts.every(s => !unit(`naver/${s}.html`)));
   check("Naver pages are hidden from search (noindex)", fs.readFileSync(path.join(REPO, "blog/naver/index.html"), "utf8").includes('content="noindex"') && posts.every(s => fs.readFileSync(path.join(REPO, `blog/naver/${s}.html`), "utf8").includes('content="noindex"')));
 
   // 네이버 옮기기: 제목 복사, 본문 복사(서식 + 원문 링크)

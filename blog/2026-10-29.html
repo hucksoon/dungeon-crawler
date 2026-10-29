@@ -52,6 +52,7 @@
   .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
 </style>
 </head>
 <body>
@@ -95,7 +96,7 @@
 <p>그래서 광고를 부르고 6초 안에 광고가 뜨지 않으면 5초 안내 화면으로 대신하게 바꿨어요. 테스트에서도 아무 답도 하지 않는 가짜 스크립트를 넣어, 예전 코드는 멈추고 고친 코드는 안내 화면이 뜨는 것을 확인했어요.</p>
 <h3>게임에는 보상형 광고만, 블로그에는 자동 광고</h3>
 <p>애드센스의 광고 설정 화면을 보니 게임 페이지에 &quot;코드 가져오기&quot;라는 빨간 표시가 있었어요. 게임이 광고 코드를 광고 버튼을 누를 때만 불러와서, 구글이 페이지를 읽을 때는 코드가 보이지 않았던 거예요.</p>
-<ul><li>게임 페이지는 열 때부터 광고 코드를 불러오고, 보상형 광고를 미리 준비해 둬요. 버튼을 누르면 더 빨리 떠요</li><li>자동 광고(구글이 알아서 배너를 넣는 기능)는 게임 화면을 덮을 수 있어서 게임 페이지에서는 쓰지 않아요</li><li>대신 이 개발 블로그에는 자동 광고 코드를 넣었어요. 네이버로 옮기는 도우미 페이지에는 넣지 않았어요</li><li>Poki·CrazyGames 같은 게임 포털 버전에는 구글 광고 코드가 들어가지 않는 것도 확인했어요</li></ul>
+<ul><li>게임 페이지는 열 때부터 광고 코드를 불러오고, 보상형 광고를 미리 준비해 둬요. 버튼을 누르면 더 빨리 떠요</li><li>자동 광고(구글이 알아서 배너를 넣는 기능)는 게임 화면을 덮을 수 있어서 게임 페이지에서는 쓰지 않아요</li><li>대신 이 개발 블로그에는 광고 코드를 넣었어요. 네이버로 옮기는 도우미 페이지에는 넣지 않았어요</li><li>나중에 자동 광고가 게임 화면 양옆에 붙는 걸 보고 자동 광고는 아예 껐어요. 블로그에는 글 끝에 광고 칸을 하나 직접 넣었어요</li><li>Poki·CrazyGames 같은 게임 포털 버전에는 구글 광고 코드가 들어가지 않는 것도 확인했어요</li></ul>
 <h3>광고를 기다리는 동안</h3>
 <p>진짜 광고는 버튼을 누르고 동영상이 뜨기까지 몇 초가 걸리기도 해요. 그동안 화면에 아무 변화가 없으면 눌린 건지 알 수가 없어요.</p>
 <ul><li>누르자마자 &quot;광고를 불러오는 중이에요. 잠시만 기다려 주세요.&quot; 창이 떠요</li><li>광고가 뜨면 이 창은 저절로 닫혀요</li><li>기다리기 싫으면 &quot;취소&quot;를 누르면 돼요. 바로 닫히고 보상은 없어요. 그 뒤에 광고가 늦게 와도 띄우지 않아요</li></ul>
@@ -132,6 +133,8 @@
 <h2>다음에 할 것</h2>
 <ul><li>직접 해 보면서 0.5초·5칸·세트 스킬 3턴이 괜찮은지 보기</li><li>최고 조합 페이지를 세트 스킬 3턴으로 다시 계산하기</li><li>진짜 광고가 잘 뜨는지 실제 사이트에서 확인하기</li><li>끝이 없는 구멍 16~20층이 너무 어렵지 않은지 직접 내려가 보기</li><li>3D 화면 다듬기: 몬스터를 3D 모델로</li><li>안드로이드 앱으로 만들어서 구글 플레이에 올리기</li></ul>
 </article>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <nav class="pager"><span><a href="2026-10-28.html">← 3D 화면 시험판, 상자 확률 공개, 무료 선물, 그리고 자동 테스트</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
 </main>
