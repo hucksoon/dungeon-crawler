@@ -2178,8 +2178,11 @@
     }
     const n = RLMonsters.nmMonsterCount(ABYSS.hellFloor);
     const count = between(n - NM.monsters.spread, n + NM.monsters.spread);
+    // 들어오자마자 둘러싸이지 않게: 시작 자리에서 알아채는 거리(CHASE_RANGE) 안에는 두지 않음 (dc#125)
+    const start = { x: player.x, y: player.y };
     for (let i = 0; i < count; i++) {
-      const spot = randomFloor([player, ...enemies]);
+      let spot = null;
+      for (let t = 0; t < 20 && !spot; t++) { const s = randomFloor([player, ...enemies]); if (s && dist(s, start) > CHASE_RANGE) spot = s; }
       if (!spot) break;
       const kind = Math.random() < RLMonsters.eliteChance(NM.base) ? "elite" : "normal";
       const m = plan.all ? RLMonsters.makeAbyssNamed(plan.all, depth, false) : RLMonsters.makeAbyss(RLMonsters.pickNightmareType(Math.random), kind, depth);
@@ -2452,14 +2455,14 @@
 
   // ---- 헬 네임드 보스 패턴 (수치는 monsters.js NAMED) ----
   // 저승사자: 한 번 보이면(engaged) 쓰러뜨릴 때까지 포탈 불가, 흡혈 × reaper.lifesteal
-  const reaperOn = () => (scene === "dungeon" ? enemies.find(e => e.pattern === "reaper" && e.engaged && e.hp > 0) : null);
+  const reaperOn = () => (scene === "dungeon" ? enemies.find(e => e.pattern === "reaper" && e.engaged && e.hp > 0 && !e.mob) : null);   // 구멍 일반 자리 저승사자는 포탈을 막지 않음 (흡혈만 줄임)
   const lsMul = () => reaperOn()?.reaper.lifesteal ?? 1;
   // 몬스터 공격력 (염라대왕은 HP가 적으면 분노)
   const enrageOn = (e) => e.pattern === "judge" && e.hp <= e.maxHp * e.judge.enrageAt;
   const foeAtk = (e) => e.atk * (enrageOn(e) ? e.judge.enrageMul : 1);
   // 이무기 꼬리 휩쓸기: 이번 턴에 휩쓰는지 / 다음 턴에 휩쓰는지(예고)
-  const sweepNow = (e) => e.pattern === "sweep" && turn % e.sweep.every === 0;
-  const sweepSoon = (e) => e.pattern === "sweep" && (turn + 1) % e.sweep.every === 0;
+  const sweepNow = (e) => e.pattern === "sweep" && (turn + (e.phase || 0)) % e.sweep.every === 0;   // phase: 구멍 일반 자리 이무기는 마리마다 박자가 다름
+  const sweepSoon = (e) => e.pattern === "sweep" && (turn + 1 + (e.phase || 0)) % e.sweep.every === 0;
   // 몬스터가 행동하기 전에: 염라대왕 속성 바꾸기·분노, 구미호 분신
   function namedTurn(e) {
     if (e.pattern === "judge") {

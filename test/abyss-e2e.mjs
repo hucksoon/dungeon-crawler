@@ -32,6 +32,10 @@ check("scale: floor 1 ×1, floor 2 ×1.07, floor 20 ×2.33", M.abyssScale(1) ===
 const g1 = M.makeAbyssNamed(50, 1), g20 = M.makeAbyssNamed(50, 20), hellBoss = M.makeHellBoss(50, "fire");
 check("named guard: stronger than the hell 50 boss and grows with depth, kind boss, abyss", g1.kind === "boss" && g1.abyss === 1 && !g1.mob && g1.hp > hellBoss.hp && g20.hp > g1.hp * 2.3 && g20.atk > g1.atk * 2.2 && g1.pattern === "judge", JSON.stringify([g1.hp, g20.hp, hellBoss.hp]));
 check("named in a mob slot (floors 16~20) is marked mob (does not guard the stairs)", M.makeAbyssNamed(10, 16, false).mob === 1);
+// dc#125: 일반 자리 네임드는 그 층 일반 몬스터 세기 (지킴이와 같은 세기라 18층에서 들어가자마자 쓰러졌음), 패턴 박자는 마리마다
+{ const g18 = M.makeAbyssNamed(30, 18), m18 = M.makeAbyssNamed(30, 18, false, () => 0.5), reg = M.makeAbyss(M.pickNightmareType(() => 0.5), "normal", 18, "bolt");
+  const phases = new Set(Array.from({ length: 30 }, () => M.makeAbyssNamed(30, 18, false).phase));
+  check("mob-slot named: regular-mob strength (not the guard's), 이무기 pattern kept, beats spread out", m18.hp === reg.hp && m18.atk === reg.atk && m18.hp * 10 < g18.hp && m18.atk < g18.atk / 2 && m18.pattern === "sweep" && m18.name === "이무기" && phases.size >= 3, JSON.stringify([m18.hp, reg.hp, g18.hp, m18.atk, g18.atk, [...phases]])); }
 const t = M.MONSTERS.at(-1), h50 = M.makeHell(t, "normal", 50, "fire"), a1 = M.makeAbyss(t, "normal", 1, "fire"), a10 = M.makeAbyss(t, "normal", 10, "fire");
 check("regular mob: hell 50 strength ×scale, XP ×3", a1.hp === h50.hp && a1.xp === h50.xp * 3 && a10.hp === Math.round(h50.hp * 1.63) && a1.abyss === 1, JSON.stringify([a1.hp, h50.hp, a10.hp]));
 
@@ -46,6 +50,7 @@ const HOOK = `
     stairs: (clear = true) => { for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (map[y][x] === STAIRS) {
       if (clear) enemies = enemies.filter(e => (e.kind === "boss" && !e.mob) || dist(e, { x, y }) > RLMonsters.STAIRS_BLOCK_RADIUS);
       player.x = x; player.y = y; arrive(x, y); render(); return true; } return false; },
+    near: () => enemies.filter(e => dist(e, player) <= CHASE_RANGE).length,
     jump: (n) => { depth = n; newLevel(generateDungeon()); render(); updateStats(); saveGame(true); },
     die: () => { player.hp = 0; death(); render(); },
   };
@@ -126,6 +131,9 @@ try {
   await page.evaluate(() => { window.__t.kill(true); window.__t.kill(true); }); await sleep(100);
   check("floor 16: guards down → stairs open with the mob 불가사리 still alive", !(await st(page)).boss && (await st(page)).foes.length >= 38);
   await page.screenshot({ path: `${OUT}/abyss-floor16.png` });
+  // 18층 (모두 이무기, dc#125): 시작 자리 5칸 안에는 몬스터가 없음
+  await page.evaluate(() => window.__t.jump(18)); await sleep(200);
+  check("floor 18: no monster within 5 tiles of the start", (await page.evaluate(() => window.__t.near())) === 0 && (await st(page)).foes.every(f => f.name === "이무기"), String(await page.evaluate(() => window.__t.near())));
   // 쓰러지면 새로 시작 → 웨이포인트 구멍은 다시 1층부터
   await page.evaluate(() => window.__t.die()); await sleep(200);
   await page.locator("#death-restart").click(); await sleep(400);
