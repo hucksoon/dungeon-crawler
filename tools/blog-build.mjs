@@ -151,6 +151,9 @@ const CSS = `
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
 `;
+// 애드센스 자동 광고 코드 (dc#120): 공개 글·목록·게임 이미지 페이지에만. 네이버 옮기기 페이지(noindex)는 뺌
+//   어디에 광고를 넣을지는 AdSense의 자동 광고 설정(게임 첫 화면·상점·랭킹은 제외 페이지로)
+const ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>';
 const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -167,7 +170,7 @@ ${noindex ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-${image ? `<meta property="og:image" content="${image}">\n` : ""}
+${image ? `<meta property="og:image" content="${image}">\n` : ""}${noindex ? "" : `${ADSENSE}\n`}
 <style>${CSS}${extraHead}</style>
 </head>
 <body>

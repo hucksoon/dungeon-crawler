@@ -134,7 +134,9 @@ try {
 
   // ---- 진짜 구글 보상형 광고 (dc#118, ads-config.js provider h5) ----
   ({ ctx, page, errors } = await open({ rl_device_id: "gifth5-e2e-0001", ...save() }, { h5: "viewed" }));
-  await waitFor(() => banner(page).isVisible()); await banner(page).click();
+  await waitFor(() => banner(page).isVisible());
+  check("h5 (dc#120): Google ad code is loaded in <head> when the page opens (before any ad button)", await page.evaluate(() => !![...document.head.querySelectorAll("script")].find(s => s.src.includes("adsbygoogle.js?client=ca-pub-6503525638904411")) && !window.__h5calls));
+  await banner(page).click();
   check("h5: Google reward ad plays (no stand-in window), game counts as 'ad open' while it shows", await waitFor(() => page.evaluate(() => window.__h5during === true), 6000) && await page.locator("#ad-modal").isHidden() && await page.evaluate(() => window.__h5calls) === 1);
   check("h5: watched to the end → 3 gifts", await waitFor(() => page.locator("#gift-modal").isVisible(), 6000) && (await page.locator(".gift-card").count()) === 3 && !(await st(page)).ad);
   const src = await page.evaluate(() => [...document.scripts].find(s => s.src.includes("adsbygoogle"))?.outerHTML || "");
