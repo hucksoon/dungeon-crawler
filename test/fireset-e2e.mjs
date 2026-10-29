@@ -1,4 +1,4 @@
-// 화염의 세트 (r4, 나이트메어 전용): 파이어볼 2턴마다 3×3, 4세트 피해 +50%·불 저항, 5세트 화상 + 가방 기록 200개 제한
+// 화염의 세트 (r4, 나이트메어 전용): 파이어볼 3턴마다 3×3 (dc#116부터, 전에는 2턴), 4세트 피해 +50%·불 저항, 5세트 화상 + 가방 기록 200개 제한
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
@@ -89,11 +89,13 @@ try {
   await page.screenshot({ path: path.join(OUT, "fireball.png") });
   const d1 = 1e6 - h[1];
   await press(page, "."); await sleep(200);
-  check("next turn: cooldown (HUD 1턴), no cast", (await hp(page))[3] === 1e6 && (await page.locator("#status").innerText()).includes("파이어볼 1턴") && ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 1);
+  check("next turn: cooldown (HUD 2턴), no cast", (await hp(page))[3] === 1e6 && (await page.locator("#status").innerText()).includes("파이어볼 2턴") && ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 1);
   await press(page, "."); await sleep(200);
-  check("every 2 turns: cast again", ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 2);
+  check("turn after: cooldown (HUD 1턴), still no cast", (await page.locator("#status").innerText()).includes("파이어볼 1턴") && ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 1);
+  await press(page, "."); await sleep(200);
+  check("every 3 turns (dc#116): cast again", ((await logs(page)).match(/🔥 파이어볼!/g) || []).length === 2);
   await press(page, "i"); await sleep(150);
-  check("inventory: 화염의 세트 (5/5), fireball row", (await page.locator("#inv-summary").innerText()).includes("화염의 세트 (5/5)") && (await page.locator("#inv-summary").innerText()).includes("파이어볼: 2턴마다 3×3"));
+  check("inventory: 화염의 세트 (5/5), fireball row", (await page.locator("#inv-summary").innerText()).includes("화염의 세트 (5/5)") && (await page.locator("#inv-summary").innerText()).includes("파이어볼: 3턴마다 3×3"));
   check("no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();
 
@@ -153,10 +155,10 @@ try {
   L = await level(page);
   const turnNow = L.turn;
   check("chain 5세트, one enemy: hit 4 times + shock", (await logs(page)).includes("⚡ 체인 라이트닝! 4번 튕겨") && L.enemies[0].shock > turnNow, JSON.stringify([L.enemies[0].hp, L.enemies[0].shock, turnNow]));
-  check("HUD: ⚡ 체인 2턴 after cast", (await page.locator("#status").innerText()).includes("체인 2턴"));
+  check("HUD: ⚡ 체인 3턴 after cast (3턴마다, dc#116)", (await page.locator("#status").innerText()).includes("체인 3턴"));
   await page.screenshot({ path: path.join(OUT, "chain.png") });
   await press(page, "i"); await sleep(150);
-  check("inventory: 뇌전의 세트 (5/5), chain row with 4번 튕김 · 감전", (await page.locator("#inv-summary").innerText()).includes("뇌전의 세트 (5/5)") && (await page.locator("#inv-summary").innerText()).includes("4번 튕김"));
+  check("inventory: 뇌전의 세트 (5/5), chain row with 4번 튕김 · 감전", (await page.locator("#inv-summary").innerText()).includes("뇌전의 세트 (5/5)") && (await page.locator("#inv-summary").innerText()).includes("4번 튕김") && (await page.locator("#inv-summary").innerText()).includes("체인 라이트닝: 3턴마다"));
   check("no page errors (storm)", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally { await browser.close(); }

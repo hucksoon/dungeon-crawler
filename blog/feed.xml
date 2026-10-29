@@ -6,11 +6,11 @@
 <description>Claude Code와 같이 라이브 코딩으로 만드는 브라우저 로그라이크 게임의 개발 이야기</description>
 <language>ko</language>
 <item>
-<title>3D 화면 속도 조절: 한 턴 0.5초, 몬스터는 5칸부터</title>
+<title>3D 화면 속도 조절과 세트 스킬 3턴마다</title>
 <link>https://game.apacimtest.com/blog/2026-10-29.html</link>
 <guid>https://game.apacimtest.com/blog/2026-10-29.html</guid>
 <pubDate>Thu, 29 Oct 2026 12:00:00 GMT</pubDate>
-<description>3D 화면에서 시간이 흐르는 속도를 0.6초에서 0.5초로 조금 빠르게 하고, 몬스터가 나를 알아채는 거리는 6칸에서 5칸으로 줄였어요.</description>
+<description>3D 화면의 한 턴을 0.5초로 조금 빠르게, 몬스터가 알아채는 거리는 5칸으로 줄이고, 너무 자주 터지던 세트 스킬은 3턴마다로 바꿨어요.</description>
 </item>
 <item>
 <title>3D 화면 시험판, 상자 확률 공개, 무료 선물, 그리고 자동 테스트</title>

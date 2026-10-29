@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 3D 화면 속도 조절: 한 턴 0.5초, 몬스터는 5칸부터</title>
-<meta name="description" content="3D 화면에서 시간이 흐르는 속도를 0.6초에서 0.5초로 조금 빠르게 하고, 몬스터가 나를 알아채는 거리는 6칸에서 5칸으로 줄였어요.">
+<title>[네이버 옮기기] 3D 화면 속도 조절과 세트 스킬 3턴마다</title>
+<meta name="description" content="3D 화면의 한 턴을 0.5초로 조금 빠르게, 몬스터가 알아채는 거리는 5칸으로 줄이고, 너무 자주 터지던 세트 스킬은 3턴마다로 바꿨어요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-10-29.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 3D 화면 속도 조절: 한 턴 0.5초, 몬스터는 5칸부터">
-<meta property="og:description" content="3D 화면에서 시간이 흐르는 속도를 0.6초에서 0.5초로 조금 빠르게 하고, 몬스터가 나를 알아채는 거리는 6칸에서 5칸으로 줄였어요.">
+<meta property="og:title" content="[네이버 옮기기] 3D 화면 속도 조절과 세트 스킬 3턴마다">
+<meta property="og:description" content="3D 화면의 한 턴을 0.5초로 조금 빠르게, 몬스터가 알아채는 거리는 5칸으로 줄이고, 너무 자주 터지던 세트 스킬은 3턴마다로 바꿨어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-10-29.html">
 
 <style>
@@ -67,7 +67,7 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-10-29.html">블로그 글 보기</a></nav>
-<h1 id="title-text">3D 화면 속도 조절: 한 턴 0.5초, 몬스터는 5칸부터</h1>
+<h1 id="title-text">3D 화면 속도 조절과 세트 스킬 3턴마다</h1>
 <p class="meta">2026년 10월 29일 (목) · 태그: 개발일기, 3D, 밸런스, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
@@ -107,8 +107,27 @@
 <p><br></p>
 <p>3D 화면 테스트도 0.5초에 맞게 고쳤어요. 컴퓨터가 그림을 느리게 그리는 테스트 환경에서는 턴이 조금 늦게 지나가기도 해서, 정해진 시간만 기다리지 않고 결과가 나올 때까지 기다리게 바꿨어요.</p>
 <p><br></p>
+<p><b><span style="font-size:24px;">세트 스킬은 3턴마다</span></b></p>
+<p>뇌전의 세트를 다 모아서 번개를 써 보니 너무 자주 터졌어요. 지금 값부터 다시 확인했어요.</p>
+<p><br></p>
+<p>• 뇌전의 세트 5개면 체인 라이트닝이 2턴마다 나가요. 3D 화면에서는 1초에 한 번이에요</p>
+<p>• 한 번 쓸 때 번개가 4번 튕겨서, 적이 한 마리여도 1초에 번개 숫자가 4개씩 떠요</p>
+<p><br></p>
+<p>세 가지 안을 놓고 골랐어요.</p>
+<p><br></p>
+<p>• 3턴마다로 바꾸고 한 번 피해를 올려 전체 피해는 그대로</p>
+<p>• <strong>3턴마다로 바꾸고 피해는 그대로</strong> (조금 약해짐)</p>
+<p>• 2턴마다 그대로 두고 튕기는 횟수만 줄이기</p>
+<p><br></p>
+<p>두 번째로 정했고, 화염의 세트 파이어볼과 서리의 세트 프로스트 노바도 똑같이 3턴마다로 맞췄어요. 3D 화면에서는 1.5초에 한 번이에요. 한 번 맞을 때의 피해는 그대로라서, 세트 스킬이 시간당 주는 피해는 약 1/3 줄었어요. 스킬을 1턴 더 자주 쓰게 해 주는 룬워드 마음가짐을 끼면 2턴마다예요.</p>
+<p><br></p>
+<p>장비 설명, 영어·일본어 설명, 규칙 문서의 &quot;2턴마다&quot;도 모두 &quot;3턴마다&quot;로 고쳤어요. 테스트에서는 파이어볼을 쓴 뒤 2턴, 1턴 남았다가 세 번째 턴에 다시 나가는 것을 확인했어요.</p>
+<p><br></p>
+<p>최고 조합 페이지의 순위는 예전 2턴 기준으로 계산한 거라, 세트 스킬을 쓰는 조합이 실제보다 조금 좋게 나와요. 다음에 다시 계산할게요.</p>
+<p><br></p>
 <p><b><span style="font-size:24px;">다음에 할 것</span></b></p>
-<p>• 직접 해 보면서 0.5초와 5칸이 괜찮은지 보기</p>
+<p>• 직접 해 보면서 0.5초·5칸·세트 스킬 3턴이 괜찮은지 보기</p>
+<p>• 최고 조합 페이지를 세트 스킬 3턴으로 다시 계산하기</p>
 <p>• 3D 화면 다듬기: 몬스터를 3D 모델로</p>
 <p>• 안드로이드 앱으로 만들어서 구글 플레이에 올리기</p>
 <p><br></p>
