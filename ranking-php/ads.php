@@ -49,7 +49,8 @@ function entry_status_for(array $who): array {
     $day = today_kst();
     $used = entries_used($who['key'], $day);
     $ads = [];
-    foreach (AD_CAPS as $kind => $cap) $ads[$kind] = max(0, $cap - ads_used($who['key'], $day, $kind));
+    // 운영자 기기(unlimited)는 광고 보상 하루 상한 없음 (dc#123, 테스트용) — 남은 횟수는 늘 상한 그대로
+    foreach (AD_CAPS as $kind => $cap) $ads[$kind] = !empty($who['unlimited']) ? $cap : max(0, $cap - ads_used($who['key'], $day, $kind));
     return [
         'day' => $day, 'free' => FREE_ENTRIES, 'used' => $used,
         'left' => $who['developer'] ? FREE_ENTRIES : max(0, FREE_ENTRIES - $used),
@@ -66,14 +67,14 @@ function ad_start(): array {
     if (!isset(AD_CAPS[$kind])) throw new HttpError(400, 'bad_kind');
     $day = today_kst();
     $now = now_ms();
-    if (ads_used($who['key'], $day, $kind) >= AD_CAPS[$kind]) throw new HttpError(429, 'ad_limit');
+    if (empty($who['unlimited']) && ads_used($who['key'], $day, $kind) >= AD_CAPS[$kind]) throw new HttpError(429, 'ad_limit');
     // 티켓만 잔뜩 받아 두지 못하게: 아직 안 쓴 최근 티켓은 5장까지
     $open = (int)q_val('SELECT COUNT(*) FROM ad_tickets WHERE pkey = ? AND used_at IS NULL AND started_at > ?', [$who['key'], $now - AD_TICKET_TTL_MS]);
     if ($open >= 5) throw new HttpError(429, 'too_many_tickets');
     db()->prepare('DELETE FROM ad_tickets WHERE started_at < ?')->execute([$now - 3 * 86400000]);
     $id = new_id();
     db()->prepare('INSERT INTO ad_tickets (id, pkey, kind, day, started_at) VALUES (?, ?, ?, ?, ?)')->execute([$id, $who['key'], $kind, $day, $now]);
-    return ['ticket' => $id, 'minSeconds' => ad_min_seconds(), 'left' => AD_CAPS[$kind] - ads_used($who['key'], $day, $kind)];
+    return ['ticket' => $id, 'minSeconds' => ad_min_seconds(), 'left' => !empty($who['unlimited']) ? AD_CAPS[$kind] : AD_CAPS[$kind] - ads_used($who['key'], $day, $kind)];
 }
 
 // 광고 티켓 확인: 내 것, 같은 종류, 오늘 받은 것, 최소 시간이 지난 것, 아직 안 쓴 것
@@ -83,7 +84,7 @@ function check_ticket(array $who, $ticket, string $kind): array {
     if (!$t || $t['pkey'] !== $who['key'] || $t['kind'] !== $kind || $t['used_at'] !== null
         || $t['day'] !== today_kst() || (int)$t['started_at'] < $now - AD_TICKET_TTL_MS) throw new HttpError(403, 'bad_ticket');
     if ($now - (int)$t['started_at'] < ad_min_seconds() * 1000) throw new HttpError(403, 'ad_too_short');
-    if (ads_used($who['key'], $t['day'], $kind) >= AD_CAPS[$kind]) throw new HttpError(429, 'ad_limit');
+    if (empty($who['unlimited']) && ads_used($who['key'], $t['day'], $kind) >= AD_CAPS[$kind]) throw new HttpError(429, 'ad_limit');
     return $t;
 }
 // 티켓 쓰기 (한 번만)

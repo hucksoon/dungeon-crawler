@@ -1,6 +1,6 @@
 // 하루 입장 횟수 + 광고 티켓 (입장·부활·수수료 면제) 서버 테스트
 import { createRequire } from "node:module";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import http from "node:http"; import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
 const REPO = process.argv[2];
@@ -29,7 +29,7 @@ const U = (sub, email) => ({ sub, token: jwt(sub, email) });
 const A = U("ads-a", "ann@example.com"), B = U("ads-b", "ben@example.com"), DEV = U("ads-dev", "dev1@example.com"), G = { guest: "adsguest-0000" };
 async function call(route, who, body) {
   const headers = { "Content-Type": "application/json", Origin: "https://hucksoon.github.io" };
-  if (who?.token) headers.Authorization = `Bearer ${who.token}`; if (who?.guest) headers["X-Guest-Id"] = who.guest;
+  if (who?.token) headers.Authorization = `Bearer ${who.token}`; if (who?.guest) headers["X-Guest-Id"] = who.guest; if (who?.device) headers["X-Device-Id"] = who.device;
   const r = await fetch(`http://127.0.0.1:8100/api.php?r=${route}`, { method: body === undefined ? "GET" : "POST", headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {} return { status: r.status, body: j, text: t };
 }
@@ -66,6 +66,15 @@ try {
   // 개발자: 입장 무제한
   for (let i = 0; i < 7; i++) last = await call("entry", DEV, {});
   check("developer: unlimited entries", last.status === 200 && last.body.by === "developer" && last.body.unlimited === true);
+  // dc#123: 운영자 기기(운영자 계정 + 등록한 기기)는 광고 보상 하루 상한도 없음 (테스트용). 운영자 계정이라도 등록 안 한 기기는 그대로
+  const reg = spawnSync("php", [path.join(REPO, "ranking-php/admin.php"), "devices", "add", "adsdev-device-01", "test"], { env: { ...process.env, RANKING_CONFIG: path.join(DIR, "config.ads.php") } });
+  const STAFF = { ...DEV, device: "adsdev-device-01" }, DEVX = { ...DEV, device: "adsdev-other-01" };
+  const st1 = await call("ad_start", STAFF, { kind: "revive" });
+  db().prepare("UPDATE ad_tickets SET used_at = 1 WHERE id = ?").run(st1.body.ticket);   // 오늘 광고 부활 1회(상한) 다 씀
+  const st2 = await call("ad_start", STAFF, { kind: "revive" }), stx = await call("ad_start", DEVX, { kind: "revive" });
+  const sStaff = (await call("entry_status", STAFF)).body;
+  check("staff device: daily ad cap doesn't apply (revive cap 1 used → still gets a ticket, status shows full)", reg.status === 0 && st1.status === 200 && st2.status === 200 && !!st2.body.ticket && sStaff.ads.revive === 1, JSON.stringify([reg.stdout.toString(), st2.body, sStaff.ads]));
+  check("same operator account on an unregistered device: cap applies (ad_limit)", stx.status === 429 && stx.body?.error === "ad_limit", stx.text);
   check("no raw ids in tables", !JSON.stringify([db().prepare("SELECT * FROM daily_entries").all(), db().prepare("SELECT * FROM ad_tickets").all()]).includes("adsguest-0000"));
 
   // ---- 거래소 수수료 면제 ----
