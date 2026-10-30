@@ -153,11 +153,19 @@ const CSS = `
   .ad-unit { margin: 28px 0; min-height: 50px; }
 `;
 // 애드센스 자동 광고 코드 (dc#120): 공개 글·목록·게임 이미지 페이지에만. 네이버 옮기기 페이지(noindex)는 뺌
-//   자동 광고는 AdSense에서 사이트 전체 끔 (게임 화면 양옆에 붙어서, dc#128). 광고는 글 끝 광고 칸(AD_UNIT)과 게임의 보상형 광고만
+//   자동 광고는 AdSense에서 사이트 전체 끔 (게임 화면 양옆에 붙어서, dc#128). 광고는 글 중간 광고 칸(AD_UNIT)과 게임의 보상형 광고만
 const ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>';
-// 블로그 글 끝 디스플레이 광고 단위 "블로그 글" (dc#128): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그 글에만 이 칸을 직접 넣음
+// 블로그 글 디스플레이 광고 단위 "블로그 글" (dc#128): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그 글에만 이 칸을 직접 넣음
 const AD_UNIT = `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>`;
+// 광고 칸은 본문 중간 (dc#129): 글 길이의 절반에 가장 가까운 소제목(h2·h3, 없으면 문단 끝) 바로 앞. 첫 줄 앞에는 안 넣음
+function withMidAd(html) {
+  const at = (re) => [...html.matchAll(re)].map(m => m.index + (m[0].startsWith("</") ? m[0].length : 0)).filter(i => i > 0 && i < html.length);
+  const cuts = [/<h[23][ >]/g, /<\/p>\n/g].map(at).find(c => c.length);
+  if (!cuts) return `${html}\n${AD_UNIT}`;
+  const mid = cuts.reduce((a, b) => Math.abs(b - html.length / 2) < Math.abs(a - html.length / 2) ? b : a);
+  return `${html.slice(0, mid)}${AD_UNIT}\n${html.slice(mid)}`;
+}
 const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -194,9 +202,8 @@ function postPage(p, prev, next) {
 <article>
 <h1>${esc(p.title)}</h1>
 <p class="meta">${dateText(p.date)}${p.tags.length ? " · " + p.tags.map(esc).join(" · ") : ""}</p>
-${markdown(p.body, NO_STYLE)}
+${withMidAd(markdown(p.body, NO_STYLE))}
 </article>
-${AD_UNIT}
 <nav class="pager"><span>${prev ? `<a href="${prev.slug}.html">← ${esc(prev.title)}</a>` : ""}</span><span>${next ? `<a href="${next.slug}.html">${esc(next.title)} →</a>` : ""}</span></nav>`,
   });
 }
