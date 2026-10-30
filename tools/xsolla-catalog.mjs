@@ -27,6 +27,20 @@ const USD = (amount) => [
 ];
 const CASH_PRICE = (amount) => [{ sku: CASH, amount, is_default: true, is_enabled: true }];
 
+// 상품 그림 (웹샵 디자인 시안의 🎁·◆·▣를 도트 그림으로, 원본은 img/shop-items/). Shop Builder 자산으로 올린 CDN 주소
+const IMG_BASE = "https://cdn.xsolla.net/merchant-bucket-prod/files/uploaded/sitebuilder/16851/";
+const IMG = {
+  cash: `${IMG_BASE}d1967d503f7fbeac20e2a8ae77deac29.png`,
+  cash_10: `${IMG_BASE}110a954033078b66ffa5d03dcf74f5cb.png`,
+  cash_50: `${IMG_BASE}e1156072069eaa4842152699db38469e.png`,
+  cash_100: `${IMG_BASE}79192b971f68f7d3179740914fe6fe91.png`,
+  cash_200: `${IMG_BASE}94743520b4713b73ebeb91f808553718.png`,
+  box_equipment_1: `${IMG_BASE}884124ea7b0e590c3c03e31024ea1200.png`,
+  box_equipment_10: `${IMG_BASE}6e0668f719ccbc409dff8ecac02c2f07.png`,
+  box_equipment_50: `${IMG_BASE}eec1ef008ab4e14408fada1b91e30ce1.png`,
+  ancient_unique_box: `${IMG_BASE}d33ed8f47044ab9233cc69cf0b247343.png`,
+};
+
 const GROUPS = [
   { external_id: "cash_packs", name: { en: "Cash", ko: "캐시 충전" }, order: 1 },
   { external_id: "equipment_boxes", name: { en: "Equipment boxes", ko: "장비 상자" }, order: 2 },
@@ -41,6 +55,7 @@ const CURRENCY = {
   name: { en: "Cash", ko: "캐시", ja: "キャッシュ" },
   description: { en: "Premium currency for equipment boxes.", ko: "장비 상자를 살 때 쓰는 캐시예요.", ja: "装備ボックスの購入に使うキャッシュです。" },
   prices: USD(0.1),
+  image_url: IMG.cash,
   is_enabled: true,
   is_show_in_store: false,
 };
@@ -51,6 +66,7 @@ const PACKAGES = [10, 50, 100, 200].map((qty, i) => ({
   description: { en: `${qty} Cash for equipment boxes.`, ko: `장비 상자에 쓸 캐시 ${qty}개예요.`, ja: `装備ボックスに使えるキャッシュ ${qty}です。` },  // API상 필수
   groups: ["cash_packs"],
   prices: USD(qty / 10),
+  image_url: IMG[`cash_${qty}`],
   content: [{ sku: CASH, quantity: qty }],
   is_enabled: true,
   is_show_in_store: true,
@@ -69,6 +85,7 @@ const BOXES = [1, 10, 50].map((draws, i) => ({
   groups: ["equipment_boxes"],
   virtual_item_type: "consumable",
   vc_prices: CASH_PRICE(draws * 10),
+  image_url: IMG[`box_equipment_${draws}`],
   is_paid_randomized_reward: true,
   is_enabled: true,
   is_show_in_store: true,
@@ -111,6 +128,7 @@ const OFFERS = [{
     { currency: "KRW", country_iso: "KR", amount: 6900, is_default: false, is_enabled: true },
     { currency: "JPY", country_iso: "JP", amount: 750, is_default: false, is_enabled: true },
   ],
+  image_url: IMG.ancient_unique_box,
   limits: { per_user: { total: 1 }, per_item: null },
   is_enabled: true,
   is_show_in_store: true,
@@ -210,8 +228,9 @@ async function ensurePriced(label, url, createUrl, def, priceField = "prices") {
   const { status, data } = await api("GET", url);
   if (status !== 200) return ensure(label, async () => false, () => api("POST", createUrl, def));
   const samePrice = priceKey(data[priceField]) === priceKey(def[priceField]);
-  if (samePrice && sameText(data, def)) { console.log(`  = ${label} (이미 있음)`); return; }
-  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명"].filter(Boolean).join(", ");
+  const sameImage = (data.image_url || "") === (def.image_url || "");
+  if (samePrice && sameText(data, def) && sameImage) { console.log(`  = ${label} (이미 있음)`); return; }
+  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명", !sameImage && "그림"].filter(Boolean).join(", ");
   if (!APPLY) { console.log(`  ~ ${label} (${what} 갱신 예정)`); return; }
   const res = await api("PUT", url, def);
   if (res.status >= 200 && res.status < 300) console.log(`  ✓ ${label} ${what} 갱신됨`);
