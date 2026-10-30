@@ -21,6 +21,27 @@ sudo cp /tmp/dungeon/site/ads.txt /var/www/html/
 
 확인: https://apacimtest.com/ , https://apacimtest.com/privacy.html , https://apacimtest.com/ads.txt
 
+## HTML은 올 때마다 새로 확인 (한 번만, dc#134)
+
+Apache가 `Cache-Control`을 보내지 않으면 브라우저가 첫 화면을 한동안 저장해 두어서, 새로 올려도 예전 화면이 보여요(시크릿 창에서만 새 화면).
+HTML에만 `no-cache`(올 때마다 서버에 바뀌었는지 물어봄, 안 바뀌었으면 짧은 304 응답)를 붙여요. 그림·스크립트는 그대로 저장해요.
+
+```bash
+sudo a2enmod headers
+sudo tee /etc/apache2/conf-available/html-nocache.conf >/dev/null <<'CONF'
+<Directory /var/www/html>
+  <FilesMatch "\.html?$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</Directory>
+CONF
+sudo a2enconf html-nocache
+sudo apache2ctl configtest && sudo systemctl reload apache2
+curl -sI https://apacimtest.com/ | grep -i cache-control     # Cache-Control: no-cache 가 나오면 끝
+```
+
+되돌리기: `sudo a2disconf html-nocache && sudo systemctl reload apache2`
+
 ## 스크린샷 다시 찍기
 
 `img/`의 그림은 게임 화면을 그대로 찍은 거예요. 화면이 많이 바뀌면 다시 찍어서 바꿔요.
