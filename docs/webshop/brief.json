@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "project": {
+    "merchant_id": 16851,
+    "project_id": 317991,
+    "environment": "test",
+    "test_project_acknowledged": true
+  },
+  "game": {
+    "name": "Dungeon Crawler",
+    "platforms": ["web"],
+    "lifecycle": "live-service"
+  },
+  "site": {
+    "name": "Dungeon Crawler Web Shop",
+    "slug": "dungeon-crawler-shop",
+    "preset": "mobile-single-page",
+    "primary_locale": "ko-KR",
+    "locales": ["ko-KR", "en-US", "ja-JP"]
+  },
+  "catalog": {
+    "groups": [
+      { "external_id": "limited_offers", "type": "virtual_good", "placement": "featured" },
+      { "external_id": "cash_packs", "type": "virtual_currency", "placement": "primary" },
+      { "external_id": "equipment_boxes", "type": "virtual_good", "placement": "secondary" }
+    ],
+    "featured_skus": ["ancient_unique_box"]
+  },
+  "brand": {
+    "logo": "img/logo.webp",
+    "hero_image": "blog/images/store-cover.jpg",
+    "colors": { "background": "#0d0e14", "panel": "#16181f", "border": "#2a2d3a", "text": "#cdd3de", "accent": "#ffcf5c", "accent_hot": "#ff6a2a" },
+    "button_radius": "4px",
+    "font": "pixel or monospace (the game uses Courier New)",
+    "art_direction": "dark fantasy pixel art dungeon, torch light, gold accents, red-orange title lettering"
+  },
+  "content": {
+    "hero": {
+      "title": { "ko-KR": "던전 크롤러 웹샵", "en-US": "Dungeon Crawler Web Shop", "ja-JP": "ダンジョンクローラー ウェブショップ" },
+      "subtitle": {
+        "ko-KR": "게임과 같은 계정으로 로그인하고 캐시와 장비 상자를 사세요. 산 것은 게임 우편함으로 와요.",
+        "en-US": "Sign in with your game account to buy Cash and equipment boxes. Purchases arrive in your in-game mailbox.",
+        "ja-JP": "ゲームと同じアカウントでログインして、キャッシュと装備ボックスを購入できます。購入したものはゲームの郵便箱に届きます。"
+      },
+      "cta": { "ko-KR": "게임 하러 가기", "en-US": "Play now", "ja-JP": "ゲームをプレイ" },
+      "cta_url": "https://game.apacimtest.com"
+    },
+    "faq": [
+      {
+        "q": { "ko-KR": "어떤 계정으로 로그인하나요?", "en-US": "Which account do I sign in with?", "ja-JP": "どのアカウントでログインしますか？" },
+        "a": { "ko-KR": "게임에서 계정 연결에 쓴 이메일이나 휴대폰 번호로 로그인하세요. 게스트로만 플레이했다면 먼저 게임에서 계정을 연결해야 해요.", "en-US": "Use the email or phone number you linked in the game. If you have only played as a guest, link an account in the game first.", "ja-JP": "ゲームでアカウント連携に使ったメールアドレスまたは電話番号でログインしてください。ゲストでのみプレイしている場合は、先にゲームでアカウントを連携してください。" }
+      },
+      {
+        "q": { "ko-KR": "산 것은 어디서 받나요?", "en-US": "Where do I get my purchases?", "ja-JP": "購入したものはどこで受け取りますか？" },
+        "a": { "ko-KR": "캐시는 바로 계정에 들어가 게임 상점에서 쓸 수 있어요. 장비 상자와 고대 유니크 선택 상자는 게임 우편함으로 와요.", "en-US": "Cash is added to your account right away and can be used in the in-game shop. Equipment boxes and the Ancient Unique Choice Box arrive in your in-game mailbox.", "ja-JP": "キャッシュはすぐにアカウントに入り、ゲーム内ショップで使えます。装備ボックスと古代ユニーク選択ボックスはゲームの郵便箱に届きます。" }
+      },
+      {
+        "q": { "ko-KR": "장비 상자의 확률은 어디서 보나요?", "en-US": "Where can I see the equipment box odds?", "ja-JP": "装備ボックスの確率はどこで見られますか？" },
+        "a": { "ko-KR": "등급·고대·부위별 확률은 게임 상점의 확률 정보에서 볼 수 있어요: https://game.apacimtest.com/shop.html#odds", "en-US": "Odds by rarity, ancient chance and slot are on the in-game shop's odds page: https://game.apacimtest.com/shop.html#odds", "ja-JP": "等級・古代・部位ごとの確率はゲーム内ショップの確率情報で確認できます: https://game.apacimtest.com/shop.html#odds" }
+      },
+      {
+        "q": { "ko-KR": "고대 유니크 선택 상자는 몇 번 살 수 있나요?", "en-US": "How many Ancient Unique Choice Boxes can I buy?", "ja-JP": "古代ユニーク選択ボックスは何回買えますか？" },
+        "a": { "ko-KR": "계정당 한 번이에요. 게임 우편함에서 유니크 15종 중 하나를 골라 고대(모든 능력치 최대치)로 받아요.", "en-US": "One per account. Open it from your in-game mailbox and pick one of the 15 uniques as an Ancient item (all stats at max).", "ja-JP": "アカウントごとに1回です。ゲームの郵便箱でユニーク15種から1つを選び、古代（全能力値が最大）で受け取ります。" }
+      }
+    ],
+    "store_section_titles": {
+      "limited_offers": { "ko-KR": "한정 판매", "en-US": "Limited offers", "ja-JP": "限定販売" },
+      "cash_packs": { "ko-KR": "캐시 충전", "en-US": "Cash", "ja-JP": "キャッシュ" },
+      "equipment_boxes": { "ko-KR": "장비 상자 (캐시로 구매)", "en-US": "Equipment boxes (paid with Cash)", "ja-JP": "装備ボックス (キャッシュで購入)" }
+    },
+    "odds_notice": {
+      "ko-KR": "장비 상자는 무작위로 장비가 나오는 확률형 상품이에요. 확률 정보: https://game.apacimtest.com/shop.html#odds",
+      "en-US": "Equipment boxes contain random items. Odds: https://game.apacimtest.com/shop.html#odds",
+      "ja-JP": "装備ボックスはランダムで装備が出る確率型商品です。確率情報: https://game.apacimtest.com/shop.html#odds"
+    },
+    "excluded_groups": {
+      "game_items": "revive and event_coin are used only inside the game and its own shop (event claim flow); do not place them on the web shop"
+    },
+    "login": "Use the project's existing Xsolla Login (passwordless email / phone code, OAuth client 18732). Players must have the same Xsolla user ID as in the game. Guests (device only) cannot buy."
+  },
+  "sources": [
+    { "kind": "publisher_answers", "note": "Owner confirmed in chat on 2026-10-30 that project 317991 is their own test project and may be used for the web shop experiment" },
+    { "kind": "description", "note": "Game facts, catalog groups and SKUs taken from the dungeon-crawler repository (tools/xsolla-catalog.mjs, shop.html, index.html)" }
+  ]
+}
