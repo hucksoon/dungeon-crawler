@@ -216,6 +216,18 @@ const SCENES = [
       others: [["게스트 #3fa2c1", 24], ["게스트 #9b07de", 33]] });
     await o.page.waitForFunction(() => !document.getElementById("event-banner").hidden, null, { timeout: 5000 }).catch(() => {}); await sleep(600);
     return { ...o, shot: "#stage" }; }],
+  // 웹샵 (dc#134): apacimtest.com 첫 화면의 "지금 플레이" 옆 웹샵 버튼, 웹샵 상품 그림 (img/shop-items, 웹샵 자체는 xsolla.site라 여기서 찍지 않음)
+  ["home-webshop", "apacimtest.com 첫 화면: 지금 플레이 옆에 생긴 웹샵 버튼", async () => {
+    const o = await open({ file: "site/index.html", viewport: { width: 760, height: 420 }, dsf: 2 }); return { ...o, shot: "header" }; }],
+  ["webshop-items", "웹샵 상품 그림: 캐시 묶음, 장비 상자, 고대 유니크 선택 상자", async () => {
+    const o = await open({ file: "site/index.html", viewport: { width: 900, height: 500 }, dsf: 1.5 });
+    await o.page.evaluate(() => {
+      const items = [["cash_10", "캐시 10"], ["cash_50", "캐시 50"], ["cash_100", "캐시 100"], ["cash_200", "캐시 200"], ["box_equipment_1", "장비 상자 1회"], ["box_equipment_10", "장비 상자 10회"], ["box_equipment_50", "장비 상자 50회"], ["ancient_unique_box", "고대 유니크 선택 상자"]];
+      document.body.innerHTML = `<div id="grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px;background:#0d0e14">${items.map(([sku, name]) =>
+        `<figure style="margin:0;padding:10px;background:#16181f;border:1px solid #2a2d3a;border-radius:10px;text-align:center"><img src="/img/shop-items/${sku}.png" style="width:120px;height:120px;image-rendering:pixelated"><figcaption style="margin-top:6px;color:#cdd3de;font-size:14px">${name}</figcaption></figure>`).join("")}</div>`;
+    });
+    await o.page.waitForFunction(() => [...document.images].every(i => i.complete && i.naturalWidth));
+    return { ...o, shot: "#grid" }; }],
   // 할로윈 로고 (dc#133): 기간에는 img/logo-halloween.webp
   ["halloween-logo", "할로윈 기간의 게임 로고: 호박색 글자에 초록 점액, O 자리에 잭오랜턴, 마녀 모자와 보름달·박쥐", async () => {
     const o = await open({ file: "?event=halloween", scene: "lobby", dsf: 2, seed: { rl_save: save(30, "blog-hwlogo") } });

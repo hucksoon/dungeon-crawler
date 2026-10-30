@@ -23,6 +23,9 @@
   .tag { color: var(--dim); margin: 0 0 22px; }
   .play { display: inline-block; padding: 12px 28px; border-radius: 10px; background: var(--accent); color: #1a1406; font-weight: bold; font-size: 17px; text-decoration: none; }
   .play:hover { filter: brightness(1.08); }
+  /* 웹샵 (Xsolla 사이트 빌더, dc#134): 지금 플레이 옆, 테두리만 있는 버튼 */
+  .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .play.shop { background: transparent; color: var(--accent); border: 2px solid var(--accent); padding: 10px 26px; }
   .sub { color: var(--dim); font-size: 13px; margin-top: 10px; }
   h2 { color: var(--accent); font-size: 19px; margin: 40px 0 12px; padding-top: 14px; border-top: 1px solid var(--border); }
   .shots { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: start; }
@@ -53,7 +56,10 @@
   <header>
     <h1>⚔ 던전 크롤러 ⚔</h1>
     <p class="tag">브라우저에서 바로 하는 턴제 로그라이크</p>
-    <a class="play" href="https://game.apacimtest.com/">지금 플레이</a>
+    <div class="cta">
+      <a class="play" href="https://game.apacimtest.com/">지금 플레이</a>
+      <a class="play shop" href="https://dungeon-crawler-shop.xsolla.site/" rel="noopener">웹샵</a>
+    </div>
     <p class="sub">설치 없이 PC·휴대폰 브라우저에서 · 무료 · 게스트로 바로 시작</p>
   </header>
 
@@ -119,11 +125,12 @@
 
   <h2>만드는 사람</h2>
   <p>개인 개발자가 AI 코딩 도우미 Claude와 함께 라이브 코딩으로 만들고 있어요. 매일 무엇을 만들었는지 <a href="https://github.com/hucksoon/dungeon-crawler/blob/main/docs/devlog.md" rel="noopener">개발 일기</a>에 남기고 있고, 아이템·몬스터 규칙도 <a href="https://github.com/hucksoon/dungeon-crawler/tree/main/docs" rel="noopener">문서</a>로 공개해요. 다음 목표는 2D 그래픽과 모바일 앱이에요.</p>
-  <p style="text-align:center;margin-top:24px"><a class="play" href="https://game.apacimtest.com/">지금 플레이</a></p>
+  <div class="cta" style="margin-top:24px"><a class="play" href="https://game.apacimtest.com/">지금 플레이</a><a class="play shop" href="https://dungeon-crawler-shop.xsolla.site/" rel="noopener">웹샵</a></div>
 
   <footer>
     <a href="https://game.apacimtest.com/">게임</a> ·
     <a href="https://game.apacimtest.com/ranking.html">랭킹</a> ·
+    <a href="https://dungeon-crawler-shop.xsolla.site/" rel="noopener">웹샵</a> ·
     <a href="privacy.html">개인정보처리방침</a> ·
     <a href="https://github.com/hucksoon/dungeon-crawler/issues" rel="noopener">문의</a>
     <p>© 2026 apacimtest.com · 던전 크롤러</p>

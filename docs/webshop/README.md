@@ -1,6 +1,8 @@
 # 던전 크롤러 웹샵 (Xsolla 사이트 빌더) 준비
 
 Xsolla 사이트 빌더(Shop Builder)로 게임 밖에서 쓰는 웹샵을 만들기 위한 설명서예요.
+공개됨 (2026-10-30, dc#134): https://dungeon-crawler-shop.xsolla.site/ · apacimtest.com 첫 화면 "지금 플레이" 옆 "웹샵" 버튼
+
 웹샵 조립은 노트북의 Claude Desktop에서 Xsolla AI Kit으로 해요 (Xsolla 안내 문서 "A game web storefront in an hour: AI agent + Shop Builder").
 이 폴더의 `brief.json`이 AI Kit(`shop-builder-assembly` 스킬)에 넘기는 설명서예요.
 
