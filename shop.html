@@ -334,7 +334,7 @@
       evTitle: (n) => `🎃 ${n} 이벤트`,
       evSub: (s, e, x, c, p) => `기간 ${s} ~ ${e}. 매일 ${c}을(를) 무료로 받고, ${p}개를 모으면 스킨으로 바꿀 수 있어요. 남은 ${c}은(는) ${x}까지 캐시로 1:1 교환할 수 있고, 그 뒤에 남은 것은 자동으로 캐시로 바뀌어 게임 우편함에 들어가요.`,
       evDaily: (c) => `오늘의 무료 ${c}`, evDailyDesc: (n) => `하루 한 번 ${n}개 (매일 오전 10시에 다시 받을 수 있어요)`, evDayBonus: (d, n) => `오늘은 ${d}! ${n}개를 받아요`,
-      evHave: (c, n) => `가진 ${c}: ${n}개`, evClaim: "무료로 받기", evClaimed: "오늘은 받았어요 · 오전 10시에 또 받기", evNotReady: "아직 준비 중이에요. 잠시 뒤 다시 시도해 주세요.", evClosed: "받기 기간이 끝났어요", evLogin: "로그인하고 받기",
+      evHave: (c, n) => `가진 ${c}: ${n}개`, evClaim: "무료로 받기", evClaimed: "오늘은 받았어요 · 오전 10시에 또 받기", evNotReady: "아직 준비 중이에요. 잠시 뒤 다시 시도해 주세요.", evClosed: "받기 기간이 끝났어요", evSoon: "오전 10시부터 받을 수 있어요", evLogin: "로그인하고 받기",
       evGot: (c, n) => `${c} ${n}개를 받았어요!`,
       evSkinHead: "머리 모습이 바뀌어요 (능력치는 그대로)", evSkinWeapon: "무기를 들면 모습이 바뀌어요 (능력치는 그대로)",
       evPrice: (c, n) => `${c} ${n}개`, evExchange: "교환하기", evOwned: "가지고 있어요", evShort: (h, n) => `모자라요 (${h}/${n})`,
@@ -391,7 +391,7 @@
       evTitle: (n) => `🎃 ${n} event`,
       evSub: (s, e, x, c, p) => `${s} – ${e}. Get free ${c} every day and trade ${p} for a skin. Leftover ${c} can be exchanged 1:1 for Cash until ${x}; after that, whatever is left becomes Cash automatically and goes to your in-game mailbox.`,
       evDaily: (c) => `Today's free ${c}`, evDailyDesc: (n) => `${n} once a day (resets at 10:00 Korea time)`, evDayBonus: (d, n) => `It's ${d}! You get ${n} today`,
-      evHave: (c, n) => `Your ${c}: ${n}`, evClaim: "Get for free", evClaimed: "Got it today · Again at 10:00 (KST)", evNotReady: "Not ready yet. Please try again shortly.", evClosed: "The daily gift has ended", evLogin: "Log in to get",
+      evHave: (c, n) => `Your ${c}: ${n}`, evClaim: "Get for free", evClaimed: "Got it today · Again at 10:00 (KST)", evNotReady: "Not ready yet. Please try again shortly.", evClosed: "The daily gift has ended", evSoon: "Available from 10:00 (KST)", evLogin: "Log in to get",
       evGot: (c, n) => `You got ${n} ${c}!`,
       evSkinHead: "Changes how your head looks (stats stay the same)", evSkinWeapon: "Changes how your weapon looks while equipped (stats stay the same)",
       evPrice: (c, n) => `${n} ${c}`, evExchange: "Exchange", evOwned: "Owned", evShort: (h, n) => `Not enough (${h}/${n})`,
@@ -448,7 +448,7 @@
       evTitle: (n) => `🎃 ${n}イベント`,
       evSub: (s, e, x, c, p) => `期間 ${s} ~ ${e}。毎日${c}を無料で受け取り、${p}個集めるとスキンと交換できます。残った${c}は${x}までキャッシュと1:1で交換でき、その後に残った分は自動でキャッシュになりゲームの郵便受けに届きます。`,
       evDaily: (c) => `今日の無料${c}`, evDailyDesc: (n) => `1日1回 ${n}個 (毎日韓国時間午前10時にリセット)`, evDayBonus: (d, n) => `今日は${d}！${n}個もらえます`,
-      evHave: (c, n) => `持っている${c}: ${n}個`, evClaim: "無料で受け取る", evClaimed: "今日は受け取り済み · 午前10時にまた", evNotReady: "まだ準備中です。しばらくしてからお試しください。", evClosed: "受け取り期間は終了しました", evLogin: "ログインして受け取る",
+      evHave: (c, n) => `持っている${c}: ${n}個`, evClaim: "無料で受け取る", evClaimed: "今日は受け取り済み · 午前10時にまた", evNotReady: "まだ準備中です。しばらくしてからお試しください。", evClosed: "受け取り期間は終了しました", evSoon: "午前10時から受け取れます", evLogin: "ログインして受け取る",
       evGot: (c, n) => `${c}を${n}個受け取りました！`,
       evSkinHead: "頭の見た目が変わります (能力値はそのまま)", evSkinWeapon: "武器を装備すると見た目が変わります (能力値はそのまま)",
       evPrice: (c, n) => `${c} ${n}個`, evExchange: "交換する", evOwned: "所持中", evShort: (h, n) => `足りません (${h}/${n})`,
@@ -603,8 +603,7 @@
       evItem = null;
       if (ev?.event?.open) {
         try { const it = await api(`/items/virtual_items/sku/${encodeURIComponent(ev.sku)}`, { auth: true }); evItem = { canBuy: it.can_be_bought !== false }; } catch { evItem = null; }
-        // 받았는데(인벤토리에 있음) 아직 재화로 안 바뀐 것: 열 때 한 번 꺼냄 (예: 받는 도중 창을 닫음)
-        if (evItem && !evItem.canBuy && !ev.claimed) { try { const r = await evCall("event_claim", {}); if (r.got) ev = r; } catch {} }
+        // 상점을 열기만 해서는 받지 않음 (dc#136): 무료 주문은 됐는데 재화로 안 바뀐 것(받는 도중 창을 닫음)도 "무료로 받기"를 눌러야 꺼냄
       }
     }
     else {
@@ -631,8 +630,10 @@
     const dayName = def.days?.[ev.day]?.name;
     const claim = el("button", { type: "button", className: "primary" });
     if (!login) { claim.textContent = t("evLogin"); claim.onclick = toLogin; }
-    else if (!e.open) { claim.textContent = t("evClosed"); claim.disabled = true; claim.className = ""; }
-    else if (ev.claimed || evItem?.canBuy === false) { claim.textContent = t("evClaimed"); claim.disabled = true; claim.className = ""; }
+    // 받기의 하루는 오전 10시에 바뀜: 첫날 0시~10시(ev.day가 아직 시작 전)는 "오전 10시부터", 기간이 지나면 "끝났어요" (dc#136)
+    else if (!e.open) { claim.textContent = t(ev.day && ev.day < e.start ? "evSoon" : "evClosed"); claim.disabled = true; claim.className = ""; }
+    else if (ev.claimed) { claim.textContent = t("evClaimed"); claim.disabled = true; claim.className = ""; }
+    // Xsolla는 오늘 받았다는데(can_be_bought false) 서버 기록이 없으면: 주문만 되고 못 꺼낸 것 → 눌러서 꺼냄 (evClaim이 제한 오류를 넘기고 event_claim)
     else { claim.textContent = t("evClaim"); claim.onclick = () => evClaim(coin); }
     const cards = [el("div", { className: "card event" },
       el("div", { className: "art event-art", textContent: "🎃" }),
@@ -656,9 +657,9 @@
     }
     // 남은 재화 → 캐시
     const n = Math.max(0, ev.balance || 0);
-    const input = el("input", { type: "number", min: 1, max: Math.max(1, n), value: Math.max(1, n), id: "event-cash-n", disabled: !login || !n });
+    const input = el("input", { type: "number", min: n ? 1 : 0, max: n, value: n, id: "event-cash-n", disabled: !login || !n });   // 없으면 0 (dc#136)
     const cb = el("button", { type: "button", id: "event-cash-btn", disabled: !login || !n });
-    const label = () => { cb.textContent = t("evCashBtn", Math.max(1, Math.min(n, Number(input.value) || 1))); };
+    const label = () => { cb.textContent = t("evCashBtn", Math.min(n, Math.max(1, Number(input.value) || 1))); };   // 없으면 0개
     input.oninput = label; label();
     cb.onclick = () => {
       const k = Math.floor(Number(input.value));

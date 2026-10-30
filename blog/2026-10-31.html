@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>할로윈 첫날, 사탕은 오전 10시부터 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요.">
+<link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-31.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="할로윈 첫날, 사탕은 오전 10시부터 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-31.html">
+<meta property="og:image" content="https://game.apacimtest.com/blog/images/halloween-morning.png">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="rail rail-l"><div class="rail-ad"></div></aside>
+<main>
+<nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
+<article>
+<h1>할로윈 첫날, 사탕은 오전 10시부터</h1>
+<p class="meta">2026년 10월 31일 (토) · 개발일기 · 이벤트 · 할로윈 · Claude Code</p>
+<p>10월 31일 0시, 드디어 할로윈 이벤트가 시작됐어요. 마을에는 주황 보름달이 뜨고, 몬스터는 마녀 모자를 쓰고, 게임 로고도 할로윈 로고로 바뀌었어요.</p>
+<p>그런데 바로 상점에 들어가 보니, 오늘의 무료 호박 사탕 버튼에 &quot;받기 기간이 끝났어요&quot;라고 나왔어요. 사탕은 0개인데 이미 받았거나 끝난 것처럼 보였어요.</p>
+<h2>왜 그랬을까요</h2>
+<p>호박 사탕은 하루에 한 번 받을 수 있고, 그 &quot;하루&quot;는 한국 시간 오전 10시에 바뀌어요. 그래서 첫날은 오전 10시부터 받을 수 있어요.</p>
+<ul><li>0시부터 마을·몬스터·로고는 할로윈 모습이 돼요</li><li>사탕 받기는 오전 10시부터 열려요</li></ul>
+<p>상점은 &quot;지금 받을 수 없다&quot;는 것을 모두 &quot;끝났어요&quot;로 보여 주고 있었어요. 아직 시작 전인 오전 10시 전에도요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
+<h2>이렇게 바꿨어요</h2>
+<ul><li>첫날 오전 10시 전에는 버튼에 &quot;오전 10시부터 받을 수 있어요&quot;라고 나와요. 이벤트가 정말 끝난 뒤에만 &quot;끝났어요&quot;라고 나와요</li><li>마을 오른쪽 위 이벤트 배너도 &quot;오전 10시부터 호박 사탕 받기&quot;라고 알려 줘요</li><li>사탕은 상점에서 &quot;무료로 받기&quot;를 눌러야만 받아요. 전에는 받는 도중 창을 닫았을 때 상점을 다시 열면 저절로 받아졌는데, 이제는 그때도 버튼을 눌러서 받아요</li><li>사탕이 없을 때 &quot;캐시로 바꾸기&quot; 칸에 1이 들어가 있던 것도 0으로 고쳤어요</li></ul>
+<figure><img src="images/halloween-morning.png" alt="할로윈 첫날 오전 10시 전의 상점: 오전 10시부터 받을 수 있어요" loading="lazy"><figcaption>할로윈 첫날 오전 10시 전의 상점: 오전 10시부터 받을 수 있어요</figcaption></figure>
+<h2>테스트로 확인했어요</h2>
+<ul><li>첫날 오전 10시 전처럼 만들어서, 상점과 마을 배너에 &quot;오전 10시부터&quot;가 나오고 아무것도 받아지지 않는지 봤어요</li><li>받는 도중 창을 닫은 경우를 만들어서, 상점을 열기만 해서는 사탕이 늘지 않고, 버튼을 눌러야 1개가 들어오는지 확인했어요. 두 번 받아지지도 않아요</li></ul>
+</article>
+<nav class="pager"><span><a href="2026-10-30.html">← 할로윈 이벤트와 1년 이벤트 달력</a></span><span></span></nav>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+<aside class="rail rail-r"><div class="rail-ad"></div></aside>
+</div>
+<script>if (window.matchMedia && matchMedia("(min-width: 1140px)").matches) document.querySelectorAll(".rail-ad").forEach(function (d) {
+  d.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276"></ins>';
+  (adsbygoogle = window.adsbygoogle || []).push({});
+});</script>
+</body>
+</html>

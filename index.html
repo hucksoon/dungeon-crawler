@@ -4308,7 +4308,10 @@
       banner.hidden = !ev || scene !== "lobby";
       if (banner.hidden) return;
       const coin = name(E.THEMES[ev.theme]?.coin);
-      banner.textContent = st?.login && !st.claimed && st.event?.open ? T("🎃 {0} 이벤트 · 오늘의 {1} 받기", name(ev.name), coin) : T("🎃 {0} 이벤트 · {1} {2}개", name(ev.name), coin, st?.balance || 0);
+      // 받기는 상점에서 버튼을 눌러야 (배너는 상점으로 가기만, dc#136). 첫날 0시~10시는 "오전 10시부터"
+      const soon = st?.login && st.event && !st.event.open && st.day && st.day < st.event.start;
+      banner.textContent = soon ? T("🎃 {0} 이벤트 · 오전 10시부터 {1} 받기", name(ev.name), coin)
+        : st?.login && !st.claimed && st.event?.open ? T("🎃 {0} 이벤트 · 오늘의 {1} 받기", name(ev.name), coin) : T("🎃 {0} 이벤트 · {1} {2}개", name(ev.name), coin, st?.balance || 0);
     }
     banner.addEventListener("click", () => { location.href = "shop.html#event"; });
     // 테마 로고 (dc#133): 기간이면 이벤트 로고, 아니면 원래 img/logo.webp 그대로
