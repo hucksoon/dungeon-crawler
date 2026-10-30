@@ -2,13 +2,15 @@
 // 서버(ranking-php/event.php의 EVENTS)에도 같은 일정이 있음 → event-api-test가 둘이 같은지 확인
 //
 // 날짜는 한국 시간. start 0시부터 end 24시까지 열림 (2주)
-//   - 이벤트 기간: 테마(로비·몬스터 모습)가 바뀌고, 상점에서 하루 한 번 이벤트 재화를 무료로 받음
+//   - 이벤트 기간: 테마(로비·몬스터 모습)가 바뀌고 (끝나면 저절로 원래 모습), 상점에서 하루 한 번 이벤트 재화를 무료로 받음
+//     하루 한 번은 Xsolla 구매 제한(무료 아이템 event_coin, 1인당 1개)이 막고 매일 한국 시간 오전 10시(RESET_HOUR)에 초기화 (dc#131)
+//     그래서 받기의 하루(xday)는 오전 10시에 바뀌고, 받기 기간·기념일도 이 하루로 셈
 //   - 재화 SKIN_PRICE개 → 스킨 하나 (계정에 영구), 남은 재화는 캐시와 1:1 교환
-//   - 교환은 이벤트가 끝나고 EXCHANGE_DAYS일 더 (기간이 끝난 뒤에도 남은 재화를 바꿀 수 있게)
+//   - 교환은 이벤트가 끝나고 EXCHANGE_DAYS일 더. 그 뒤에 남은 재화는 서버가 자동으로 캐시 1:1로 바꿔 우편함에 넣음
 //   - days: 기간 안의 작은 기념일 → 그날은 재화를 bonus개 더 받음
 // ready: 테마·스킨이 준비된 이벤트만 열림. 나머지는 일정만 잡아 둔 칸 (내용을 만들면 true로)
 (function (root) {
-  const DAILY = 1, SKIN_PRICE = 10, EXCHANGE_DAYS = 7;
+  const DAILY = 1, SKIN_PRICE = 6, EXCHANGE_DAYS = 7, RESET_HOUR = 10;   // dc#131: 스킨 10 → 6개 (14일이면 2개 다)
   // 스킨: 머리(투구 자리)·무기의 모습만 바꿈 (능력치는 그대로). sprite는 img/sprites.png의 그림
   const SKINS = {
     pumpkin_head: { slot: "head", theme: "halloween", sprite: "skin_pumpkin_head", name: { ko: "호박 머리", en: "Pumpkin Head", ja: "かぼちゃ頭" } },
@@ -34,6 +36,8 @@
 
   // 한국 시간 날짜 "YYYY-MM-DD"
   const today = (ms = Date.now()) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
+  // 받기의 하루: 한국 시간 오전 10시에 바뀜 (Xsolla 구매 제한 초기화)
+  const xday = (ms = Date.now()) => today(ms - RESET_HOUR * 3600000);
   const addDays = (day, n) => new Date(Date.parse(day + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
   // 그날 열린 이벤트 (ready만)
   const active = (day = today()) => EVENTS.find(e => e.ready && e.start <= day && day <= e.end) || null;
@@ -44,7 +48,7 @@
   const byId = (id) => EVENTS.find(e => e.id === id) || null;
   const text = (o, lang) => (o ? o[lang] || o.ko : "");
 
-  const API = { DAILY, SKIN_PRICE, EXCHANGE_DAYS, SKINS, THEMES, EVENTS, today, addDays, active, exchange, dailyAmount, byId, text };
+  const API = { DAILY, SKIN_PRICE, EXCHANGE_DAYS, RESET_HOUR, SKINS, THEMES, EVENTS, today, xday, addDays, active, exchange, dailyAmount, byId, text };
   if (typeof module !== "undefined" && module.exports) module.exports = API;
   else root.RLEvents = API;
 })(typeof window !== "undefined" ? window : globalThis);

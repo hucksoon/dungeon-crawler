@@ -1064,6 +1064,8 @@ function lobby_ping(): array {
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
+    // 교환 기간이 끝난 이벤트 재화 → 캐시 우편 (dc#131). 남은 재화가 있는 사람만 (보통은 빈 조회 한 번)
+    if ($who['kind'] === 'user') event_settle($who['key']);
     $me = ['id' => $pub, 'name' => titled($who['key'], $who['display'])];
     if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
     if ($who['developer']) { $me['staff'] = true; $me['unlimited'] = $who['unlimited']; }   // unlimited: 이 기기가 운영자 기기

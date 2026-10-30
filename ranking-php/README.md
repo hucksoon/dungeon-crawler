@@ -55,9 +55,9 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 | `POST api.php?r=bonus_open` `{ adTicket }` | 광고를 보고 선물 3개 만들기 (3시간마다). 서버에 기록된 진행에 맞춰 일반·악몽의·지옥의 세트, 헬은 만난 네임드 보스의 유니크도 |
 | `POST api.php?r=bonus_pick` `{ id, pick }` | 3개 중 하나 고르기 (한 번만). 고른 시드만 아이템으로 인정. 로그인 사용자는 10% 확률로 캐시 1~3개가 우편함으로 |
 | `GET api.php?r=event_status` | 이벤트(dc#130, `event.php`): 지금 이벤트, 오늘 받았는지, 가진 재화·스킨 (게스트는 이벤트 정보만) |
-| `POST api.php?r=event_claim` | 오늘의 무료 이벤트 재화 받기 (하루 1개, 기념일은 더). 이벤트 기간에만 (로그인) |
-| `POST api.php?r=event_skin` `{ skin }` | 재화 10개 → 스킨 (계정에 영구, 한 번만). 이벤트 끝나고 7일까지 (로그인) |
-| `POST api.php?r=event_cash` `{ amount }` | 남은 재화 → 캐시 1:1, 우편함으로. 이벤트 끝나고 7일까지 (로그인) |
+| `POST api.php?r=event_claim` | 오늘의 무료 이벤트 재화 받기 (dc#131): 상점이 Xsolla 무료 아이템 `event_coin`(1인당 하루 1개, 매일 한국 시간 오전 10시 초기화)을 주문하면, 서버가 사용자 인벤토리에서 꺼내(소모) 재화로 (기념일은 2개). 이벤트 기간에만 (로그인) |
+| `POST api.php?r=event_skin` `{ skin }` | 재화 6개 → 스킨 (계정에 영구, 한 번만). 이벤트 끝나고 7일까지 (로그인) |
+| `POST api.php?r=event_cash` `{ amount }` | 남은 재화 → 캐시 1:1, 우편함으로. 이벤트 끝나고 7일까지 (로그인). 그 뒤에 남은 재화는 다음 접속(이벤트 상태·로비·우편함) 때 자동으로 캐시 우편 |
 | `GET api.php?r=profile` | 내 계정 저장 (가방·진행 상황) (로그인) |
 | `POST api.php?r=profile` `{ rev, data }` | 계정 저장 올리기. 저장 번호가 다르면 서버 내용을 돌려줌 |
 | `GET api.php?r=geo` | 접속한 IP의 나라 코드 `{ country: "KR" }` (모르면 `null`). 게임 언어 자동 설정용, IP는 저장하지 않음 |
@@ -244,6 +244,7 @@ sudo -u www-data php admin.php webhooks [개수]         # Xsolla 웹훅 기록 
 sudo -u www-data php admin.php boxes                   # 장비 상자 시드: 좁혔는지, 서버 기록 수 (지급·환불·예전 등록)
 sudo -u www-data php admin.php boxes legacy [--apply]  # 예전 상자 아이템 세기 / 등록하고 좁히기
 sudo -u www-data php admin.php boxes strict off        # 좁히기 끄기 (되돌리기)
+sudo -u www-data php admin.php event-settle            # 교환 기간이 끝난 이벤트 재화를 모두 한꺼번에 캐시 우편으로 (안 해도 각자 접속할 때 자동)
 ```
 
 ## 업데이트

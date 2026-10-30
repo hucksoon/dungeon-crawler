@@ -1,6 +1,7 @@
 // 이벤트 (dc#130) 브라우저 테스트: 할로윈 기간이면 마을·몬스터 모습이 바뀌고, 상점에서 하루 한 번 호박 사탕 → 10개로 스킨 → 남은 것은 캐시(우편함)
 //   게임에서 가진 스킨을 인벤토리 "꾸미기"로 쓰고 벗기 (2D 인형 · 3D 손의 낫), 기간 전에는 아무것도 바뀌지 않음, 포털 빌드는 배너 없음
 //   브라우저 시계(page clock)와 서버 날짜(설정 event_today)를 할로윈 기간(11/2)으로 맞춤
+//   하루 한 번 (dc#131): 상점이 Xsolla 무료 아이템(event_coin)을 주문 → 가짜 Xsolla 인벤토리에 들어감 → 서버가 꺼내 재화로. 하루 1개 제한도 가짜로 흉내
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
@@ -18,7 +19,15 @@ const SECRET = "event-e2e-secret";
 const ORIGIN = "https://hucksoon.github.io/hucksoon/", API = "http://127.0.0.1:8132/api.php";
 const results = []; const check = (n, ok, x = "") => { results.push(!!ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const mock = http.createServer((q, res) => { res.writeHead(404); res.end(); });
+// 가짜 Xsolla: 사용자 인벤토리(서버가 꺼냄)와 무료 아이템 하루 1개 제한(bought: 오늘 이미 주문함)
+const xs = { inv: {}, bought: {} };
+const subOf = (h) => { try { return JSON.parse(Buffer.from(String(h).replace("Bearer ", "").split(".")[1], "base64url")).sub; } catch { return null; } };
+const mock = http.createServer((q, res) => { let b = ""; q.on("data", c => b += c); q.on("end", () => {
+  const p = q.url.replace("/store/v2/project/317991", ""), sub = subOf(q.headers.authorization);
+  const send = (s, o) => { res.writeHead(s, { "Content-Type": "application/json" }); res.end(o == null ? "" : JSON.stringify(o)); };
+  if (p.startsWith("/user/inventory/items")) return send(200, { items: xs.inv[sub] ? [{ sku: "event_coin", quantity: xs.inv[sub] }] : [] });
+  if (p === "/user/inventory/item/consume") { if (!(xs.inv[sub] > 0)) return send(422, { errorCode: 4001 }); xs.inv[sub]--; return send(204, null); }
+  send(404, { errorCode: 9 }); }); });
 await new Promise(r => mock.listen(8133, "127.0.0.1", r));
 const php = spawn("php", ["-S", "127.0.0.1:8132", "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, RANKING_CONFIG: CFG, TEST_JWT_SECRET: SECRET }, stdio: "ignore" });
 await sleep(700);
@@ -47,7 +56,14 @@ async function open(file, storage, { now = NOV2, portal = false, scene = "lobby"
   await ctx.route(API + "**", async r => { const req = r.request();
     const res = await fetch(req.url(), { method: req.method(), headers: req.headers(), body: ["GET", "OPTIONS"].includes(req.method()) ? undefined : req.postData() });
     r.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) }); });
-  await ctx.route(/googlesyndication|store\.xsolla|cdn\.xsolla/, r => r.abort());
+  // 상점의 Xsolla 호출: 이벤트 재화 아이템(오늘 주문했으면 can_be_bought false)과 무료 주문만, 나머지 카탈로그는 막음
+  await ctx.route(/store\.xsolla\.com/, r => { const q = r.request(), u = new URL(q.url()), sub = subOf(q.headers().authorization);
+    const send = (s, o) => r.fulfill({ status: s, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" }, body: o == null ? "" : JSON.stringify(o) });
+    if (q.method() === "OPTIONS") return send(204, null);
+    if (u.pathname.endsWith("/items/virtual_items/sku/event_coin")) return send(200, { sku: "event_coin", is_free: true, can_be_bought: !xs.bought[sub] });
+    if (u.pathname.endsWith("/free/item/event_coin") && q.method() === "POST") { if (xs.bought[sub]) return send(422, { errorCode: 4515, errorMessage: "limit" }); xs.bought[sub] = true; xs.inv[sub] = (xs.inv[sub] || 0) + 1; return send(200, { order_id: 1 }); }
+    return r.abort(); });
+  await ctx.route(/googlesyndication|cdn\.xsolla/, r => r.abort());
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: r.request().url().includes("/get") ? "[]" : "{}" }));
   if (portal) await ctx.addInitScript(() => { window.RL_PORTAL = { name: "test", loadingDone() {}, gameplay() {}, commercialBreak: async () => {}, rewardedBreak: async () => true }; });
   await ctx.addInitScript(([s, sc]) => { if (!sessionStorage.getItem("s")) { sessionStorage.setItem("rl_scene", sc); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem("s", 1); } }, [{ rl_tips: tips, rl_event: "auto", ...storage }, scene]);
@@ -99,24 +115,31 @@ try {
   check("shop (user): 🎃 할로윈 이벤트, period and today's free candy", /🎃 할로윈 이벤트/.test(await sec()) && /오늘의 무료 호박 사탕/.test(await sec()) && /가진 호박 사탕: 0개/.test(await sec()), await sec());
   await o.page.getByRole("button", { name: "무료로 받기" }).click();
   await o.page.waitForFunction(() => /받았어요/.test(document.getElementById("event-msg").textContent), null, { timeout: 5000 }).catch(() => {});
-  check("claim → 1 candy, message, button now 'Got it today'", /호박 사탕 1개를 받았어요/.test(await o.page.locator("#event-msg").innerText()) && /가진 호박 사탕: 1개/.test(await sec())
-    && await o.page.getByRole("button", { name: /오늘은 받았어요/ }).isDisabled(), await sec());
+  check("claim → Xsolla free order, server takes it out of the inventory: 1 candy, button now 'Again at 10:00'", /호박 사탕 1개를 받았어요/.test(await o.page.locator("#event-msg").innerText()) && /가진 호박 사탕: 1개/.test(await sec())
+    && await o.page.getByRole("button", { name: /오늘은 받았어요 · 오전 10시에 또 받기/ }).isDisabled() && xs.bought[SUB] === true && !xs.inv[SUB], await sec());
   check("server recorded one claim for the account (HMAC key only)", db().prepare("SELECT COUNT(*) n FROM event_claims WHERE pkey = ?").get(KEY).n === 1);
-  check("skins: not enough yet (1/10)", (await o.page.locator('#event-cards button[data-skin="pumpkin_head"]').innerText()) === "모자라요 (1/10)");
+  await o.page.reload(); await sleep(1200);
+  check("after reload: Xsolla says bought today → still 'Again at 10:00' (one per day)", await o.page.getByRole("button", { name: /오늘은 받았어요/ }).isDisabled());
+  check("skins: not enough yet (1/6)", (await o.page.locator('#event-cards button[data-skin="pumpkin_head"]').innerText()) === "모자라요 (1/6)");
   // 열흘 넘게 모았다고 치면
   db().prepare("UPDATE event_wallet SET balance = 12, earned = 12 WHERE pkey = ?").run(KEY);
   await o.page.reload(); await sleep(1200);
   await o.page.locator('#event-cards button[data-skin="pumpkin_head"]').click();
   await o.page.waitForFunction(() => /얻었어요/.test(document.getElementById("event-msg").textContent), null, { timeout: 5000 }).catch(() => {});
-  check("10 candies → Pumpkin Head (owned), 2 left, scythe now short", /호박 머리을\(를\) 얻었어요/.test(await o.page.locator("#event-msg").innerText()) && (await o.page.locator('#event-cards button[data-skin="pumpkin_head"]').innerText()) === "가지고 있어요"
-    && (await o.page.locator('#event-cards button[data-skin="reaper_scythe"]').innerText()) === "모자라요 (2/10)" && /가진 호박 사탕: 2개/.test(await sec()), await sec());
+  check("6 candies → Pumpkin Head (owned), 6 left, the scythe can be exchanged too", /호박 머리을\(를\) 얻었어요/.test(await o.page.locator("#event-msg").innerText()) && (await o.page.locator('#event-cards button[data-skin="pumpkin_head"]').innerText()) === "가지고 있어요"
+    && (await o.page.locator('#event-cards button[data-skin="reaper_scythe"]').innerText()) === "교환하기" && /가진 호박 사탕: 6개/.test(await sec()), await sec());
   await o.page.locator("#event-sec").screenshot({ path: path.join(SHOTS, "event-shop.png") });
-  check("cash exchange: the 2 leftovers", (await o.page.locator("#event-cash-n").inputValue()) === "2" && (await o.page.locator("#event-cash-btn").innerText()) === "캐시 2개로 바꾸기");
+  check("cash exchange: the 6 leftovers", (await o.page.locator("#event-cash-n").inputValue()) === "6" && (await o.page.locator("#event-cash-btn").innerText()) === "캐시 6개로 바꾸기");
   await o.page.locator("#event-cash-btn").click();
   await o.page.waitForFunction(() => /우편함으로 보냈어요/.test(document.getElementById("event-msg").textContent), null, { timeout: 5000 }).catch(() => {});
   const mail = db().prepare("SELECT cash, state FROM mail WHERE owner_key = ? AND kind = 'gift'").all(KEY);
-  check("asks first, then 2 Cash goes to the game mailbox; 0 candies left", o.dialogs.some(d => /캐시 2개로 바꿀까요/.test(d)) && mail.length === 1 && mail[0].cash === 2 && mail[0].state === "new"
+  check("asks first, then 6 Cash goes to the game mailbox; 0 candies left", o.dialogs.some(d => /캐시 6개로 바꿀까요/.test(d)) && mail.length === 1 && mail[0].cash === 6 && mail[0].state === "new"
     && /가진 호박 사탕: 0개/.test(await sec()) && await o.page.locator("#event-cash-btn").isDisabled(), JSON.stringify(mail) + o.dialogs.join("|"));
+  // 다음 날: 무료 주문은 됐는데 게임 서버가 못 받은 채 창을 닫았다면 (인벤토리에 1개) → 상점을 다시 열 때 꺼냄
+  setDay("2026-11-03"); xs.bought[SUB] = true; xs.inv[SUB] = 1;
+  await sleep(2100);   // PHP가 설정 파일을 다시 읽을 때까지 (opcache 2초)
+  await o.page.reload(); await sleep(1500);
+  check("next day: an ordered-but-not-collected item is collected when the shop opens", /가진 호박 사탕: 1개/.test(await sec()) && !xs.inv[SUB], await sec());
   check("no page errors (shop)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
 
@@ -124,7 +147,7 @@ try {
   o = await open("", { ...user(NOV2, { weapon: sword }), rl_3d: "1" });   // 던전은 3D (손에 든 낫 모델)
   await o.page.waitForFunction(() => window.RLEventsGame.status()?.skins?.length, null, { timeout: 8000 }).catch(() => {});
   const bt = await o.page.locator("#event-banner").innerText().catch(() => "");
-  check("user banner: already claimed today → shows the count", /🎃 할로윈 이벤트 · 호박 사탕 0개/.test(bt), bt);
+  check("user banner: already claimed today → shows the count", /🎃 할로윈 이벤트 · 호박 사탕 1개/.test(bt), bt);
   check("game knows the owned skin; not worn until chosen", JSON.stringify(await o.page.evaluate(() => window.RLEventsGame.status().skins)) === '["pumpkin_head"]' && await o.page.evaluate(() => window.RLEventsGame.wear("head")) === null);
   await o.page.keyboard.press("i");
   await o.page.locator("#inv-skins").waitFor({ timeout: 3000 }).catch(() => {});

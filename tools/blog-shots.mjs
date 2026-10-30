@@ -72,7 +72,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     // 무료 선물 (dc#105): 받을 수 있음 → 광고 → 헬 선물 (유니크 1 + 지옥의 세트 2)
     if (route === "bonus_status") return json(r, { hours: 3, ready: true, pending: null, nextAt: Date.now(), tier: "hell", cash: { chance: 0.1, min: 1, max: 3 } });
     // 이벤트 (dc#130): 할로윈 기간, 호박 머리·사신의 낫을 가진 사람 (호박 사탕 4개)
-    if (route === "event_status") return json(r, { day: "2026-11-02", login: true, price: 10, skins: ["pumpkin_head", "reaper_scythe"], balance: 4, earned: 24, claimed: false,
+    if (route === "event_status") return json(r, { day: "2026-11-02", login: true, price: 6, sku: "event_coin", skins: ["pumpkin_head", "reaper_scythe"], balance: 4, earned: 16, claimed: false,
       event: { id: "halloween-2026", theme: "halloween", start: "2026-10-31", end: "2026-11-13", exchangeUntil: "2026-11-20", open: true, today: 1, skins: ["pumpkin_head", "reaper_scythe"] } });
     if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adMinSeconds: 1 });
     if (route === "ad_start") return json(r, { ticket: "0".repeat(16), minSeconds: 1, left: 7 });
@@ -218,7 +218,7 @@ const SCENES = [
     return { ...o, shot: "#stage" }; }],
   ["halloween-3d", "할로윈 기간에는 던전 몬스터도 마녀 모자를 써요 (손에는 사신의 낫)", async () => view3d({ file: "?event=halloween", api: true, seed: { rl_save: save(12, "blog-hw3d", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")), rl_skin_wear: JSON.stringify({ weapon: "reaper_scythe" }) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 2 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 4 }], { wait: 300 })],
-  ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 10개로 스킨, 남은 사탕은 캐시로", async () => {
+  ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 6개로 스킨, 남은 사탕은 캐시로", async () => {
     const o = await open({ file: "shop.html#event", api: true, loggedIn: true }); await o.page.locator("#event-cards .card").nth(3).waitFor({ timeout: 8000 }).catch(() => {}); return { ...o, shot: "#event-sec" }; }],
   ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],

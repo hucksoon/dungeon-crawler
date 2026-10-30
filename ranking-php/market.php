@@ -424,6 +424,7 @@ function market_mine(): array {
     $who = require_user();
     market_expire();
     try { ubox_collect_for($who); } catch (Throwable $e) { /* 상자는 다음에 다시 */ }
+    event_settle($who['key']);   // 교환 기간이 끝난 이벤트 재화 → 캐시 우편 (dc#131)
     $pdo = db();
     $q = function (string $sql, array $args) use ($pdo): array { $st = $pdo->prepare($sql); $st->execute($args); return $st->fetchAll(); };
     $active = $q("SELECT * FROM listings WHERE seller_key = ? AND state IN ('active', 'buying') ORDER BY created_at DESC", [$who['key']]);

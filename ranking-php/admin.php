@@ -27,6 +27,10 @@
 //   sudo -u www-data php admin.php boxes strict off
 //     좁히기를 끔 (문제가 생겼을 때 예전처럼 되돌리기)
 //
+//   sudo -u www-data php admin.php event-settle
+//     교환 기간이 끝난 이벤트의 남은 재화를 모든 사람에게 한꺼번에 캐시 1:1로 바꿔 우편함에 (dc#131).
+//     안 해도 각자 다음에 접속할 때 자동으로 바뀜. 몇 번 실행해도 같은 재화를 두 번 바꾸지 않음
+//
 //   sudo -u www-data php admin.php remove <공개ID> [시즌]
 //     그 사람의 그 시즌 기록만 지움 (다른 시즌 기록은 그대로). 공개 ID는 list나 랭킹 화면 장비 보기 주소에서 확인
 //     예전 장비를 끼고 올라간 기록처럼 규칙에 맞지 않는 기록을 정리할 때 씀. 그 사람이 규칙대로 다시 하면 다시 올라감
@@ -41,6 +45,13 @@ require __DIR__ . '/api.php';
 function fail(string $msg): void { fwrite(STDERR, $msg . "\n"); exit(1); }
 
 $cmd = $argv[1] ?? '';
+
+if ($cmd === 'event-settle') {
+    $keys = db()->query('SELECT DISTINCT pkey FROM event_wallet WHERE balance > 0')->fetchAll(PDO::FETCH_COLUMN);
+    $n = 0; foreach ($keys as $k) $n += event_settle((string)$k);
+    echo "남은 이벤트 재화가 있는 사람 " . count($keys) . "명 중 {$n}건을 캐시로 바꿔 우편함에 넣었어요 (교환 기간이 아직 안 끝난 이벤트는 그대로).\n";
+    exit(0);
+}
 
 if ($cmd === 'geo') {
     $ip = (string)($argv[2] ?? '8.8.8.8');
@@ -168,4 +179,4 @@ if ($cmd === 'remove') {
     exit(0);
 }
 
-fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  php admin.php boxes [legacy [--apply] | strict off]\n  시즌: v4(기본), nm(나이트메어), hell(헬), abyss(끝이 없는 구멍), v3");
+fail("사용법:\n  php admin.php list [개수] [시즌]\n  php admin.php remove <공개ID> [시즌]\n  php admin.php devices [add <기기 ID> [이름] | remove <번호>]\n  php admin.php webhooks [개수]\n  php admin.php boxes [legacy [--apply] | strict off]\n  php admin.php event-settle\n  시즌: v4(기본), nm(나이트메어), hell(헬), abyss(끝이 없는 구멍), v3");
