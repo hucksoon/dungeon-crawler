@@ -43,7 +43,7 @@ const sword = (() => { for (let i = 0; i < 20000; i++) { const it = I.generate(`
 const save = JSON.stringify({ v: 1, f50: 1, season: 4, best: 5, run: { d: 1, hp: 300, mh: 300, a: 50, g: 0, p: 1, l: 5, x: 0, xn: 1e9, rid: "ev-run", k: 0, pp: 0 } });
 const tips = JSON.stringify(["intro", "dungeon", "gear", "lowhp"]);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-async function open(file, storage, { now = NOV2, portal = false, scene = "lobby", q = "" } = {}) {
+async function open(file, storage, { now = NOV2, portal = false, scene = "lobby", q = "", setup = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 950 } }); const page = await ctx.newPage(); const errors = [], dialogs = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("dialog", d => { dialogs.push(d.message()); d.accept(); });
@@ -67,6 +67,7 @@ async function open(file, storage, { now = NOV2, portal = false, scene = "lobby"
   await ctx.route("https://login.xsolla.com/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "*" }, body: r.request().url().includes("/get") ? "[]" : "{}" }));
   if (portal) await ctx.addInitScript(() => { window.RL_PORTAL = { name: "test", loadingDone() {}, gameplay() {}, commercialBreak: async () => {}, rewardedBreak: async () => true }; });
   await ctx.addInitScript(([s, sc]) => { if (!sessionStorage.getItem("s")) { sessionStorage.setItem("rl_scene", sc); for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem("s", 1); } }, [{ rl_tips: tips, rl_event: "auto", ...storage }, scene]);
+  if (setup) await setup(page);
   await page.goto(ORIGIN + file + q);
   if (file === "") await page.waitForFunction(() => window.__t);
   else await page.waitForFunction(() => document.getElementById("event-cards")?.children.length, null, { timeout: 6000 }).catch(() => {});   // 상점: 이벤트 칸을 그릴 때까지 (기간 밖이면 그냥 넘어감)
@@ -137,11 +138,15 @@ try {
   const mail = db().prepare("SELECT cash, state FROM mail WHERE owner_key = ? AND kind = 'gift'").all(KEY);
   check("asks first, then 6 Cash goes to the game mailbox; 0 candies left", o.dialogs.some(d => /캐시 6개로 바꿀까요/.test(d)) && mail.length === 1 && mail[0].cash === 6 && mail[0].state === "new"
     && /가진 호박 사탕: 0개/.test(await sec()) && await o.page.locator("#event-cash-btn").isDisabled(), JSON.stringify(mail) + o.dialogs.join("|"));
-  // 다음 날: 무료 주문은 됐는데 게임 서버가 못 받은 채 창을 닫았다면 (인벤토리에 1개) → 상점을 다시 열 때 꺼냄
+  // 다음 날: 무료 주문은 됐는데 게임 서버가 못 받은 채 창을 닫았다면 (인벤토리에 1개) → 상점을 열기만 해서는 안 받고, "무료로 받기"를 눌러야 꺼냄 (dc#136)
   setDay("2026-11-03"); xs.bought[SUB] = true; xs.inv[SUB] = 1;
   await sleep(2100);   // PHP가 설정 파일을 다시 읽을 때까지 (opcache 2초)
-  await o.page.reload(); await sleep(1500);
-  check("next day: an ordered-but-not-collected item is collected when the shop opens", /가진 호박 사탕: 1개/.test(await sec()) && !xs.inv[SUB], await sec());
+  // 서버가 바뀐 날을 늦게 읽을 때가 있어서 "무료로 받기"가 보일 때까지 두 번까지 다시 열어 봄
+  for (let k = 0; k < 3; k++) { await o.page.reload(); if (await o.page.getByRole("button", { name: "무료로 받기" }).waitFor({ timeout: 4000 }).then(() => true, () => false)) break; await sleep(1500); }
+  check("next day: opening the shop does not take anything (still 0, item stays in the inventory, button 'Get for free')", /가진 호박 사탕: 0개/.test(await sec()) && xs.inv[SUB] === 1 && await o.page.getByRole("button", { name: "무료로 받기" }).isEnabled({ timeout: 2000 }).catch(() => false), await sec());
+  await o.page.getByRole("button", { name: "무료로 받기" }).click();
+  await o.page.waitForFunction(() => /받았어요/.test(document.getElementById("event-msg").textContent), null, { timeout: 5000 }).catch(() => {});
+  check("click → the ordered item is taken out: 1 candy (Xsolla limit already used, no second order)", /가진 호박 사탕: 1개/.test(await sec()) && !xs.inv[SUB] && await o.page.getByRole("button", { name: /오늘은 받았어요/ }).isDisabled(), await sec());
   check("no page errors (shop)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
 
@@ -169,6 +174,22 @@ try {
   const h = await o.page.evaluate(() => window.RLView3D?.hands);
   check("3D: the right hand holds the scythe model", /^scythe\|longsword$/.test(h?.r || ""), JSON.stringify(h));
   check("no page errors (game)", !o.errors.length, o.errors.join(" | "));
+  await o.ctx.close();
+
+  // ---- 첫날 0시~10시 (dc#136): 테마는 켜졌지만 받기의 하루(오전 10시에 바뀜)는 아직 전날 → "오전 10시부터", 저절로 받지 않음 ----
+  const morning = async (pg) => pg.route(/[?&]r=event_status/, async r => { const req = r.request();
+    const res = await fetch(req.url(), { headers: req.headers() }); const d = await res.json();
+    d.day = "2026-10-30"; d.claimed = false; d.balance = 0; d.event = { ...d.event, open: false, today: 0 };
+    r.fulfill({ status: res.status, headers: { ...Object.fromEntries(res.headers), "content-type": "application/json" }, body: JSON.stringify(d) }); });
+  const claimsBefore = db().prepare("SELECT COUNT(*) n FROM event_claims WHERE pkey = ?").get(KEY).n;
+  o = await open("shop.html#event", user(), { setup: morning });
+  await o.page.locator("#event-cash-n").waitFor({ timeout: 8000 }).catch(() => {});
+  check("first morning (before 10:00): shop says 'from 10:00', not 'ended'; cash box shows 0", (await o.page.locator("#event-cards button").first().innerText()) === "오전 10시부터 받을 수 있어요" && await o.page.locator("#event-cards button").first().isDisabled()
+    && (await o.page.locator("#event-cash-n").inputValue()) === "0" && await o.page.locator("#event-cash-btn").isDisabled(), await o.page.locator("#event-sec").innerText().catch(() => ""));
+  await o.ctx.close();
+  o = await open("", user(), { setup: morning });
+  await o.page.waitForFunction(() => /오전 10시부터/.test(document.getElementById("event-banner").textContent), null, { timeout: 5000 }).catch(() => {});
+  check("first morning: lobby banner says 'from 10:00', nothing received", (await o.page.locator("#event-banner").innerText()) === "🎃 할로윈 이벤트 · 오전 10시부터 호박 사탕 받기" && db().prepare("SELECT COUNT(*) n FROM event_claims WHERE pkey = ?").get(KEY).n === claimsBefore, await o.page.locator("#event-banner").innerText());
   await o.ctx.close();
 
   // ---- 포털 빌드: 서버·상점이 없어서 배너 없음 (모습은 바뀜) ----

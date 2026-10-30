@@ -52,7 +52,7 @@ const json = (r, o, status = 200) => r.fulfill({ status, contentType: "applicati
 const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 // dsf: 화면 배율 (1.6이면 게임 캔버스가 실제 픽셀 그대로 찍힘)
 // touch: 휴대폰처럼 (터치 화면 → 터치 버튼이 보임)
-async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false, portal = false }) {
+async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api = false, viewport = { width: 1100, height: 800 }, loggedIn = false, dsf = 1, touch = false, others = null, staff = false, portal = false, evPatch = (d) => d }) {
   const dev = "blogshot-device-1";
   const ctx = await browser.newContext({ viewport, locale: lang === "ko" ? "ko-KR" : lang === "ja" ? "ja-JP" : "en-US", deviceScaleFactor: dsf, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage(); const errors = [];
@@ -72,8 +72,9 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     // 무료 선물 (dc#105): 받을 수 있음 → 광고 → 헬 선물 (유니크 1 + 지옥의 세트 2)
     if (route === "bonus_status") return json(r, { hours: 3, ready: true, pending: null, nextAt: Date.now(), tier: "hell", cash: { chance: 0.1, min: 1, max: 3 } });
     // 이벤트 (dc#130): 할로윈 기간, 호박 머리·사신의 낫을 가진 사람 (호박 사탕 4개)
-    if (route === "event_status") return json(r, { day: "2026-11-02", login: true, price: 6, sku: "event_coin", skins: ["pumpkin_head", "reaper_scythe"], balance: 4, earned: 16, claimed: false,
-      event: { id: "halloween-2026", theme: "halloween", start: "2026-10-31", end: "2026-11-13", exchangeUntil: "2026-11-20", open: true, today: 1, skins: ["pumpkin_head", "reaper_scythe"] } });
+    //   evPatch: 장면마다 바꿔 보기 (예: 첫날 오전 10시 전, dc#136)
+    if (route === "event_status") return json(r, evPatch({ day: "2026-11-02", login: true, price: 6, sku: "event_coin", skins: ["pumpkin_head", "reaper_scythe"], balance: 4, earned: 16, claimed: false,
+      event: { id: "halloween-2026", theme: "halloween", start: "2026-10-31", end: "2026-11-13", exchangeUntil: "2026-11-20", open: true, today: 1, skins: ["pumpkin_head", "reaper_scythe"] } }));
     if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adMinSeconds: 1 });
     if (route === "ad_start") return json(r, { ticket: "0".repeat(16), minSeconds: 1, left: 7 });
     if (route === "bonus_open") return json(r, { hours: 3, ready: false, nextAt: null, tier: "hell", cash: { chance: 0.1, min: 1, max: 3 }, pending: { id: "b10950b10950b109", tier: "hell", offers: giftOffers(), createdAt: Date.now() } });
@@ -239,6 +240,10 @@ const SCENES = [
     const o = await open({ file: "?event=halloween", scene: "lobby", dsf: 2, seed: { rl_save: save(30, "blog-hwlogo") } });
     await o.page.waitForFunction(() => { const i = document.querySelector("h1.logo img"); return /logo-halloween/.test(i.src) && i.complete && i.naturalWidth; }, null, { timeout: 5000 }).catch(() => {});
     return { ...o, shot: "h1.logo" }; }],
+  // 첫날 0시~10시 (dc#136): 받기는 오전 10시부터 (상점을 열기만 해서는 받지 않음)
+  ["halloween-morning", "할로윈 첫날 오전 10시 전의 상점: \"오전 10시부터 받을 수 있어요\"", async () => {
+    const o = await open({ file: "shop.html#event", api: true, loggedIn: true, evPatch: (d) => ({ ...d, day: "2026-10-30", skins: [], balance: 0, earned: 0, event: { ...d.event, open: false, today: 0 } }) });
+    await o.page.locator("#event-cards .card").nth(3).waitFor({ timeout: 8000 }).catch(() => {}); return { ...o, shot: "#event-sec" }; }],
   ["halloween-3d", "할로윈 기간에는 던전 몬스터도 마녀 모자를 써요 (손에는 사신의 낫)", async () => view3d({ file: "?event=halloween", api: true, seed: { rl_save: save(12, "blog-hw3d", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")), rl_skin_wear: JSON.stringify({ weapon: "reaper_scythe" }) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 2 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 4 }], { wait: 300 })],
   ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 6개로 스킨, 남은 사탕은 캐시로", async () => {
