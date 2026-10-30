@@ -53,9 +53,21 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
 </style>
 </head>
 <body>
+<div class="layout">
+<aside class="rail rail-l"><div class="rail-ad"></div></aside>
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
@@ -119,5 +131,11 @@
 <nav class="pager"><span><a href="2026-10-20.html">← 파이어볼, 프로스트 노바, 체인 라이트닝</a></span><span><a href="2026-10-22.html">목걸이와 반지가 생기고, 숨은 힘 세 개가 사라진 날 →</a></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
 </main>
+<aside class="rail rail-r"><div class="rail-ad"></div></aside>
+</div>
+<script>if (window.matchMedia && matchMedia("(min-width: 1140px)").matches) document.querySelectorAll(".rail-ad").forEach(function (d) {
+  d.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276"></ins>';
+  (adsbygoogle = window.adsbygoogle || []).push({});
+});</script>
 </body>
 </html>

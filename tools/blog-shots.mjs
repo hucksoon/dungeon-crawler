@@ -216,6 +216,12 @@ const SCENES = [
       others: [["게스트 #3fa2c1", 24], ["게스트 #9b07de", 33]] });
     await o.page.waitForFunction(() => !document.getElementById("event-banner").hidden, null, { timeout: 5000 }).catch(() => {}); await sleep(600);
     return { ...o, shot: "#stage" }; }],
+  // 블로그 글 양옆 세로 광고 (dc#135): PC 폭에서 글 양쪽 칸에 160×600 (광고는 막고 자리만 표시)
+  ["blog-rails", "PC에서 본 블로그 글: 양옆에 세로 광고 자리(160×600)가 생기고, 글을 내려도 따라와요", async () => {
+    const o = await open({ file: "blog/2026-10-30.html", viewport: { width: 1440, height: 820 } });
+    await o.page.addStyleTag({ content: '.rail-ad ins { background: #1d2030; outline: 2px dashed #ffcf5c; text-decoration: none; } .rail-ad ins::after { content: "광고 160×600"; display: block; padding-top: 280px; text-align: center; color: #ffcf5c; font: bold 14px "Courier New", monospace; }' });
+    await o.page.evaluate(() => scrollTo(0, 1600)); await sleep(300);
+    return o; }],
   // 웹샵 (dc#134): apacimtest.com 첫 화면의 "지금 플레이" 옆 웹샵 버튼, 웹샵 상품 그림 (img/shop-items, 웹샵 자체는 xsolla.site라 여기서 찍지 않음)
   ["home-webshop", "apacimtest.com 첫 화면: 지금 플레이 옆에 생긴 웹샵 버튼", async () => {
     const o = await open({ file: "site/index.html", viewport: { width: 760, height: 420 }, dsf: 2 }); return { ...o, shot: "header" }; }],

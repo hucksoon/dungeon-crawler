@@ -77,6 +77,17 @@ try {
     return h.split('<div class="ad-unit">').length !== 2 || !(r > 0.3 && r < 0.7) || !/<h[23]>|<p>/.test(h.slice(h.indexOf("</div>", u), e));
   });
   check("ad unit sits in the middle of the post body (once, 30~70%)", midBad.length === 0, midBad.join(", "));
+  // 글 양옆 세로 광고 (dc#135): 공개 글에만 양쪽 칸, 넓은 화면(PC)에서만 160×600 광고를 요청하고 좁은 화면에서는 숨김
+  const rail = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes('<aside class="rail rail-l">');
+  check("side rails only on public posts (not list / Naver pages)", posts.every(s => rail(`${s}.html`)) && !rail("index.html") && !rail("media.html") && posts.every(s => !rail(`naver/${s}.html`)));
+  const railAt = async (w) => { await page.setViewportSize({ width: w, height: 900 }); await page.goto(`https://game.apacimtest.com/blog/${posts.at(-1)}.html`);
+    return page.evaluate(() => { const m = document.querySelector("main").getBoundingClientRect();
+      return { ins: [...document.querySelectorAll(".rail-ad ins")].map(i => `${i.style.width}x${i.style.height}|${i.dataset.adSlot}`), rails: [...document.querySelectorAll(".rail-ad")].map(d => { const b = d.getBoundingClientRect(); return { l: b.left, r: b.right, w: b.width }; }), main: { l: m.left, r: m.right }, sw: document.documentElement.scrollWidth, vw: innerWidth }; }); };
+  const wide = await railAt(1440);
+  check("PC (1440px): two 160×600 ads beside the post, not over it", wide.ins.length === 2 && wide.ins.every(x => x === "160pxx600px|6983849276") && wide.rails[0].r <= wide.main.l && wide.rails[1].l >= wide.main.r && wide.sw === wide.vw, JSON.stringify(wide));
+  const narrow = await railAt(1000), phone = await railAt(390);
+  check("tablet / phone: no side ads requested, no sideways scroll", narrow.ins.length === 0 && phone.ins.length === 0 && narrow.rails.every(r => r.w === 0) && phone.sw === phone.vw, JSON.stringify({ narrow, phone }));
+  await page.setViewportSize({ width: 900, height: 1000 });
   check("Naver pages are hidden from search (noindex)", fs.readFileSync(path.join(REPO, "blog/naver/index.html"), "utf8").includes('content="noindex"') && posts.every(s => fs.readFileSync(path.join(REPO, `blog/naver/${s}.html`), "utf8").includes('content="noindex"')));
 
   // 네이버 옮기기: 제목 복사, 본문 복사(서식 + 원문 링크)

@@ -151,6 +151,16 @@ const CSS = `
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
 `;
 // 애드센스 자동 광고 코드 (dc#120): 공개 글·목록·게임 이미지 페이지에만. 네이버 옮기기 페이지(noindex)는 뺌
 //   자동 광고는 AdSense에서 사이트 전체 끔 (게임 화면 양옆에 붙어서, dc#128). 광고는 글 중간 광고 칸(AD_UNIT)과 게임의 보상형 광고만
@@ -158,6 +168,13 @@ const ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead
 // 블로그 글 디스플레이 광고 단위 "블로그 글" (dc#128): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그 글에만 이 칸을 직접 넣음
 const AD_UNIT = `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>`;
+// 글 양옆 세로 광고 (dc#135): 같은 광고 단위 "블로그 글"(AdSense에서 세로형으로 바꿈)을 160×600으로 양쪽에 하나씩
+//   좁은 화면(휴대폰·태블릿)에서는 칸을 숨기고 광고도 요청하지 않음 (숨긴 칸에 광고를 요청하면 오류). 세로 고정 광고는 PC에서만 허용
+//   https://support.google.com/adsense/answer/10734935 : 위아래로만 따라오고, 본문을 가리지 않아야 함
+const RAIL_SCRIPT = `<script>if (window.matchMedia && matchMedia("(min-width: 1140px)").matches) document.querySelectorAll(".rail-ad").forEach(function (d) {
+  d.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276"></ins>';
+  (adsbygoogle = window.adsbygoogle || []).push({});
+});</script>`;
 // 광고 칸은 본문 중간 (dc#129): 글 길이의 절반에 가장 가까운 소제목(h2·h3, 없으면 문단 끝) 바로 앞. 첫 줄 앞에는 안 넣음
 function withMidAd(html) {
   const at = (re) => [...html.matchAll(re)].map(m => m.index + (m[0].startsWith("</") ? m[0].length : 0)).filter(i => i > 0 && i < html.length);
@@ -166,7 +183,7 @@ function withMidAd(html) {
   const mid = cuts.reduce((a, b) => Math.abs(b - html.length / 2) < Math.abs(a - html.length / 2) ? b : a);
   return `${html.slice(0, mid)}${AD_UNIT}\n${html.slice(mid)}`;
 }
-const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null }) => `<!DOCTYPE html>
+const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null, rails = false }) => `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -186,18 +203,18 @@ ${image ? `<meta property="og:image" content="${image}">\n` : ""}${noindex ? "" 
 <style>${CSS}${extraHead}</style>
 </head>
 <body>
-<main>
+${rails ? '<div class="layout">\n<aside class="rail rail-l"><div class="rail-ad"></div></aside>\n' : ""}<main>
 ${body}
 <footer>${esc(BLOG_TITLE)} · <a href="${SITE}/">게임 하기</a> · <a href="${BLOG_URL}media.html">게임 이미지</a> · <a href="${BLOG_URL}feed.xml">RSS</a></footer>
 </main>
-</body>
+${rails ? `<aside class="rail rail-r"><div class="rail-ad"></div></aside>\n</div>\n${RAIL_SCRIPT}\n` : ""}</body>
 </html>
 `;
 const tagList = (tags) => tags.length ? `<ul class="tags">${tags.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
 
 function postPage(p, prev, next) {
   return page({
-    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`, image: images(p.body)[0] ? `${BLOG_URL}images/${images(p.body)[0].file}` : BANNER,
+    title: `${p.title} — ${BLOG_TITLE}`, desc: p.summary, url: `${BLOG_URL}${p.slug}.html`, rails: true, image: images(p.body)[0] ? `${BLOG_URL}images/${images(p.body)[0].file}` : BANNER,
     body: `<nav class="nav"><a href="./">← 글 목록</a><a href="${SITE}/">게임 하기</a></nav>
 <article>
 <h1>${esc(p.title)}</h1>
