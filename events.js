@@ -16,9 +16,9 @@
     pumpkin_head: { slot: "head", theme: "halloween", sprite: "skin_pumpkin_head", name: { ko: "호박 머리", en: "Pumpkin Head", ja: "かぼちゃ頭" } },
     reaper_scythe: { slot: "weapon", theme: "halloween", sprite: "skin_scythe", name: { ko: "사신의 낫", en: "Reaper's Scythe", ja: "死神の鎌" } },
   };
-  // 테마: 이벤트 재화 이름과 교환할 수 있는 스킨
+  // 테마: 이벤트 재화 이름, 교환할 수 있는 스킨, 기간 동안 바꿀 게임 로고 (dc#133)
   const THEMES = {
-    halloween: { coin: { ko: "호박 사탕", en: "Pumpkin Candy", ja: "かぼちゃキャンディ" }, skins: ["pumpkin_head", "reaper_scythe"] },
+    halloween: { coin: { ko: "호박 사탕", en: "Pumpkin Candy", ja: "かぼちゃキャンディ" }, skins: ["pumpkin_head", "reaper_scythe"], logo: "img/logo-halloween.webp" },
   };
   const EVENTS = [
     { id: "halloween-2026", theme: "halloween", ready: true, start: "2026-10-31", end: "2026-11-13", name: { ko: "할로윈", en: "Halloween", ja: "ハロウィン" },
