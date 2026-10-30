@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Xsolla 카탈로그(캐시, 캐시 패키지, 장비 상자, 한정 판매, 보너스 프로모션)를 만든다.
+// Xsolla 카탈로그(캐시, 캐시 패키지, 장비 상자, 이벤트 재화, 한정 판매, 보너스 프로모션)를 만든다.
 //
 //   node tools/xsolla-catalog.mjs          # 무엇이 있고 무엇을 만들지 보여주기만 함
 //   node tools/xsolla-catalog.mjs --apply  # 없는 항목만 생성 (이미 있는 항목은 건드리지 않음)
@@ -117,6 +117,26 @@ const OFFERS = [{
   order: 1,
 }];
 
+// 이벤트 재화 (dc#131): 무료, 1인당 하루 1개 (Xsolla 구매 제한, 매일 한국 시간 오전 10시에 초기화)
+// 상점 이벤트 칸의 "무료로 받기"가 이걸 주문하면 사용자 인벤토리에 들어가고, 게임 서버(ranking-php/event.php event_claim)가
+// 꺼내서(소모) 그때 열린 이벤트의 재화(할로윈은 호박 사탕)로 바꿈. 이벤트마다 같은 SKU를 씀
+const EVENT_COIN = {
+  sku: "event_coin",
+  name: { en: "Event Token (1 per day)", ko: "이벤트 재화 (하루 1개)", ja: "イベントアイテム (1日1個)" },
+  description: {
+    en: "Free once a day during events (resets at 10:00 Korea time). Becomes the event's currency in the game.",
+    ko: "이벤트 기간에 하루 한 번 무료 (한국 시간 오전 10시에 초기화). 게임에서 그 이벤트의 재화로 바뀌어요.",
+    ja: "イベント期間中、1日1回無料 (韓国時間午前10時にリセット)。ゲームでそのイベントのアイテムになります。",
+  },
+  groups: ["game_items"],
+  virtual_item_type: "consumable",
+  is_free: true,
+  limits: { per_user: { total: 1, limit_exceeded_visibility: "show" }, per_item: null, recurrent_schedule: { per_user: { interval_type: "daily", time: "10:00:00+09:00" } } },
+  is_enabled: true,
+  is_show_in_store: true,
+  order: 2,
+};
+
 // 패키지 보너스: +10% / +20% / +25%
 const PROMOTIONS = [
   { pack: "cash_50", bonus: 5, pct: 10 },
@@ -224,6 +244,10 @@ for (const b of BOXES)
 console.log("게임 아이템");
 await ensurePriced(`${REVIVE.sku}  ${REVIVE.vc_prices[0].amount}캐시`, `${V2}/items/virtual_items/sku/${REVIVE.sku}`,
   `${V2}/items/virtual_items`, REVIVE, "vc_prices");
+
+console.log("이벤트 재화");
+await ensurePriced(`${EVENT_COIN.sku}  무료 · 1인당 하루 ${EVENT_COIN.limits.per_user.total}개 (매일 ${EVENT_COIN.limits.recurrent_schedule.per_user.time} 초기화)`,
+  `${V2}/items/virtual_items/sku/${EVENT_COIN.sku}`, `${V2}/items/virtual_items`, EVENT_COIN);
 
 console.log("한정 판매");
 for (const o of OFFERS)

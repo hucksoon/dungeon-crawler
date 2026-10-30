@@ -471,6 +471,12 @@
   .inv-body { flex: 1; min-height: 0; margin-top: 10px; }
   .inv-main { display: flex; flex-direction: column; gap: 8px; min-height: 0; height: 100%; }
   .equip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; align-content: start; flex: none; }
+  /* 이벤트 스킨 (dc#130): 장착 칸 아래 한 줄. 누르면 쓰기/벗기 */
+  .skins-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: none; font-size: 12px; }
+  .skins-row[hidden] { display: none; }
+  .skins-row .skins-label { opacity: 0.7; }
+  .skin-btn { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; font-size: 12px; border-color: #7a4a8a; }
+  .skin-btn.on { border-color: #ff9a3a; color: #ffcf7a; box-shadow: 0 0 6px rgba(255, 140, 40, 0.5); }
   .slot {
     text-align: left;
     padding: 6px 8px;
@@ -607,6 +613,13 @@
   @keyframes gift-pulse { 0%, 100% { box-shadow: 0 0 6px rgba(255, 207, 92, 0.6); } 50% { box-shadow: 0 0 20px 4px rgba(255, 220, 120, 0.95); } }
   @media (prefers-reduced-motion: reduce) { #gift-banner { animation: none; box-shadow: 0 0 10px rgba(255, 207, 92, 0.8); } }
   @media (max-width: 520px) { #gift-banner { font-size: 11.5px; padding: 4px 9px; right: 5px; top: 5px; } }
+  /* 이벤트 (dc#130): 마을 오른쪽 위 (선물 배너가 있으면 그 아래) */
+  #event-banner { position: absolute; right: 8px; top: 8px; z-index: 3; line-height: 1.3; font-size: 12.5px; font-weight: bold; padding: 5px 12px; border-radius: 999px;
+    border: 2px solid #ffb35c; color: #fff3e0; background: linear-gradient(100deg, #3a1446, #7a2a8a 55%, #e8761e); cursor: pointer; box-shadow: 0 0 10px rgba(255, 140, 40, 0.55); }
+  #event-banner[hidden] { display: none; }
+  #gift-banner:not([hidden]) ~ #event-banner { top: 46px; }
+  @media (hover: hover) { #event-banner:hover { filter: brightness(1.15); color: #fff; } }
+  @media (max-width: 520px) { #event-banner { font-size: 11px; padding: 3px 9px; right: 5px; top: 5px; } #gift-banner:not([hidden]) ~ #event-banner { top: 36px; } }
   .modal.gift { display: flex; flex-direction: column; gap: 8px; max-width: 760px; width: 100%; }
   .modal.gift .sub { margin: 0; font-size: 12.5px; opacity: 0.85; }
   #gift-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; max-height: 62vh; overflow-y: auto; }
@@ -694,7 +707,7 @@
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)<small id="lvb"></small></span>
     <span id="status" hidden></span>
   </div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
@@ -743,6 +756,7 @@
       <div class="inv-main">
         <button id="inv-statline" class="statline" type="button"></button>
         <div id="inv-equip" class="equip-grid"></div>
+        <div id="inv-skins" class="skins-row" hidden></div>
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
         <button id="inv-staff-gift" class="staff-btn" type="button" hidden data-t>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
@@ -932,6 +946,7 @@
 <script src="items.js"></script>
 <script src="monsters.js"></script>
 <script src="sprites.js"></script>
+<script src="events.js"></script>
 <script src="jump.js?v=100"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
@@ -3215,6 +3230,7 @@
         collectMail(true);
         Ranking.schedule();
         Gift.refresh();   // 계정이 바뀌면 선물 상태도 그 계정 것으로 (dc#105)
+        Events.refresh();   // 이벤트 재화·스킨도 그 계정 것으로 (dc#130)
         legacyNotice();
       } catch (e) {
         log(T("계정 저장 데이터를 불러오지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
@@ -3763,6 +3779,7 @@
     if (s === "lobby") Town.start();
     if (s === "dungeon") { Tips.step("enter"); if (Tips.newbie()) Tips.want("dungeon"); }   // 튜토리얼: 던전에 들어감 → 마을 안내 끝
     Tips.refresh();
+    Events.renderBanner();   // 이벤트 배너는 마을에서만 (dc#130)
     try { sessionStorage.setItem(SCENE_KEY, s === "jump" ? "lobby" : s); } catch {}   // 점프 던전은 새로고침하면 로비로
     Lobby.ping();
   }
@@ -4243,6 +4260,61 @@
     ctx.fillText(text, cx, by);
   }
 
+  // ---- 이벤트 (dc#130): events.js의 일정 → 테마(마을·몬스터 모습)와 스킨 ----
+  // 테마는 이 기기의 시계(한국 시간 날짜)로 정함. 주소에 ?event=halloween(미리 보기) · ?event=off(끄기)
+  //   테스트는 localStorage rl_event로 같은 일을 함 (test/ko-default.cjs가 기본 off → 날짜와 상관없이 같은 화면)
+  // 이벤트 재화는 상점(shop.html)에서 하루 한 번 무료로 받고, 모아서 스킨이나 캐시로 바꿈 (서버 event.php, 로그인 계정만)
+  // 스킨: 서버 event_status의 skins(가진 것). 쓸지 말지는 이 기기에 (rl_skin_wear: { head, weapon }). 능력치는 그대로
+  // 포털 빌드는 서버·상점이 없어서 테마만
+  const Events = (() => {
+    const E = window.RLEvents, q = new URLSearchParams(location.search).get("event") || store.get("rl_event");
+    const banner = document.getElementById("event-banner");
+    const WEAR_KEY = "rl_skin_wear";
+    let st = null;   // 서버 event_status
+    const name = (o) => (E ? E.text(o, RLI18N.lang) : "");
+    const readWear = () => { try { return JSON.parse(store.get(WEAR_KEY) || "{}") || {}; } catch { return {}; } };
+    // 지금 이벤트 (꺼 두었으면 null, 미리 보기면 그 테마의 이벤트) · 테마 (없으면 null)
+    const active = () => (!E || q === "off" ? null : E.active() || (E.THEMES[q] ? E.EVENTS.find(e => e.ready && e.theme === q) : null) || null);
+    function theme() {
+      if (!E || q === "off") return null;
+      if (q && E.THEMES[q]) return q;
+      return active()?.theme || null;
+    }
+    const owned = () => st?.skins || [];
+    // 이 부위에 지금 보이는 스킨 id (가졌고, 쓰기로 했을 때)
+    function wear(slot) {
+      const id = readWear()[slot];
+      return id && E?.SKINS[id]?.slot === slot && owned().includes(id) ? id : null;
+    }
+    const sprite = (slot) => { const id = wear(slot); return id ? E.SKINS[id].sprite : null; };
+    function setWear(id, on) {
+      const S = E?.SKINS[id];
+      if (!S) return;
+      const w = readWear();
+      if (on) w[S.slot] = id; else if (w[S.slot] === id) delete w[S.slot];
+      store.set(WEAR_KEY, JSON.stringify(w));
+      render();
+    }
+    async function refresh() {
+      if (PORTAL || !RANKING_API || !E) { st = null; renderBanner(); return null; }
+      try { st = await marketCall("event_status"); } catch { st = null; }
+      renderBanner();
+      if (scene === "lobby" || scene === "dungeon") render();
+      return st;
+    }
+    // 마을 오른쪽 위 배너: 이벤트 이름 + 오늘 받을 수 있으면 "받기" → 상점의 이벤트 칸
+    function renderBanner() {
+      const ev = !PORTAL && RANKING_API ? active() : null;
+      banner.hidden = !ev || scene !== "lobby";
+      if (banner.hidden) return;
+      const coin = name(E.THEMES[ev.theme]?.coin);
+      banner.textContent = st?.login && !st.claimed && st.event?.open ? T("🎃 {0} 이벤트 · 오늘의 {1} 받기", name(ev.name), coin) : T("🎃 {0} 이벤트 · {1} {2}개", name(ev.name), coin, st?.balance || 0);
+    }
+    banner.addEventListener("click", () => { location.href = "shop.html#event"; });
+    return { theme, wear, sprite, owned, setWear, refresh, renderBanner, name, get status() { return st; } };
+  })();
+  window.RLEventsGame = { theme: () => Events.theme(), wear: (s) => Events.wear(s), status: () => Events.status };   // 시험용 (읽기만)
+
   // ---- 렌더링 ----
   // ---- 픽셀 그림 (img/sprites.png, 만들기: tools/sprites-build.mjs) ----
   // 늘 그림으로 (dc#90에서 글자로 보기 버튼을 없앰, 예전 설정 rl_gfx도 지움). 그림을 아직 못 받았거나 못 받으면 글자로 대신 그림
@@ -4254,19 +4326,22 @@
       sheet.onload = () => { ready = true; try { render(); } catch {} };
       sheet.src = S.src;
     }
+    // 이벤트 테마의 다른 그림 (dc#130): 할로윈이면 몬스터 mon_X → 마녀 모자를 쓴 hw_X (있을 때만)
+    const alias = (name) => (name.startsWith("mon_") && Events.theme() === "halloween" && S?.map["hw_" + name.slice(4)] ? "hw_" + name.slice(4) : name);
     return {
       get on() { return ready; },
+      name: alias,
       has: (name) => !!S?.map[name],
-      // 화면 글(도감 등)에 넣을 그림 칸: 그림 모드가 아니거나 없으면 null
+      // 화면 글(도감 등)에 넣을 그림 칸: 그림 모드가 아니거나 없으면 null (도감은 원래 모습)
       icon(name) {
         const c = this.on && S.map[name];
         return c ? el("span", { className: "pix", style: { backgroundPosition: `-${c[0] * S.size}px -${c[1] * S.size}px` } }) : null;
       },
       // 그림 한 칸의 [그림 모음, x, y] (다른 캔버스에 겹칠 때)
-      src(name) { const c = S?.map[name]; return c ? [sheet, c[0] * S.size, c[1] * S.size] : null; },
+      src(name) { const c = S?.map[alias(name)]; return c ? [sheet, c[0] * S.size, c[1] * S.size] : null; },
       // (px, py) 칸에 그림 하나. 없는 이름이면 false (그러면 글자로)
       draw(name, px, py) {
-        const c = S?.map[name];
+        const c = S?.map[alias(name)];
         if (!c) return false;
         ctx.drawImage(sheet, c[0] * S.size, c[1] * S.size, S.size, S.size, px, py, TILE, TILE);
         return true;
@@ -4482,8 +4557,10 @@
     return {
       // 지금 장비로 만든 32×32 그림 (장비가 바뀔 때만 다시 만듦)
       canvas() {
-        const eq = Inv.equipped();
-        const worn = DOLL_SLOTS.filter(slot => eq[slot]).map(slot => [partName(slot, eq[slot]), rarityColor(eq[slot])]).filter(([n]) => Sprites.has(n));
+        const eq = Inv.equipped(), skinW = Events.sprite("weapon"), skinH = Events.sprite("head");
+        // 이벤트 스킨 (dc#130): 무기를 들었으면 무기 그림 대신, 머리는 투구가 없어도 맨 위에 (스킨 색 그대로)
+        const worn = DOLL_SLOTS.filter(slot => eq[slot] && !(slot === "head" && skinH)).map(slot => (slot === "weapon" && skinW ? [skinW, null] : [partName(slot, eq[slot]), rarityColor(eq[slot])])).filter(([n]) => Sprites.has(n));
+        if (skinH && Sprites.has(skinH)) worn.push([skinH, null]);
         const k = worn.flat().join("|");
         if (k !== key) {
           key = k;
@@ -4979,7 +5056,7 @@
           if (frozen) view.sparks(d.x, d.y, EL.colors.ice, "shard", 1);
           if (shockOn) view.sparks(d.x, d.y, EL.colors.bolt, "spark", 1);
         }
-        bills.push({ key: e, sprite: `mon_${e.id}`, x: d.x + o.x / TILE * 0.6, y: d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha,
+        bills.push({ key: e, sprite: Sprites.name(`mon_${e.id}`), x: d.x + o.x / TILE * 0.6, y: d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha,
           tint: frozen ? "#9fdcff" : burning ? "#ffc9a0" : shockOn ? "#fff3a0" : null,
           hp: hurtNow ? Math.max(0, e.hp / e.maxHp) : null,
           barColor: e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : e.kind === "golden" ? "#ffd700" : "#e04a3a",
@@ -5021,7 +5098,8 @@
     const arcAt = (now, t, ms) => { const p = (now - t) / ms; return p >= 0 && p < 1 ? Math.sin(p * Math.PI) : 0; };
     function handState(now) {
       const eq = Inv.equipped(), w = eq.weapon, off = eq.offhand, el = weaponElement(now), c = el && EL.colors[el];
-      return { right: w, left: off, kr: arcAt(now, swingT, 300), kl: arcAt(now, swingLT, 300), kb: arcAt(now, blockT, 420),
+      const skin = w && Events.wear("weapon");   // 무기 스킨 (dc#130): 3D 손에는 낫 모델
+      return { right: skin ? { ...w, skin } : w, left: off, kr: arcAt(now, swingT, 300), kl: arcAt(now, swingLT, 300), kb: arcAt(now, blockT, 420),
         glowR: w ? c : null, glowL: off && off.type !== "shield" ? c : null };
     }
     function drawHands(now, bob, hs) {
@@ -5785,8 +5863,37 @@
       ctx.beginPath(); ctx.ellipse(x, y + 1.5, 1.4 * f, 2.6 * f, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
+    // 할로윈 (dc#130): 하늘을 나는 박쥐, 처마 밑 거미줄, 가로등 옆 잭오랜턴
+    function bat(x, y, k, ph) {
+      const f = reduceMotion ? 0.3 : Math.sin(ph);
+      ctx.fillStyle = "#0c0612";
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.lineTo(x - 4 * k, y - 3 * k * f); ctx.lineTo(x - 8 * k, y - k - 2 * k * f); ctx.lineTo(x - 6 * k, y + k); ctx.lineTo(x - 3 * k, y + 0.5 * k); ctx.lineTo(x, y + 2 * k);
+      ctx.lineTo(x + 3 * k, y + 0.5 * k); ctx.lineTo(x + 6 * k, y + k); ctx.lineTo(x + 8 * k, y - k - 2 * k * f); ctx.lineTo(x + 4 * k, y - 3 * k * f);
+      ctx.closePath(); ctx.fill();
+    }
+    function cobweb(x, y, dir) {
+      const r = TILE * 0.7;
+      ctx.save(); ctx.strokeStyle = "rgba(225, 225, 240, 0.45)"; ctx.lineWidth = 0.5; ctx.beginPath();
+      for (let i = 0; i <= 4; i++) { const a = (i / 4) * Math.PI / 2; ctx.moveTo(x, y); ctx.lineTo(x + dir * Math.cos(a) * r, y + Math.sin(a) * r); }
+      for (const k of [0.35, 0.65, 0.95]) for (let i = 0; i < 4; i++) {
+        const a0 = (i / 4) * Math.PI / 2, a1 = ((i + 1) / 4) * Math.PI / 2, m = (a0 + a1) / 2;
+        ctx.moveTo(x + dir * Math.cos(a0) * r * k, y + Math.sin(a0) * r * k);
+        ctx.quadraticCurveTo(x + dir * Math.cos(m) * r * k * 0.8, y + Math.sin(m) * r * k * 0.8, x + dir * Math.cos(a1) * r * k, y + Math.sin(a1) * r * k);
+      }
+      ctx.stroke(); ctx.restore();
+    }
+    function jack(cx, t) {
+      const src = Sprites.on && Sprites.src("deco_jack"), bot = G * TILE, w = TILE * 0.8;
+      const f = reduceMotion ? 0.8 : 0.7 + 0.3 * Math.sin(t * 8 + cx) * Math.sin(t * 5.3 + cx * 2);
+      const glow = ctx.createRadialGradient(cx, bot - w * 0.35, 1, cx, bot - w * 0.35, TILE * 0.9);
+      glow.addColorStop(0, `rgba(255, 150, 40, ${0.35 * f})`); glow.addColorStop(1, "rgba(255, 150, 40, 0)");
+      ctx.fillStyle = glow; ctx.fillRect(cx - TILE, bot - TILE * 1.3, TILE * 2, TILE * 1.3);
+      if (src) ctx.drawImage(src[0], src[1], src[2], 32, 32, cx - w / 2, bot - w + 1, w, w);
+      else { ctx.fillStyle = "#e8761e"; ctx.beginPath(); ctx.ellipse(cx, bot - w * 0.32, w * 0.4, w * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
     function building(b, t) {
-      const x0 = b.x0 * TILE, x1 = (b.x1 + 1) * TILE, top = (G - b.h) * TILE, bot = G * TILE, w = x1 - x0;
+      const x0 = b.x0 * TILE, x1 = (b.x1 + 1) * TILE, top = (G - b.h) * TILE, bot = G * TILE, w = x1 - x0, hw = Events.theme() === "halloween";
       const hell = b.id === "hell", gate = b.id === "gate";
       const [wall, mortar] = hell ? ["#4a0f0a", "#ff6a2a"] : gate ? ["#4a3a2a", "#2e241a"] : BUILDING_COLORS[b.id] || ["#2a3040", "#1c2030"];
       ctx.fillStyle = wall; ctx.fillRect(x0, top, w, bot - top);
@@ -5807,12 +5914,13 @@
         ctx.fillStyle = mortar;
         ctx.beginPath(); ctx.moveTo(x0 - 5, top + 1); ctx.lineTo(x0 + w / 2, top - TILE * 0.9); ctx.lineTo(x1 + 5, top + 1); ctx.closePath(); ctx.fill();
         ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(x0 - 5, top - 1, w + 10, 2);
+        if (hw) cobweb(x0, top + 1, 1);
       }
       // 불 켜진 창 (문 자리는 피해서 윗줄에)
       if (!hell && b.h >= 4) for (let x = b.x0 + 1; x < b.x1; x += 2) {
         if (TW.doors.some(d => Math.abs(d.x - (x + 0.5)) < 0.8)) continue;
         const lit = 0.75 + 0.25 * Math.sin(t * 1.3 + x);
-        ctx.fillStyle = `rgba(255, 210, 120, ${0.55 * lit})`; ctx.fillRect(x * TILE + 4, top + TILE * 0.9, TILE - 8, TILE * 0.7);
+        ctx.fillStyle = hw ? `rgba(255, 140, 40, ${0.6 * lit})` : `rgba(255, 210, 120, ${0.55 * lit})`; ctx.fillRect(x * TILE + 4, top + TILE * 0.9, TILE - 8, TILE * 0.7);
         ctx.fillStyle = mortar; ctx.fillRect(x * TILE + TILE / 2 - 0.5, top + TILE * 0.9, 1, TILE * 0.7);
       }
       // 간판 (건물 이름)
@@ -5914,13 +6022,26 @@
       const t = performance.now() / 1000, now = performance.now(), vw = MAP_W / ZT, vh = MAP_H / ZT;
       const cx = Math.max(0, Math.min(map.w - vw, st.x - vw / 2)), cy = Math.max(0, Math.min(map.h - vh, 0));
       // 하늘: 밤하늘 → 지평선 쪽 보라, 별, 달, 먼 산 (천천히 따라옴)
+      // 할로윈 (dc#130): 보랏빛 → 지평선 주황 하늘, 크고 둥근 주황 보름달, 날아다니는 박쥐, 짙은 보라 산
+      const hw = Events.theme() === "halloween";
       const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-      sky.addColorStop(0, "#0a0f24"); sky.addColorStop(0.6, "#1b1838"); sky.addColorStop(1, "#2a1d3a");
+      if (hw) { sky.addColorStop(0, "#14081f"); sky.addColorStop(0.5, "#381445"); sky.addColorStop(1, "#7a3018"); }
+      else { sky.addColorStop(0, "#0a0f24"); sky.addColorStop(0.6, "#1b1838"); sky.addColorStop(1, "#2a1d3a"); }
       ctx.fillStyle = sky; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       for (const s of STARS) { const a = 0.45 + 0.35 * Math.sin(t * 1.5 + s.p); ctx.fillStyle = `rgba(255, 255, 255, ${a})`; ctx.fillRect(((s.x * VIEW_W * 2 - cx * 4) % VIEW_W + VIEW_W) % VIEW_W, s.y * VIEW_H, s.r, s.r); }
-      ctx.fillStyle = "#f4efd2"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2, VIEW_H * 0.14, 14, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#1b1838"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2 + 6, VIEW_H * 0.14 - 4, 12, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#151329";
+      if (hw) {
+        const mx = VIEW_W * 0.78 - cx * 2, my = VIEW_H * 0.17;
+        ctx.save(); ctx.shadowColor = "#ffb347"; ctx.shadowBlur = 24; ctx.fillStyle = "#ffcf7a"; ctx.beginPath(); ctx.arc(mx, my, 22, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.fillStyle = "rgba(200, 120, 40, 0.35)"; for (const [dx, dy, r] of [[-7, -5, 5], [6, 4, 4], [-2, 9, 3]]) { ctx.beginPath(); ctx.arc(mx + dx, my + dy, r, 0, Math.PI * 2); ctx.fill(); }
+        for (let i = 0; i < 7; i++) {
+          const s = reduceMotion ? 0 : t, span = VIEW_W + 60;
+          bat(((i * 137 + s * (16 + i * 4)) % span + span) % span - 30, VIEW_H * (0.08 + 0.045 * i) + 5 * Math.sin(s * 1.7 + i * 2), 0.8 + (i % 3) * 0.25, s * 14 + i);
+        }
+      } else {
+        ctx.fillStyle = "#f4efd2"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2, VIEW_H * 0.14, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#1b1838"; ctx.beginPath(); ctx.arc(VIEW_W * 0.82 - cx * 2 + 6, VIEW_H * 0.14 - 4, 12, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = hw ? "#1f0d29" : "#151329";
       ctx.beginPath(); ctx.moveTo(0, VIEW_H);
       for (let i = 0; i <= 40; i++) { const x = i * VIEW_W / 40, wx = x / VIEW_W * 8 + cx * 0.25; ctx.lineTo(x, VIEW_H * (0.52 + 0.08 * Math.sin(wx * 1.3) + 0.05 * Math.sin(wx * 3.1))); }
       ctx.lineTo(VIEW_W, VIEW_H); ctx.closePath(); ctx.fill();
@@ -5935,10 +6056,13 @@
         const px = lx * TILE, bot = G * TILE;
         ctx.fillStyle = "#2a2e3a"; ctx.fillRect(px - 1, bot - TILE * 2.2, 2, TILE * 2.2);
         const g = 0.7 + 0.3 * Math.sin(t * 3 + lx);
-        ctx.save(); ctx.shadowColor = "#ffcf7a"; ctx.shadowBlur = reduceMotion ? 6 : 6 + 4 * g;
-        ctx.fillStyle = `rgba(255, 220, 140, ${0.75 + 0.25 * g})`; ctx.fillRect(px - 3, bot - TILE * 2.45, 6, 5);
+        ctx.save(); ctx.shadowColor = hw ? "#ff8a2a" : "#ffcf7a"; ctx.shadowBlur = reduceMotion ? 6 : 6 + 4 * g;
+        ctx.fillStyle = hw ? `rgba(255, 150, 60, ${0.75 + 0.25 * g})` : `rgba(255, 220, 140, ${0.75 + 0.25 * g})`; ctx.fillRect(px - 3, bot - TILE * 2.45, 6, 5);
         ctx.restore();
+        if (hw && lx < map.w - 1.5) jack(px + TILE * 0.55, t);
       }
+      // 할로윈: 문을 피해 길가에 잭오랜턴 몇 개 더
+      if (hw) for (const jx of [3.2, 17.3, 30.6, 35.4, 47.6, 57.4]) if (jx >= x0 - 1 && jx <= x1 + 1 && !TW.doors.some(d => shown(d) && Math.abs(d.x - jx) < 0.9)) jack(jx * TILE, t);
       for (const d of TW.doors) if (shown(d) && d.x >= x0 - 1 && d.x <= x1 + 1) doorArt(d, t);
       // 땅·옆 벽
       for (let y = 0; y < map.h; y++) for (let x = x0; x <= x1; x++) {
@@ -6514,6 +6638,7 @@
     log(T("로그아웃했다. 게스트로 새로 시작한다."), "info");
     renderAccount();
     Gift.refresh();
+    Events.refresh();
   });
 
   // 탭을 닫거나 숨길 때 남은 저장을 바로 보냄
@@ -6743,8 +6868,22 @@
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
     document.getElementById("inv-staff-gift").hidden = !isStaff();
+    renderSkins();
 
     renderDetail();
+  }
+
+  // 이벤트 스킨 (dc#130): 가진 스킨마다 쓰기/벗기 버튼 (같은 부위는 하나만). 능력치는 그대로, 모습만
+  function renderSkins() {
+    const box = document.getElementById("inv-skins"), E = window.RLEvents, own = E ? Events.owned().filter(id => E.SKINS[id]) : [];
+    box.hidden = !own.length;
+    if (!own.length) { box.replaceChildren(); return; }
+    box.replaceChildren(el("span", { className: "skins-label" }, T("꾸미기")), ...own.map(id => {
+      const S = E.SKINS[id], on = Events.wear(S.slot) === id;
+      return el("button", { type: "button", className: "skin-btn" + (on ? " on" : ""), title: S.slot === "head" ? T("머리 모습만 바뀌어요 (능력치는 그대로)") : T("무기를 들면 모습만 바뀌어요 (능력치는 그대로)"),
+        onclick: () => { Events.setWear(id, !on); renderInventory(); } }, Sprites.icon(S.sprite), `${Events.name(S.name)} · ${on ? T("쓰는 중") : T("쓰기")}`);
+    }));
+    box.querySelectorAll(".skin-btn").forEach((b, i) => b.setAttribute("aria-pressed", String(Events.wear(E.SKINS[own[i]].slot) === own[i])));
   }
 
   // 판매하면 받는 강화석: "강화석 +A · 악몽 강화석 +B" (0인 쪽은 빼고, 둘 다 0이면 "강화석 +0")
@@ -8919,6 +9058,7 @@
   if (Account.configured() && Account.loggedIn()) syncAfterLogin();
   else { collectMail(true); Ranking.schedule(); }
   Gift.refresh();   // 무료 선물 (dc#105): 받을 수 있으면 오른쪽 위 배너
+  Events.refresh();   // 이벤트 (dc#130): 마을 배너, 가진 스킨
   // 상점의 "계정 연결하기": 이미 로그인했으면 바로 상점으로, 아니면 로그인 창
   if (new URLSearchParams(location.search).get("login") === "shop") {
     history.replaceState(null, "", location.pathname);

@@ -379,9 +379,22 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   vmTorch.position.set(0.5, 0.2, 0.1); vm.add(vmAmb, vmTorch, vmGlow);
   const loader = new GLTFLoader(), models = new Map();
   const loadModel = (name) => {
-    if (!models.has(name)) models.set(name, new Promise(ok => loader.load(`models/weapons/${name}.gltf`, g => ok(g.scene), undefined, () => ok(null))));
+    if (!models.has(name)) models.set(name, name === "scythe" ? Promise.resolve(makeScythe()) : new Promise(ok => loader.load(`models/weapons/${name}.gltf`, g => ok(g.scene), undefined, () => ok(null))));
     return models.get(name);
   };
+  // 사신의 낫 (이벤트 스킨, dc#130): 모델 파일 없이 만듦. 검붉은 긴 자루 + 위에서 앞으로 휘어진 은빛 날
+  function makeScythe() {
+    const g = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 1.5, 8), new THREE.MeshLambertMaterial({ color: 0x5a1418 }));
+    shaft.position.y = 0.55; g.add(shaft);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.06, 8), new THREE.MeshLambertMaterial({ color: 0x8a8f9c }));
+    ring.position.y = 1.27; g.add(ring);
+    const blade = new THREE.Shape();
+    blade.moveTo(0, 0.04); blade.quadraticCurveTo(0.42, 0.34, 0.86, -0.12); blade.quadraticCurveTo(0.42, 0.12, 0, -0.06); blade.closePath();
+    const b = new THREE.Mesh(new THREE.ExtrudeGeometry(blade, { depth: 0.018, bevelEnabled: false }), new THREE.MeshLambertMaterial({ color: 0xd0d6e2, emissive: 0x1a1c24 }));
+    b.position.set(0, 1.28, 0.009); b.rotation.y = Math.PI; g.add(b);   // 날은 화면 가운데 쪽(-x)으로 (오른손이라 휜 모양이 잘 보임)
+    return g;
+  }
   // 오른손·왼손: 손 위치(rest)와 지금 든 것 { key, obj, mats }
   const hands = { r: { key: null, obj: null, mats: [], want: null, root: new THREE.Group() }, l: { key: null, obj: null, mats: [], want: null, root: new THREE.Group() } };
   vm.add(hands.r.root, hands.l.root);
@@ -396,7 +409,7 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   hands.r.root.add(fistR); hands.l.root.add(fistL);
   // 무기 바꾸기: type(longsword…shield)·rarity → 모델. 불러오는 동안은 예전 것 그대로
   function setHand(side, item) {
-    const h = hands[side], name = item ? weaponModel(item.type, item.rarity) : null, key = name && `${name}|${item.type}`;
+    const h = hands[side], name = item ? (item.skin === "reaper_scythe" ? "scythe" : weaponModel(item.type, item.rarity)) : null, key = name && `${name}|${item.type}`;
     if (key === h.want) return;
     h.want = key;
     if (!key) { if (h.obj) h.root.remove(h.obj); h.obj = null; h.key = null; h.mats = []; return; }
@@ -404,7 +417,7 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
       if (h.want !== key || !src) return;
       if (h.obj) h.root.remove(h.obj);
       const obj = src.clone(true), box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3());
-      obj.scale.setScalar((WEAPON_SIZE[item.type] || 0.5) / Math.max(size.y, 0.01));
+      obj.scale.setScalar((name === "scythe" ? 0.58 : WEAPON_SIZE[item.type] || 0.5) / Math.max(size.y, 0.01));
       h.mats = [];
       obj.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); h.mats.push(o.material); } });   // 속성 빛을 손마다 따로
       h.root.add(obj); h.obj = obj; h.key = key; h.type = item.type;

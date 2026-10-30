@@ -6,7 +6,7 @@
 //   GET  api.php?r=me       내 순위
 //   GET  api.php?r=player&id=<공개 ID>  그 사람이 최고 층을 세운 순간의 장비·능력치, 최고 아이템
 //   POST api.php?r=lobby    로비 위치(또는 탐험 중인 층)를 알리고, 지금 접속 중인 사람들을 받음
-//   거래소·우편함 경로는 market.php, 하루 입장·광고 보상 경로는 ads.php, 계정 저장은 profile.php 맨 위 설명 참고
+//   거래소·우편함 경로는 market.php, 하루 입장·광고 보상 경로는 ads.php, 이벤트는 event.php, 계정 저장은 profile.php 맨 위 설명 참고
 //   (서버가 PATH_INFO를 지원하면 api.php/api/score 처럼 불러도 됨)
 //
 // 누구인지는 서버가 확인한다.
@@ -27,6 +27,7 @@ require_once __DIR__ . '/rules.php';
 require_once __DIR__ . '/market.php';
 require_once __DIR__ . '/ads.php';
 require_once __DIR__ . '/bonus.php';
+require_once __DIR__ . '/event.php';
 require_once __DIR__ . '/profile.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5, 'unique' => 6];
@@ -200,6 +201,7 @@ function db(): PDO {
     market_tables($pdo);
     ads_tables($pdo);
     bonus_tables($pdo);
+    event_tables($pdo);
     profile_tables($pdo);
     foreach (['pub_id VARCHAR(32)', 'stage_gear TEXT', 'item_json TEXT'] as $col) {
         try { $pdo->exec("ALTER TABLE players ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
@@ -1062,6 +1064,8 @@ function lobby_ping(): array {
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
+    // 교환 기간이 끝난 이벤트 재화 → 캐시 우편 (dc#131). 남은 재화가 있는 사람만 (보통은 빈 조회 한 번)
+    if ($who['kind'] === 'user') event_settle($who['key']);
     $me = ['id' => $pub, 'name' => titled($who['key'], $who['display'])];
     if (isset($crowns[$who['key']])) $me['crown'] = $crowns[$who['key']];
     if ($who['developer']) { $me['staff'] = true; $me['unlimited'] = $who['unlimited']; }   // unlimited: 이 기기가 운영자 기기
@@ -1154,6 +1158,10 @@ try {
     elseif ($route === 'bonus_status' && $method === 'GET') respond(200, bonus_status());
     elseif ($route === 'bonus_open' && $method === 'POST') respond(200, bonus_open());
     elseif ($route === 'bonus_pick' && $method === 'POST') respond(200, bonus_pick());
+    elseif ($route === 'event_status' && $method === 'GET') respond(200, event_status());
+    elseif ($route === 'event_claim' && $method === 'POST') respond(200, event_claim());
+    elseif ($route === 'event_skin' && $method === 'POST') respond(200, event_skin());
+    elseif ($route === 'event_cash' && $method === 'POST') respond(200, event_cash());
     elseif ($route === 'profile' && $method === 'GET') respond(200, profile_get());
     elseif ($route === 'profile' && $method === 'POST') respond(200, profile_put());
     elseif ($route === 'geo' && $method === 'GET') respond(200, get_geo());

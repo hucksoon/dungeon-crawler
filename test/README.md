@@ -21,5 +21,6 @@ bash test/run.sh market     # 이름에 market이 들어간 것만
 | `i18n-ko-same.cjs`, `namefromko.cjs`, `monster-names.cjs` | 번역 틀을 불러도 한국어가 같은지, 예전 기록 아이템 이름·저장된 층의 몬스터 이름 다시 짓기 |
 | `i18n-screens.mjs` | (따로 실행) 영어·일본어 화면에 한글이 남는지 보기: `node test/i18n-screens.mjs . <캡처 폴더> en` |
 | `php/` | 테스트용 서버 설정(`config.test.php`, 가짜 키)과 가짜 Xsolla(`mock.php`). 실행 중 만든 sqlite·설정은 저장소에 안 올림 |
+| `event-*` | 이벤트(dc#130): `event-api-test`는 서버 날짜를 설정(`event_today`)으로, `event-e2e`는 브라우저 시계(`clock.setFixedTime`)도 할로윈 기간으로 맞춤. 다른 테스트는 `ko-default.cjs`가 `rl_event: "off"`로 이벤트 모습을 꺼 둠 |
 | `town.mjs` | 테스트 도우미 `goDoor(page, 문 id)`: 마을(옆에서 보는 로비)에서 문까지 진짜 키로 걸어가 ↑ (문 id는 `jump.js`의 `TOWN.doors`) |
 | `fixtures/` | 예전 v1 `items-v1.js`, 예전 주소 안내 페이지 |

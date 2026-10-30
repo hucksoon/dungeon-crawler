@@ -4,7 +4,7 @@
 //   1) Dungeon Crawl Stone Soup 그림 모음 (CC0, https://github.com/crawl/tiles 의 releases/Nov-2015)
 //      받기: git clone --depth 1 --filter=blob:none --sparse https://github.com/crawl/tiles && cd tiles && git sparse-checkout set releases/Nov-2015
 //      TILES 환경 변수로 위치를 바꿀 수 있음 (기본 /home/user/crawl/tiles/releases/Nov-2015)
-//   2) 이 파일에서 직접 그린 그림: 계단·보물상자·보석·바지, 네임드 보스 장식(구미호 꼬리·저승사자 갓·염라대왕 면류관·고블린 왕관)
+//   2) 이 파일에서 직접 그린 그림: 계단·보물상자·보석·바지, 네임드 보스 장식(구미호 꼬리·저승사자 갓·염라대왕 면류관·고블린 왕관), 할로윈(호박 머리·잭오랜턴·마녀 모자, dc#130)
 // 필요: ImageMagick(convert, montage). 만든 결과(img/sprites.png, sprites.js)는 저장소에 올리므로 게임에는 필요 없음
 import fs from "node:fs";
 import os from "node:os";
@@ -142,12 +142,61 @@ function drawTails() { // 구미호 아홉 꼬리 (왼쪽을 보는 여우의 �
   return g;
 }
 
+// ---- 할로윈 이벤트 (dc#130) ----
+// 마녀 모자 (몬스터 머리 위): 15×11 칸 안에. 챙 + 휘어진 고깔 + 띠 (띠 색은 몬스터마다 돌아가며)
+const HAT_W = 15, HAT_H = 11;
+function drawWitchHat(band) {
+  return () => {
+    const g = canvas();
+    g.poly([[4, 8], [6, 3], [9, 0], [13, 1], [10, 3], [11, 8]], "#2a1a3a");   // 고깔 (끝이 오른쪽으로 꺾임)
+    g.line(7, 3, 8, 7, "#3e2a56");
+    g.rect(5, 7, 6, 2, band); g.set(8, 7, "#ffe14a");                          // 띠 + 버클
+    g.ellipse(7.5, 9.5, 7.5, 1.6, "#2a1a3a"); g.rect(1, 9, 13, 1, "#3e2a56");   // 챙
+    g.outline("#08060c");
+    return g;
+  };
+}
+const HAT_BANDS = ["#ff8a1f", "#7ad13a", "#a050ff"];
+// 호박 머리 스킨 (플레이어 머리 자리에 씌움): 주황 호박 + 골 + 꼭지 + 노랗게 빛나는 눈·입
+function drawPumpkinHead() {
+  const g = canvas();
+  g.ellipse(16, 7.5, 7, 6, "#e8761e");
+  for (const x of [12, 20]) g.line(x, 3, x, 12, "#c45a10");
+  g.line(16, 2, 16, 13, "#d4671a");
+  g.set(11, 5, "#ffad5a"); g.set(11, 6, "#ffad5a"); g.set(14, 3, "#ffad5a");   // 빛
+  g.rect(15, 0, 2, 2, "#4f7a24"); g.set(17, 0, "#78b03c");                      // 꼭지
+  g.poly([[11.5, 7], [14.5, 7], [13, 4.5]], "#ffe14a");                         // 눈
+  g.poly([[17.5, 7], [20.5, 7], [19, 4.5]], "#ffe14a");
+  g.rect(12, 9, 8, 2, "#ffe14a");                                               // 입 (이빨 두 개)
+  g.set(14, 9, "#c45a10"); g.set(18, 10, "#c45a10");
+  g.outline("#2a1204");
+  return g;
+}
+// 마을 바닥에 놓는 잭오랜턴 (큰 호박, 안에서 촛불이 비침)
+function drawJack() {
+  const g = canvas();
+  g.ellipse(16, 21, 12, 9, "#e8761e");
+  for (const x of [9, 23]) g.line(x, 14, x, 28, "#c45a10");
+  g.line(16, 12, 16, 30, "#d4671a");
+  g.set(8, 18, "#ffad5a"); g.set(8, 19, "#ffad5a"); g.set(12, 14, "#ffad5a");
+  g.rect(15, 9, 3, 4, "#4f7a24"); g.set(18, 9, "#78b03c"); g.set(19, 10, "#78b03c");
+  g.poly([[8, 21], [13, 21], [10.5, 16]], "#ffe14a"); g.poly([[19, 21], [24, 21], [21.5, 16]], "#ffe14a");
+  g.poly([[14.5, 23], [17.5, 23], [16, 20.5]], "#ffcf3a");                      // 코
+  g.poly([[8, 24], [24, 24], [22, 28], [10, 28]], "#ffe14a");                   // 입
+  for (const x of [12, 16, 20]) g.rect(x, 24, 2, 1, "#c45a10");
+  g.rect(14, 27, 2, 1, "#c45a10");
+  g.outline("#2a1204");
+  return g;
+}
+// 할로윈 몬스터: 원래 그림의 머리 꼭대기(맨 위 줄들의 가운데)에 마녀 모자를 얹음. 모자·관을 이미 쓴 몬스터는 그대로
+const NO_HAT = new Set(["goblin_king", "jeoseung", "yeomra"]);
+
 // ---- 그림 목록 ----
 // from: Crawl 그림 경로 (배열이면 아래부터 겹침), mod: [밝기, 채도, 색상] (ImageMagick -modulate), tint: [색, %] (-colorize)
 // draw: 직접 그린 그림, over: 그 위에 얹을 직접 그린 장식, under: 아래에 깔 장식
 const V = (prefix, n) => Array.from({ length: n }, (_, i) => fs.readdirSync(path.join(TILES, path.dirname(prefix))).filter(f => f.startsWith(path.basename(prefix)) && /^\D*\d+\.png$/.test(f.replace(path.basename(prefix), "x"))).sort()[i]).map(f => path.join(path.dirname(prefix), f));
 const SPRITES = [];
-const add = (name, spec) => SPRITES.push({ name, ...spec });
+const add = (name, spec) => SPRITES.push({ ...spec, name });
 // 지형: 지역마다 바닥·벽 4가지
 const ZONES = { normal: ["dngn/floor/rect_gray", "dngn/wall/brick_gray"], nm: ["dngn/floor/marble_floor", "dngn/wall/catacombs"], hell: ["dngn/floor/volcanic_floor", "dngn/wall/hell"], gold: ["dngn/floor/sandstone_floor", "dngn/wall/sandstone_wall"] };
 for (const [z, [floor, wall]] of Object.entries(ZONES)) {
@@ -267,6 +316,12 @@ add("tower_flag", { draw: drawFlag });
 add("tower_cp", { draw: drawBanner(false) });
 add("tower_cp_on", { draw: drawBanner(true) });
 
+// 할로윈 이벤트 (dc#130): 스킨 · 마을 장식 · 마녀 모자를 쓴 몬스터 (hw_몬스터 id)
+add("skin_pumpkin_head", { draw: drawPumpkinHead });
+add("skin_scythe", { from: "player/hand1/scythe_slant" });
+add("deco_jack", { draw: drawJack });
+SPRITES.filter(sp => sp.name.startsWith("mon_") && !NO_HAT.has(sp.name.slice(4))).forEach((sp, i) => add(`hw_${sp.name.slice(4)}`, { ...sp, hat: drawWitchHat(HAT_BANDS[i % HAT_BANDS.length]) }));
+
 // ---- 만들기 ----
 const files = [];
 for (const [i, sp] of SPRITES.entries()) {
@@ -283,6 +338,15 @@ for (const [i, sp] of SPRITES.entries()) {
     if (sp.over) im(out, savePng(sp.over[0](), path.join(TMP, `o${i}.png`)), "-geometry", `+${sp.over[1]}+${sp.over[2]}`.replace("+-", "-"), "-composite", out);
   }
   im(out, "-background", "none", "-gravity", "center", "-extent", `${S}x${S}`, out);
+  if (sp.hat) {   // 머리 꼭대기 찾기: 불투명한 칸이 2개 이상인 맨 위 줄, 그 아래 3줄의 가운데 → 모자 챙이 머리에 3칸 걸치게
+    const a = execFileSync("convert", [out, "-alpha", "extract", "-depth", "8", "gray:-"]);
+    const row = (y) => [...Array(S).keys()].filter(x => a[y * S + x] > 128);
+    let y0 = 0; while (y0 < S - 1 && row(y0).length < 2) y0++;
+    const xs = [0, 1, 2].flatMap(k => row(Math.min(S - 1, y0 + k)));
+    const cx = Math.round(xs.reduce((s, x) => s + x, 0) / xs.length);
+    const hx = Math.max(0, Math.min(S - HAT_W, cx - 7)), hy = Math.max(0, y0 + 3 - HAT_H);
+    im(out, savePng(sp.hat(), path.join(TMP, `h${i}.png`)), "-geometry", `+${hx}+${hy}`, "-composite", out);
+  }
   files.push(out);
 }
 const rows = Math.ceil(files.length / COLS);
