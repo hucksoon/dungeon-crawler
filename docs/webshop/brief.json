@@ -73,6 +73,18 @@
       "en-US": "Equipment boxes contain random items. Odds: https://game.apacimtest.com/shop.html#odds",
       "ja-JP": "装備ボックスはランダムで装備が出る確率型商品です。確率情報: https://game.apacimtest.com/shop.html#odds"
     },
+    "description": {
+      "purpose": "odds_notice",
+      "placement": "directly after newStore, next to the equipment_boxes section",
+      "text": {
+        "ko-KR": "장비 상자는 무작위로 장비가 나오는 확률형 상품이에요. 확률 정보: https://game.apacimtest.com/shop.html#odds",
+        "en-US": "Equipment boxes contain random items. Odds: https://game.apacimtest.com/shop.html#odds",
+        "ja-JP": "装備ボックスはランダムで装備が出る確率型商品です。確率情報: https://game.apacimtest.com/shop.html#odds"
+      }
+    },
+    "page_overrides": [
+      { "name": "Home", "path": "/", "blocks": ["header", "leadGameSales", "newStore", "description", "faq", "footer"] }
+    ],
     "excluded_groups": {
       "game_items": "revive and event_coin are used only inside the game and its own shop (event claim flow); do not place them on the web shop"
     },
