@@ -216,6 +216,11 @@ const SCENES = [
       others: [["게스트 #3fa2c1", 24], ["게스트 #9b07de", 33]] });
     await o.page.waitForFunction(() => !document.getElementById("event-banner").hidden, null, { timeout: 5000 }).catch(() => {}); await sleep(600);
     return { ...o, shot: "#stage" }; }],
+  // 할로윈 로고 (dc#133): 기간에는 img/logo-halloween.webp
+  ["halloween-logo", "할로윈 기간의 게임 로고: 호박색 글자에 초록 점액, O 자리에 잭오랜턴, 마녀 모자와 보름달·박쥐", async () => {
+    const o = await open({ file: "?event=halloween", scene: "lobby", dsf: 2, seed: { rl_save: save(30, "blog-hwlogo") } });
+    await o.page.waitForFunction(() => { const i = document.querySelector("h1.logo img"); return /logo-halloween/.test(i.src) && i.complete && i.naturalWidth; }, null, { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "h1.logo" }; }],
   ["halloween-3d", "할로윈 기간에는 던전 몬스터도 마녀 모자를 써요 (손에는 사신의 낫)", async () => view3d({ file: "?event=halloween", api: true, seed: { rl_save: save(12, "blog-hw3d", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")), rl_skin_wear: JSON.stringify({ weapon: "reaper_scythe" }) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 2 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 4 }], { wait: 300 })],
   ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 6개로 스킨, 남은 사탕은 캐시로", async () => {

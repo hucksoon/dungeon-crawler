@@ -81,6 +81,8 @@ try {
   // ---- 할로윈 기간 (11/2), 게스트: 마을·몬스터 모습, 배너 ----
   let o = await open("", { rl_save: save });
   check("Nov 2 (Korea): Halloween theme is on", await o.page.evaluate(() => window.RLEventsGame.theme()) === "halloween");
+  const logoOf = (pg) => pg.evaluate(() => { const i = document.querySelector("h1.logo img"); return i.complete && i.naturalWidth ? new URL(i.src).pathname.replace(/^.*\/img\//, "/img/") : "not loaded"; });
+  check("Halloween logo (img/logo-halloween.webp) loaded", await logoOf(o.page) === "/img/logo-halloween.webp", await logoOf(o.page));
   check("monsters wear witch hats (mon_rat → hw_rat); monsters without a hat sprite keep theirs", await o.page.evaluate(() => window.__t.name("mon_rat")) === "hw_rat" && await o.page.evaluate(() => window.__t.name("mon_jeoseung")) === "mon_jeoseung");
   await o.page.waitForFunction(() => !document.getElementById("event-banner").hidden, null, { timeout: 5000 }).catch(() => {});
   const bText = await o.page.locator("#event-banner").innerText().catch(() => "");
@@ -91,13 +93,13 @@ try {
   check("no page errors (guest)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
   o = await open("", { rl_save: save }, { q: "?event=off" });
-  check("?event=off: original look", await o.page.evaluate(() => window.RLEventsGame.theme()) === null && await o.page.evaluate(() => window.__t.name("mon_rat")) === "mon_rat");
+  check("?event=off: original look and logo", await o.page.evaluate(() => window.RLEventsGame.theme()) === null && await o.page.evaluate(() => window.__t.name("mon_rat")) === "mon_rat" && await logoOf(o.page) === "/img/logo.webp", await logoOf(o.page));
   await o.ctx.close();
 
   // ---- 기간 전 (10/30): 아무것도 바뀌지 않음 ----
   setDay("2026-10-30");
   o = await open("", { rl_save: save }, { now: OCT30 });
-  check("Oct 30: no theme, no banner", await o.page.evaluate(() => window.RLEventsGame.theme()) === null && await o.page.locator("#event-banner").isHidden());
+  check("Oct 30: no theme, no banner, original logo", await o.page.evaluate(() => window.RLEventsGame.theme()) === null && await o.page.locator("#event-banner").isHidden() && await logoOf(o.page) === "/img/logo.webp");
   await o.ctx.close();
   o = await open("shop.html", user(OCT30), { now: OCT30 });
   check("Oct 30: no event section in the shop", await o.page.locator("#event-sec").isHidden());
@@ -171,7 +173,7 @@ try {
 
   // ---- 포털 빌드: 서버·상점이 없어서 배너 없음 (모습은 바뀜) ----
   o = await open("", { rl_save: save }, { portal: true });
-  check("portal build: Halloween look, no event banner", await o.page.evaluate(() => window.RLEventsGame.theme()) === "halloween" && await o.page.locator("#event-banner").isHidden());
+  check("portal build: Halloween look and logo, no event banner", await o.page.evaluate(() => window.RLEventsGame.theme()) === "halloween" && await o.page.locator("#event-banner").isHidden() && await logoOf(o.page) === "/img/logo-halloween.webp");
   await o.ctx.close();
 } finally { await browser.close(); php.kill(); mock.close(); }
 const pass = results.filter(Boolean).length;

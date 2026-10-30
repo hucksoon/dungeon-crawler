@@ -4265,7 +4265,7 @@
   //   테스트는 localStorage rl_event로 같은 일을 함 (test/ko-default.cjs가 기본 off → 날짜와 상관없이 같은 화면)
   // 이벤트 재화는 상점(shop.html)에서 하루 한 번 무료로 받고, 모아서 스킨이나 캐시로 바꿈 (서버 event.php, 로그인 계정만)
   // 스킨: 서버 event_status의 skins(가진 것). 쓸지 말지는 이 기기에 (rl_skin_wear: { head, weapon }). 능력치는 그대로
-  // 포털 빌드는 서버·상점이 없어서 테마만
+  // 포털 빌드는 서버·상점이 없어서 테마만 (로고 포함)
   const Events = (() => {
     const E = window.RLEvents, q = new URLSearchParams(location.search).get("event") || store.get("rl_event");
     const banner = document.getElementById("event-banner");
@@ -4311,6 +4311,9 @@
       banner.textContent = st?.login && !st.claimed && st.event?.open ? T("🎃 {0} 이벤트 · 오늘의 {1} 받기", name(ev.name), coin) : T("🎃 {0} 이벤트 · {1} {2}개", name(ev.name), coin, st?.balance || 0);
     }
     banner.addEventListener("click", () => { location.href = "shop.html#event"; });
+    // 테마 로고 (dc#133): 기간이면 이벤트 로고, 아니면 원래 img/logo.webp 그대로
+    const logo = E?.THEMES[theme()]?.logo;
+    if (logo) document.querySelector("h1.logo img").src = logo;
     return { theme, wear, sprite, owned, setWear, refresh, renderBanner, name, get status() { return st; } };
   })();
   window.RLEventsGame = { theme: () => Events.theme(), wear: (s) => Events.wear(s), status: () => Events.status };   // 시험용 (읽기만)
