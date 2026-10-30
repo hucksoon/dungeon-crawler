@@ -1206,5 +1206,13 @@
     "구멍에 들어간 사람의 최고 v4 아이템 · 등급 → 강화 → 아이템 레벨 순": "Best v4 item of players who entered the Hole · Rarity → enhancement → item level",
     "칭호 {0} 보이기": "Show title {0}",
     "칭호 {0} 숨기기": "Hide title {0}",
+    // 이벤트 (dc#130)
+    "🎃 {0} 이벤트 · 오늘의 {1} 받기": "🎃 {0} event · Get today's {1}",
+    "🎃 {0} 이벤트 · {1} {2}개": "🎃 {0} event · {1} ×{2}",
+    "꾸미기": "Cosmetics",
+    "머리 모습만 바뀌어요 (능력치는 그대로)": "Changes only how your head looks (stats stay the same)",
+    "무기를 들면 모습만 바뀌어요 (능력치는 그대로)": "Changes only how your weapon looks while one is equipped (stats stay the same)",
+    "쓰는 중": "On",
+    "쓰기": "Wear",
   } });
 })(typeof self !== "undefined" ? self : this);

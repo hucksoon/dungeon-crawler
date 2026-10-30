@@ -54,6 +54,10 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 | `GET api.php?r=bonus_status` | 무료 선물(dc#105, `bonus.php`): 지금 받을 수 있는지, 다음 시각, 아직 안 고른 선물 |
 | `POST api.php?r=bonus_open` `{ adTicket }` | 광고를 보고 선물 3개 만들기 (3시간마다). 서버에 기록된 진행에 맞춰 일반·악몽의·지옥의 세트, 헬은 만난 네임드 보스의 유니크도 |
 | `POST api.php?r=bonus_pick` `{ id, pick }` | 3개 중 하나 고르기 (한 번만). 고른 시드만 아이템으로 인정. 로그인 사용자는 10% 확률로 캐시 1~3개가 우편함으로 |
+| `GET api.php?r=event_status` | 이벤트(dc#130, `event.php`): 지금 이벤트, 오늘 받았는지, 가진 재화·스킨 (게스트는 이벤트 정보만) |
+| `POST api.php?r=event_claim` | 오늘의 무료 이벤트 재화 받기 (하루 1개, 기념일은 더). 이벤트 기간에만 (로그인) |
+| `POST api.php?r=event_skin` `{ skin }` | 재화 10개 → 스킨 (계정에 영구, 한 번만). 이벤트 끝나고 7일까지 (로그인) |
+| `POST api.php?r=event_cash` `{ amount }` | 남은 재화 → 캐시 1:1, 우편함으로. 이벤트 끝나고 7일까지 (로그인) |
 | `GET api.php?r=profile` | 내 계정 저장 (가방·진행 상황) (로그인) |
 | `POST api.php?r=profile` `{ rev, data }` | 계정 저장 올리기. 저장 번호가 다르면 서버 내용을 돌려줌 |
 | `GET api.php?r=geo` | 접속한 IP의 나라 코드 `{ country: "KR" }` (모르면 `null`). 게임 언어 자동 설정용, IP는 저장하지 않음 |
@@ -248,7 +252,7 @@ sudo -u www-data php admin.php boxes strict off        # 좁히기 끄기 (되�
 
 ```bash
 cd /tmp && rm -rf dungeon && git clone --depth 1 https://github.com/hucksoon/dungeon-crawler.git dungeon
-sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/bonus.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /tmp/dungeon/ranking-php/webhook.php /var/www/html/ranking/
+sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/bonus.php /tmp/dungeon/ranking-php/event.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /tmp/dungeon/ranking-php/webhook.php /var/www/html/ranking/
 ```
 
 DB 표는 다음 요청 때 새 칸이 자동으로 추가돼요.

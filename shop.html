@@ -120,6 +120,15 @@
   .odds td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .odds ul { margin: 0; padding-left: 18px; }
   footer { font-size: 12px; color: var(--muted); line-height: 1.7; margin-top: 10px; }
+  /* 이벤트 (dc#130): 주황·보라 칸 */
+  #event-sec h2 { color: #ff9a3a; text-shadow: 0 0 8px rgba(255, 140, 40, 0.35); }
+  .card.event { border-color: #a0522d; background: linear-gradient(160deg, #241426, var(--panel) 70%); }
+  .art.event-art { color: #ff9a3a; text-shadow: 0 0 12px rgba(255, 140, 40, 0.5); }
+  .skin-art { width: 64px; height: 64px; margin: 6px auto 0; background-image: url(img/sprites.png); background-repeat: no-repeat; image-rendering: pixelated; }
+  .ev-have { font-size: 12px; text-align: center; color: #ffcf7a; }
+  .ev-cash-row { display: flex; gap: 6px; }
+  .ev-cash-row input { width: 64px; flex: none; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px; text-align: center; }
+  .ev-cash-row button { flex: 1; }
 
   /* ---- 모달 ---- */
   .overlay { position: fixed; inset: 0; background: rgba(5, 6, 10, 0.78); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; z-index: 10; }
@@ -185,6 +194,13 @@
   <div id="login-note" class="notice login" hidden></div>
   <div id="page-msg" hidden></div>
 
+  <section id="event-sec" hidden>
+    <h2 id="event-title"></h2>
+    <p class="sub" id="event-sub"></p>
+    <div id="event-msg" hidden></div>
+    <div class="grid" id="event-cards"></div>
+  </section>
+
   <section id="offers-sec" hidden>
     <h2 data-i18n="offerTitle"></h2>
     <p class="sub" data-i18n="offerSub"></p>
@@ -246,6 +262,8 @@
 </div>
 
 <script src="items.js"></script>
+<script src="sprites.js"></script>
+<script src="events.js"></script>
 <script src="ranking-config.js"></script>
 <script src="vendor/pay-station-sdk/main.js"></script>
 <script>
@@ -313,6 +331,18 @@
       oddsUbox: "고대 유니크 선택 상자는 유니크를 직접 고르는 상자라 무작위가 아니에요 (항상 고대).",
       oddsUpdated: (d) => `확률 정보 마지막 변경: ${d}`,
       lvl: (n) => `Lv.${n}`, ancient: "고대",
+      evTitle: (n) => `🎃 ${n} 이벤트`,
+      evSub: (s, e, x, c) => `기간 ${s} ~ ${e}. 매일 ${c}을(를) 무료로 받고, 10개를 모으면 스킨으로 바꿀 수 있어요. 남은 ${c}은(는) 캐시로 1:1 교환 (${x}까지).`,
+      evDaily: (c) => `오늘의 무료 ${c}`, evDailyDesc: (n) => `하루 한 번 ${n}개 (한국 시간 0시에 바뀌어요)`, evDayBonus: (d, n) => `오늘은 ${d}! ${n}개를 받아요`,
+      evHave: (c, n) => `가진 ${c}: ${n}개`, evClaim: "무료로 받기", evClaimed: "오늘은 받았어요 · 내일 또 받기", evClosed: "받기 기간이 끝났어요", evLogin: "로그인하고 받기",
+      evGot: (c, n) => `${c} ${n}개를 받았어요!`,
+      evSkinHead: "머리 모습이 바뀌어요 (능력치는 그대로)", evSkinWeapon: "무기를 들면 모습이 바뀌어요 (능력치는 그대로)",
+      evPrice: (c, n) => `${c} ${n}개`, evExchange: "교환하기", evOwned: "가지고 있어요", evShort: (h, n) => `모자라요 (${h}/${n})`,
+      evSkinGot: (n) => `${n}을(를) 얻었어요! 게임 인벤토리의 "꾸미기"에서 쓰고 벗을 수 있어요.`,
+      evCash: "캐시로 바꾸기", evCashDesc: (c) => `남은 ${c} 1개 = 캐시 1개. 캐시는 게임 우편함으로 가요.`, evCashBtn: (n) => `캐시 ${n}개로 바꾸기`,
+      evCashAsk: (n, c) => `${c} ${n}개를 캐시 ${n}개로 바꿀까요? 바꾼 뒤에는 되돌릴 수 없어요.`,
+      evCashGot: (n) => `캐시 ${n}개를 게임 우편함으로 보냈어요. 우편함에서 받으면 계정에 들어가요.`,
+      evErr: { event_claimed: "오늘은 이미 받았어요.", not_enough_coins: "이벤트 재화가 모자라요.", skin_owned: "이미 가지고 있는 스킨이에요.", event_closed: "이벤트 기간이 끝났어요.", login_required: "로그인이 필요해요.", bad_amount: "바꿀 개수를 확인해 주세요." },
     },
     en: {
       title: "⚔ Dungeon Shop ⚔", back: "Back to game", close: "Close", toGame: "Back to the game to collect",
@@ -358,6 +388,18 @@
       oddsUbox: "The Ancient Unique choice box is not random: you pick the Unique (always Ancient).",
       oddsUpdated: (d) => `Drop rates last changed: ${d}`,
       lvl: (n) => `Lv.${n}`, ancient: "Ancient",
+      evTitle: (n) => `🎃 ${n} event`,
+      evSub: (s, e, x, c) => `${s} – ${e}. Get free ${c} every day and trade 10 for a skin. Leftover ${c} can be exchanged 1:1 for Cash (until ${x}).`,
+      evDaily: (c) => `Today's free ${c}`, evDailyDesc: (n) => `${n} once a day (resets at midnight Korea time)`, evDayBonus: (d, n) => `It's ${d}! You get ${n} today`,
+      evHave: (c, n) => `Your ${c}: ${n}`, evClaim: "Get for free", evClaimed: "Got it today · Come back tomorrow", evClosed: "The daily gift has ended", evLogin: "Log in to get",
+      evGot: (c, n) => `You got ${n} ${c}!`,
+      evSkinHead: "Changes how your head looks (stats stay the same)", evSkinWeapon: "Changes how your weapon looks while equipped (stats stay the same)",
+      evPrice: (c, n) => `${n} ${c}`, evExchange: "Exchange", evOwned: "Owned", evShort: (h, n) => `Not enough (${h}/${n})`,
+      evSkinGot: (n) => `You got ${n}! Put it on or take it off under "Cosmetics" in your in-game inventory.`,
+      evCash: "Exchange for Cash", evCashDesc: (c) => `1 leftover ${c} = 1 Cash. The Cash goes to your in-game mailbox.`, evCashBtn: (n) => `Exchange for ${n} Cash`,
+      evCashAsk: (n, c) => `Exchange ${n} ${c} for ${n} Cash? This can't be undone.`,
+      evCashGot: (n) => `${n} Cash was sent to your in-game mailbox. Collect it there to add it to your account.`,
+      evErr: { event_claimed: "You already got it today.", not_enough_coins: "You don't have enough event items.", skin_owned: "You already own this skin.", event_closed: "The event has ended.", login_required: "Please log in.", bad_amount: "Please check the amount." },
     },
     ja: {
       title: "⚔ ダンジョンショップ ⚔", back: "ゲームに戻る", close: "閉じる", toGame: "ゲームに戻って受け取る",
@@ -403,6 +445,18 @@
       oddsUbox: "古代ユニーク選択ボックスはユニークを自分で選ぶため、ランダムではありません (常に古代)。",
       oddsUpdated: (d) => `確率情報の最終変更: ${d}`,
       lvl: (n) => `Lv.${n}`, ancient: "古代",
+      evTitle: (n) => `🎃 ${n}イベント`,
+      evSub: (s, e, x, c) => `期間 ${s} ~ ${e}。毎日${c}を無料で受け取り、10個集めるとスキンと交換できます。残った${c}はキャッシュと1:1で交換できます (${x}まで)。`,
+      evDaily: (c) => `今日の無料${c}`, evDailyDesc: (n) => `1日1回 ${n}個 (韓国時間0時に切り替わります)`, evDayBonus: (d, n) => `今日は${d}！${n}個もらえます`,
+      evHave: (c, n) => `持っている${c}: ${n}個`, evClaim: "無料で受け取る", evClaimed: "今日は受け取り済み · また明日", evClosed: "受け取り期間は終了しました", evLogin: "ログインして受け取る",
+      evGot: (c, n) => `${c}を${n}個受け取りました！`,
+      evSkinHead: "頭の見た目が変わります (能力値はそのまま)", evSkinWeapon: "武器を装備すると見た目が変わります (能力値はそのまま)",
+      evPrice: (c, n) => `${c} ${n}個`, evExchange: "交換する", evOwned: "所持中", evShort: (h, n) => `足りません (${h}/${n})`,
+      evSkinGot: (n) => `${n}を手に入れました！ゲームのインベントリの「着せ替え」で着脱できます。`,
+      evCash: "キャッシュに交換", evCashDesc: (c) => `残った${c} 1個 = キャッシュ 1。キャッシュはゲームの郵便受けに届きます。`, evCashBtn: (n) => `キャッシュ ${n}に交換`,
+      evCashAsk: (n, c) => `${c} ${n}個をキャッシュ ${n}に交換しますか？交換後は元に戻せません。`,
+      evCashGot: (n) => `キャッシュ ${n}をゲームの郵便受けに送りました。郵便受けで受け取るとアカウントに入ります。`,
+      evErr: { event_claimed: "今日はすでに受け取りました。", not_enough_coins: "イベントアイテムが足りません。", skin_owned: "すでに持っているスキンです。", event_closed: "イベント期間は終了しました。", login_required: "ログインが必要です。", bad_amount: "交換する数を確認してください。" },
     },
   };
 
@@ -522,6 +576,104 @@
     box.hidden = !text;
     box.className = text ? `notice msg ${cls}` : "";
     box.textContent = text || "";
+  }
+
+  // ---- 이벤트 (dc#130): 하루 한 번 무료 재화 → 10개로 스킨 교환 · 남은 재화는 캐시 1:1 (게임 서버 event.php, 로그인 계정만) ----
+  // 게스트는 이벤트 안내와 "로그인하고 받기"만 (재화·스킨·캐시가 계정에 걸려 있어서)
+  const EV = window.RLEvents, SP = window.RLSprites;
+  let ev = null, evBusy = false;
+  const evText = (o) => (EV ? EV.text(o, lang) : "");
+  const evDay = (d) => new Date(d + "T00:00:00Z").toLocaleDateString(lang, { month: "short", day: "numeric", timeZone: "UTC" });
+  async function evCall(route, body) {
+    const tok = await Auth.token();
+    if (!tok) throw new ApiError(401, "login_required", t("errAuth"));
+    const res = await fetch(`${window.RANKING_API}?r=${route}`, { method: body ? "POST" : "GET",
+      headers: { Authorization: `Bearer ${tok}`, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    let d = null;
+    try { d = await res.json(); } catch {}
+    if (!res.ok) throw new ApiError(res.status, d?.error, t("evErr")[d?.error] || t("errGeneric", `HTTP ${res.status}`));
+    return d;
+  }
+  async function loadEvent() {
+    if (!EV || !window.RANKING_API) { ev = null; renderEvent(); return; }
+    if (Auth.loggedIn()) { try { ev = await evCall("event_status"); } catch { ev = null; } }
+    else {
+      const e = EV.active();
+      ev = e && { login: false, day: EV.today(), price: EV.SKIN_PRICE, skins: [], balance: 0, claimed: false,
+        event: { id: e.id, theme: e.theme, start: e.start, end: e.end, exchangeUntil: EV.addDays(e.end, EV.EXCHANGE_DAYS), open: true, today: EV.dailyAmount(e), skins: EV.THEMES[e.theme].skins } };
+    }
+    renderEvent();
+  }
+  function evMsg(text, cls = "info") {
+    const box = $("event-msg");
+    box.hidden = !text; box.className = text ? `msg ${cls}` : ""; box.textContent = text || "";
+  }
+  function renderEvent() {
+    const sec = $("event-sec"), e = ev?.event, def = e && EV.byId(e.id);
+    sec.hidden = !def;
+    if (!def) return;
+    const coin = evText(EV.THEMES[e.theme]?.coin), login = !!ev.login;
+    $("event-title").textContent = t("evTitle", evText(def.name));
+    $("event-sub").textContent = t("evSub", evDay(e.start), evDay(e.end), evDay(e.exchangeUntil), coin);
+    const toLogin = () => (location.href = "./?login=shop");
+    const have = el("div", { className: "ev-have", textContent: t("evHave", coin, ev.balance || 0) });
+    // 오늘의 무료 재화
+    const dayName = def.days?.[ev.day]?.name;
+    const claim = el("button", { type: "button", className: "primary" });
+    if (!login) { claim.textContent = t("evLogin"); claim.onclick = toLogin; }
+    else if (!e.open) { claim.textContent = t("evClosed"); claim.disabled = true; claim.className = ""; }
+    else if (ev.claimed) { claim.textContent = t("evClaimed"); claim.disabled = true; claim.className = ""; }
+    else { claim.textContent = t("evClaim"); claim.onclick = () => evAct("event_claim", {}, (r) => t("evGot", coin, r.got)); }
+    const cards = [el("div", { className: "card event" },
+      el("div", { className: "art event-art", textContent: "🎃" }),
+      el("div", { className: "name", textContent: t("evDaily", coin) }),
+      el("div", { className: "desc", textContent: e.open && dayName ? t("evDayBonus", evText(dayName), e.today) : t("evDailyDesc", EV.DAILY) }),
+      have, claim)];
+    // 스킨 (재화 10개)
+    for (const id of e.skins) {
+      const S = EV.SKINS[id], c = SP?.map[S.sprite], owned = (ev.skins || []).includes(id), price = ev.price || EV.SKIN_PRICE;
+      const art = el("div", { className: "skin-art" });
+      if (c) { art.style.backgroundSize = `${SP.cols * 64}px ${SP.rows * 64}px`; art.style.backgroundPosition = `-${c[0] * 64}px -${c[1] * 64}px`; }
+      const b = el("button", { type: "button", className: "primary", dataset: { skin: id } });
+      if (!login) { b.textContent = t("evLogin"); b.onclick = toLogin; }
+      else if (owned) { b.textContent = t("evOwned"); b.disabled = true; b.className = ""; }
+      else if ((ev.balance || 0) < price) { b.textContent = t("evShort", ev.balance || 0, price); b.disabled = true; b.className = ""; }
+      else { b.textContent = t("evExchange"); b.onclick = () => evAct("event_skin", { skin: id }, () => t("evSkinGot", evText(S.name))); }
+      cards.push(el("div", { className: "card event" }, art,
+        el("div", { className: "name", textContent: evText(S.name) }),
+        el("div", { className: "desc", textContent: S.slot === "head" ? t("evSkinHead") : t("evSkinWeapon") }),
+        el("div", { className: "ev-have", textContent: t("evPrice", coin, price) }), b));
+    }
+    // 남은 재화 → 캐시
+    const n = Math.max(0, ev.balance || 0);
+    const input = el("input", { type: "number", min: 1, max: Math.max(1, n), value: Math.max(1, n), id: "event-cash-n", disabled: !login || !n });
+    const cb = el("button", { type: "button", id: "event-cash-btn", disabled: !login || !n });
+    const label = () => { cb.textContent = t("evCashBtn", Math.max(1, Math.min(n, Number(input.value) || 1))); };
+    input.oninput = label; label();
+    cb.onclick = () => {
+      const k = Math.floor(Number(input.value));
+      if (!(k >= 1 && k <= n)) return evMsg(t("evErr").bad_amount, "bad");
+      if (!confirm(t("evCashAsk", k, coin))) return;
+      evAct("event_cash", { amount: k }, (r) => t("evCashGot", r.cash));
+    };
+    cards.push(el("div", { className: "card event" },
+      el("div", { className: "art cash-art", textContent: "◆" }),
+      el("div", { className: "name", textContent: t("evCash") }),
+      el("div", { className: "desc", textContent: t("evCashDesc", coin) }),
+      have.cloneNode(true), el("div", { className: "ev-cash-row" }, input, cb)));
+    $("event-cards").replaceChildren(...cards);
+  }
+  async function evAct(route, body, done) {
+    if (evBusy) return;
+    evBusy = true; evMsg("");
+    for (const b of $("event-cards").querySelectorAll("button")) b.disabled = true;
+    try {
+      const r = await evCall(route, body);
+      ev = r; renderEvent(); evMsg(done(r), "good");
+    } catch (e) {
+      evMsg(e.message, "bad");
+      await loadEvent();
+    } finally { evBusy = false; }
   }
 
   // ---- 상품 ----
@@ -1133,6 +1285,7 @@
     store.set("rl_lang", lang);
     applyText();
     loadCatalog();
+    renderEvent();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
@@ -1141,6 +1294,9 @@
 
   applyText();
   (async () => {
+    // 이벤트 칸 (dc#130): 게임 마을의 이벤트 배너에서 오면(#event) 그 칸으로
+    await loadEvent();
+    if (location.hash === "#event" && !$("event-sec").hidden) $("event-sec").scrollIntoView();
     await loadCatalog();
     await refreshBalance();
     const returned = await handleReturn();
