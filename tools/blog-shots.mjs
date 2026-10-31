@@ -209,6 +209,12 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(30, "blog-abwp", {}, { hb: 51, hclr: 1 }), "rl_inv:g:DEV": inv(g150) } });
     await goDoor(o.page, "waypoint"); await sleep(300);
     return { ...o, shot: "#wp-modal .modal" }; }],
+  // 구멍 경험치 150배 (dc#138): 웨이포인트로 구멍 1층에 들어가면 기록 창에 안내
+  ["abyss-xp", "끝이 없는 구멍에 들어가면: 장비·골드 대신 경험치를 150배", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(30, "blog-abxp", {}, { hb: 51, hclr: 1 }), "rl_inv:g:DEV": inv(g150) } });
+    await goDoor(o.page, "waypoint"); await sleep(300);
+    await o.page.locator("#wp-abyss").click(); await sleep(1200);
+    return { ...o, shot: "#log" }; }],
   ["abyss-floor", "끝이 없는 구멍 2층: 불가사리와 구미호가 함께 계단을 지켜요", async () => { const o = await explored({ dsf: 1.6, seed: { rl_save: save(2, "blog-ab2", { z: "abyss", hp: 90000, mh: 90000, a: 3000 }, { hb: 51, hclr: 1, ab: 2 }), "rl_inv:g:DEV": inv(g150) } },
     { add: [{ dx: 1, dy: 0, ...M.makeAbyssNamed(10, 2), hp: 2e9, maxHp: 2e9, atk: 5 }, { dx: -1, dy: 1, ...M.makeAbyssNamed(20, 2), hp: 2e9, maxHp: 2e9, atk: 5 }] }); await press(o.page, [".", "."], 150); return { ...o, shot: "#game" }; }],
   // 할로윈 이벤트 (dc#130): 마을(주황 보름달·박쥐·잭오랜턴, 호박 머리에 사신의 낫), 3D 던전의 마녀 모자 몬스터, 상점의 이벤트 칸
