@@ -74,7 +74,8 @@ async function open(file, storage, { now = NOV2, portal = false, scene = "lobby"
   await sleep(1200);
   return { ctx, page, errors, dialogs };
 }
-const db = () => new DatabaseSync(DB);
+// PHP가 마을 위치(lobby)를 1초마다 쓰는 중에 테스트가 DB를 직접 고치면 "database is locked"가 날 수 있어서 잠깐 기다리게
+const db = () => { const d = new DatabaseSync(DB); d.exec("PRAGMA busy_timeout = 5000"); return d; };
 const hmac = (s) => crypto.createHmac("sha256", "k".repeat(40)).update(s).digest("hex");
 const SUB = "event-e2e-user", KEY = hmac("u:" + SUB);
 const user = (now = NOV2, equip = {}) => ({ rl_device_id: "evdev-0001", rl_auth: authOf(SUB, "eu@example.com", now), rl_save: save, [`rl_inv:u:${SUB}`]: JSON.stringify({ bag: [], equip: { ...nulls, ...equip }, log: [], stones: 0 }) });

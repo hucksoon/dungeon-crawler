@@ -373,7 +373,7 @@
   //   네임드는 모두 헬 50층 네임드(염라대왕) 세기: 헬 50층 보스 × named.hpMul·atkMul (패턴은 그 네임드 그대로)
   //   장비·골드·보석·룬은 떨어지지 않고, 경험치는 헬 50층의 xpMul배 × 층 배율
   const ABYSS = {
-    floors: 20, perFloor: 0.07, xpMul: 3, hellFloor: 50,
+    floors: 20, perFloor: 0.07, xpMul: 150, hellFloor: 50,   // 경험치: 헬 50층의 150배 (dc#138: 3배 → 150배, 레벨 올리기용 던전)
     named: { hpMul: 3, atkMul: 1.35 },
     clearStage: 21,     // 랭킹: 20층 완료 = 21
     presence: 4000,     // 로비 접속자 목록: 4000 + 층 (헬 3000번대와 구분)

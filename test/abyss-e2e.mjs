@@ -23,7 +23,7 @@ await sleep(700);
 // ---- 규칙 ----
 const A = M.ABYSS, N = M.NAMED.bosses, nm = (k) => N[k].name;
 const plan = (n) => { const p = M.abyssPlan(n); return p.pair ? p.pair.map(nm).join("+") : `all ${nm(p.all)}`; };
-check("ABYSS: 20 floors, +7% per floor, XP ×3, clear 21, presence 4000", A.floors === 20 && A.perFloor === 0.07 && A.xpMul === 3 && A.clearStage === 21 && A.presence === 4000);
+check("ABYSS: 20 floors, +7% per floor, XP ×150, clear 21, presence 4000", A.floors === 20 && A.perFloor === 0.07 && A.xpMul === 150 && A.clearStage === 21 && A.presence === 4000);
 check("floor plan: 1 불가사리×2, 2 불가사리+구미호, 5 불가사리+염라대왕, 6 구미호×2, 15 염라대왕×2",
   plan(1) === "불가사리+불가사리" && plan(2) === "불가사리+구미호" && plan(3) === "불가사리+이무기" && plan(4) === "불가사리+저승사자" && plan(5) === "불가사리+염라대왕"
   && plan(6) === "구미호+구미호" && plan(7) === "구미호+이무기" && plan(15) === "염라대왕+염라대왕", [1, 2, 5, 6, 7, 15].map(plan).join(" / "));
@@ -37,7 +37,7 @@ check("named in a mob slot (floors 16~20) is marked mob (does not guard the stai
   const phases = new Set(Array.from({ length: 30 }, () => M.makeAbyssNamed(30, 18, false).phase));
   check("mob-slot named: regular-mob strength (not the guard's), 이무기 pattern kept, beats spread out", m18.hp === reg.hp && m18.atk === reg.atk && m18.hp * 10 < g18.hp && m18.atk < g18.atk / 2 && m18.pattern === "sweep" && m18.name === "이무기" && phases.size >= 3, JSON.stringify([m18.hp, reg.hp, g18.hp, m18.atk, g18.atk, [...phases]])); }
 const t = M.MONSTERS.at(-1), h50 = M.makeHell(t, "normal", 50, "fire"), a1 = M.makeAbyss(t, "normal", 1, "fire"), a10 = M.makeAbyss(t, "normal", 10, "fire");
-check("regular mob: hell 50 strength ×scale, XP ×3", a1.hp === h50.hp && a1.xp === h50.xp * 3 && a10.hp === Math.round(h50.hp * 1.63) && a1.abyss === 1, JSON.stringify([a1.hp, h50.hp, a10.hp]));
+check("regular mob: hell 50 strength ×scale, XP ×150", a1.hp === h50.hp && a1.xp === h50.xp * 150 && a10.hp === Math.round(h50.hp * 1.63) && a1.abyss === 1, JSON.stringify([a1.hp, h50.hp, a10.hp]));
 
 // ---- 게임 ----
 const HOOK = `
@@ -103,7 +103,7 @@ try {
   check("enter: abyss floor 1, zone label 구멍, save z:abyss ab:1", s.scene === "dungeon" && s.zone === "abyss" && s.depth === 1 && S.run.z === "abyss" && S.ab === 1 && (await page.locator("#zone").innerText()).includes("구멍"), JSON.stringify([s.zone, s.depth, S.run.z, S.ab]));
   check("floor 1: two named guards, both 불가사리", guards.length === 2 && guards.every(g => g.name === "불가사리" && g.named && g.abyss), JSON.stringify(guards));
   check("floor 1: about 50 regular abyss monsters, no golden goblin, no floor items", mobs.length >= 40 && mobs.every(m => m.abyss && m.kind !== "golden") && s.items === 0, JSON.stringify([mobs.length, s.items]));
-  check("entry log: +7% per floor, XP ×3, no gear", (await logs(page)).includes("7%씩 강해지고") && (await logs(page)).includes("경험치를 3배"));
+  check("entry log: +7% per floor, XP ×150, no gear", (await logs(page)).includes("7%씩 강해지고") && (await logs(page)).includes("경험치를 150배"));
   await page.screenshot({ path: `${OUT}/abyss-floor1.png` });
   // 일반 몬스터: 경험치만 (골드·장비 없음)
   const before = await st(page);
