@@ -67,7 +67,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     // others: 마을에 함께 있는 사람 (게스트 번호만)
     // staff: 운영자 기기만 들어가는 곳(점프 던전, dc#96)을 찍을 때. 화면에는 운영자 표시가 나오지 않게 장면만
     if (route === "lobby" && staff) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950", unlimited: true }, players: [], mail: 0 });
-    if (route === "lobby" && others) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950" }, players: others.map(([name, x]) => ({ id: name.slice(-6).padEnd(16, "0"), name, scene: "lobby", x, y: 10 })), mail: 0 });
+    if (route === "lobby" && others) return json(r, { me: { id: "me".padEnd(16, "0"), name: "게스트 #b10950" }, players: others.map(([name, x, skins]) => ({ id: name.slice(-6).padEnd(16, "0"), name, scene: "lobby", x, y: 10, ...(skins ? { skins } : {}) })), mail: 0 });
     if (route === "geo") return json(r, { country: lang === "ja" ? "JP" : lang === "en" ? "US" : "KR" });
     // 무료 선물 (dc#105): 받을 수 있음 → 광고 → 헬 선물 (유니크 1 + 지옥의 세트 2)
     if (route === "bonus_status") return json(r, { hours: 3, ready: true, pending: null, nextAt: Date.now(), tier: "hell", cash: { chance: 0.1, min: 1, max: 3 } });
@@ -244,6 +244,12 @@ const SCENES = [
   ["halloween-morning", "할로윈 첫날 오전 10시 전의 상점: \"오전 10시부터 받을 수 있어요\"", async () => {
     const o = await open({ file: "shop.html#event", api: true, loggedIn: true, evPatch: (d) => ({ ...d, day: "2026-10-30", skins: [], balance: 0, earned: 0, event: { ...d.event, open: false, today: 0 } }) });
     await o.page.locator("#event-cards .card").nth(3).waitFor({ timeout: 8000 }).catch(() => {}); return { ...o, shot: "#event-sec" }; }],
+  // 스킨은 다른 사람에게도 (dc#137): 마을의 다른 사람이 쓰고 있는 호박 머리·사신의 낫
+  ["skins-others", "마을에서 다른 사람이 쓰고 있는 스킨도 보여요 (호박 머리·사신의 낫)", async () => {
+    const o = await open({ file: "?event=halloween", scene: "lobby", api: true, dsf: 1.6, seed: { rl_save: save(30, "blog-skins"), "rl_inv:g:DEV": inv(g40), rl_skin_wear: JSON.stringify({ head: "pumpkin_head" }) },
+      others: [["게스트 #3fa2c1", 27, ["pumpkin_head", "reaper_scythe"]], ["게스트 #9b07de", 34, ["reaper_scythe"]], ["게스트 #51c0aa", 37]] });
+    await o.page.waitForFunction(() => !document.getElementById("event-banner").hidden, null, { timeout: 5000 }).catch(() => {}); await sleep(1500);
+    return { ...o, shot: "#stage" }; }],
   ["halloween-3d", "할로윈 기간에는 던전 몬스터도 마녀 모자를 써요 (손에는 사신의 낫)", async () => view3d({ file: "?event=halloween", api: true, seed: { rl_save: save(12, "blog-hw3d", { hp: 2000, mh: 2000, a: 120 }), "rl_inv:g:DEV": inv(g40.filter(it => it.slot !== "offhand")), rl_skin_wear: JSON.stringify({ weapon: "reaper_scythe" }) } },
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 2 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 4 }], { wait: 300 })],
   ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 6개로 스킨, 남은 사탕은 캐시로", async () => {

@@ -48,6 +48,25 @@ try {
   p = await pos(N.page);
   check("→ walks right (~3 tiles in 0.5 s) and stops on release", p.x - x0 > 2 && p.x - x0 < 5 && Math.abs(p.vx) < 0.05, `${x0} → ${p.x}`);
   check("server position follows (x = tile, y = ground row 10)", (await st(N.page)).lx === Math.floor(p.x) && (await st(N.page)).ly === 10);
+  // 한글 입력 상태 (dc#137): W·A·S·D·I가 ㅈ·ㅁ·ㄴ·ㅇ·ㅑ(또는 "Process")로 와도 자판 위치(code)로 알아들음
+  const imeHold = (key, code, ms) => N.page.evaluate(async ([key, code, ms]) => {
+    const fire = (t) => window.dispatchEvent(new KeyboardEvent(t, { key, code, bubbles: true }));
+    fire("keydown"); await new Promise(r => setTimeout(r, ms)); fire("keyup");
+  }, [key, code, ms]);
+  let q = await pos(N.page);
+  await imeHold("ㅇ", "KeyD", 500); await sleep(300);
+  const qd = await pos(N.page);
+  await imeHold("Process", "KeyA", 500); await sleep(300);
+  const qa = await pos(N.page);
+  check("Korean input mode: D (ㅇ) walks right, A (Process) walks left", qd.x - q.x > 2 && qd.x - qa.x > 2, `${q.x} → ${qd.x} → ${qa.x}`);
+  await N.page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "ㅑ", code: "KeyI", bubbles: true }))); await sleep(300);
+  check("Korean input mode: I (ㅑ) opens the inventory", await N.page.locator("#inv-modal").isVisible());
+  await N.page.keyboard.press("Escape"); await sleep(200);
+  // 일본어 입력 상태: B가 こ(가나 입력)로 와도 도감이 열리고, 같은 키(こ)로 닫힘
+  await N.page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "こ", code: "KeyB", bubbles: true }))); await sleep(300);
+  const dexOpen = await N.page.locator("#dex-modal").isVisible();
+  await N.page.evaluate(() => document.getElementById("dex-modal").dispatchEvent(new KeyboardEvent("keydown", { key: "こ", code: "KeyB", bubbles: true }))); await sleep(300);
+  check("Japanese input mode: B (こ) opens the codex and closes it again", dexOpen && !(await N.page.locator("#dex-modal").isVisible()));
   // 점프: 한 번 · 공중에서 한 번 더 (더 높이)
   const peak = (keys) => N.page.evaluate(async (keys) => {
     const fire = (t, k) => window.dispatchEvent(new KeyboardEvent(t, { key: k, bubbles: true }));

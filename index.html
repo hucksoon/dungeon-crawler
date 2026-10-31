@@ -1041,6 +1041,19 @@
   const SAVE_KEY = "rl_save";          // 로컬 저장 키
   const SAVE_ATTR = "roguelike_save";  // 계정 속성(attribute) 키
 
+  // 누른 키 이름 (소문자). 한글·일본어 입력 상태에서는 W·A·S·D·I 같은 키가 ㅈ·ㅁ·ㄴ·ㅇ·ㅑ, ち·…, 。(마침표)
+  // 또는 "Process"로 와서 단축키가 안 먹음 → 그럴 때는 자판 위치(e.code)로 읽음 (dc#137). 화살표·Esc·Tab은 그대로 옴
+  const CODE_KEYS = { Period: ".", NumpadDecimal: ".", Comma: ",", Slash: "/", Minus: "-", Space: " ", Enter: "enter", NumpadEnter: "enter", Escape: "escape", Tab: "tab" };
+  const keyName = (e) => {
+    const k = e.key || "", code = e.code || "";
+    if (k === "Process" || k === "Unidentified" || (k.length === 1 && !/^[\x20-\x7e]$/.test(k))) {
+      if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+      if (/^(Digit|Numpad)[0-9]$/.test(code)) return code.slice(-1);
+      if (CODE_KEYS[code]) return CODE_KEYS[code];
+    }
+    return k.toLowerCase();
+  };
+
   // localStorage는 사생활 보호 모드 등에서 예외를 던질 수 있음
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -1062,7 +1075,7 @@
     const phone = () => matchMedia("(max-width: 899px)").matches;
     const DEFS = {
       intro: { title: () => T("① 던전에 들어가기"),
-        steps: () => [["enter", phone() ? T("마을 가운데 던전 입구 문 앞에서 ▲") : T("마을 가운데 던전 입구 문 앞에서 ↑ (← → 걷기)")]] },
+        steps: () => [["enter", phone() ? T("마을 가운데 던전 입구 문 앞에서 ▲") : T("마을 가운데 던전 입구 문 앞에서 ↑ 또는 W (← → 또는 A·D로 걷기)")]] },
       dungeon: { title: () => T("② 던전 탐험"),
         steps: () => [["attack", T("몬스터 쪽으로 이동해서 공격")],
           ["walk", phone() ? T("화면을 밀거나 칸을 눌러 걷기") : T("가고 싶은 칸을 클릭해 걷기")],
@@ -4082,7 +4095,9 @@
         const headers = await serverHeaders();
         if (!headers) throw new Error("no token");
         // 점프 던전 안에서는 다른 사람에게 문 앞(로비)에 있는 것으로
-        const body = scene !== "dungeon" ? { scene: "lobby", x: lobbyPos.x, y: lobbyPos.y, portal: presenceFloor(resumeFloor(), inNM()) } : { scene, depth: gameOver ? 0 : presenceFloor(depth, inNM()) };
+        // skins: 쓰고 있는 이벤트 스킨 (dc#137) → 다른 사람 마을 화면에도 그 모습으로 (서버가 가진 스킨만 받음)
+        const skins = ["head", "weapon"].map(s => Events.wear(s)).filter(Boolean);
+        const body = scene !== "dungeon" ? { scene: "lobby", x: lobbyPos.x, y: lobbyPos.y, portal: presenceFloor(resumeFloor(), inNM()), ...(skins.length ? { skins } : {}) } : { scene, depth: gameOver ? 0 : presenceFloor(depth, inNM()) };
         const res = await fetch(rankingUrl("lobby"), { method: "POST", headers, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(res.status);
         const d = await res.json();
@@ -5212,7 +5227,7 @@
     }
     // ---- 조작: 키보드 (keydown·keyup 둘 다 여기로) ----
     function key(e, down) {
-      const k = e.key.toLowerCase(), v = down ? 1 : 0;
+      const k = keyName(e), v = down ? 1 : 0;
       switch (k) {
         case "w": case "arrowup": held.f = v; return true;
         case "s": case "arrowdown": held.b = v; return true;
@@ -5564,7 +5579,7 @@
     const KEYS = { arrowleft: "left", a: "left", arrowright: "right", d: "right", arrowup: "up", w: "up", arrowdown: "down", s: "down", " ": "jump", j: "jump", k: "jump" };
     // 키를 누르고 뗄 때. 쓴 키면 true
     function key(e, down) {
-      const k = e.key.toLowerCase();
+      const k = keyName(e);
       if (down && (k === "escape" || k === "p")) { exit(); return true; }
       if (down && (k === "r" || (cleared && (k === "enter" || k === " ")))) { restart(); return true; }
       const name = KEYS[k];
@@ -5738,7 +5753,7 @@
         hud(`${boss.name}${boss.el ? " · " + EL.names[boss.el] : ""}${boss.enraged ? " · " + T("분노") : ""}  ${Math.round(boss.hp / boss.maxHp * 100)}%`, bx, 19, boss.enraged ? "#ff5c5c" : RLMonsters.NAMED_COLOR);
       }
       ctx.font = '11px "Courier New", monospace';
-      hud(narrowScreen() ? T("◀ ▶ 이동 · 점프(공중에서 한 번 더) · ▼ 발판 아래로 · 포탈 = 나가기") : T("← → 이동 · Space 점프(공중에서 한 번 더) · ↓ 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
+      hud(narrowScreen() ? T("◀ ▶ 이동 · 점프(공중에서 한 번 더) · ▼ 발판 아래로 · 포탈 = 나가기") : T("← → (A·D) 이동 · Space 점프(공중에서 한 번 더) · ↓ (S) 발판 아래로 · 공격은 자동 · R 다시 · Esc 나가기"), 8, VIEW_H - 18, "#9aa0b2");
       if (cleared) {
         ctx.fillStyle = "rgba(0,0,0,0.65)"; ctx.fillRect(VIEW_W / 2 - 170, VIEW_H / 2 - 50, 340, 100);
         ctx.textAlign = "center";
@@ -5840,7 +5855,7 @@
     const KEYS = { arrowleft: "left", a: "left", arrowright: "right", d: "right", " ": "jump", j: "jump", k: "jump" };
     // 키를 누르고 뗄 때. 쓴 키면 true (나머지 I·B 등은 원래대로)
     function key(e, down) {
-      const k = e.key.toLowerCase();
+      const k = keyName(e);
       if (k === "arrowup" || k === "w" || k === "enter") { if (down && !e.repeat) enterDoor(); return true; }
       if (k === "arrowdown" || k === "s") return true;
       const name = KEYS[k];
@@ -5997,8 +6012,23 @@
       else drawLabel("×", cx, bot - 4, "#6b7080", 10);
       if (info.label) drawLabel(info.label, cx, y - 2, info.open ? info.color : "#6b7080", 8);
     }
-    // 사람 하나: 나는 낀 장비 그림, 다른 사람은 기사 그림. 이름 · 포탈 층(◎) · 왕관·운영자 표시
-    function person(x, y, name, color, portalFloor, crown, staff, face, self, lift = 0) {
+    // 다른 사람이 쓰고 있는 이벤트 스킨 (dc#137): 기사 그림 위에 호박 머리·사신의 낫 (낫이면 기사의 칼은 지움). 스킨 조합마다 한 번 만듦
+    const skinArt = new Map();
+    function otherArt(skins) {
+      const key = skins.join(",");
+      if (skinArt.has(key)) return skinArt.get(key);
+      const list = skins.map(id => window.RLEvents?.SKINS[id]).filter(Boolean), names = ["player", ...list.map(S => S.sprite)];
+      if (!list.length || !names.every(n => Sprites.src(n))) return null;   // 모르는 스킨·그림이 아직 없음 → 그냥 기사
+      const cv = document.createElement("canvas"); cv.width = cv.height = 32;
+      const g = cv.getContext("2d"), put = (n) => { const s = Sprites.src(n); g.drawImage(s[0], s[1], s[2], 32, 32, 0, 0, 32, 32); };
+      put("player");
+      if (list.some(S => S.slot === "weapon")) g.clearRect(0, 0, 9, 21);   // 기사 그림 왼쪽 위의 칼
+      for (const S of list) put(S.sprite);
+      skinArt.set(key, cv);
+      return cv;
+    }
+    // 사람 하나: 나는 낀 장비 그림, 다른 사람은 기사 그림(쓰고 있는 스킨은 그 위에). 이름 · 포탈 층(◎) · 왕관·운영자 표시
+    function person(x, y, name, color, portalFloor, crown, staff, face, self, lift = 0, skins = null) {
       const px = x * TILE - TILE / 2, py = y * TILE - TILE;
       ctx.save();
       ctx.translate(x * TILE, 0); ctx.scale(face < 0 ? -1 : 1, 1); ctx.translate(-x * TILE, 0);
@@ -6008,7 +6038,10 @@
         const bob = st.ground && Math.abs(st.vx) > 0.5 ? (Math.floor(now / 110) % 2) * -0.7 : 0;
         ctx.translate(x * TILE, y * TILE + bob); ctx.scale(sx, sy); ctx.translate(-x * TILE, -y * TILE);
         if (Sprites.on) ctx.drawImage(Doll.canvas(), px, py, TILE, TILE); else drawGlyph("@", px, py, "#ffffff");
-      } else drawArt("player", "@", px, py, color);
+      } else {
+        const art = Sprites.on && skins?.length ? otherArt(skins) : null;
+        if (art) ctx.drawImage(art, px, py, TILE, TILE); else drawArt("player", "@", px, py, color);
+      }
       ctx.restore();
       const by = py - 1 - lift;
       drawLabel(name, x * TILE, by, staff ? STAFF_COLOR : color, 8);
@@ -6092,7 +6125,7 @@
         if (c.self) continue;
         const prev = seen.get(c.p.id), face = prev && Math.abs(prev.x - c.x) > 0.02 ? Math.sign(c.x - prev.x) : prev?.face || 1;
         seen.set(c.p.id, { x: c.x, face });
-        person(c.x, G, c.name, c.p.color, c.p.portal, c.p.crown, c.p.staff, face, false, c.lift);
+        person(c.x, G, c.name, c.p.color, c.p.portal, c.p.crown, c.p.staff, face, false, c.lift, c.p.skins);
       }
       const mine = crowd[crowd.length - 1];
       person(st.x, st.y, mine.name, "#ffffff", myFloor, me?.crown, me?.staff, st.face, true, mine.lift);
@@ -6108,7 +6141,7 @@
       // 화면 글자: 조작 안내
       ctx.setTransform(PX, 0, 0, PX, 0, 0);
       ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.font = '11px "Courier New", monospace';
-      const hint = narrowScreen() ? T("◀ ▶ 걷기 · 점프(공중에서 한 번 더) · 문 앞에서 ▲ 들어가기") : T("← → 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑ 들어가기 · I 인벤토리 · B 도감");
+      const hint = narrowScreen() ? T("◀ ▶ 걷기 · 점프(공중에서 한 번 더) · 문 앞에서 ▲ 들어가기") : T("← → (A·D) 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감");
       ctx.fillStyle = "rgba(8, 10, 20, 0.7)"; ctx.fillRect(0, VIEW_H - 21, VIEW_W, 21);   // 땅 무늬 위에서도 읽히게
       ctx.fillStyle = "#c8cde0"; ctx.fillText(hint, 8, VIEW_H - 17);
     }
@@ -8964,12 +8997,12 @@
   window.addEventListener("keydown", (e) => {
     if (Ads.isOpen() || portalAd) return;  // 광고를 보는 중
     if (!askModal.hidden) {
-      if (e.key === "Escape") { e.preventDefault(); askDone?.(false); }
-      else if (e.key === "Enter" && e.target?.id !== "ask-no") { e.preventDefault(); askDone?.(true); }
+      if (keyName(e) === "escape") { e.preventDefault(); askDone?.(false); }
+      else if (keyName(e) === "enter" && e.target?.id !== "ask-no") { e.preventDefault(); askDone?.(true); }
       return;
     }
     if (!noticeModal.hidden) {
-      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") { e.preventDefault(); closeNotice(); }
+      if (["escape", "enter", " "].includes(keyName(e))) { e.preventDefault(); closeNotice(); }
       return;
     }
     if (!hellPickModal.hidden) {
@@ -8989,7 +9022,7 @@
       return;
     }
     if (!deathModal.hidden && modal.hidden) {
-      const k = e.key.toLowerCase();
+      const k = keyName(e);
       if (k === "r") { e.preventDefault(); startOver(); }
       else if (k === "escape") { e.preventDefault(); closeDeath(); }
       return;
@@ -9004,21 +9037,21 @@
       return;
     }
     if (!dexModal.hidden) {
-      if (e.key === "Escape" || e.key.toLowerCase() === "b") { e.preventDefault(); closeDex(); }
+      if (["escape", "b"].includes(keyName(e))) { e.preventDefault(); closeDex(); }
       return;
     }
     // 인벤토리 안의 버튼이 다시 그려지면 포커스가 사라지므로 닫기 키는 여기서 처리
     if (!invModal.hidden) {
       // 휴대폰에서 탭 창이 올라와 있으면 Esc는 그 창만 내림
       if (e.key === "Escape" && sideOpen && narrowScreen()) { e.preventDefault(); closeSide(); }
-      else if (e.key === "Escape" || e.key.toLowerCase() === "i") { e.preventDefault(); closeInventory(); }
+      else if (["escape", "i"].includes(keyName(e))) { e.preventDefault(); closeInventory(); }
       return;
     }
     if (!modal.hidden || e.target instanceof HTMLInputElement) return;
     if (scene === "jump") { if (Tower.key(e, true)) e.preventDefault(); return; }   // 점프 던전: 누르고 있는 동안 움직임
     if (View3D.active() && View3D.key(e, true)) { e.preventDefault(); return; }   // 3D 화면 (dc#109): 걷기·돌기·공격 (나머지 I·Q·P 등은 아래로)
     if (scene === "lobby" && Town.key(e, true)) { e.preventDefault(); return; }   // 마을: ← → 걷기 · Space 점프 · ↑ 들어가기 (나머지 I·B 등은 아래로)
-    const k = e.key.toLowerCase();
+    const k = keyName(e);
     let handled = true;
     if (k !== "tab") Walk.stop();   // 자동 걷기 중에 다른 키를 누르면 멈춤
     switch (k) {

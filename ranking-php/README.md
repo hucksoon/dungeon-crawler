@@ -38,7 +38,7 @@ location ~ ^/ranking/(config\.php|config\.sample\.php|README\.md|data/) { deny a
 | `GET api.php?r=ranking&type=stage\|item&limit=50` | 랭킹 (최대 100명) |
 | `GET api.php?r=me` | 내 순위 |
 | `GET api.php?r=player&id=<공개 ID>` | 그 사람이 최고 층을 세운 순간의 장비·능력치, 최강 아이템 |
-| `POST api.php?r=lobby` `{ scene: "lobby", x, y, portal }` 또는 `{ scene: "dungeon", depth }` | 로비 위치(또는 탐험 중인 층)를 알리고, 지금 접속 중인 사람들을 받음 |
+| `POST api.php?r=lobby` `{ scene: "lobby", x, y, portal, skins? }` 또는 `{ scene: "dungeon", depth }` | 로비 위치(또는 탐험 중인 층)를 알리고, 지금 접속 중인 사람들을 받음. `skins`: 쓰고 있는 이벤트 스킨 → 그 계정이 가진 것만 남겨서 다른 사람 목록에 `skins`로 (dc#137) |
 | `GET api.php?r=market&slot=&rarity=&sort=new\|cash\|gold` | 거래소에 올라온 아이템 (누구나) |
 | `POST api.php?r=market_list` `{ item, gold, cash, stage }` | 아이템 올리기 (로그인) |
 | `POST api.php?r=market_cancel` `{ id }` | 내 아이템 내리기 → 우편함 |

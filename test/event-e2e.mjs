@@ -164,6 +164,10 @@ try {
   check("wear → button on, doll draws the pumpkin head (stats unchanged)", /호박 머리 · 쓰는 중/.test(await o.page.locator("#inv-skins .skin-btn").innerText()) && (await o.page.locator("#inv-skins .skin-btn").getAttribute("aria-pressed")) === "true"
     && await o.page.evaluate(() => window.RLEventsGame.wear("head")) === "pumpkin_head");
   await o.page.keyboard.press("Escape"); await sleep(300);
+  // 다른 사람에게도 (dc#137): 마을에서 보내는 위치에 쓰고 있는 스킨, 서버가 다른 사람 목록에 그대로
+  const sent = await o.page.waitForRequest(r => /[?&]r=lobby\b/.test(r.url()) && r.method() === "POST" && /pumpkin_head/.test(r.postData() || ""), { timeout: 5000 }).then(r => JSON.parse(r.postData()), () => null);
+  const other = db().prepare("SELECT skin FROM presence WHERE pkey = ?").get(KEY);
+  check("lobby ping carries the worn skin; the server keeps it for others", JSON.stringify(sent?.skins) === '["pumpkin_head"]' && other?.skin === "pumpkin_head", JSON.stringify([sent, other]));
   check("doll: pumpkin head on top, sword still drawn (no scythe owned)", /skin_pumpkin_head/.test(await o.page.evaluate(() => window.__t.doll())) && /doll_w_longsword/.test(await o.page.evaluate(() => window.__t.doll())), await o.page.evaluate(() => window.__t.doll()));
   // 낫도 얻었다고 치면: 3D 손에 낫 모델
   db().prepare("INSERT INTO event_skins (pkey, skin, event_id, created_at) VALUES (?, 'reaper_scythe', 'halloween-2026', ?)").run(KEY, Date.now());

@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>할로윈 첫날, 사탕은 오전 10시부터 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요.">
+<title>할로윈 첫날, 사탕은 오전 10시부터, 스킨은 모두에게 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요. 스킨은 마을의 다른 사람에게도 보이고, 한글·일본어 입력 상태에서도 WASD와 단축키가 돼요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-10-31.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="할로윈 첫날, 사탕은 오전 10시부터 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요.">
+<meta property="og:title" content="할로윈 첫날, 사탕은 오전 10시부터, 스킨은 모두에게 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="할로윈 이벤트 첫날 0시에 상점이 &quot;받기 기간이 끝났어요&quot;라고 잘못 보여 줬어요. 오전 10시부터 받을 수 있다고 알려 주고, 사탕은 상점에서 버튼을 눌러야 받게 바꿨어요. 스킨은 마을의 다른 사람에게도 보이고, 한글·일본어 입력 상태에서도 WASD와 단축키가 돼요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-10-31.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/halloween-morning.png">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>
@@ -71,7 +71,7 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>할로윈 첫날, 사탕은 오전 10시부터</h1>
+<h1>할로윈 첫날, 사탕은 오전 10시부터, 스킨은 모두에게</h1>
 <p class="meta">2026년 10월 31일 (토) · 개발일기 · 이벤트 · 할로윈 · Claude Code</p>
 <p>10월 31일 0시, 드디어 할로윈 이벤트가 시작됐어요. 마을에는 주황 보름달이 뜨고, 몬스터는 마녀 모자를 쓰고, 게임 로고도 할로윈 로고로 바뀌었어요.</p>
 <p>그런데 바로 상점에 들어가 보니, 오늘의 무료 호박 사탕 버튼에 &quot;받기 기간이 끝났어요&quot;라고 나왔어요. 사탕은 0개인데 이미 받았거나 끝난 것처럼 보였어요.</p>
@@ -79,14 +79,21 @@
 <p>호박 사탕은 하루에 한 번 받을 수 있고, 그 &quot;하루&quot;는 한국 시간 오전 10시에 바뀌어요. 그래서 첫날은 오전 10시부터 받을 수 있어요.</p>
 <ul><li>0시부터 마을·몬스터·로고는 할로윈 모습이 돼요</li><li>사탕 받기는 오전 10시부터 열려요</li></ul>
 <p>상점은 &quot;지금 받을 수 없다&quot;는 것을 모두 &quot;끝났어요&quot;로 보여 주고 있었어요. 아직 시작 전인 오전 10시 전에도요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>이렇게 바꿨어요</h2>
 <ul><li>첫날 오전 10시 전에는 버튼에 &quot;오전 10시부터 받을 수 있어요&quot;라고 나와요. 이벤트가 정말 끝난 뒤에만 &quot;끝났어요&quot;라고 나와요</li><li>마을 오른쪽 위 이벤트 배너도 &quot;오전 10시부터 호박 사탕 받기&quot;라고 알려 줘요</li><li>사탕은 상점에서 &quot;무료로 받기&quot;를 눌러야만 받아요. 전에는 받는 도중 창을 닫았을 때 상점을 다시 열면 저절로 받아졌는데, 이제는 그때도 버튼을 눌러서 받아요</li><li>사탕이 없을 때 &quot;캐시로 바꾸기&quot; 칸에 1이 들어가 있던 것도 0으로 고쳤어요</li></ul>
 <figure><img src="images/halloween-morning.png" alt="할로윈 첫날 오전 10시 전의 상점: 오전 10시부터 받을 수 있어요" loading="lazy"><figcaption>할로윈 첫날 오전 10시 전의 상점: 오전 10시부터 받을 수 있어요</figcaption></figure>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>테스트로 확인했어요</h2>
 <ul><li>첫날 오전 10시 전처럼 만들어서, 상점과 마을 배너에 &quot;오전 10시부터&quot;가 나오고 아무것도 받아지지 않는지 봤어요</li><li>받는 도중 창을 닫은 경우를 만들어서, 상점을 열기만 해서는 사탕이 늘지 않고, 버튼을 눌러야 1개가 들어오는지 확인했어요. 두 번 받아지지도 않아요</li></ul>
 <p>오전 10시가 지나고 상점에서 &quot;무료로 받기&quot;를 눌러 호박 사탕이 잘 들어오는 것도 확인했어요.</p>
+<h2>스킨은 다른 사람에게도</h2>
+<p>호박 머리와 사신의 낫 스킨은 지금까지 내 화면에서만 보였어요. 마을의 다른 사람들은 모두 같은 기사 모습이었어요. 모처럼 얻은 스킨이니 다른 사람에게도 보이게 바꿨어요.</p>
+<ul><li>스킨을 쓰고 마을에 있으면, 다른 사람 화면에서도 내 기사 머리가 호박이 되고 칼 대신 낫을 들어요</li><li>그 계정이 실제로 가진 스킨만 보여요. 가지지 않은 스킨은 보이지 않아요</li><li>인벤토리 &quot;꾸미기&quot;에서 스킨을 벗으면 1초 안에 다른 사람 화면에서도 원래 모습으로 돌아와요</li></ul>
+<figure><img src="images/skins-others.png" alt="마을에서 다른 사람이 쓰고 있는 스킨도 보여요 (호박 머리·사신의 낫)" loading="lazy"><figcaption>마을에서 다른 사람이 쓰고 있는 스킨도 보여요 (호박 머리·사신의 낫)</figcaption></figure>
+<h2>한글·일본어 입력 상태에서도 WASD</h2>
+<p>PC에서는 원래 방향키뿐 아니라 W·A·S·D로도 움직일 수 있었어요. 그런데 키보드가 한글 입력 상태면 W·A·S·D가 ㅈ·ㅁ·ㄴ·ㅇ으로 들어가서 움직이지 않았어요. 인벤토리(I), 도감(B) 같은 다른 단축키도 마찬가지였어요. 일본어 입력 상태도 같았어요.</p>
+<p>이제는 키에 찍힌 글자 대신 키보드의 자리를 보고 알아들어서, 한글이든 일본어든 입력 상태와 상관없이 WASD와 단축키가 돼요. 마을과 점프 던전 아래쪽 안내에도 A·D·W·S를 함께 적었어요.</p>
 </article>
 <nav class="pager"><span><a href="2026-10-30.html">← 할로윈 이벤트와 1년 이벤트 달력</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>

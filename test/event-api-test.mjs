@@ -133,6 +133,18 @@ try {
     && /1건/.test(out) && /0건/.test(execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), "event-settle"], { env: { ...process.env, RANKING_CONFIG: CFG }, encoding: "utf8" })), out);
   check("auto-exchanged Cash is recorded (event_spends kind auto)", db().prepare("SELECT COUNT(*) n FROM event_spends WHERE kind = 'auto'").get().n === 3);
   check("skins stay on the account after the event", (await call("event_status", U)).body.skins.join() === "pumpkin_head,reaper_scythe");
+  // 쓰고 있는 스킨이 다른 사람 마을 화면에도 (dc#137): 가진 스킨만, 로그인 계정만, 로비에서만
+  await call("lobby", U, { scene: "lobby", x: 5, y: 10, skins: ["pumpkin_head", "reaper_scythe", "crown", 7] });
+  await call("lobby", U2, { scene: "lobby", x: 6, y: 10, skins: ["pumpkin_head"] });   // 유저 2는 스킨이 없음
+  await call("lobby", G, { scene: "lobby", x: 7, y: 10, skins: ["pumpkin_head"] });
+  const seen = (await call("lobby", U3, { scene: "lobby", x: 8, y: 10 })).body.players || [];
+  const pid = async (who) => (await call("lobby", who, { scene: "lobby", x: 5, y: 10, skins: who === U ? ["pumpkin_head", "reaper_scythe"] : ["pumpkin_head"] })).body.me.id;
+  const [idU, idU2, idG] = [await pid(U), await pid(U2), await pid(G)];
+  const by = (id) => seen.find(p => p.id === id);
+  check("others see the skins a player wears (owned only, unknown ones dropped)", JSON.stringify(by(idU)?.skins) === '["pumpkin_head","reaper_scythe"]', JSON.stringify(seen));
+  check("a player who doesn't own the skin, or a guest, shows no skin", by(idU2) && !by(idU2).skins && by(idG) && !by(idG).skins, JSON.stringify([by(idU2), by(idG)]));
+  await call("lobby", U, { scene: "lobby", x: 5, y: 10 });
+  check("taking the skins off (sending none) → others see the plain look", !((await call("lobby", U3, { scene: "lobby", x: 8, y: 10 })).body.players.find(p => p.id === idU)?.skins));
   setDay("2026-11-25");
   check("not-ready events (exam-2026) don't open", (await call("event_status", U)).body.event === null);
 
