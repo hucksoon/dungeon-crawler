@@ -157,7 +157,8 @@ function db(): PDO {
         y            INTEGER NOT NULL DEFAULT 0,
         depth        INTEGER NOT NULL DEFAULT 0,
         seen_at      BIGINT NOT NULL,
-        staff        INTEGER NOT NULL DEFAULT 0
+        staff        INTEGER NOT NULL DEFAULT 0,
+        skin         VARCHAR(64) NOT NULL DEFAULT \'\'
     )');
     // 운영자 기기 (최대 STAFF_DEVICES_MAX대): 운영자 혜택(골드·강화석·보석·횟수 제한 없음)은 여기 등록한 기기에서만.
     // 기기 ID(게임의 rl_device_id)는 그대로 저장하지 않고 HMAC만. 등록·삭제는 admin.php devices
@@ -207,6 +208,7 @@ function db(): PDO {
         try { $pdo->exec("ALTER TABLE players ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
     }
     try { $pdo->exec('ALTER TABLE presence ADD COLUMN staff INTEGER NOT NULL DEFAULT 0'); } catch (PDOException $e) { /* 이미 있음 */ }
+    try { $pdo->exec("ALTER TABLE presence ADD COLUMN skin VARCHAR(64) NOT NULL DEFAULT ''"); } catch (PDOException $e) { /* 이미 있음 (dc#137) */ }
     foreach ([
         'CREATE INDEX idx_players_pub ON players (pub_id)',
         'CREATE INDEX idx_players_stage ON players (best_stage, stage_at)',
@@ -1014,6 +1016,7 @@ const DUNGEON_TTL_MS = 25000;
 
 // POST api.php?r=lobby { scene: "lobby", x, y, portal } 또는 { scene: "dungeon", depth }
 //   portal: 로비에 있을 때 그 사람이 포탈을 타고 나온 층 (다시 들어갈 수 있는 층, 없으면 0). 머리 위에 "◎N층"으로 보임
+//   skins: 로비에서 쓰고 있는 이벤트 스킨 id (dc#137, 로그인 계정만). 그 계정이 가진 스킨만 받아서 다른 사람 화면에도 그 모습으로
 // → 내 정보와 지금 접속 중인 사람들 (가린 이름과 공개 ID만)
 // 층 랭킹 1~3위 { 사람 키: 순위 }. 로비 이름 옆 금·은·동 왕관. 랭킹 화면과 같은 순서(최고 층, 먼저 세운 사람)
 // 랭킹은 계정(또는 게스트 기기)마다 남아서, 새 캐릭터로 시작해도 왕관은 그대로. 다른 사람에게 밀리면 다음 요청부터 사라짐
@@ -1041,16 +1044,23 @@ function lobby_ping(): array {
     $pub = pub_id($who['key']);
     $pdo = db();
     $staff = $who['developer'] ? 1 : 0;
-    $up = $pdo->prepare('UPDATE presence SET pub_id = ?, display = ?, scene = ?, x = ?, y = ?, depth = ?, seen_at = ?, staff = ? WHERE pkey = ?');
-    $up->execute([$pub, $who['display'], $scene, $x, $y, $depth, $now, $staff, $who['key']]);
+    // 쓰고 있는 스킨: 보낸 것 중 이 계정이 가진 것만 (가지지 않은 스킨을 보내도 무시)
+    $skin = '';
+    $want = $body['skins'] ?? null;
+    if ($scene === 'lobby' && $who['kind'] === 'user' && is_array($want) && $want) {
+        $want = array_slice(array_values(array_filter($want, 'is_string')), 0, 4);
+        $skin = implode(',', array_slice(array_values(array_intersect(event_skins_of($who['key']), $want)), 0, 2));
+    }
+    $up = $pdo->prepare('UPDATE presence SET pub_id = ?, display = ?, scene = ?, x = ?, y = ?, depth = ?, seen_at = ?, staff = ?, skin = ? WHERE pkey = ?');
+    $up->execute([$pub, $who['display'], $scene, $x, $y, $depth, $now, $staff, $skin, $who['key']]);
     if ($up->rowCount() === 0) {
         try {
-            $pdo->prepare('INSERT INTO presence (pkey, pub_id, display, scene, x, y, depth, seen_at, staff) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-                ->execute([$who['key'], $pub, $who['display'], $scene, $x, $y, $depth, $now, $staff]);
+            $pdo->prepare('INSERT INTO presence (pkey, pub_id, display, scene, x, y, depth, seen_at, staff, skin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$who['key'], $pub, $who['display'], $scene, $x, $y, $depth, $now, $staff, $skin]);
         } catch (PDOException $e) { /* 같은 사람이 동시에 보낸 요청이 먼저 넣음 */ }
     }
     $pdo->prepare('DELETE FROM presence WHERE seen_at < ?')->execute([$now - 60000]);
-    $st = $pdo->prepare('SELECT pkey, pub_id, display, scene, x, y, depth, staff FROM presence
+    $st = $pdo->prepare('SELECT pkey, pub_id, display, scene, x, y, depth, staff, skin FROM presence
         WHERE (scene = ? AND seen_at >= ?) OR (scene = ? AND seen_at >= ?) ORDER BY seen_at DESC LIMIT 200');
     $st->execute(['lobby', $now - LOBBY_TTL_MS, 'dungeon', $now - DUNGEON_TTL_MS]);
     $rows = $st->fetchAll();
@@ -1060,7 +1070,7 @@ function lobby_ping(): array {
         $p = ['id' => $r['pub_id'], 'name' => titled($r['pkey'], $r['display']), 'scene' => $r['scene']];
         if (isset($crowns[$r['pkey']])) $p['crown'] = $crowns[$r['pkey']];
         if ((int)$r['staff']) $p['staff'] = true;  // 운영자 표시
-        if ($r['scene'] === 'lobby') { $p['x'] = (int)$r['x']; $p['y'] = (int)$r['y']; $p['portal'] = (int)$r['depth']; }
+        if ($r['scene'] === 'lobby') { $p['x'] = (int)$r['x']; $p['y'] = (int)$r['y']; $p['portal'] = (int)$r['depth']; if ((string)$r['skin'] !== '') $p['skins'] = explode(',', (string)$r['skin']); }
         else $p['depth'] = (int)$r['depth'];
         $players[] = $p;
     }
