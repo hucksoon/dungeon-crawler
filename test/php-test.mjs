@@ -191,7 +191,7 @@ try {
   const st2 = (await call("GET", "ranking", { query: "&type=stage&limit=100" })).body;
   const carolRow = st2.rows.find(r => r.name === "car***@gmail.com");
   const p1 = (await call("GET", "player", { query: `&id=${carolRow.id}` })).body;
-  const t = RL.totals([{ ...H5, enh: 2 }, { ...W5, enh: 4 }]).stats;
+  const t = RL.powerTotals([{ ...H5, enh: 2 }, { ...W5, enh: 4 }]).stats;   // 정식 v2 (dc#140): 서버도 장비 숫자만
   const lv = 6 * 2;   // Lv 7 레벨 보너스 +12% (dc#95)
   const expAtk = Math.round((3 + 6 + t.atk) * (1 + (t.atkPct + lv) / 100)), expHp = Math.round((20 + 24 + t.hp) * (1 + (t.hpPct + lv) / 100));
   check("gear: stats computed by server match the game formula", p1.gear?.stats.atk === expAtk && p1.gear.stats.maxHp === expHp && p1.gear.stats.level === 7, JSON.stringify(p1.gear?.stats));

@@ -13,6 +13,8 @@ const ORIGIN = "https://hucksoon.github.io/hucksoon/";
 const API = "http://127.0.0.1:8090/api.php";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x ? " — " + x : ""}`); };
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const waitFor = async (fn, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(200); } return false; };
 const php = spawn("php", ["-S", "127.0.0.1:8090", "-t", path.join(REPO, "ranking-php")], { env: { ...process.env, RANKING_CONFIG: path.join(DIR, "config.test.php") }, stdio: "ignore" });
@@ -67,7 +69,7 @@ try {
   check("click row → equipment modal", await waitFor(async () => (await d.page.locator("#player-body .pitems").first().locator(".pitem").count()) === 7));
   const mtxt = await d.page.locator("#player-modal").innerText();
   check("modal: stats match the game", mtxt.includes(`공격력\n${hud.atk}`) && mtxt.includes(`방어력\n${hud.def}`) && mtxt.includes(`최대 HP\n${hud.hp}`), mtxt.slice(0, 300).replace(/\n/g, " | "));
-  check("modal: weapon +4 with enhancement note, 4 empty slots (7 slots)", mtxt.includes(RL.itemName({ ...w, enh: 4 })) && (await d.page.locator("#player-body .pitem.empty").count()) === 4 && mtxt.includes("(강화 +"));
+  skipV2("modal: weapon +4 with enhancement note, 4 empty slots (7 slots)", mtxt.includes(RL.itemName({ ...w, enh: 4 })) && (await d.page.locator("#player-body .pitem.empty").count()) === 4 && mtxt.includes("(강화 +"));
   check("modal: best item section", mtxt.includes("가진 적 있는 최강 아이템") && mtxt.includes(RL.itemName(best)));
   await d.page.screenshot({ path: path.join(SHOTS, "php-gear-modal.png"), fullPage: true });
   await d.page.keyboard.press("Escape");

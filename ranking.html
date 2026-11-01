@@ -262,8 +262,9 @@
     return el("div", { className: `pitem${it.ancient ? " ancient" : ""}` },
       el("div", { className: "slot", textContent: `${slotNameOf(it)} · ${(RARITY[it.rarity] || {}).name ?? it.rarityName} · Lv.${it.lvl}${it.setId || it.set ? " · " + setName(it.setId, it.set) : ""}${it.bought ? T(" · 💰 구매") : ""}` }),
       el("div", { className: "nm", textContent: nameOf(it), style: `color:${color}` }),
-      ...it.main.map(l => line("★", l, false)),
-      ...it.lines.map(l => line("◆", l, true)));
+      // 정식 v2 (dc#140): 실제로 쓰이는 공격력·방어력·최대 HP 숫자만 (서버가 계산한 power)
+      ...(it.power ? ["atk", "def", "hp"].filter(k => it.power[k] > 0).map(k => el("div", {}, `★ ${I.formatStat(k, it.power[k])}`))
+        : [...it.main.map(l => line("★", l, false)), ...it.lines.map(l => line("◆", l, true))]));
   }
 
   async function openPlayer(id) {

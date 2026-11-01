@@ -2,6 +2,8 @@
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -58,7 +60,7 @@ try {
   check("game: ancient item listed first with 고대 name and highlight", (await page.locator(".bag-item").first().getAttribute("class")).includes("ancient") && (await page.locator(".bag-item").first().innerText()).replace(/^[▲▼] /, "").startsWith("고대 "));
   await page.locator(".bag-item").first().click(); await sleep(100);
   const det = await page.locator("#inv-detail").innerText();
-  check("game: detail says all stats max, every line ▲", det.includes("모든 능력치가 최대치") && (await page.locator("#inv-detail .stat-line.max").count()) === ancItem.main.length + ancItem.lines.length + (ancItem.parry != null ? 1 : 0), det);
+  skipV2("game: detail says all stats max, every line ▲", det.includes("모든 능력치가 최대치") && (await page.locator("#inv-detail .stat-line.max").count()) === ancItem.main.length + ancItem.lines.length + (ancItem.parry != null ? 1 : 0), det);
   check("game: no legacy notice for r1/v4 items, no errors", !(await page.locator("#notice-modal").isVisible()) && errors.length === 0, errors.join("; "));
   await page.screenshot({ path: path.join(OUT, "ancient-r1.png") });
   await ctx.close();

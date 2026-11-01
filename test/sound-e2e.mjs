@@ -2,6 +2,8 @@
 // 소리 자체는 귀로 들어야 해서, 여기서는 sound.js가 낸 효과음 이름(RLSound.recent)과 지금 곡(state().track)을 봄
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -98,7 +100,7 @@ try {
   // ---- 세트 스킬: 파이어볼 ----
   ({ ctx, page, errors } = await open({ sv: save(20), lv: level(20, [mob("orc", 8, 5, 20, { hp: 999999, maxHp: 999999 })]), gear: fireSet }));
   for (let i = 0; i < 3 && !(await st(page)).recent.includes("fireball"); i++) await press(page, ".");
-  check("fire set → fireball sound", (await st(page)).recent.includes("fireball"), (await st(page)).recent.join());
+  skipV2("fire set → fireball sound", (await st(page)).recent.includes("fireball"), (await st(page)).recent.join());
   await ctx.close();
 
   // ---- 장면마다 곡: 마을 · 나이트메어 · 헬 · 골드 ----

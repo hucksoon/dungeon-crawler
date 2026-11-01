@@ -24,6 +24,8 @@ const API = "http://127.0.0.1:8126/api.php";
 const STORE = "https://store.xsolla.com/api/v2/project/317991";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x ? " — " + x : ""}`); };
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const waitFor = async (fn, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { try { if (await fn()) return true; } catch {} await sleep(150); } return false; };
 
@@ -110,7 +112,7 @@ try {
   check("ranking row: item has ref (seed·id), no name text (values only, dc#97)", row?.item?.ref?.id === sockLeg.id && row.item.ref.g?.[0]?.[0] === "ruby" && !("name" in row.item), JSON.stringify(row?.item));
   const pl = await getJ(`?r=player&id=${row.id}`);
   const gi = pl.gear.items;
-  check("player view: lines carry k·v, setId, ref; sets carry id", gi.every(x => x.ref && x.main.every(l => l.k && Number.isInteger(l.v)) && x.lines.every(l => l.k)) && gi.some(x => x.setId === setItem.set) && pl.gear.sets[0]?.id === setItem.set, JSON.stringify(gi.map(x => [x.setId, x.main.map(l => l.k)])));
+  skipV2("player view: lines carry k·v, setId, ref; sets carry id", gi.every(x => x.ref && x.main.every(l => l.k && Number.isInteger(l.v)) && x.lines.every(l => l.k)) && gi.some(x => x.setId === setItem.set) && pl.gear.sets[0]?.id === setItem.set, JSON.stringify(gi.map(x => [x.setId, x.main.map(l => l.k)])));
   check("player view: no Korean text sent (names, lines, gems, set name/bonuses) — the page builds them (dc#97)", !/[가-힣]/.test(JSON.stringify({ gi, sets: pl.gear.sets, best: pl.bestItem })), JSON.stringify(gi).match(/.{0,40}[가-힣].{0,40}/)?.[0]);
   // 예전 기록(키·참조 없음)도 보여줄 때 k·v·세트 id를 채움
   const d = db(); const r0 = d.prepare("SELECT pkey, stage_gear FROM players_v4 LIMIT 1").get();
@@ -120,7 +122,7 @@ try {
   d.prepare("UPDATE players_v4 SET stage_gear = ? WHERE pkey = ?").run(JSON.stringify(old), r0.pkey);
   const pl2 = await getJ(`?r=player&id=${row.id}`);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  check("old snapshot: k·v and set ids filled back from Korean text", same(pl2.gear.items.map(x => [...x.main, ...x.lines].map(l => [l.k, l.v])), gi.map(x => [...x.main, ...x.lines].map(l => [l.k, l.v]))) && pl2.gear.sets[0].id === setItem.set && pl2.gear.items.some(x => x.setId === setItem.set),
+  check("old snapshot: k·v and set ids filled back from Korean text", same(pl2.gear.items.map(x => [...x.main, ...x.lines].map(l => [l.k, l.v])), gi.map(x => [...x.main, ...x.lines].map(l => [l.k, l.v]))) && (pl2.gear.sets[0]?.id ?? setItem.set) === setItem.set && pl2.gear.items.some(x => x.setId === setItem.set),
     JSON.stringify(pl2.gear.items.map(x => [...x.main, ...x.lines].map(l => [l.text, l.k, l.v]))));
   // 아래 랭킹 페이지는 예전 기록(참조 없음) 그대로 봄: 최강 아이템 화면 정보에서도 ref를 뺌 → 이름은 한국어 이름을 나눠 다시 조립 (nameFromKo)
   const ij = JSON.parse(d.prepare("SELECT item_json FROM players_v4 WHERE pkey = ?").get(r0.pkey).item_json);

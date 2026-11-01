@@ -976,3 +976,46 @@ function r_player_stats(int $plvl, array $totals): array {
         'res' => ['fire' => min(R_RES_CAP + $g['allResMax'] + $g['fireResMax'], $g['fireRes'] + $g['allRes']), 'ice' => min(R_RES_CAP + $g['allResMax'] + $g['iceResMax'], $g['iceRes'] + $g['allRes']), 'bolt' => min(R_RES_CAP + $g['allResMax'] + $g['boltResMax'], $g['boltRes'] + $g['allRes'])],
     ];
 }
+
+// ---- 정식 v2 장비 힘 (dc#140, items.js POWER·power와 같은 계산) ----
+// 아이템이 주는 것은 부위·등급·던전·아이템 레벨·강화 단계로 정해지는 공격력·방어력·최대 HP 숫자뿐 (굴린 줄·세트·룬워드·보석 효과 없음)
+const R_POWER = [
+    'rarity' => ['common' => 1, 'uncommon' => 1.15, 'rare' => 1.3, 'epic' => 1.5, 'legendary' => 1.75, 'set' => 1.85, 'unique' => 2.1],
+    'zone' => ['normal' => 1, 'nightmare' => 1.8, 'hell' => 2.7],
+    'ancient' => 1.1, 'enh' => 0.1,
+    'slot' => [
+        'weapon' => ['atk' => 1], 'offhand' => ['atk' => 0.5, 'def' => 0.5, 'hp' => 0.5],
+        'head' => ['def' => 1, 'hp' => 1], 'chest' => ['def' => 1.2, 'hp' => 1.2], 'arms' => ['def' => 1, 'hp' => 1], 'pants' => ['def' => 1, 'hp' => 1], 'boots' => ['def' => 1, 'hp' => 1],
+        'neck' => ['atk' => 0.3, 'def' => 0.3, 'hp' => 0.3], 'ring' => ['atk' => 0.3, 'def' => 0.3, 'hp' => 0.3],
+    ],
+    'mul' => ['atk' => 3.5, 'def' => 1, 'hp' => 1],
+];
+function r_item_zone(array $it): string {
+    if (r_is_hell_item($it) || ($it['rarity'] ?? '') === 'unique') return 'hell';
+    return r_is_nightmare_item($it) ? 'nightmare' : 'normal';
+}
+function r_power_base(string $k, int $lv): int {
+    if ($k === 'atk') return 3 + (int)floor($lv * 0.6);
+    if ($k === 'def') return 2 + (int)floor($lv * 0.5);
+    return 4 + $lv * 2;
+}
+// JS Math.round와 같게 (0.5는 올림)
+function r_js_round(float $x): int { return (int)floor($x + 0.5); }
+function r_power(array $it, ?int $enh = null): array {
+    $out = ['atk' => 0, 'def' => 0, 'hp' => 0];
+    $shape = R_POWER['slot'][$it['slot'] ?? ''] ?? null;
+    if (!$shape) return $out;
+    $e = max(0, min(R_ENHANCE['max'], $enh ?? (int)($it['enh'] ?? 0)));
+    $mul = (R_POWER['rarity'][$it['rarity']] ?? 1) * R_POWER['zone'][r_item_zone($it)] * (!empty($it['ancient']) ? R_POWER['ancient'] : 1) * (1 + R_POWER['enh'] * $e);
+    foreach ($shape as $k => $m) $out[$k] = max(1, r_js_round(r_power_base($k, (int)($it['lvl'] ?? 1)) * $m * R_POWER['mul'][$k] * $mul));
+    return $out;
+}
+// 장비 합계 (r_totals와 같은 모양, 아이템 효과는 모두 0 · 세트 없음): 랭킹 장비 보기의 능력치
+function r_power_totals(array $equipped): array {
+    $sum = array_fill_keys(['atk', 'def', 'hp', 'crit', 'lifesteal', 'gold', 'xp', 'killHeal', 'atkPct', 'defPct', 'hpPct', 'critDmg', 'killHealPct', 'dmgReduce', 'parry', 'splash', 'dual', 'guard', 'longsword',
+        'fireball', 'fireballPct', 'fireballBurn', 'nova', 'novaPct', 'novaSlow', 'chain', 'chainPct', 'chainMax', 'fireDmg', 'iceDmg', 'boltDmg', 'fireRes', 'iceRes', 'boltRes', 'allRes', 'skillPct', 'lsCap', 'mf', 'power',
+        'fireResMax', 'iceResMax', 'boltResMax', 'allResMax'], 0);
+    $sum['lsCap'] = 20;
+    foreach ($equipped as $it) { if (!$it) continue; $p = r_power($it); $sum['atk'] += $p['atk']; $sum['def'] += $p['def']; $sum['hp'] += $p['hp']; }
+    return ['stats' => $sum, 'sets' => [], 'runewords' => ['names' => [], 'special' => []], 'uniques' => ['names' => [], 'special' => []]];
+}

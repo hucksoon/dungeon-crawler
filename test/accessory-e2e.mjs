@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
 import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -122,7 +124,7 @@ try {
   check("swap into 반지 2: r2 back to bag, r1 stays", inv.equip.ring2?.id === r3.id && inv.equip.ring1?.id === r1.id && inv.bag.some(x => x.id === r2.id));
   await page.locator("#inv-equip .slot", { hasText: "목걸이" }).click(); await sleep(150);
   const nd = await page.locator("#inv-detail").innerText();
-  check("detail: accessory note (enhance raises it, 지옥의 힘), atk/def/hp ★ with ranges, resist lines ◆", nd.includes("장신구: ★ 공격력·방어력·최대 HP(강화하면 오름, 지옥의 힘 ×5)") && /★ 공격력 \+\d+ \[\d+~\d+\]/.test(nd) && /★ 최대 HP \+\d+ \[\d+~\d+\]/.test(nd) && /◆ (불|얼음|번개|모든 속성) 저항/.test(nd), nd.slice(0, 500));
+  skipV2("detail: accessory note (enhance raises it, 지옥의 힘), atk/def/hp ★ with ranges, resist lines ◆", nd.includes("장신구: ★ 공격력·방어력·최대 HP(강화하면 오름, 지옥의 힘 ×5)") && /★ 공격력 \+\d+ \[\d+~\d+\]/.test(nd) && /★ 최대 HP \+\d+ \[\d+~\d+\]/.test(nd) && /◆ (불|얼음|번개|모든 속성) 저항/.test(nd), nd.slice(0, 500));
   await page.screenshot({ path: `${OUT}/acc-inv.png` });
   check("no page errors (inventory)", errors.length === 0, errors.join("; "));
   await ctx.close();
@@ -140,7 +142,7 @@ try {
   ({ ctx, page, errors } = await open("acctest-c", { rl_save: save(5, "acC", {}, { z: "normal" }), rl_level: lv(5, "acC", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [], equip: { ...Object.fromEntries(I.EQUIP_SLOTS.map(s => [s, null])), neck: resGear[0], ring1: resGear[1], ring2: resGear[2] }, log: [], stones: 0 }) }));
   await press(page, "i"); await sleep(200);
   const sumT = await page.locator("#inv-summary").textContent();
-  check("업경 목걸이 + resist: resist shown up to 80% (최대 80%)", /불 80%/.test(sumT) && sumT.includes("(최대 80%)"), sumT.slice(0, 600));
+  skipV2("업경 목걸이 + resist: resist shown up to 80% (최대 80%)", /불 80%/.test(sumT) && sumT.includes("(최대 80%)"), sumT.slice(0, 600));
   check("no page errors (unique accessory)", errors.length === 0, errors.join("; "));
   await ctx.close();
 } finally { await browser.close(); }

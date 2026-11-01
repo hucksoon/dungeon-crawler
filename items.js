@@ -1382,6 +1382,53 @@
     return { stats: sum, sets: activeSets, runewords: { names: rwNames, special: rw }, uniques: { names: uqNames, special: uq } };
   }
 
+  // ---- 정식 v2 장비 힘 (dc#140) ----
+  // 아이템의 효과(추가 능력치 줄·% 능력치·세트·룬워드·보석·유니크 고유 효과·속성)는 모두 쓰지 않고
+  // 부위·등급·던전·아이템 레벨·강화 단계로 정해지는 숫자만 씀 (굴린 값과 상관없이 같은 등급·레벨이면 같은 숫자).
+  // 아이템 데이터(시드·등급·레벨·강화)는 그대로라 서버 검증도 그대로. 빌드(치명타·흡혈 등)는 축복·유물이 맡음
+  const POWER = {
+    rarity: { common: 1, uncommon: 1.15, rare: 1.3, epic: 1.5, legendary: 1.75, set: 1.85, unique: 2.1 },
+    rank: { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, set: 6, unique: 7 },   // 같은 부위·던전에서 등급 순서
+    zone: { normal: 1, nightmare: 1.8, hell: 2.7 },   // 던전 배율 (예전 악몽의 힘 ×3 · 지옥의 힘 ×5 대신, 레벨도 같이 오르니 작게)
+    zoneRank: { normal: 1, nightmare: 2, hell: 3 },
+    ancient: 1.1,     // 고대: +10%
+    enh: 0.1,         // 강화 1단계마다 +10%
+    // 아이템 레벨 lv에서의 바탕 숫자 (예전 주 능력치 범위 최대치와 같은 모양)
+    base: { atk: (lv) => 3 + Math.floor(lv * 0.6), def: (lv) => 2 + Math.floor(lv * 0.5), hp: (lv) => 4 + lv * 2 },
+    // 부위마다 주는 능력치와 배율 (보조 손은 무기·방패 상관없이 절반씩, 장신구는 셋 다 조금씩). 무기 종류는 겉모습만
+    slot: {
+      weapon: { atk: 1 }, offhand: { atk: 0.5, def: 0.5, hp: 0.5 },
+      head: { def: 1, hp: 1 }, chest: { def: 1.2, hp: 1.2 }, arms: { def: 1, hp: 1 }, pants: { def: 1, hp: 1 }, boots: { def: 1, hp: 1 },
+      neck: { atk: 0.3, def: 0.3, hp: 0.3 }, ring: { atk: 0.3, def: 0.3, hp: 0.3 },
+    },
+    mul: { atk: 3.5, def: 1, hp: 1 },   // 몬스터에 맞춘 배율 (시뮬레이션 tools/sim-v2.mjs: 1층부터 한 판으로 끝까지 일반 약 75% · 이어가기 나이트메어 87% · 헬 44%, 일반 던전 몬스터 배율 monsters.js NORMAL)
+  };
+  const itemZone = (item) => (isHellItem(item) || item?.rarity === "unique" ? "hell" : isNightmareItem(item) ? "nightmare" : "normal");
+  // 강화 전 바탕 힘 { atk, def, hp } (enh: 계산에 쓸 강화 단계, 없으면 아이템 것)
+  function power(item, enh = item?.enh || 0) {
+    const out = { atk: 0, def: 0, hp: 0 };
+    if (!item) return out;
+    const shape = POWER.slot[item.slot];
+    if (!shape) return out;
+    const mul = (POWER.rarity[item.rarity] || 1) * POWER.zone[itemZone(item)] * (item.ancient ? POWER.ancient : 1) * (1 + POWER.enh * Math.max(0, Math.min(ENHANCE.max, enh)));
+    for (const [k, m] of Object.entries(shape)) out[k] = Math.max(1, Math.round(POWER.base[k](item.lvl || 1) * m * POWER.mul[k] * mul));
+    return out;
+  }
+  // 자동 착용이 비교하는 한 숫자 (공격력은 HP·방어력보다 무겁게)
+  const powerScore = (p) => p.atk * 3 + p.def * 2 + p.hp * 0.5;
+  const basePowerScore = (item) => powerScore(power(item, 0));
+  // 중복: 같은 부위(반지는 반지끼리) · 같은 던전 · 같은 등급
+  const isDupOf = (a, b) => !!a && !!b && a.slot === b.slot && a.rarity === b.rarity && itemZone(a) === itemZone(b);
+  // 장비 합계 (예전 totals와 같은 모양: 다른 효과는 모두 0)
+  function powerTotals(equipped) {
+    const sum = { atk: 0, def: 0, hp: 0, crit: 0, lifesteal: 0, gold: 0, xp: 0, killHeal: 0,
+      atkPct: 0, defPct: 0, hpPct: 0, critDmg: 0, killHealPct: 0, dmgReduce: 0, parry: 0, splash: 0, dual: 0, guard: 0, longsword: 0,
+      fireball: 0, fireballPct: 0, fireballBurn: 0, nova: 0, novaPct: 0, novaSlow: 0, chain: 0, chainPct: 0, chainMax: 0,
+      fireDmg: 0, iceDmg: 0, boltDmg: 0, fireRes: 0, iceRes: 0, boltRes: 0, allRes: 0, skillPct: 0, lsCap: LIFESTEAL.max, mf: 0, power: 0, fireResMax: 0, iceResMax: 0, boltResMax: 0, allResMax: 0 };
+    for (const item of equipped) { if (!item) continue; const p = power(item); sum.atk += p.atk; sum.def += p.def; sum.hp += p.hp; }
+    return { stats: sum, sets: [], runewords: { names: [], special: {} }, uniques: { names: [], special: {} } };
+  }
+
   // 장비 상자(캐시) 확률 공개 (dc#107, 확률형 아이템 정보 공개): 규칙(TABLES.box · 부위 · 세트 · 고대)에서 정확히 계산
   //   부위는 9칸이 같은 확률. 목걸이·반지는 세트가 없어서 세트가 뽑히면 레전더리가 됨 → r9: 세트 25% × 7/9, 레전더리 75% + 25% × 2/9
   //   고대(모든 능력치 최대치)는 레전더리·세트가 나왔을 때 ancientChance("box") (r9: 10%). 유니크는 상자에서 나오지 않음
@@ -1410,6 +1457,7 @@
     MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
     rngFrom, generate, fromRef, boxOdds, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findCeiling, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
+    POWER, itemZone, power, powerScore, basePowerScore, isDupOf, powerTotals,
     enhanceCost, enhanceChance, enhanceGold, rollEnhance, RECOMMEND, recommendTier, FORGE, canReforge, reforgeableLine, reforgeCost, reforgeLineOf, canReforgeLine, socketResetCost, reforgeLine, applyReforges, enhancedBase, enhancedLines, shopStock, shopPrice, rerollCost, RES_R4, isResLine, hourIndex, ownerTag, lobbyShopStock, goldDungeonReward, NM_POWER, nmPower, NM_SHOP, STONE_NAMES, stoneKey,
   };
   if (typeof module === "object" && module.exports) module.exports = api;

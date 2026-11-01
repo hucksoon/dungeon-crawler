@@ -9,6 +9,8 @@ const RL = createRequire(import.meta.url)(path.join(REPO, "items.js"));
 const ORIGIN = "https://game.apacimtest.com/";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const find = (pred, tag, src = "golden", lvl = 120) => { for (let n = 0; n < 400000; n++) { const it = RL.generate(`${tag}${n}|shop|d${lvl}|s${n % 6}`, src, lvl); if (pred(it)) return it; } };
 const legend = find(x => x.rarity === "legendary" && x.slot !== "weapon", "lg");
 const setHelm = find(x => x.rarity === "set" && x.slot === "head", "sh");
@@ -42,10 +44,10 @@ try {
   // ---- 세트 5개 + 레전더리 단검 ----
   let { page, errors, dialogs } = await open([legend, setHelm, rare, epic, common]);
   const summary = await page.locator("#inv-summary").innerText();
-  check("5 set pieces + free weapon: shows 5/5", summary.includes("(5/5)"), summary);
+  skipV2("5 set pieces + free weapon: shows 5/5", summary.includes("(5/5)"), summary);
   check("5 set pieces: all bonuses on (none dimmed)", await page.locator("#inv-summary .off").count() === 0);
   const cdm = RL.totals(Object.values(equip).filter(Boolean)).stats.critDmg;
-  check("crit damage: set +100% plus gear applied", cdm >= 100 && summary.includes(`피해 ×${(2 + cdm / 100).toFixed(1)}`), summary);
+  skipV2("crit damage: set +100% plus gear applied", cdm >= 100 && summary.includes(`피해 ×${(2 + cdm / 100).toFixed(1)}`), summary);
 
   // ---- 레벨별 강화석 ----
   const expectAll = [legend, setHelm, rare, epic, common].reduce((s, it) => s + RL.sellStones(it), 0);

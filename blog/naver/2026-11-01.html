@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 정식 v2: 매 층 축복과 자동 장비</title>
+<meta name="description" content="장비는 숫자만 남기고 줍는 즉시 자동으로 끼고 강화해요. 대신 새 층마다 축복을, 보스마다 유물을 골라 판마다 다른 캐릭터를 만들어요. 레벨 옆 숫자도 경험치 %로 바꿨어요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-01.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 정식 v2: 매 층 축복과 자동 장비">
+<meta property="og:description" content="장비는 숫자만 남기고 줍는 즉시 자동으로 끼고 강화해요. 대신 새 층마다 축복을, 보스마다 유물을 골라 판마다 다른 캐릭터를 만들어요. 레벨 옆 숫자도 경험치 %로 바꿨어요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-01.html">
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-01.html">블로그 글 보기</a></nav>
+<h1 id="title-text">정식 v2: 매 층 축복과 자동 장비</h1>
+<p class="meta">2026년 11월 1일 (일) · 태그: 개발일기, 업데이트, 밸런스, Claude Code</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<p class="steps">이미지 9장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/level-xp.png" download="2026-11-01-1-level-xp.png">1. Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</a> · <a href="../images/level-bonus.png" download="2026-11-01-2-level-bonus.png">2. 인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</a> · <a href="../images/v2-item.png" download="2026-11-01-3-v2-item.png">3. 아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만</a> · <a href="../images/v2-autogear.png" download="2026-11-01-4-v2-autogear.png">4. 줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해</a> · <a href="../images/v2-bless.png" download="2026-11-01-5-v2-bless.png">5. 새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)</a> · <a href="../images/v2-relic.png" download="2026-11-01-6-v2-relic.png">6. 보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요</a> · <a href="../images/v2-bar.png" download="2026-11-01-7-v2-bar.png">7. 능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록</a> · <a href="../images/v2-market.png" download="2026-11-01-8-v2-market.png">8. 거래소는 점검 중: 우편함은 그대로</a> · <a href="../images/v2-town.png" download="2026-11-01-9-v2-town.png">9. 정리한 마을 왼쪽: 거래소(점검 중) 옆에 우편함, 바로 옆 시간 상점</a></p>
+<div id="paper">
+<p>어제 끝이 없는 구멍의 경험치를 크게 올렸더니, 레벨이 쑥쑥 올라 39레벨이 됐어요. 그런데 화면 위 레벨 옆에 있는 &quot;+76%&quot;를 보고 &quot;이게 경험치인가?&quot; 하고 헷갈렸어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">+76%는 레벨 보너스였어요</span></b></p>
+<p>던전 크롤러는 레벨이 하나 오를 때마다 최대 HP와 공격력이 2%씩 더 붙어요. 39레벨이면 (39 − 1) × 2% = 76%예요. 화면 위 &quot;+76%&quot;는 이 레벨 보너스였어요. 그런데 바로 앞에 경험치 숫자가 있어서 경험치처럼 보였어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">이렇게 바꿨어요</span></b></p>
+<p>• 레벨 옆에는 <strong>다음 레벨까지 경험치가 몇 %인지</strong> 보여 줘요. 100%가 되면 레벨이 올라요</p>
+<p>• 레벨 보너스는 인벤토리의 [능력치]에 &quot;레벨 39 보너스: 최대 HP·공격력 +76% (레벨마다 +2%)&quot;처럼 설명해요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/level-xp.png" alt="Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</span></p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/level-bonus.png" alt="인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">정식 v2: 아이템 관리는 자동으로, 고민은 축복으로</span></b></p>
+<p>지금까지 던전 크롤러는 줍고, 비교하고, 팔고, 강화하고, 보석을 끼우는 일이 많았어요. 처음 온 사람에게는 이게 큰 벽이었어요. 그래서 Claude Code와 몇 번이나 설계를 주고받은 끝에 게임의 중심을 바꿨어요.</p>
+<p><br></p>
+<p>• 아이템 관리는 <strong>자동</strong>으로</p>
+<p>• 플레이어가 고민하는 곳은 <strong>&quot;이번 층에 어떤 축복을 고를까&quot;</strong> 하나로</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">장비는 이제 숫자만</span></b></p>
+<p>장비는 부위·등급·던전·레벨·강화로 정해지는 <strong>공격력·방어력·최대 HP 숫자만</strong> 줘요. 세트·룬워드·보석 같은 복잡한 효과는 쓰지 않아요. 등급이 높을수록, 깊은 던전에서 얻을수록 숫자가 커져요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-item.png" alt="아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">줍는 즉시 자동 장비</span></b></p>
+<p>• <strong>같은 부위·같은 던전·같은 등급</strong>을 또 주우면 낀 장비가 <strong>+1</strong> 돼요. 확률 없이 무조건, +12까지</p>
+<p>• 더 좋은 장비를 주우면 바꿔 끼고, <strong>강화 단계를 그대로 이어받아요</strong>. 좋은 등급을 주웠는데 손해 보는 일이 없어요</p>
+<p>• 나머지는 분해돼서 강화석이 되고, 강화석은 +4까지 무기부터 차례로 자동으로 써요</p>
+<p>• 레전더리 이상은 자동으로 분해하지 않고 가방에 남겨요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-autogear.png" alt="줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">매 층 축복, 보스마다 유물</span></b></p>
+<p>새 층에 내려갈 때마다 <strong>축복 3개 중 1개</strong>를 골라요. 공격력·HP·방어력, 첫 공격 피해, 보스 HP 줄이기, 포션, 새 층에서 회복, 계단 보기 같은 것들이에요. 마음에 안 들면 강화석이나 골드로 다시 뽑을 수 있어요 (같은 층에서 또 뽑으면 2배).</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-bless.png" alt="새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)</span></p>
+<p><br></p>
+<p>보스를 쓰러뜨리면 <strong>유물</strong>을 골라요. 유물은 치명타·흡혈·패링·받는 피해 감소를 주면서, 원래 넘을 수 없던 <strong>상한까지 올려 줘요</strong>.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-relic.png" alt="보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요</span></p>
+<p><br></p>
+<p>모은 축복과 유물은 능력치 줄 바로 아래에 아이콘으로 보여요. 누르면 전체 목록이 나와요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-bar.png" alt="능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">거래소는 잠시 점검, 마을도 정리했어요</span></b></p>
+<p>장비가 숫자만 남으니 거래할 이유가 줄었어요. 거래소는 앞으로 <strong>스킨(장비 모습)</strong> 을 사고파는 곳으로 바뀔 예정이라, 그때까지 <strong>점검 중</strong>이에요. 우편함은 거래소 옆에서 그대로 쓸 수 있어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-market.png" alt="거래소는 점검 중: 우편함은 그대로" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">거래소는 점검 중: 우편함은 그대로</span></p>
+<p><br></p>
+<p>자동 장비 덕분에 필요 없어진 것들도 정리했어요.</p>
+<p><br></p>
+<p>• 대장간, 고대 다시 굴리기, 인벤토리 [추천] 탭, 아이템 [잠그기] 버튼을 없앴어요</p>
+<p>• 마을에서 대장간 건물과 쓰지 않는 문 두 개를 치우고, 건물 사이를 좁혀서 덜 걸어도 돼요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-town.png" alt="정리한 마을 왼쪽: 거래소(점검 중) 옆에 우편함, 바로 옆 시간 상점" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">정리한 마을 왼쪽: 거래소(점검 중) 옆에 우편함, 바로 옆 시간 상점</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">포탈로 파밍해도 괜찮아요</span></b></p>
+<p>축복을 모으면 &quot;포탈 없이 끝까지 가야 하나?&quot; 하는 걱정이 생겨요. 그래서 축복은 <strong>그 판에 붙여</strong> 포탈로 마을을 오가도 남게 했어요. 쓰러져서 새로 시작할 때만 사라져요. 일반 던전을 완료하면 축복을 가진 채 나이트메어로 <strong>바로 이어갈</strong> 수도 있어요.</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">시뮬레이션으로 맞춘 밸런스</span></b></p>
+<p>사용자 데이터가 아직 적어서, Claude Code가 실제 드롭 규칙과 자동 장비·축복으로 1층부터 끝까지 200판을 돌려 숫자를 맞췄어요.</p>
+<p><br></p>
+<p>• 한 판으로 끝까지 가는 비율: 일반 약 75%, 이어서 나이트메어 약 87%, 헬 약 44%</p>
+<p>• 처음 계산에서는 일반 던전이 97%로 너무 쉬웠어요. 그래서 일반 던전 몬스터가 깊은 층일수록 조금씩 더 세지게 했어요 (50층에서 HP·공격력 약 2.3배). 이제 마지막 10층이 진짜 고비예요</p>
+<p>• 처음에는 마을에서 바로 헬에 들어가면 축복이 없어서 1~10층에서 모두 쓰러졌어요. 그래서 던전 입구 몇 층을 천천히 세지게 하고, 중간부터 들어가면 건너뛴 만큼 축복을 먼저 고르게 했어요</p>
+<p>• 가지고 있던 보석·룬은 그대로 보관하고, 그만큼 강화석으로 보상했어요</p>
+<p><br></p>
+<p>다음에는 등급과 던전마다 확실히 다른 장비 모습과, 고른 모습을 입을 수 있는 옷장을 만들 거예요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-01.html">https://game.apacimtest.com/blog/2026-11-01.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>
