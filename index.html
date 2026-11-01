@@ -440,6 +440,10 @@
   .modal.notice .bless-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; padding: 10px 6px; min-height: 150px; border: 2px solid #3a5a7a; border-radius: 8px; text-align: center; white-space: normal; }
   .bless-card.t-rare { border-color: #5aa9ff; }
   .bless-card.t-legend { border-color: #ffcf5c; box-shadow: 0 0 10px rgba(255, 207, 92, 0.35); }
+  .modal.notice .bless-card.t-rare { border-color: #5aa9ff; }
+  .modal.notice .bless-card.t-legend { border-color: #ffcf5c; }
+  .modal.notice .bless-card.t-elem { border-color: #ff8a5c; }
+  .bless-card.t-elem { border-color: #ff8a5c; background: linear-gradient(#2a1810, #16100e); box-shadow: 0 0 10px rgba(255, 138, 92, 0.35); }
   .bless-card.relic { border-color: #e0b44c; background: linear-gradient(#2a2410, #1a1608); box-shadow: 0 0 12px rgba(224, 180, 76, 0.4); }
   .bless-card .bc-key { position: absolute; top: 4px; left: 6px; font-size: 11px; opacity: 0.6; }
   .bless-card .bc-ico { font-size: 28px; line-height: 1.2; }
@@ -452,6 +456,7 @@
   .bl-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 15px; border: 1px solid #3a5a7a; border-radius: 6px; background: #121a24; }
   .bl-ico.t-rare { border-color: #5aa9ff; }
   .bl-ico.t-legend { border-color: #ffcf5c; }
+  .bl-ico.t-elem { border-color: #ff8a5c; background: #2a1810; }
   .bl-ico.relic { border-color: #e0b44c; background: #2a2410; box-shadow: 0 0 6px rgba(224, 180, 76, 0.5); }
   .bl-ico sup { position: absolute; top: -5px; right: -4px; font-size: 10px; background: #000; border-radius: 6px; padding: 0 3px; color: #fff; }
   @media (max-width: 520px) { .bless-cards { grid-template-columns: 1fr; } .modal.notice .bless-card { min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; } }
@@ -766,9 +771,9 @@
   <span class="keys-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
   <span class="touch-only hint-3d" data-t>3D 화면: ▲▼ 앞뒤 · ◀▶ 돌기 · 화면을 끌어 둘러보기 · 공격 버튼(또는 화면을 톡)으로 공격<br></span>
   <span class="touch-only hint-2d" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
-  <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 5층마다 보스가 있고, 50층 보스를 잡으면 완료 → <b>나이트메어(▼)</b>와 <b>골드 던전</b>이 열려요.<br>
-  바닥의 <b>!</b>는 좋은 장비, <b>♦</b>는 보석(인벤토리에서 홈에 넣어요), 무지개색 <b>♦</b>는 룬(나이트메어 50층 보스). 포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요.<br>
-  로비의 파란 포탈로 떠난 자리에 돌아가요. 던전 입구는 1층부터, 마을 가운데 <b>웨이포인트(◎)</b>는 밟아 둔 층부터 (일반 던전·나이트메어·헬 모두 10층마다).<br></span>
+  <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 새 층마다 <b>축복</b>을 하나 고르고, 5층마다 보스를 쓰러뜨리면 <b>유물</b>을 골라요.<br>
+  판은 언제나 레벨 1·1층부터. 50층 보스를 잡으면 같은 판 그대로 <b>나이트메어 → 헬 → 끝이 없는 구멍</b>으로 이어가요. 장비는 주우면 자동으로 끼고 강화돼요.<br>
+  포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요. 로비의 파란 포탈로 떠난 자리에 돌아가요.<br></span>
   <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a> <a id="odds-link" href="shop.html#odds" style="color: inherit" data-t>장비 상자 확률</a></p>
 </div>
 
@@ -989,7 +994,7 @@
 <script src="blessings.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
-<script src="jump.js?v=102"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=103"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
@@ -1107,6 +1112,9 @@
   //   × 건너뛰기를 누르면 그 안내는 끝. 여러 개가 걸리면 급한 것부터(HP > 장비 > 던전 > 마을), 그 장면(마을·던전)에서만 보임
   //   intro(처음 온 사람, 마을) · dungeon(처음 던전) · gear(처음 장비 줍기) · lowhp(HP 30% 이하) — 뒤의 셋은 아직 10층 전인 사람만
   //   저장: rl_tips = 끝난 안내, rl_tut = 해 본 단계, rl_tut_on = 진행 중인 안내 (HP 안내는 그때뿐이라 저장 안 함)
+  // 정식 v2 (dc#142): 판은 언제나 레벨 1·일반 1층부터. 마을에는 거래소·우편함·던전 입구만, 웨이포인트 없음
+  //   rl_oldtown "on": 예전 마을 문(나이트메어·헬·골드 던전·웨이포인트)과 웨이포인트를 쓰는 예전 회귀 테스트용
+  const OLD_TOWN = store.get("rl_oldtown") === "on";
   const LOW_HP = 0.3;
   // 튜토리얼 (dc#94 → dc#97): 왼쪽 위 작은 상자에 하나씩. 직접 해 보면 ☐ → ✓, 다 하면 "잘했어요!" 뒤 다음 튜토리얼
   // 차례: ① 던전 들어가기 → ② 던전 탐험 → ③ 장비 끼기 → ④ HP 회복 → ⑤ 웨이포인트. HP가 적으면 ④를 먼저
@@ -1123,7 +1131,7 @@
           ["walk", phone() ? T("화면을 밀거나 칸을 눌러 걷기") : T("가고 싶은 칸을 클릭해 걷기")],
           ["map", phone() ? T("지도 버튼으로 지나온 길 보기") : T("Tab으로 지나온 길 보기")],
           ["stairs", T("계단(>)을 밟고 다음 층으로")]],
-        note: () => T("❤ 머리 위 막대가 HP예요 · ◎ 웨이포인트를 만나면 꼭 밟고 지나가요") },
+        note: () => (OLD_TOWN ? T("❤ 머리 위 막대가 HP예요 · ◎ 웨이포인트를 만나면 꼭 밟고 지나가요") : T("❤ 머리 위 막대가 HP예요 · 새 층마다 축복을 하나씩 골라요")) },
       gear: { title: () => T("③ 장비 끼기"),
         steps: () => [["inv", phone() ? T("인벤토리 버튼 누르기") : T("인벤토리 열기 (I)")], ["equip", T("▲ 표시 장비를 비교하고 장착")]],
         note: () => T("몬스터가 떨어뜨린 장비를 주워요") },
@@ -1134,7 +1142,7 @@
         steps: () => [["wp", T("일반 던전 10층 시작 자리 옆 ◎ 밟기")]],
         note: () => T("◎은 꼭 밟고 지나가요 (밟아야 계단이 열려요) · 마을 가운데 ◎에서 그 층부터 · 쓰러지면 묘비 †에서 골드 90%") },
     };
-    const ORDER = ["intro", "dungeon", "gear", "heal", "waypoint"];
+    const ORDER = ["intro", "dungeon", "gear", "heal", ...(OLD_TOWN ? ["waypoint"] : [])];   // dc#142: 웨이포인트가 없어서 ⑤는 뺌
     const read = (k) => { try { return JSON.parse(store.get(k)) || []; } catch { return []; } };
     const steps = () => read("rl_tut"), skipped = () => read("rl_tut_skip");
     const isDone = (id, have = steps()) => skipped().includes(id) || DEFS[id].steps().every(([k]) => have.includes(k));
@@ -2041,7 +2049,7 @@
   const WAYPOINTS = { normal: [10, 20, 30, 40, 50], nm: [10, 20, 30, 40, 50], hell: [10, 20, 30, 40, 50] };
   const WP_COLOR = "#5fd4ff";
   let waypoints = { normal: [], nm: [], hell: [] };
-  const wpZone = () => (inHell() ? "hell" : inNM() ? "nm" : inGold() || inAbyss() ? null : "normal");   // 구멍은 웨이포인트 없음 (매번 1층부터)
+  const wpZone = () => (!OLD_TOWN ? null : inHell() ? "hell" : inNM() ? "nm" : inGold() || inAbyss() ? null : "normal");   // dc#142: 웨이포인트 없음 (rl_oldtown 테스트만)   // 구멍은 웨이포인트 없음 (매번 1층부터)
   const wpCount = () => waypoints.normal.length + waypoints.nm.length + waypoints.hell.length;
   // 묘비 (dc#97): 쓰러진 뒤 로비에서 새로 시작하면 쓰러진 자리에 묘비(†). 그 층에 다시 가서 밟으면 쓰러질 때 골드의 90%를 돌려받음
   // 묘비는 하나만: 찾기 전에 또 쓰러져서 새로 시작하면 예전 묘비는 사라지고 새 묘비로
@@ -2062,29 +2070,18 @@
   const isUnique = (item) => item?.rarity === "unique";
 
   // 레벨 (dc#95): 레벨마다 최대 HP +4·공격력 +1에 더해 최대 HP·공격력 +2%.
-  // 쓰러진 뒤 로비에서 새로 시작하면 지금 레벨 필요 경험치의 10%를 잃음 (모자라면 레벨이 내려감)
-  const LEVEL = { pct: 2, deathXp: 0.1 };
+  // 판마다 레벨 1부터 (dc#142). 예전(dc#95)에는 쓰러지면 경험치 10%만 잃고 레벨은 이어 갔음
+  const LEVEL = { pct: 2 };
   const xpFor = (lvl) => { let n = 10; for (let i = 1; i < lvl; i++) n = Math.floor(n * 1.5); return n; };
   const levelPct = () => ((player.plvl || 1) - 1) * LEVEL.pct;
-  function loseDeathXp() {
-    const loss = Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp)), before = player.plvl;
-    player.xp -= loss;
-    while (player.xp < 0 && player.plvl > 1) {
-      player.plvl--;
-      player.maxHp -= 4;
-      player.atk -= 1;
-      player.xpNext = xpFor(player.plvl);
-      player.xp += player.xpNext;
-    }
-    player.xp = Math.max(0, player.xp);
-    return { loss, down: before - player.plvl };
-  }
+
 
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과. TT: 다른 장비 조합의 합계 (장비 비교, dc#91)
   // 정식 v2 (dc#140): 장비 숫자(공격력·방어력·최대 HP) + 레벨 + 이 판의 축복·유물 (blessings.js). 다른 아이템 효과는 0
   const blessTotals = () => RLBless.totals({ ...(player?.bl || {}), ...(player?.rl || {}) });
   function stats(TT = Inv.totals()) {
     const g = TT.stats, b = blessTotals(), cap = RLBless.capsOf(b);
+    const elv = (k) => Math.min(5, b[`${k}Lv`] || 0), ef = Object.fromEntries(["fire", "ice", "bolt"].map(k => [k, elv(k) ? RLBless.ELEM[k](elv(k)) : null]));
     const pct = (v, p) => Math.round(v * (1 + p / 100));
     const maxHp = pct(player.maxHp + g.hp, g.hpPct + (b.hpPct || 0) + levelPct());
     return {
@@ -2106,10 +2103,14 @@
       longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
       // 화염의 세트: 파이어볼 (2세트), 맞은 적 화상 (3세트), 파이어볼 피해 +% (5세트)
-      fireball: g.fireball > 0, fireballPct: g.fireballPct, fireballBurn: g.fireballBurn > 0,
+      // 속성 스킬 축복 (dc#142): 화염구·얼음 폭발·연쇄 번개 단계(Lv)에 따라 주기·범위·횟수·피해 (RLBless.ELEM). 예전 세트 효과는 0
+      fireball: g.fireball > 0 || !!ef.fire, fireballPct: g.fireballPct + (ef.fire?.pct || 0), fireballBurn: g.fireballBurn > 0 || !!ef.fire,
+      fbEvery: ef.fire?.every || RLItems.FIREBALL.every, fbRadius: ef.fire?.radius || RLItems.FIREBALL.radius,
       // 서리의 세트: 프로스트 노바·피해 +%·느려짐 / 뇌전의 세트: 체인 라이트닝·피해 +%·4번 튕김과 감전
-      nova: g.nova > 0, novaPct: g.novaPct, novaSlow: g.novaSlow > 0,
-      chain: g.chain > 0, chainPct: g.chainPct, chainMax: g.chainMax > 0,
+      nova: g.nova > 0 || !!ef.ice, novaPct: g.novaPct + (ef.ice?.pct || 0), novaSlow: g.novaSlow > 0 || !!ef.ice,
+      novaEvery: ef.ice?.every || RLItems.FROST_NOVA.every, novaRadius: ef.ice?.radius || RLItems.FROST_NOVA.radius,
+      chain: g.chain > 0 || !!ef.bolt, chainPct: g.chainPct + (ef.bolt?.pct || 0), chainMax: g.chainMax > 0 || !!ef.bolt?.shock,
+      chainEvery: ef.bolt?.every || RLItems.CHAIN.every, chainStrikes: ef.bolt?.strikes || 0,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 나이트메어 −40 · 헬 −70 (dc#54): 장비 저항 합에서 먼저 빼고 그 뒤 최대치 (RLMonsters.playerRes)
@@ -3061,8 +3062,8 @@
     updateStats();
     if (first) showNotice(T("일반 던전 완료!"), [
       T("{0}층 보스를 쓰러뜨려 일반 던전을 완료했어요. 랭킹에 \"완료\"로 기록돼요.", depth),
-      T("{0}층이 마지막 층이에요. 로비의 파란 포탈로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요. 마을 웨이포인트로는 밟아 둔 층부터 다시 내려갈 수 있어요.", depth),
-      T("골드·레벨·장비는 그대로예요. 더 좋은 등급·옵션·고대 장비와 강화로 장비를 완성해 보세요."),
+      T("이 판 그대로 나이트메어 1층으로 이어갈 수 있어요. 나이트메어·헬은 같은 판에서 앞 던전을 깨고 이어가기로만 들어가요."),
+      T("로비의 파란 포탈로 들어가면 {0}층의 새 구역(새 지도와 보스)에서 계속 파밍할 수 있어요.", depth),
     ]);
     else showNotice(T("{0}층 클리어!", depth), [
       T("{0}층 보스를 {1}쓰러뜨리고 로비로 돌아왔어요.", depth, counts ? T("또 ") : ""),
@@ -3075,9 +3076,9 @@
   async function offerContinue(to) {
     if (!Bless.enabled()) return;   // 축복을 끈 테스트 등
     const nb = Object.values(player.bl || {}).reduce((a, b) => a + b, 0), nr = Object.values(player.rl || {}).reduce((a, b) => a + b, 0);
-    const name = to === "nm" ? T("나이트메어") : T("헬");
-    if (!(await ask(T("{0} 1층으로 바로 이어갈까요?\n지금 모은 축복 {1}개·유물 {2}개를 그대로 가져가요. (취소하면 마을에 남아요. 나중에 마을에서 들어가면 축복을 처음부터 모아요.)", name, nb, nr)))) return;
-    if (to === "nm") enterNightmare(1, { cont: true }); else enterHell(1, { cont: true });
+    const name = to === "nm" ? T("나이트메어") : to === "abyss" ? T("끝이 없는 구멍") : T("헬");
+    if (!(await ask(T("{0} 1층으로 바로 이어갈까요?\n지금 레벨과 모은 축복 {1}개·유물 {2}개를 그대로 가져가요. (취소하면 마을에 남아요. 다음 던전은 이어가기로만 들어갈 수 있어서, 파란 포탈로 돌아가 이 던전의 마지막 보스를 다시 쓰러뜨리면 또 물어봐요.)", name, nb, nr)))) return;
+    if (to === "nm") enterNightmare(1, { cont: true }); else if (to === "abyss") enterAbyss({ cont: true }); else enterHell(1, { cont: true });
   }
 
   // 골드 던전 보스를 쓰러뜨리고 계단을 밟음: 완료 보상 골드 → 로비로, 포탈 문으로 골드 던전 새 구역
@@ -3129,9 +3130,10 @@
     enterLobby({ from: "clear" });
     updateStats();
     showNotice(first ? T("헬 완료!") : T("{0} 클리어!", floorName()), first ? [
-      T("{0} 보스를 쓰러뜨려 헬 던전을 완료했어요. 헬 랭킹에 \"완료\"로 기록돼요. 이제 마을 웨이포인트 맨 아래의 \"끝이 없는 구멍\"에 도전할 수 있어요!", floorName()),
-      T("로비의 파란 포탈이나 헬 입구 오른쪽 문으로 다시 들어가 유니크 아이템을 노려 보세요."),
+      T("{0} 보스를 쓰러뜨려 헬 던전을 완료했어요. 헬 랭킹에 \"완료\"로 기록돼요.", floorName()),
+      T("이 판 그대로 \"끝이 없는 구멍\"으로 이어갈 수 있어요. 구멍은 헬 50층을 깬 판에서만 들어갈 수 있어요."),
     ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요.", floorName())]);
+    offerContinue("abyss");
   }
 
   // 끝이 없는 구멍 20층의 네임드 2마리를 쓰러뜨리고 계단을 밟음: 구멍 완료 → 다음 업데이트 안내와 함께 마을로.
@@ -3729,47 +3731,48 @@
     }
     // 파이어볼 (화염의 세트, 또는 룬워드 나무의 약한 파이어볼)
     const fbSet = s.fireball, fbOn = fbSet || s.rw.fireball;
-    const fbEvery = (fbSet ? FB.every : RW_FX.fireball.every) - fast, fbMul = fbSet ? FB.mul : RW_FX.fireball.mul;
+    const fbEvery = (fbSet ? s.fbEvery : RW_FX.fireball.every) - fast, fbMul = fbSet ? FB.mul : RW_FX.fireball.mul, fbR = s.fbRadius;
     if (fbOn && ready("fbCd")) {
-      const inBlast = (c) => alive().filter(e => near8(e, c) <= FB.radius).length;
+      const inBlast = (c) => alive().filter(e => near8(e, c) <= fbR).length;
       const center = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= FB.range)
         .sort((a, b) => near8(a, player) - near8(b, player) || inBlast(b) - inBlast(a))[0];
       if (center) {
         player.fbCd = fbEvery;
         const { crit, dmg } = skillRoll(s, fbMul, s.fireballPct + s.elem.fire);
-        const hit = alive().filter(e => near8(e, center) <= FB.radius);
+        const hit = alive().filter(e => near8(e, center) <= fbR);
         const cells = [];
-        for (let dy = -FB.radius; dy <= FB.radius; dy++) for (let dx = -FB.radius; dx <= FB.radius; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
+        for (let dy = -fbR; dy <= fbR; dy++) for (let dx = -fbR; dx <= fbR; dx++) cells.push({ x: center.x + dx, y: center.y + dy });
         if (reduceMotion) flash(cells, "rgba(255, 122, 61, 0.38)");
-        else Fx.fireball(player, center, FB.radius);
+        else Fx.fireball(player, center, fbR);
         Sfx("fireball", Fx.FB_FLY / 1000);
-        log(T("🔥 파이어볼! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", s.fireballBurn ? T(" · 화상") : ""), null, EL.colors.fire);
+        log(T("🔥 화염구! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", s.fireballBurn ? T(" · 화상") : ""), null, EL.colors.fire);
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.fire, s, Fx.FB_FLY) && s.fireballBurn) burnOn(e, Math.round(s.atk * EL.burn.mul));
       }
     }
     // 프로스트 노바 (서리의 세트)
     if (s.nova && ready("novaCd")) {
-      const hit = alive().filter(e => near8(e, player) <= NOVA.radius);
+      const nR = s.novaRadius;
+      const hit = alive().filter(e => near8(e, player) <= nR);
       if (hit.length) {
-        player.novaCd = NOVA.every - fast;
+        player.novaCd = s.novaEvery - fast;
         const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
         const cells = [];
-        for (let dy = -NOVA.radius; dy <= NOVA.radius; dy++) for (let dx = -NOVA.radius; dx <= NOVA.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
+        for (let dy = -nR; dy <= nR; dy++) for (let dx = -nR; dx <= nR; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
         if (reduceMotion) flash(cells, "rgba(111, 211, 255, 0.4)");
-        else Fx.nova(player, NOVA.radius);
+        else Fx.nova(player, nR);
         Sfx("nova");
         let slowed = 0;
         for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice, s, 90) && s.novaSlow && chill(e, 1)) slowed++;
-        log(T("❄ 프로스트 노바! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", slowed ? T(" · {0}마리 느려짐", slowed) : ""), null, EL.colors.ice);
+        log(T("❄ 얼음 폭발! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", slowed ? T(" · {0}마리 느려짐", slowed) : ""), null, EL.colors.ice);
       }
     }
     // 체인 라이트닝 (뇌전의 세트)
     if (s.chain && ready("chainCd")) {
       let at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= CHAIN.range).sort((a, b) => near8(a, player) - near8(b, player))[0];
       if (at) {
-        player.chainCd = CHAIN.every - fast;
+        player.chainCd = s.chainEvery - fast;
         const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
-        const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0);   // 여의주 검 +2
+        const strikes = (s.chainStrikes || (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes)) + (s.uq.chainPlus || 0);   // 축복 단계(dc#142) · 여의주 검 +2
         const hitOnce = new Set(), cells = [];
         let n = 0;
         for (let k = 0; k < strikes && at; k++) {
@@ -3786,7 +3789,7 @@
         if (reduceMotion) flash(cells, "rgba(255, 225, 77, 0.45)");
         else Fx.chain([player, ...cells]);
         Sfx("chain", n, Fx.CHAIN_STEP / 1000);
-        log(T("⚡ 체인 라이트닝! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
+        log(T("⚡ 연쇄 번개! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
       }
     }
   }
@@ -3801,14 +3804,14 @@
     if (player.shred > 0) out.push(T("🦷 방어력 −{0}%", player.shred));
     if (reaperOn()) out.push(T("☠ 포탈 봉인 · 흡혈 {0}%", Math.round(lsMul() * 100)));
     const one = (on, icon, name, cd) => { if (on) out.push(cd > 0 ? T("{0} {1} {2}턴", icon, name, cd) : T("{0} {1} 준비됨", icon, name)); };
-    one(s.fireball || s.rw.fireball, "🔥", T("파이어볼"), player.fbCd);
+    one(s.fireball || s.rw.fireball, "🔥", T("화염구"), player.fbCd);
     one(s.rw.whirl, "🌀", T("회전 베기"), player.whirlCd);
     if (s.rw.shield || s.uq.shield) out.push(T("🛡 보호막 {0}", player.shield || 0));
     if (player.iron > 0) out.push(T("🐉 쇠비늘 방어력 +{0}%", player.iron));
     if (player.reap > 0) out.push(T("💀 영혼 수확 공격력 +{0}%", player.reap));
     if (s.rw.undying) out.push(player.ud === floorKey() ? T("✦ 불사 사용함") : T("✦ 불사 준비됨"));
-    one(s.nova, "❄", T("노바"), player.novaCd);
-    one(s.chain, "⚡", T("체인"), player.chainCd);
+    one(s.nova, "❄", T("얼음 폭발"), player.novaCd);
+    one(s.chain, "⚡", T("연쇄 번개"), player.chainCd);
     return out;
   }
 
@@ -4016,8 +4019,8 @@
       portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
       clear: [inAbyss() ? T("끝이 없는 구멍을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 다시 1층부터 내려갈 수 있다.")
         : T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
-      death: [T("로비에서 새로 시작한다. 골드는 처음으로 돌아갔고, 레벨과 장비는 그대로다."), "info"],
-      start: [T("로비에 들어왔다. 던전 입구는 1층부터, 마을 가운데 웨이포인트는 밟아 둔 층부터 들어간다.{0}", backTo()), "info"],
+      death: [T("로비에서 새로 시작한다. 레벨 1·골드 0으로 돌아갔고, 장비는 그대로다."), "info"],
+      start: [T("로비에 들어왔다. 마을 가운데 던전 입구에서 레벨 1·1층부터 새 판을 시작한다.{0}", backTo()), "info"],
     }[from];
     log(msg[0], msg[1]);
     render();
@@ -4038,7 +4041,8 @@
     } else {
       const from = which === "wp" ? wpFloor : 1;
       if (which === "wp" && !waypoints.normal.includes(from)) return;
-      if (resumeFloor() && !(await ask(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
+      if (resumeFloor() && !(await ask(which === "wp" ? T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())
+        : T("1층부터 새 판을 시작할까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라지고, 레벨 1·골드 0으로 시작해요. 장비는 그대로예요.", floorName())))) return;
       entering = true;
       let ok = false;
       try { ok = await allowEntry(); } finally { entering = false; }
@@ -4046,6 +4050,7 @@
       depth = from;
       player.zone = "normal";
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
+      if (which !== "wp" && !OLD_TOWN) { Object.assign(player, FRESH); player.hp = stats().maxHp; }   // dc#142: 새 판은 레벨 1·골드 0
       Bless.start("normal", from);   // 새 판: 축복·유물을 비우고, 웨이포인트면 건너뛴 만큼 먼저 고름
       player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 정식 v1 랭킹에 기록됨
       noteOldGear();
@@ -4161,13 +4166,14 @@
     updateStats();
   }
   // 끝이 없는 구멍 (dc#124): 헬 50층을 완료한 사람만, 마을 웨이포인트 맨 아래에서. 매번 1층부터 (안에는 웨이포인트 없음)
-  async function enterAbyss() {
+  async function enterAbyss(opt = {}) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
+    if (!opt.cont && !OLD_TOWN) return;   // dc#142: 같은 판에서 헬 50층을 깨고 이어가기로만
     if (!hellCleared) { log(T("끝이 없는 구멍은 헬 {0}층을 완료해야 들어갈 수 있다.", HELL.floors), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
-    if (resumeFloor() && !(await ask(T("끝이 없는 구멍 1층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라져요. 골드·레벨·장비는 그대로예요.", floorName())))) return;
+    if (!opt.cont && resumeFloor() && !(await ask(T("끝이 없는 구멍 1층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라져요. 골드·레벨·장비는 그대로예요.", floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -4175,14 +4181,14 @@
     player.zone = "abyss";
     depth = 1;
     player.rid = newRunId();
-    Bless.reset();   // 끝이 없는 구멍: 축복 없음 (새 판)
+    if (!opt.cont) Bless.reset();   // 예전(웨이포인트로 새로): 축복 없음. 이어가기(dc#142)면 이 판의 레벨·축복·유물 그대로
     player.oldGear = false;
     abyssBest = Math.max(abyssBest, 1);
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
     log(T("🕳 {0}에 뛰어들었다. 헬 50층보다 깊은 곳이다! 한 층 내려갈 때마다 몬스터가 {1}%씩 강해지고, 층마다 네임드 보스 2마리가 계단을 지킨다.", floorName(), Math.round(ABYSS.perFloor * 100)), "bad");
-    log(T("여기서는 장비·골드가 떨어지지 않는 대신 경험치를 {0}배 받는다. 쓰러지면 다시 1층부터. {1}층이 바닥이다.", ABYSS.xpMul, ABYSS.floors), "info");
+    log(T("여기서는 장비·골드가 떨어지지 않는 대신 경험치를 {0}배 받는다. {1}층이 바닥이다.", ABYSS.xpMul, ABYSS.floors), "info");
     newLevel(generateDungeon());
     saveGame(true);
     render();
@@ -4604,7 +4610,7 @@
       h[id] = (h[id] || 0) + 1;
       const d = RLBless.defOf(id), now = stats();
       if (now.maxHp > before) player.hp = Math.min(now.maxHp, player.hp + now.maxHp - before);   // 최대 HP가 늘면 그만큼 HP도
-      log(T("{0} {1} {2} ({3}/{4}): {5}", entry.r ? T("✦ 유물") : T("✦ 축복"), d.icon, RLBless.nameOf(id), h[id], d.max, RLBless.fxText(d.fx)), entry.r ? "rainbow" : null, entry.r ? null : RLBless.TIERS[d.tier].color);
+      log(T("{0} {1} {2} ({3}/{4}): {5}", entry.r ? T("✦ 유물") : T("✦ 축복"), d.icon, RLBless.nameOf(id), h[id], d.max, RLBless.cardText(id, h[id])), entry.r ? "rainbow" : null, entry.r ? null : RLBless.TIERS[d.tier].color);
       Sfx(entry.r ? "bossKill" : "levelup");
       saveGame(true);
       updateStats();
@@ -4640,8 +4646,8 @@
           el("span", { className: "bc-key" }, String(i + 1)),
           el("span", { className: "bc-ico" }, d.icon),
           el("b", {}, RLBless.nameOf(id)),
-          el("small", { className: "bc-tier", style: tier ? { color: tier.color } : {} }, relic ? T("유물") : ({ common: T("일반"), rare: T("희귀"), legend: T("전설") })[d.tier]),
-          el("span", { className: "bc-fx" }, RLBless.fxText(d.fx)),
+          el("small", { className: "bc-tier", style: tier ? { color: tier.color } : {} }, relic ? T("유물") : ({ common: T("일반"), rare: T("희귀"), legend: T("전설"), elem: T("속성") })[d.tier]),
+          el("span", { className: "bc-fx" }, RLBless.cardText(id, n + 1)),
           el("small", { className: "bc-n" }, T("{0} / {1}", n, d.max)));
         return b;
       }));
@@ -6139,9 +6145,10 @@
     let jumpTap = false;
     const seen = new Map();   // 다른 사람이 보는 쪽 (지난 x와 비교)
     const ok = () => { if (!map && TW) { map = J.parse(TW.rows); st = { ...J.newState({ start: { x: 30.5, y: G }, checkpoints: [] }), checkpoints: [] }; } return !!map; };
-    const door = (id) => TW.doors.find(d => d.id === id);
-    // 문이 보이고 쓸 수 있는지 (운영자 문은 운영자 기기에서만, 포탈은 돌아갈 층이 있을 때만)
-    const shown = (d) => (!d.staff || isStaff()) && (d.id !== "resume" || !!resumeFloor());
+    // 예전 문(나이트메어·헬·골드 던전·웨이포인트, dc#142에서 숨김)에 서야 할 때는 던전 입구 앞으로
+    const door = (id) => { const d = TW.doors.find(d => d.id === id); return d && (!d.legacy || OLD_TOWN) ? d : TW.doors.find(d => d.id === "start"); };
+    // 문이 보이고 쓸 수 있는지 (운영자 문은 운영자 기기에서만, 포탈은 돌아갈 층이 있을 때만, 예전 문은 rl_oldtown 테스트에서만)
+    const shown = (d) => (!d.staff || isStaff()) && (!d.legacy || OLD_TOWN) && (d.id !== "resume" || !!resumeFloor());
     // 지금 서 있는 문 (바닥에 서서 문 가운데에서 0.6칸 안)
     const nearDoor = () => (st && st.ground && Math.abs(st.y - G) < 1e-6 ? TW.doors.find(d => shown(d) && Math.abs(st.x - d.x) < 0.6) : null);
     // where: "portal" · "start" · "random" · 문 id · x
@@ -6268,6 +6275,62 @@
       if (src) ctx.drawImage(src[0], src[1], src[2], 32, 32, cx - w / 2, bot - w + 1, w, w);
       else { ctx.fillStyle = "#e8761e"; ctx.beginPath(); ctx.ellipse(cx, bot - w * 0.32, w * 0.4, w * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
     }
+    // 던전 입구 (dc#142): 양쪽 탑(뾰족 지붕·깃발), 가운데 망루와 빛나는 문장, 늘어진 깃발, 화살 구멍, 큰 화로
+    function grandGate(x0, x1, top, bot, w, t, wall, mortar, hw) {
+      const sway = (k) => (reduceMotion ? 0 : Math.sin(t * 1.8 + k) * 1.5);
+      const gold = "#ffcf5c", cloth = hw ? "#c2561a" : "#8e1b25", trim = "#e8b84a";
+      const merlons = (a, b, y) => { ctx.fillStyle = wall; for (let x = a; x < b - 1; x += TILE * 0.75) ctx.fillRect(x + 1, y - 5, TILE * 0.4, 5); };
+      // 위 테두리: 금빛 띠 + 톱니
+      ctx.fillStyle = "rgba(255, 207, 92, 0.35)"; ctx.fillRect(x0, top, w, 2);
+      merlons(x0, x1, top);
+      // 가운데 망루 (5칸)와 문장
+      const kw = TILE * 5, kx = x0 + w / 2 - kw / 2, ktop = top - TILE * 1.6;
+      ctx.fillStyle = wall; ctx.fillRect(kx, ktop, kw, top - ktop + 1);
+      ctx.fillStyle = mortar; for (let y = ktop + TILE / 2; y < top; y += TILE / 2) ctx.fillRect(kx, y, kw, 1.5);
+      merlons(kx, kx + kw, ktop);
+      const ex = x0 + w / 2, ey = ktop + TILE * 0.85, er = TILE * 0.62, pulse = reduceMotion ? 0.8 : 0.6 + 0.4 * Math.sin(t * 2);
+      ctx.save(); ctx.shadowColor = gold; ctx.shadowBlur = 6 + 8 * pulse;
+      ctx.fillStyle = "#1c140c"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = gold; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = gold; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(ex - d * er * 0.55, ey + er * 0.55); ctx.lineTo(ex + d * er * 0.55, ey - er * 0.55); ctx.stroke(); }   // 엇갈린 두 칼
+      ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(ex, ey - er * 0.35); ctx.lineTo(ex + er * 0.3, ey); ctx.lineTo(ex, ey + er * 0.35); ctx.lineTo(ex - er * 0.3, ey); ctx.closePath(); ctx.fill();
+      ctx.lineCap = "butt";
+      // 양쪽 탑: 벽보다 높고, 뾰족 지붕 위에 깃발
+      for (const [tx, dir] of [[x0 - TILE * 0.6, 1], [x1 - TILE * 1.9, -1]]) {
+        const tw = TILE * 2.5, ttop = top - TILE * 2.2;
+        ctx.fillStyle = wall; ctx.fillRect(tx, ttop, tw, bot - ttop);
+        ctx.fillStyle = mortar; for (let y = ttop + TILE / 2; y < bot; y += TILE / 2) ctx.fillRect(tx, y, tw, 1.5);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.18)"; ctx.fillRect(dir > 0 ? tx : tx + tw - 3, ttop, 3, bot - ttop);
+        ctx.fillStyle = "#2a3247"; ctx.beginPath(); ctx.moveTo(tx - 3, ttop + 1); ctx.lineTo(tx + tw / 2, ttop - TILE * 1.5); ctx.lineTo(tx + tw + 3, ttop + 1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.beginPath(); ctx.moveTo(tx + tw / 2, ttop - TILE * 1.5); ctx.lineTo(tx + tw + 3, ttop + 1); ctx.lineTo(tx + tw / 2 + 2, ttop + 1); ctx.closePath(); ctx.fill();
+        const px = tx + tw / 2, py = ttop - TILE * 1.5;
+        ctx.fillStyle = "#c9a24a"; ctx.fillRect(px - 0.5, py - TILE * 0.9, 1.2, TILE * 0.9);
+        const f = sway(tx);
+        ctx.fillStyle = cloth; ctx.beginPath(); ctx.moveTo(px + 0.7, py - TILE * 0.9); ctx.lineTo(px + 0.7 + dir * TILE * 0.9, py - TILE * 0.72 + f); ctx.lineTo(px + 0.7, py - TILE * 0.5); ctx.closePath(); ctx.fill();
+        // 화살 구멍 두 줄
+        for (const yy of [ttop + TILE * 0.9, ttop + TILE * 2.3]) { ctx.fillStyle = "#120c08"; ctx.fillRect(px - 1.5, yy, 3, TILE * 0.7); ctx.fillStyle = "rgba(255, 200, 110, 0.35)"; ctx.fillRect(px - 0.5, yy + 2, 1, TILE * 0.7 - 4); }
+      }
+      // 늘어진 깃발 두 개 (문 양옆 위)
+      for (const bx of [x0 + TILE * 3.3, x1 - TILE * 4.3]) {
+        const bw = TILE * 1.1, bh = TILE * 2.7, by = top + TILE * 0.35, f = sway(bx) * 0.8;
+        ctx.fillStyle = "#3a2a1a"; ctx.fillRect(bx - 2, by - 2, bw + 4, 2.5);
+        ctx.fillStyle = cloth; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw + f, by + bh); ctx.lineTo(bx + bw / 2 + f, by + bh - TILE * 0.45); ctx.lineTo(bx + f, by + bh); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = trim; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(bx + bw / 2 + f / 2, by + bh * 0.38, TILE * 0.22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = cloth; ctx.beginPath(); ctx.arc(bx + bw / 2 + f / 2, by + bh * 0.38, TILE * 0.11, 0, Math.PI * 2); ctx.fill();
+      }
+      // 큰 화로 (탑 앞 바닥)
+      for (const fx of [x0 + TILE * 2.2, x1 - TILE * 2.2]) {
+        ctx.fillStyle = "#3b3530"; ctx.fillRect(fx - 2, bot - TILE * 0.9, 4, TILE * 0.9);
+        ctx.fillStyle = "#57504a"; ctx.beginPath(); ctx.moveTo(fx - TILE * 0.45, bot - TILE * 0.95); ctx.lineTo(fx + TILE * 0.45, bot - TILE * 0.95); ctx.lineTo(fx + TILE * 0.3, bot - TILE * 0.7); ctx.lineTo(fx - TILE * 0.3, bot - TILE * 0.7); ctx.closePath(); ctx.fill();
+        const glow = ctx.createRadialGradient(fx, bot - TILE * 1.2, 1, fx, bot - TILE * 1.2, TILE * 1.4);
+        glow.addColorStop(0, "rgba(255, 150, 50, 0.32)"); glow.addColorStop(1, "rgba(255, 150, 50, 0)");
+        ctx.fillStyle = glow; ctx.fillRect(fx - TILE * 1.4, bot - TILE * 2.6, TILE * 2.8, TILE * 2.6);
+        for (const dx of [-3, 0, 3]) torchFlame(fx + dx, bot - TILE * 1.15 - (dx ? 0 : 3), t + dx);
+      }
+    }
     function building(b, t) {
       const x0 = b.x0 * TILE, x1 = (b.x1 + 1) * TILE, top = (G - b.h) * TILE, bot = G * TILE, w = x1 - x0, hw = Events.theme() === "halloween";
       const hell = b.id === "hell", gate = b.id === "gate";
@@ -6280,11 +6343,8 @@
         ctx.fillRect(x0, y, w, 1.5);
         for (let x = x0 + (r % 2 ? TILE / 2 : 0); x < x1; x += TILE) ctx.fillRect(x, y, 1.5, TILE / 2);
       }
-      if (gate) {   // 성벽: 위에 톱니, 양옆 횃불
-        ctx.fillStyle = wall;
-        for (let x = x0; x < x1; x += TILE) ctx.fillRect(x + 2, top - 6, TILE / 2, 6);
-        for (const tx of [x0 - 4, x1 + 1]) { ctx.fillStyle = "#3a2a22"; ctx.fillRect(tx, bot - TILE * 1.6, 3, TILE * 0.7); torchFlame(tx + 1.5, bot - TILE * 1.6 - 4, t); }
-      } else if (hell) {
+      if (gate) grandGate(x0, x1, top, bot, w, t, wall, mortar, hw);   // dc#142: 마을 한가운데 큰 던전 입구
+      else if (hell) {
         drawHellFacade({ x0: b.x0, x1: b.x1, y0: G - b.h, y1: G - 1, label: T("헬 던전") }, t);
       } else {   // 지붕: 처마가 조금 튀어나온 삼각 지붕
         ctx.fillStyle = mortar;
@@ -6293,7 +6353,7 @@
         if (hw) cobweb(x0, top + 1, 1);
       }
       // 불 켜진 창 (문 자리는 피해서 윗줄에)
-      if (!hell && b.h >= 4) for (let x = b.x0 + 1; x < b.x1; x += 2) {
+      if (!hell && !gate && b.h >= 4) for (let x = b.x0 + 1; x < b.x1; x += 2) {
         if (TW.doors.some(d => Math.abs(d.x - (x + 0.5)) < 0.8)) continue;
         const lit = 0.75 + 0.25 * Math.sin(t * 1.3 + x);
         ctx.fillStyle = hw ? `rgba(255, 140, 40, ${0.6 * lit})` : `rgba(255, 210, 120, ${0.55 * lit})`; ctx.fillRect(x * TILE + 4, top + TILE * 0.9, TILE - 8, TILE * 0.7);
@@ -6443,7 +6503,7 @@
       const z = PX * ZT;
       ctx.setTransform(z, 0, 0, z, -cx * TILE * z, -cy * TILE * z);
       const art = Sprites.on, x0 = Math.floor(cx), x1 = Math.min(map.w - 1, x0 + vw + 1);
-      for (const b of TW.buildings) if ((!b.staff || isStaff()) && b.x1 >= x0 - 1 && b.x0 <= x1 + 1) building(b, t);   // 운영자 건물(점프 던전)은 운영자에게만
+      for (const b of TW.buildings) if ((!b.staff || isStaff()) && (!b.legacy || OLD_TOWN) && b.x1 >= x0 - 1 && b.x0 <= x1 + 1) building(b, t);   // 운영자 건물(점프 던전)은 운영자에게만
       // 가로등 (건물 사이)
       for (const lx of [8.5, 14.5, 22.5, 27.5, 38.5, 44.5, 51.5, 62]) {
         if (lx < x0 - 1 || lx > x1 + 1) continue;
@@ -6456,7 +6516,7 @@
         if (hw && lx < map.w - 1.5) jack(px + TILE * 0.55, t);
       }
       // 할로윈: 문을 피해 길가에 잭오랜턴 몇 개 더
-      if (hw) for (const jx of [3.2, 15.3, 29.4, 33.0, 41.2, 54.3, 61.8]) if (jx >= x0 - 1 && jx <= x1 + 1 && !TW.doors.some(d => shown(d) && Math.abs(d.x - jx) < 0.9)) jack(jx * TILE, t);
+      if (hw) for (const jx of [4.2, 10.6, 21.3, 41.4, 47.6, 54.2, 60.8]) if (jx >= x0 - 1 && jx <= x1 + 1 && !TW.doors.some(d => shown(d) && Math.abs(d.x - jx) < 0.9)) jack(jx * TILE, t);
       for (const d of TW.doors) if (shown(d) && d.x >= x0 - 1 && d.x <= x1 + 1) doorArt(d, t);
       // 땅·옆 벽
       for (let y = 0; y < map.h; y++) for (let x = x0; x <= x1; x++) {
@@ -6841,17 +6901,16 @@
 
   // ---- 초기화 ----
   // keep: 이어 가는 레벨 (쓰러진 뒤 새로 시작, dc#95). 없으면 Lv 1부터
-  function newGame(keep) {
+  // 새 판 (dc#142): 언제나 레벨 1·골드 0 (장비는 인벤토리라 그대로). 쓰러진 뒤 새로 시작할 때도, 마을에서 1층 문으로 새로 들어갈 때도
+  const FRESH = { plvl: 1, xp: 0, xpNext: 10, maxHp: 20, atk: 3, gold: 0 };
+  function newGame() {
     depth = 1;
     gameOver = false;
     player = {
       x: 0, y: 0,
-      hp: 20, maxHp: 20,
-      atk: 3,
-      gold: 0,
+      hp: 20,
       potCd: 0, jumpCd: 0,
-      plvl: 1, xp: 0, xpNext: 10,
-      ...(keep ? { plvl: keep.plvl, xp: keep.xp, xpNext: keep.xpNext, maxHp: keep.maxHp, atk: keep.atk } : {}),
+      ...FRESH,
       rid: newRunId(), kills: 0, potionPicks: 0, oldGear: false, zone: "normal",
     };
     shopBought = [];
@@ -9155,7 +9214,7 @@
     deathModal.hidden = false;
     const tombG = Math.floor(player.gold * TOMB.rate);
     document.getElementById("death-sub").textContent = [
-      T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 골드는 처음으로 돌아가고, 경험치를 {1} 잃어요 (모자라면 레벨이 내려가요). 장비는 그대로 남아요.", floorName(), Math.max(1, Math.floor(player.xpNext * LEVEL.deathXp))),
+      T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 레벨 1·골드 0으로 일반 던전 1층부터 다시 시작해요. 장비는 그대로 남아요.", floorName()),
       tombG > 0 ? T("쓰러진 자리에 묘비가 남아요. 다시 와서 밟으면 골드 {0}(90%)을 돌려받아요.", tombG.toLocaleString()) : "",
       tombG > 0 && tomb ? T("(전에 남긴 묘비의 골드 {0}은 사라져요)", tomb.g.toLocaleString()) : "",
     ].filter(Boolean).join(" ");
@@ -9288,17 +9347,16 @@
     saveGame(true);
   }
 
-  // 쓰러진 화면의 "로비에서 새로 시작": 골드는 처음으로, 레벨은 경험치 10%를 잃고 이어 감 (dc#95). 1층은 입구 왼쪽 문으로
+  // 쓰러진 화면의 "로비에서 새로 시작": 골드·레벨은 처음으로 (dc#142, 예전 dc#95는 경험치 10%만 잃음). 1층은 입구 왼쪽 문으로
   // 묘비 (dc#97): 쓰러질 때 골드가 있었으면 그 90%를 쓰러진 자리의 묘비에 (예전 묘비는 사라짐)
   function startOver() {
     const g = Math.floor(player.gold * TOMB.rate), at = player.deathAt || player;
     const lost = tomb && g > 0 ? tomb.g : 0;
     if (g > 0 && lastDeath) tomb = { ...lastDeath, x: at.x, y: at.y, g };
-    const { loss, down } = loseDeathXp();
-    newGame({ plvl: player.plvl, xp: player.xp, xpNext: player.xpNext, maxHp: player.maxHp, atk: player.atk });
+    newGame();   // dc#142: 새 판은 레벨 1·1층부터 (예전 dc#95: 경험치 10%만 잃고 레벨은 이어 감)
     enterLobby({ from: "death" });
-    log(down ? T("경험치 {0}을(를) 잃고 레벨이 내려갔다. Lv {1}", loss, player.plvl) : T("경험치 {0}을(를) 잃었다. (Lv {1})", loss, player.plvl), "bad");
-    if (g > 0 && tomb) log(T("† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다. (웨이포인트로 가까운 층부터 갈 수 있다)", tombFloorName(tomb), g.toLocaleString()), null, TOMB.color);
+    log(T("새 판은 레벨 1, 일반 던전 1층부터 시작한다. 장비는 그대로다."), "info");
+    if (g > 0 && tomb) log(T("† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다.", tombFloorName(tomb), g.toLocaleString()), null, TOMB.color);
     if (lost) log(T("예전 묘비(골드 {0})는 사라졌다.", lost.toLocaleString()), "bad");
     if (PORTAL) portalAdBreak(false);   // 쓰러져서 새로 시작: 중간 광고
   }

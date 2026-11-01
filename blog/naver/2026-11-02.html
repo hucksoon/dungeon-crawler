@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 마을을 다시 놓았어요</title>
-<meta name="description" content="시간 상점을 없애고, 마을 건물을 던전에 가는 순서대로 다시 놓았어요.">
+<title>[네이버 옮기기] 판은 언제나 1레벨부터, 속성 스킬 축복</title>
+<meta name="description" content="이제 모든 판은 레벨 1·1층부터 시작해요. 새 층마다 화염구·얼음 폭발·연쇄 번개 축복을 골라 스킬을 키우고, 마을 가운데에는 큰 던전 입구가 생겼어요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-02.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 마을을 다시 놓았어요">
-<meta property="og:description" content="시간 상점을 없애고, 마을 건물을 던전에 가는 순서대로 다시 놓았어요.">
+<meta property="og:title" content="[네이버 옮기기] 판은 언제나 1레벨부터, 속성 스킬 축복">
+<meta property="og:description" content="이제 모든 판은 레벨 1·1층부터 시작해요. 새 층마다 화염구·얼음 폭발·연쇄 번개 축복을 골라 스킬을 키우고, 마을 가운데에는 큰 던전 입구가 생겼어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-02.html">
 
 <style>
@@ -78,12 +78,12 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-02.html">블로그 글 보기</a></nav>
-<h1 id="title-text">마을을 다시 놓았어요</h1>
+<h1 id="title-text">판은 언제나 1레벨부터, 속성 스킬 축복</h1>
 <p class="meta">2026년 11월 2일 (월) · 태그: 개발일기, 업데이트, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/town-dc141.png" download="2026-11-02-1-town-dc141.png">1. 다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어</a></p>
+<p class="steps">이미지 4장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/town-dc141.png" download="2026-11-02-1-town-dc141.png">1. 다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어</a> · <a href="../images/v3-gate.png" download="2026-11-02-2-v3-gate.png">2. 마을 가운데 큰 던전 입구: 양쪽 탑과 깃발, 빛나는 문장, 큰 화로</a> · <a href="../images/v3-elem-pick.png" download="2026-11-02-3-v3-elem-pick.png">3. 속성 스킬 축복: 화염구 Lv 3, 연쇄 번개 Lv 1 (주황 테두리)</a> · <a href="../images/v3-elem-fight.png" download="2026-11-02-4-v3-elem-fight.png">4. 싸움에서 얼음 폭발과 화염구가 저절로 나가요</a></p>
 <div id="paper">
 <p>어제 정식 v2로 장비가 줍는 즉시 자동으로 끼워지고 강화되게 바뀌었어요. 그러고 나니 마을에 쓸모가 줄어든 건물이 눈에 띄었어요.</p>
 <p><br></p>
@@ -106,8 +106,38 @@
 <p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/town-dc141.png" alt="다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어" style="max-width:100%;height:auto;"></p>
 <p style="text-align:center;"><span style="font-size:13px;color:#888888;">다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어</span></p>
 <p><br></p>
+<p><b><span style="font-size:24px;">판은 언제나 레벨 1, 1층부터</span></b></p>
+<p>축복을 판마다 새로 모으는데 레벨은 계속 쌓이면, 판을 거듭할수록 너무 쉬워져요. 그래서 이제 모든 판은 <strong>레벨 1, 골드 0, 일반 던전 1층</strong>부터 시작해요. 장비는 그대로예요.</p>
+<p><br></p>
+<p>• 중간 층부터 시작하던 웨이포인트는 쉬어요</p>
+<p>• 나이트메어와 헬은 같은 판에서 앞 던전 50층을 깨고 <strong>이어가기</strong>로만 들어가요</p>
+<p>• 끝이 없는 구멍은 <strong>헬 50층까지 깬 판에서만</strong> 이어서 들어갈 수 있어요. 한 판에 일반 → 나이트메어 → 헬 → 구멍까지 가는 게 목표예요</p>
+<p><br></p>
+<p>그래서 마을에는 거래소, 우편함, 던전 입구만 남겼어요. 대신 던전 입구를 마을 한가운데에 크게 다시 지었어요. 양쪽 탑과 깃발, 빛나는 문장, 큰 화로가 있어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v3-gate.png" alt="마을 가운데 큰 던전 입구: 양쪽 탑과 깃발, 빛나는 문장, 큰 화로" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">마을 가운데 큰 던전 입구: 양쪽 탑과 깃발, 빛나는 문장, 큰 화로</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">속성 스킬 축복</span></b></p>
+<p>능력치가 오르는 축복만으로는 조금 심심했어요. 그래서 공격 스킬이 생기는 <strong>속성 축복</strong> 세 가지를 만들었어요.</p>
+<p><br></p>
+<p>• 🔥 <strong>화염구</strong>: 가까운 적에게 폭발, 맞은 적은 화상</p>
+<p>• ❄ <strong>얼음 폭발</strong>: 내 주변 적 모두에게 피해, 맞은 적은 느려짐</p>
+<p>• ⚡ <strong>연쇄 번개</strong>: 적 사이를 튕기며 여러 번 맞힘</p>
+<p><br></p>
+<p>처음 고르면 스킬이 생기고, 같은 축복을 또 고르면 단계가 올라 피해·범위·횟수가 커져요. 5단계가 최고예요. 다른 축복보다 자주 나오게 했지만, 매 층 꼭 나오지는 않아요. 그리고 한 판에 세 속성을 모두 최고 단계로 만들 수는 없어서, 어떤 속성을 키울지 고르는 재미가 있어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v3-elem-pick.png" alt="속성 스킬 축복: 화염구 Lv 3, 연쇄 번개 Lv 1 (주황 테두리)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">속성 스킬 축복: 화염구 Lv 3, 연쇄 번개 Lv 1 (주황 테두리)</span></p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v3-elem-fight.png" alt="싸움에서 얼음 폭발과 화염구가 저절로 나가요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">싸움에서 얼음 폭발과 화염구가 저절로 나가요</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">다시 맞춘 밸런스</span></b></p>
+<p>스킬이 생기니 처음 계산에서는 모든 던전을 거의 다 깨버렸어요. 그래서 Claude Code와 시뮬레이션을 여러 번 돌려 몬스터를 더 세게 맞췄어요. 속성 축복을 고르는 판이라면 한 판으로 끝까지 가는 비율이 일반 약 77%, 이어서 나이트메어 약 90%, 헬 약 45%예요. 속성 축복 없이 가면 30층대가 고비라, 꼭 하나는 키워 보세요.</p>
+<p><br></p>
 <p><b><span style="font-size:24px;">다음에는</span></b></p>
-<p>이제 1층부터 새로 시작해 보면서 축복과 자동 장비가 잘 맞는지 직접 확인할 거예요. 그다음에는 등급과 던전마다 다른 장비 모습과, 고른 모습을 입는 옷장을 만들 예정이에요.</p>
+<p>이제 1층부터 새로 시작해 보면서 축복과 속성 스킬이 잘 맞는지 직접 확인할 거예요. 그다음에는 등급과 던전마다 다른 장비 모습과, 고른 모습을 입는 옷장을 만들 예정이에요.</p>
 <p><br></p>
 <p><br></p>
 <p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-02.html">https://game.apacimtest.com/blog/2026-11-02.html</a></p>

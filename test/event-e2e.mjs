@@ -166,7 +166,8 @@ try {
     && await o.page.evaluate(() => window.RLEventsGame.wear("head")) === "pumpkin_head");
   await o.page.keyboard.press("Escape"); await sleep(300);
   // 다른 사람에게도 (dc#137): 마을에서 보내는 위치에 쓰고 있는 스킨, 서버가 다른 사람 목록에 그대로
-  const sent = await o.page.waitForRequest(r => /[?&]r=lobby\b/.test(r.url()) && r.method() === "POST" && /pumpkin_head/.test(r.postData() || ""), { timeout: 5000 }).then(r => JSON.parse(r.postData()), () => null);
+  // 요청을 보낸 순간이 아니라 서버 답을 받은 뒤 DB를 봄 (보낸 직후에 보면 아직 저장 전일 수 있음)
+  const sent = await o.page.waitForResponse(r => /[?&]r=lobby\b/.test(r.url()) && r.request().method() === "POST" && /pumpkin_head/.test(r.request().postData() || ""), { timeout: 5000 }).then(r => JSON.parse(r.request().postData()), () => null);
   const other = db().prepare("SELECT skin FROM presence WHERE pkey = ?").get(KEY);
   check("lobby ping carries the worn skin; the server keeps it for others", JSON.stringify(sent?.skins) === '["pumpkin_head"]' && other?.skin === "pumpkin_head", JSON.stringify([sent, other]));
   check("doll: pumpkin head on top, sword still drawn (no scythe owned)", /skin_pumpkin_head/.test(await o.page.evaluate(() => window.__t.doll())) && /doll_w_longsword/.test(await o.page.evaluate(() => window.__t.doll())), await o.page.evaluate(() => window.__t.doll()));

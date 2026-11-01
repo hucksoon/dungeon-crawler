@@ -529,6 +529,26 @@ const SCENES = [
     await goDoor(o.page, "mailbox", { enter: false });
     await o.page.keyboard.down("ArrowRight"); await sleep(260); await o.page.keyboard.up("ArrowRight"); await sleep(900);
     return { ...o, shot: "#stage" }; }],
+  // dc#142: 마을 가운데 큰 던전 입구, 속성 스킬 축복 고르기, 싸움에서 속성 스킬
+  ["v3-gate", "마을 가운데 큰 던전 입구: 양쪽 탑과 깃발, 빛나는 문장, 큰 화로", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(1, "blog-v3gate", {}, { best: 1, clr: 0 }), "rl_inv:g:DEV": inv([]) } });
+    await goDoor(o.page, "start", { enter: false });
+    await o.page.keyboard.down("ArrowRight"); await sleep(380); await o.page.keyboard.up("ArrowRight"); await sleep(900);
+    return { ...o, shot: "#stage" }; }],
+  ["v3-elem-pick", "속성 스킬 축복: 화염구 Lv 3, 연쇄 번개 Lv 1 (주황 테두리)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(12, "blog-el29", { l: 9, bz: { normal: 11 }, bl: { fire: 2, might: 3, vigor: 2 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v3-elem-fight", "싸움에서 얼음 폭발과 화염구가 저절로 나가요", async () => {
+    const o = await explored({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(14, "blog-v3f", { l: 12, bz: { normal: 14 }, bl: { fire: 3, ice: 2, bolt: 3, might: 2 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level")), W = 32, ok = (x, y) => L.map[y * W + x] !== "0";
+      const spots = [[2, 0], [2, 1], [1, 2], [-2, 1], [0, -2]].map(([dx, dy]) => [L.px + dx, L.py + dy]).filter(([x, y]) => ok(x, y));
+      L.enemies = L.enemies.slice(0, spots.length).map((e, i) => ({ ...e, x: spots[i][0], y: spots[i][1], hp: e.maxHp * 3, maxHp: e.maxHp * 3 }));
+      localStorage.setItem("rl_level", JSON.stringify(L)); });
+    await o.page.reload(); await sleep(900);
+    await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
+    await press(o.page, [".", ".", ".", ".", ".", "."], 420);
+    return { ...o, shot: "#log" }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

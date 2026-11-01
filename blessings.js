@@ -9,7 +9,8 @@
   const I18N = () => (root && root.RLI18N) || (typeof globalThis !== "undefined" && globalThis.RLI18N) || null;
   const tx = (key, ko, ...a) => { const L = I18N(); return L ? L.tx(key, ko, ...a) : (typeof ko === "function" ? ko(...a) : ko); };
 
-  const TIERS = { common: { weight: 75, color: "#8fd3ff" }, rare: { weight: 20, color: "#5aa9ff" }, legend: { weight: 5, color: "#ffcf5c" } };
+  // elem (dc#142): 속성 스킬 축복. 희귀보다 자주 보이게 (후보 3개 중 속성 축복이 하나라도 있을 확률 약 54%, 희귀보다 4배 자주). 꼭 나오지는 않음
+  const TIERS = { common: { weight: 75, color: "#8fd3ff" }, rare: { weight: 20, color: "#5aa9ff" }, legend: { weight: 5, color: "#ffcf5c" }, elem: { weight: 26, color: "#ff8a5c" } };
   // fx: 한 번 고를 때 더하는 값 (stats 키). max: 겹칠 수 있는 최대 횟수
   const BLESSINGS = {
     might: { icon: "⚔", name: "전사의 맹세", tier: "common", max: 10, fx: { atkPct: 4 } },
@@ -27,7 +28,24 @@
     guide: { icon: "🧭", name: "길잡이", tier: "legend", max: 1, fx: { guide: 1 } },
     eye: { icon: "👁", name: "넓은 눈", tier: "legend", max: 2, fx: { sight: 1 } },
     hero: { icon: "✨", name: "영웅의 기운", tier: "legend", max: 3, fx: { atkPct: 6, defPct: 6, hpPct: 6 } },
+    // 속성 스킬 (dc#142): 처음 고르면 스킬이 생기고, 또 고르면 단계(Lv)가 올라 피해·범위·횟수가 커짐 (ELEM). 최대 Lv 5 = 마스터
+    fire: { icon: "🔥", name: "화염구", tier: "elem", max: 5, fx: { fireLv: 1 } },
+    ice: { icon: "❄", name: "얼음 폭발", tier: "elem", max: 5, fx: { iceLv: 1 } },
+    bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: 5, fx: { boltLv: 1 } },
   };
+  // 속성 스킬 단계별 값. 한 판에 속성 축복은 모두 합쳐 ELEM_CAP번까지 → 세 속성을 모두 마스터(Lv 5)할 수는 없음 (최대 둘)
+  //   피해는 시뮬레이션으로 (tools/sim-v2.mjs): 처음 값(mul 0.8 · 0.7 · 0.4, 단계마다 +30%)은 셋을 모으면 너무 세서 낮춤
+  //   fire: every턴마다 range칸 안 가장 가까운 적 중심 (2·radius+1)² 폭발, 공격력 × mul × (1 + pct%) 불 피해 + 화상
+  //   ice: every턴마다 내 주변 radius칸 적 모두 공격력 × mul × (1 + pct%) 얼음 피해 + 느려짐
+  //   bolt: every턴마다 가장 가까운 적부터 strikes번 튕김 (한 번에 공격력 × mul × (1 + pct%) 번개 피해). shock: 같은 적 다시 맞힘 + 감전
+  const ELEM_CAP = 10;
+  const ELEM = {
+    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: 3, radius: lv >= 3 ? 2 : 1, mul: 0.3, pct: 15 * (lv - 1) }),
+    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= 3 ? 2 : 1, mul: 0.25, pct: 15 * (lv - 1) }),
+    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: 3, strikes: 1 + lv, mul: 0.15, pct: 15 * (lv - 1), shock: lv >= 3 }),
+  };
+  const ELEM_IDS = ["fire", "ice", "bolt"];
+  const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
   // 유물: 능력치 + 그 상한 (기본 상한: 치명타 75 · 흡혈 20 · 패링 40 · 받는 피해 감소 30)
   const RELICS = {
     hawk: { icon: "🦅", name: "매의 눈", max: 3, fx: { crit: 3, critCap: 3 } },
@@ -74,6 +92,11 @@
     parryCap: (v) => tx("bfx.parryCap", (n) => `패링 상한 +${n}%p`, v),
     dmgReduce: (v) => tx("bfx.dmgReduce", (n) => `받는 피해 감소 +${n}%`, v),
     drCap: (v) => tx("bfx.drCap", (n) => `피해 감소 상한 +${n}%p`, v),
+    // 속성 스킬: v = 단계 (fxText(fx, 단계))
+    fireLv: (v) => { const e = ELEM.fire(v), sq = e.radius * 2 + 1; return tx("bfx.fireLv", (n, ev, a, d) => `Lv ${n}: ${ev}턴마다 가장 가까운 적에게 ${a} 폭발, 공격력의 ${d}% 불 피해 + 화상`, v, e.every, `${sq}×${sq}`, Math.round(e.mul * (100 + e.pct))); },
+    iceLv: (v) => { const e = ELEM.ice(v); return tx("bfx.iceLv", (n, ev, r, d) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸의 적 모두에게 공격력의 ${d}% 얼음 피해 + 느려짐`, v, e.every, e.radius, Math.round(e.mul * (100 + e.pct))); },
+    boltLv: (v) => { const e = ELEM.bolt(v); return (e.shock ? tx("bfx.boltLvS", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해 + 감전`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))
+      : tx("bfx.boltLv", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))); },
   };
   const fxText = (fx, times = 1) => Object.entries(fx).map(([k, v]) => (FX_TEXT[k] ? FX_TEXT[k](v * times) : `${k} +${v * times}`)).join(", ");
 
@@ -99,7 +122,8 @@
   // 고를 후보 3개: 아직 최대가 아닌 것 중에서, 축복은 등급 가중치로 (seed가 같으면 같은 후보)
   function offer(seed, have = {}, relic = false) {
     const r = rng(seed);
-    const pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max);
+    const elemFull = !relic && elemUsed(have) >= ELEM_CAP;   // 속성 축복을 다 쓰면 더는 안 나옴
+    const pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)));
     const out = [];
     while (out.length < OFFER && pool.length) {
       let i;
@@ -121,7 +145,10 @@
     return { stones, gold: stones * REROLL.goldPerStone[z] };
   };
 
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const isElem = (id) => ELEM_IDS.includes(id);
+  // 카드·기록에 쓰는 설명: 속성 스킬은 그 단계(lv)의 설명, 나머지는 한 번 고를 때 효과
+  const cardText = (id, lv = 1) => { const d = defOf(id); return d ? fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1) : id; };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_CAP, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

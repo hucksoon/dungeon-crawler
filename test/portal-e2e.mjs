@@ -66,7 +66,7 @@ try {
 
   // ---- 1층 문: 포탈 층이 있으면 게임 안의 확인 창 (Esc = 취소, 확인 = 들어감) → 중간 광고 동안 키 멈춤 ----
   await goDoor(page, "start"); await sleep(200);
-  check("start door with a portal floor: in-game confirm (no native dialog)", await page.locator("#ask-modal").isVisible() && (await page.locator("#ask-text").innerText()).includes("1층부터 새로 들어갈까요?"));
+  check("start door with a portal floor: in-game confirm (no native dialog)", await page.locator("#ask-modal").isVisible() && (await page.locator("#ask-text").innerText()).includes("1층부터 새 판을 시작할까요?"));
   check("confirm open → gameplay(false)", await page.waitForFunction(() => window.__play === false, null, { timeout: 2000 }).then(() => true, () => false));
   await page.keyboard.press("Escape"); await sleep(200);
   check("Esc = cancel: stays in the town", (await st(page)).scene === "lobby" && await page.locator("#ask-modal").isHidden());

@@ -56,44 +56,24 @@ try {
   check("A: no page errors", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
 
-  // ---- 쓰러진 뒤 새로 시작: 경험치 10% (Lv 5 필요 49 → 4) ----
+  // ---- 쓰러진 뒤 새로 시작 (dc#142): 판은 언제나 레벨 1·골드 0부터 (예전 dc#95: 경험치 10%만 잃음) ----
   const B = await open({ rl_device_id: "lvl-b", rl_save: save(5, 20, 49, 36, 7) });
   await B.page.evaluate(() => window.__t.die());
   s = await st(B.page);
-  check("dying alone does not take XP yet (revive keeps it)", s.gameOver && s.plvl === 5 && s.xp === 20);
-  check("death modal says how much XP is lost", (await B.page.locator("#death-sub").innerText()).includes("경험치를 4 잃어요"));
+  check("dying alone keeps the level until restart (revive keeps it)", s.gameOver && s.plvl === 5 && s.xp === 20);
+  check("death modal says a new run starts at level 1", (await B.page.locator("#death-sub").innerText()).includes("레벨 1·골드 0으로 일반 던전 1층부터"));
   await B.page.screenshot({ path: path.join(SHOTS, "level-death.png") });
-  // 쓰러진 채로 다시 열어도 한 번만 잃음
   await B.page.reload(); await B.page.waitForFunction(() => window.__t);
   check("reload while dead → still Lv 5 / 20 XP, death modal open", (await st(B.page)).xp === 20 && await B.page.locator("#death-modal").isVisible());
   await B.page.locator("#death-restart").click(); await sleep(150);
   s = await st(B.page);
-  check("restart → lobby, gold 0, Lv 5 kept, XP 20 → 16", s.scene === "lobby" && s.gold === 0 && s.plvl === 5 && s.xp === 16 && s.xpNext === 49 && s.baseHp === 36 && s.baseAtk === 7, JSON.stringify(s));
-  check("restart log: lost 4 XP", (await logText(B.page)).includes("경험치 4을(를) 잃었다. (Lv 5)"));
+  check("restart → lobby, gold 0, Lv 1 with 0/10 XP, base HP 20 / atk 3", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.xp === 0 && s.xpNext === 10 && s.baseHp === 20 && s.baseAtk === 3, JSON.stringify(s));
+  check("restart log: new run from level 1", (await logText(B.page)).includes("새 판은 레벨 1, 일반 던전 1층부터 시작한다."));
   await B.page.reload(); await B.page.waitForFunction(() => window.__t);
   s = await st(B.page);
-  check("reload after restart → level and XP saved", s.plvl === 5 && s.xp === 16, JSON.stringify(s));
+  check("reload after restart → Lv 1 saved", s.plvl === 1 && s.xp === 0, JSON.stringify(s));
   check("B: no page errors", B.errors.length === 0, B.errors.join("; "));
   await B.ctx.close();
-
-  // ---- 레벨 다운: Lv 5, 경험치 2 → −4 → Lv 4 (필요 33), 경험치 31 ----
-  const C = await open({ rl_device_id: "lvl-c", rl_save: save(5, 2, 49, 36, 7) });
-  s = await restart(C.page);
-  check("not enough XP → level down to Lv 4 with 31/33 XP, base HP 32 / atk 6", s.plvl === 4 && s.xp === 31 && s.xpNext === 33 && s.baseHp === 32 && s.baseAtk === 6, JSON.stringify(s));
-  check("Lv 4 bonus is +6%", s.maxHp === Math.round(32 * 1.06) && s.atk === Math.round(6 * 1.06), JSON.stringify(s));
-  check("level-down log", (await logText(C.page)).includes("레벨이 내려갔다. Lv 4"));
-  // 다시 쓰러지면 Lv 4 필요의 10% = 3 → 28
-  s = await restart(C.page);
-  check("second restart → Lv 4, 28 XP", s.plvl === 4 && s.xp === 28, JSON.stringify(s));
-  check("C: no page errors", C.errors.length === 0, C.errors.join("; "));
-  await C.ctx.close();
-
-  // ---- Lv 1은 더 내려가지 않음 ----
-  const D = await open({ rl_device_id: "lvl-d", rl_save: save(1, 0, 10, 20, 3) });
-  s = await restart(D.page);
-  check("Lv 1 with 0 XP → stays Lv 1, 0 XP", s.plvl === 1 && s.xp === 0 && s.xpNext === 10 && s.baseHp === 20 && s.baseAtk === 3 && s.maxHp === 20 && s.atk === 3, JSON.stringify(s));
-  check("D: no page errors", D.errors.length === 0, D.errors.join("; "));
-  await D.ctx.close();
 } finally {
   await browser.close();
 }
