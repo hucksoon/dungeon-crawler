@@ -240,7 +240,7 @@
   body:not(.in-lobby) .lobby-only { display: none; }
   body.in-lobby .dungeon-only { display: none !important; }
   /* 휴대폰 도움말: 3D 화면이면 3D 조작, 아니면 2D 조작 (dc#114) */
-  body:not(.view-3d) .hint-3d, body.view-3d .hint-2d { display: none !important; }
+  body:not(.view-3d) .hint-3d, body.view-3d .hint-2d, body:not(.view-3d) .hint3d-joy, body.view-3d .hint2d-joy { display: none !important; }
   /* 3D 화면 (dc#109): 던전에서만 2D 캔버스 대신 3D 캔버스, 손에 든 무기·가운데 점·맞으면 붉은 가장자리 */
   #game3d { display: none; border: 1px solid var(--border); border-radius: 8px; background: #000; box-shadow: 0 8px 30px rgba(0,0,0,0.6); width: 640px; max-width: 100%; aspect-ratio: 4 / 3; height: auto; touch-action: none; cursor: crosshair; }
   .hand3d, #aim3d, #hurt3d, .view3d-only { display: none; }
@@ -318,6 +318,19 @@
     body:not(.side-view) #touch-pad .dpad button { width: 52px; height: 52px; }
     body:not(.side-view) #tp-potion { width: 100px; height: 100px; }
     body:not(.side-view) #tp-jump { width: 100px; }
+  }
+  /* 새 규칙 (dc#144): 휴대폰은 방향·점프·공격 버튼 없이 화면을 끌어 움직이고 톡 눌러 회피. 메뉴(포션·인벤토리·도감·지도·포탈)만 한 줄로 작게 */
+  body.joy .old-only, body:not(.joy) .joy-only { display: none !important; }
+  @media (pointer: coarse) {
+    body.joy #touch-pad { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-areas: none; gap: 6px; }
+    body.joy.in-lobby #touch-pad { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.joy #touch-pad .dpad, body.joy #touch-pad .actions { display: contents; }
+    body.joy #touch-pad .dpad button, body.joy #tp-jump, body.joy.in-lobby.side-view #tp-jump, body.joy #tp-attack, body.joy.view-3d:not(.side-view) #tp-attack { display: none !important; }
+    body.joy #touch-pad .actions button { grid-area: auto; width: auto; height: auto; border-radius: 8px; padding: 9px 2px; font-size: 12px; font-weight: normal; justify-self: stretch; }
+    body.joy #game, body.joy #game3d { touch-action: none; }
+    body.tall-view #game3d { aspect-ratio: 3 / 4; }   /* 세로로 긴 화면 (2D 캔버스는 칸 수를 바꿔서) */
+    /* 튜토리얼 안내 상자는 글자만 보이고 손가락은 그 아래 화면으로 (버튼만 눌림) */
+    body.joy #tip { pointer-events: none; } body.joy #tip button { pointer-events: auto; }
   }
   #lobby-panel {
     width: 640px;
@@ -767,10 +780,14 @@
     <ul id="lobby-list"></ul>
   </div>
   <div id="log"></div>
-  <p class="hint"><span class="keys-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
-  <span class="keys-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
-  <span class="touch-only hint-3d" data-t>3D 화면: ▲▼ 앞뒤 · ◀▶ 돌기 · 화면을 끌어 둘러보기 · 공격 버튼(또는 화면을 톡)으로 공격<br></span>
-  <span class="touch-only hint-2d" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
+  <p class="hint"><span class="keys-only joy-only" data-t>이동: 방향키 / WASD (붙은 몬스터 쪽으로 누르면 가장 가까운 몬스터를 공격) &nbsp;·&nbsp; 회피: Space (움직이던 쪽으로 3칸, 그동안 무적) &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <span class="keys-only joy-only" data-t>3D 화면: V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 가까운 몬스터에게 저절로 &nbsp;·&nbsp; 회피: Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
+  <span class="touch-only hint3d-joy joy-only" data-t>3D 화면: 화면을 누른 채 끌면 스틱 (위·아래 앞뒤, 좌우 돌기) · 가까운 몬스터는 저절로 공격 · 화면을 톡 누르면 회피<br></span>
+  <span class="touch-only hint2d-joy joy-only" data-t>화면을 누른 채 끌면 내 캐릭터에서 손가락 쪽으로 걸어요 (붙은 몬스터는 공격). 화면을 톡 누르면 회피.<br></span>
+  <span class="keys-only old-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <span class="keys-only old-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
+  <span class="touch-only hint-3d old-only" data-t>3D 화면: ▲▼ 앞뒤 · ◀▶ 돌기 · 화면을 끌어 둘러보기 · 공격 버튼(또는 화면을 톡)으로 공격<br></span>
+  <span class="touch-only hint-2d old-only" data-t>방향 버튼을 누르고 있거나 화면을 밀면 움직여요. 칸을 누르면 거기까지 자동으로 걸어가요.<br></span>
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 새 층마다 <b>축복</b>을 하나 고르고, 5층마다 보스를 쓰러뜨리면 <b>유물</b>을 골라요.<br>
   판은 언제나 레벨 1·1층부터. 50층 보스를 잡으면 같은 판 그대로 <b>나이트메어 → 헬 → 끝이 없는 구멍</b>으로 이어가요. 장비는 주우면 자동으로 끼고 강화돼요.<br>
   포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요. 로비의 파란 포탈로 떠난 자리에 돌아가요.<br></span>
@@ -1011,11 +1028,16 @@
 
   // ---- 설정 ----
   const TILE = 20;                 // 타일 픽셀 크기
-  const MAP_W = 32, MAP_H = 24;    // 맵 크기(타일 단위)
-  const VIEW_W = MAP_W * TILE, VIEW_H = MAP_H * TILE;   // 화면 크기 (그리는 좌표)
+  // 화면은 언제나 32×24칸 크기. 던전 지도는 층마다 넓이가 다름 (dc#143: 몬스터 수에 따라 넓어지는 넓은 지역, 최소 32×24)
+  // 화면 칸 수: 보통 32×24 (4:3). 새 조작 휴대폰의 던전은 세로로 긴 24×32 (dc#144, setView)
+  let VIEW_COLS = 32, VIEW_ROWS = 24;
+  const MAP_MIN_W = 32, MAP_MIN_H = 24;   // 지도 크기의 최소 (화면 모양과 상관없이)
+  let MAP_W = VIEW_COLS, MAP_H = VIEW_ROWS;    // 지금 층 지도 크기(타일 단위)
+  let VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE;   // 화면 크기 (그리는 좌표)
   const PX = 1.6;                  // 캔버스 실제 픽셀 = 그리는 좌표 × 1.6 (픽셀 그림 32px = TILE 20 × 1.6)
   // 던전은 2배로 가까이: 플레이어를 가운데에 두고 16×12칸(방 하나 정도)만 보임. 전체 지도(M)로 바꿀 수 있음
-  const ZOOM = 2, CAM_W = MAP_W / ZOOM, CAM_H = MAP_H / ZOOM;
+  const ZOOM = 2;
+  let CAM_W = VIEW_COLS / ZOOM, CAM_H = VIEW_ROWS / ZOOM;
   const canvas = document.getElementById("game");
   const popups = document.getElementById("popups");
   // 소리 (dc#99, sound.js): 효과음 이름으로 내기. 소리를 못 내는 환경이면 아무 일 없음
@@ -1052,6 +1074,14 @@
   canvas.width = VIEW_W * PX;
   canvas.height = VIEW_H * PX;
   ctx.setTransform(PX, 0, 0, PX, 0, 0);
+  // 화면 칸 수 바꾸기 (dc#144): 캔버스 크기도 같이. 바뀌었으면 true
+  function setView(cols, rows) {
+    if (cols === VIEW_COLS && rows === VIEW_ROWS) return false;
+    VIEW_COLS = cols; VIEW_ROWS = rows; VIEW_W = cols * TILE; VIEW_H = rows * TILE; CAM_W = cols / ZOOM; CAM_H = rows / ZOOM;
+    canvas.width = VIEW_W * PX; canvas.height = VIEW_H * PX;
+    ctx.setTransform(PX, 0, 0, PX, 0, 0); ctx.imageSmoothingEnabled = false;
+    return true;
+  }
   ctx.imageSmoothingEnabled = false;
 
   // 타일 종류
@@ -1128,9 +1158,10 @@
         steps: () => [["enter", phone() ? T("마을 가운데 던전 입구 문 앞에서 ▲") : T("마을 가운데 던전 입구 문 앞에서 ↑ 또는 W (← → 또는 A·D로 걷기)")]] },
       dungeon: { title: () => T("② 던전 탐험"),
         steps: () => [["attack", T("몬스터 쪽으로 이동해서 공격")],
-          ["walk", phone() ? T("화면을 밀거나 칸을 눌러 걷기") : T("가고 싶은 칸을 클릭해 걷기")],
+          ["walk", phone() ? (!OLD_TOWN ? T("화면을 누른 채 끌어 걷기") : T("화면을 밀거나 칸을 눌러 걷기")) : T("가고 싶은 칸을 클릭해 걷기")],
+          ...(!OLD_TOWN ? [["dodge", phone() ? T("화면을 톡 눌러 회피 (그동안 무적)") : T("Space로 회피 (움직이던 쪽으로 3칸, 그동안 무적)")]] : []),
           ["map", phone() ? T("지도 버튼으로 지나온 길 보기") : T("Tab으로 지나온 길 보기")],
-          ["stairs", T("계단(>)을 밟고 다음 층으로")]],
+          ["stairs", !OLD_TOWN ? T("몬스터를 모두 잡으면 나오는 계단(>)으로") : T("계단(>)을 밟고 다음 층으로")]],
         note: () => (OLD_TOWN ? T("❤ 머리 위 막대가 HP예요 · ◎ 웨이포인트를 만나면 꼭 밟고 지나가요") : T("❤ 머리 위 막대가 HP예요 · 새 층마다 축복을 하나씩 골라요")) },
       gear: { title: () => T("③ 장비 끼기"),
         steps: () => [["inv", phone() ? T("인벤토리 버튼 누르기") : T("인벤토리 열기 (I)")], ["equip", T("▲ 표시 장비를 비교하고 장착")]],
@@ -2072,7 +2103,9 @@
   // 레벨 (dc#95): 레벨마다 최대 HP +4·공격력 +1에 더해 최대 HP·공격력 +2%.
   // 판마다 레벨 1부터 (dc#142). 예전(dc#95)에는 쓰러지면 경험치 10%만 잃고 레벨은 이어 갔음
   const LEVEL = { pct: 2 };
-  const xpFor = (lvl) => { let n = 10; for (let i = 1; i < lvl; i++) n = Math.floor(n * 1.5); return n; };
+  // 다음 레벨까지 경험치: 레벨마다 ×XP_GROW (dc#143: 1.5 → 1.3, 레벨이 더 쉽게 오름. tools/sim-v2.mjs와 같게)
+  const XP_GROW = 1.3;
+  const xpFor = (lvl) => { let n = 10; for (let i = 1; i < lvl; i++) n = Math.floor(n * XP_GROW); return n; };
   const levelPct = () => ((player.plvl || 1) - 1) * LEVEL.pct;
 
 
@@ -2106,11 +2139,12 @@
       // 속성 스킬 축복 (dc#142): 화염구·얼음 폭발·연쇄 번개 단계(Lv)에 따라 주기·범위·횟수·피해 (RLBless.ELEM). 예전 세트 효과는 0
       fireball: g.fireball > 0 || !!ef.fire, fireballPct: g.fireballPct + (ef.fire?.pct || 0), fireballBurn: g.fireballBurn > 0 || !!ef.fire,
       fbEvery: ef.fire?.every || RLItems.FIREBALL.every, fbRadius: ef.fire?.radius || RLItems.FIREBALL.radius,
+      fbMul: ef.fire?.mul ?? RLItems.FIREBALL.mul, fbRange: ef.fire?.range || RLItems.FIREBALL.range,   // 축복 화염구는 축복 값 (dc#143: 예전엔 세트 값 0.8을 써서 시뮬레이션보다 셌음)
       // 서리의 세트: 프로스트 노바·피해 +%·느려짐 / 뇌전의 세트: 체인 라이트닝·피해 +%·4번 튕김과 감전
       nova: g.nova > 0 || !!ef.ice, novaPct: g.novaPct + (ef.ice?.pct || 0), novaSlow: g.novaSlow > 0 || !!ef.ice,
-      novaEvery: ef.ice?.every || RLItems.FROST_NOVA.every, novaRadius: ef.ice?.radius || RLItems.FROST_NOVA.radius,
+      novaEvery: ef.ice?.every || RLItems.FROST_NOVA.every, novaRadius: ef.ice?.radius || RLItems.FROST_NOVA.radius, novaMul: ef.ice?.mul ?? RLItems.FROST_NOVA.mul,
       chain: g.chain > 0 || !!ef.bolt, chainPct: g.chainPct + (ef.bolt?.pct || 0), chainMax: g.chainMax > 0 || !!ef.bolt?.shock,
-      chainEvery: ef.bolt?.every || RLItems.CHAIN.every, chainStrikes: ef.bolt?.strikes || 0,
+      chainEvery: ef.bolt?.every || RLItems.CHAIN.every, chainStrikes: ef.bolt?.strikes || 0, chainMul: ef.bolt?.mul ?? RLItems.CHAIN.mul, chainRange: ef.bolt?.range || RLItems.CHAIN.range,
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 나이트메어 −40 · 헬 −70 (dc#54): 장비 저항 합에서 먼저 빼고 그 뒤 최대치 (RLMonsters.playerRes)
@@ -2158,7 +2192,69 @@
   const bossAlive = () => enemies.some(e => e.kind === "boss" && !e.mob);   // 구멍 16~20층의 일반 자리 네임드(mob)는 계단을 막지 않음
 
   // ---- 던전 생성 (방 + 통로) ----
+  // ---- 넓은 지역 (dc#143): 복도와 방 대신 동굴처럼 트인 지역. 몬스터가 많은 층일수록 넓게 (최소 32×24, 최대 96×72) ----
+  //   rl_oldtown(예전 회귀 테스트)이면 예전 방·복도 던전
+  const OPEN_FLOORS = !OLD_TOWN;
+  let floorSt = { boss: false, open: true };   // 이 층: 보스가 나왔는지(boss), 계단이 열렸는지(open)
+  // 이 층에 놓일 몬스터 수 (대략): 넓이를 정할 때
+  const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : (nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5);
+  const OPEN = { base: 260, perFoe: 26, fill: 0.55, maxW: 96, maxH: 72 };
+  function openSize(n) {
+    const area = (OPEN.base + n * OPEN.perFoe) / OPEN.fill;
+    const w = Math.max(MAP_MIN_W, Math.min(OPEN.maxW, Math.round(Math.sqrt(area * 4 / 3))));
+    return { w, h: Math.max(MAP_MIN_H, Math.min(OPEN.maxH, Math.round(w * 3 / 4))) };
+  }
+  function generateOpen() {
+    const { w, h } = openSize(foesExpected());
+    MAP_W = w; MAP_H = h;
+    let best = null;
+    for (let tryN = 0; tryN < 6 && !best; tryN++) {
+      // 세포 자동자: 무작위로 벽을 뿌리고 다듬기 → 둥근 동굴
+      let g = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 || Math.random() < 0.42 ? WALL : FLOOR)));
+      for (let it = 0; it < 4; it++) {
+        g = g.map((row, y) => row.map((c, x) => {
+          if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) return WALL;
+          let walls = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && g[y + dy][x + dx] === WALL) walls++;
+          return walls >= 5 || (walls === 0 && it < 2 && Math.random() < 0.08) ? WALL : FLOOR;   // 넓은 곳에 가끔 기둥
+        }));
+      }
+      // 가장 큰 이어진 바닥만 남김
+      const id = Array.from({ length: h }, () => new Array(w).fill(-1));
+      let bigId = -1, bigN = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (g[y][x] !== FLOOR || id[y][x] >= 0) continue;
+        const k = y * w + x, q = [[x, y]]; id[y][x] = k; let n = 0;
+        while (q.length) { const [cx, cy] = q.pop(); n++; for (const [dx, dy] of DIRS) { const nx = cx + dx, ny = cy + dy; if (g[ny]?.[nx] === FLOOR && id[ny][nx] < 0) { id[ny][nx] = k; q.push([nx, ny]); } } }
+        if (n > bigN) { bigN = n; bigId = k; }
+      }
+      if (bigN < w * h * 0.38) continue;   // 너무 좁으면 다시
+      best = g.map((row, y) => row.map((c, x) => (c === FLOOR && id[y][x] === bigId ? FLOOR : WALL)));
+    }
+    if (!best) {   // 거의 없지만, 다 실패하면 큰 방 하나
+      best = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? WALL : FLOOR)));
+    }
+    map = best;
+    visible = Array.from({ length: h }, () => new Array(w).fill(false));
+    seen = Array.from({ length: h }, () => new Array(w).fill(false));
+    // 시작: 왼쪽 가장자리 쪽 바닥. 먼 곳: 시작에서 걸어서 가장 먼 바닥 (예전 방 목록 모양으로 돌려줌)
+    const floors = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (map[y][x] === FLOOR) floors.push({ x, y });
+    const start = floors.reduce((a, b) => (b.x + Math.abs(b.y - h / 2) * 0.5 < a.x + Math.abs(a.y - h / 2) * 0.5 ? b : a));
+    const d = Array.from({ length: h }, () => new Array(w).fill(-1)), q = [[start.x, start.y]];
+    d[start.y][start.x] = 0;
+    let far = start;
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i];
+      if (d[y][x] > d[far.y][far.x]) far = { x, y };
+      for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (map[ny]?.[nx] === FLOOR && d[ny][nx] < 0) { d[ny][nx] = d[y][x] + 1; q.push([nx, ny]); } }
+    }
+    const room = (p) => ({ x: p.x - 1, y: p.y - 1, w: 3, h: 3, cx: p.x, cy: p.y });
+    return [room(start), room(far)];
+  }
   function generateDungeon() {
+    if (OPEN_FLOORS) return generateOpen();
+    MAP_W = MAP_MIN_W; MAP_H = MAP_MIN_H;
     map = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(WALL));
     visible = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
     seen = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
@@ -2241,20 +2337,22 @@
     clearStatus(player);  // 화상·느려짐은 층을 옮기면 풀림
     player.x = start.cx; player.y = start.cy;
 
-    // 계단 배치 (가장 먼 방)
+    // 계단 배치 (가장 먼 방). 넓은 지역(dc#143)은 처음에 계단이 없고, 마지막 몬스터(보스 층은 보스)를 쓰러뜨리면 그 자리에 나타남
     let far = rooms[0], best = -1;
     for (const r of rooms) {
       const d = dist(r, start);
       if (d > best) { best = d; far = r; }
     }
-    map[far.cy][far.cx] = STAIRS;
+    floorSt = { boss: false, open: !OPEN_FLOORS };
+    if (!OPEN_FLOORS) map[far.cy][far.cx] = STAIRS;
 
     // 보스 층 바로 전 층(4, 9, 14…층) 계단 옆에 상점
     shop = null;
     if (!inGold() && !inAbyss() && RLItems.isShopFloor(depth)) {
-      const spots = DIRS.map(([dx, dy]) => ({ x: far.cx + dx, y: far.cy + dy })).filter(p => map[p.y][p.x] === FLOOR);
+      const at = OPEN_FLOORS ? start : far;   // 넓은 지역: 시작 자리 옆 (계단이 아직 없어서)
+      const spots = DIRS.map(([dx, dy]) => ({ x: at.cx + dx, y: at.cy + dy })).filter(p => map[p.y]?.[p.x] === FLOOR && !(p.x === player.x && p.y === player.y));
       shop = spots[rnd(spots.length)] || null;
-      if (shop && !quiet) log(T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
+      if (shop && !quiet) log(OPEN_FLOORS ? T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 시작 자리 옆에서 골드로 장비를 갖추자.") : T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
     }
     // 웨이포인트: 시작 자리 바로 옆 (dc#97)
     wpSpot = null;
@@ -2275,7 +2373,7 @@
     if (inAbyss()) { abyssFloor(far); computeFOV(); noteSeen(); return; }
     // 보스는 계단 방에서 계단을 지킴. 일반 몬스터보다 먼저 자리를 잡음
     // (깊은 층은 몬스터가 많아서, 나중에 놓으면 계단 방에 빈칸이 없어 보스 자리를 못 찾던 문제)
-    if (inGold() || RLMonsters.isBossFloor(depth)) {  // 골드 던전은 층과 상관없이 보스가 계단을 지킴
+    if (!OPEN_FLOORS && (inGold() || RLMonsters.isBossFloor(depth))) {  // 골드 던전은 층과 상관없이 보스가 계단을 지킴. 넓은 지역은 몬스터를 다 잡으면 나옴 (spawnBoss)
       const tiles = [];
       for (let y = far.y; y < far.y + far.h; y++)
         for (let x = far.x; x < far.x + far.w; x++)
@@ -2298,7 +2396,8 @@
     const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
     const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2);
     for (let i = 0; i < count; i++) {
-      const spot = randomFloor([player, ...enemies]);
+      let spot = randomFloor([player, ...enemies]);
+      for (let t = 0; OPEN_FLOORS && t < 15 && spot && dist(spot, player) <= 5; t++) spot = randomFloor([player, ...enemies]);   // 넓은 지역: 시작 자리 바로 옆은 피함
       if (!spot) break;
       const kind = Math.random() < Math.min(1, RLMonsters.eliteChance(deep ? NM.base : monLevel()) * (1 + eliteUp / 100)) ? "elite" : "normal";   // 축복 정예 사냥
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
@@ -2334,9 +2433,13 @@
       if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (inHell() ? HELL.gold.pile : nmMobs() ? NM.gold.pile : 1) });
     }
 
-    if (stats().guide) { seen[far.cy][far.cx] = true; if (!quiet) log(T("🧭 길잡이: 계단 위치가 지도에 보인다."), null, RLBless.TIERS.legend.color); }
+    if (stats().guide) {   // 길잡이: 예전에는 계단 위치, 넓은 지역(dc#143)은 지도 전체
+      if (OPEN_FLOORS) { for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (map[y][x] !== WALL) seen[y][x] = true; if (!quiet) log(T("🧭 길잡이: 이 층의 지도가 모두 보인다."), null, RLBless.TIERS.legend.color); }
+      else { seen[far.cy][far.cx] = true; if (!quiet) log(T("🧭 길잡이: 계단 위치가 지도에 보인다."), null, RLBless.TIERS.legend.color); }
+    }
     computeFOV();
     noteSeen();
+    if (OPEN_FLOORS && !foesLeft().length) { if (inGold() || RLMonsters.isBossFloor(depth)) spawnBoss(); else revealStairs({ x: far.cx, y: far.cy }); }   // 몬스터가 없는 층
     if (!quiet) Bless.onFloor();   // 축복 (dc#140): 이 판에서 처음 온 층이면 3개 중 1개 + 숨 고르기 회복
   }
 
@@ -2415,7 +2518,10 @@
     if (Bless.isOpen()) return;   // 축복을 고르는 중
     if (jumpAim) { jump(dx, dy); return; }   // 점프를 고른 뒤의 방향 (키보드·터치 모두)
     Anim.newTurn();
+    player.face = { dx, dy };   // 회피 방향 (dc#144)
     let nx = player.x + dx, ny = player.y + dy;
+    const near = NEW_CTRL ? foeToward(dx, dy) : null;   // 새 규칙: 그쪽에 붙은 가장 가까운 몬스터 (대각선도)
+    if (near) { attack(player, near); endTurn(); return; }
     if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) return;
     if (map[ny][nx] === WALL) return;
 
@@ -2508,6 +2614,50 @@
     endTurn();
   }
 
+  // ---- 회피 (dc#144): 새 규칙에서는 점프 대신. Space(휴대폰은 화면을 톡) → 움직이던 쪽으로 DODGE.range칸 굴러 피함
+  //   몬스터 사이는 지나가지만 벽은 못 지나고, 내려설 칸은 비어 있어야 함. 그 턴에는 무적(몬스터 공격·꼬리 휩쓸기가 빗나감)
+  //   한 턴을 쓰고 쿨타임 DODGE.cooldown턴 (점프 쿨타임 칸을 같이 씀). 예전 회귀 테스트(rl_oldtown)는 예전 점프 그대로
+  const DODGE = { range: 3, cooldown: 4, ms: 260 };
+  const NEW_CTRL = !OLD_TOWN;
+  const invuln = () => !!player && ((player.inv || 0) > 0 || performance.now() < (player.invUntil || 0));
+  const faceDir = () => player?.face || { dx: 1, dy: 0 };
+  function dodge(dx, dy) {
+    if (gameOver || scene !== "dungeon" || !player || Bless.isOpen()) return false;
+    if (player.jumpCd > 0) { log(T("회피는 {0}턴 뒤에 다시 할 수 있다.", player.jumpCd), "bad"); return false; }
+    if (View3D.active()) return View3D.dodge();
+    if (dx == null) ({ dx, dy } = faceDir());
+    Walk.stop();
+    const free = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && map[y][x] !== WALL;
+    let land = null;
+    for (let k = 1; k <= DODGE.range; k++) {
+      const x = player.x + dx * k, y = player.y + dy * k;
+      if (!free(x, y)) break;
+      if (!enemies.some(e => e.hp > 0 && e.x === x && e.y === y) && !isShop(x, y)) land = { x, y };
+    }
+    if (!land) { log(T("그쪽으로는 피할 곳이 없다."), "bad"); return false; }
+    Anim.newTurn();
+    Anim.dash(player, land.x, land.y);
+    Sfx("roll");
+    player.face = { dx, dy };
+    player.jumpCd = DODGE.cooldown;
+    player.inv = 1;   // 이번 턴의 몬스터 행동 동안 무적
+    showDamage(player, T("회피!"), false, "#8fd3ff");
+    Tips.step("dodge");
+    if (arrive(land.x, land.y)) { player.inv = 0; return true; }
+    endTurn();
+    player.inv = 0;
+    return true;
+  }
+  window.RLDodge = () => dodge();
+  document.body.classList.toggle("joy", NEW_CTRL);   // 새 조작 (dc#144): 휴대폰 버튼 숨김·도움말   // 3D 화면·마을 키에서 (View3D 안의 dodge와 이름이 같아서)
+  // 가까운 몬스터 공격 (dc#144): 누른 쪽(그 방향 ±90° 안, 대각선 포함)에 붙어 있는 몬스터 중 가장 가까운 것
+  //   (반대쪽으로 누르면 그대로 걸어서 멀어짐)
+  function foeToward(dx, dy) {
+    const dot = (e) => (e.x - player.x) * dx + (e.y - player.y) * dy;
+    return enemies.filter(e => e.hp > 0 && near8(e, player) === 1 && dot(e) > 0)
+      .sort((a, b) => dist(a, player) - dist(b, player) || dot(b) - dot(a))[0] || null;
+  }
+
   function wait() {
     if (gameOver || scene === "lobby") return;
     jumpAim = false;
@@ -2543,6 +2693,8 @@
       });
     } else {
       const s = stats();
+      // 회피 중 (dc#144): 무적
+      if (invuln()) { showDamage(target, T("회피"), false, "#8fd3ff"); Anim.dodge(target, attacker, at); return; }
       // 구미호의 비녀: 확률로 공격을 피함
       if (s.uq.dodge && Math.random() * 100 < s.uq.dodge) {
         showDamage(target, T("피함"), false, RLItems.RARITIES.unique.color);
@@ -2687,7 +2839,7 @@
     const cells = [];
     for (let dy = -W.radius; dy <= W.radius; dy++) for (let dx = -W.radius; dx <= W.radius; dx++) if (dx || dy) cells.push({ x: e.x + dx, y: e.y + dy });
     flash(cells, "rgba(255, 79, 216, 0.35)");
-    if (near8(e, player) > W.radius) { log(T("{0}의 꼬리 휩쓸기를 피했다!", e.name), "good"); return false; }
+    if (near8(e, player) > W.radius || invuln()) { log(T("{0}의 꼬리 휩쓸기를 피했다!", e.name), "good"); return false; }
     const crowd = RLMonsters.crowdCut(adjacentFoes());
     const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * W.mul + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
     const took = hurtPlayer(dmg);
@@ -2784,8 +2936,8 @@
     const gold = inAbyss() ? 0 : Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (inHell() ? HELL.gold.kill : nmMobs() ? NM.gold.kill : 1));
     player.gold += gold;
     log(inAbyss() ? T("{0} 처치! (+{1} XP)", e.name, xp) : T("{0} 처치! (+{1} XP, +{2} 골드)", e.name, xp, gold), "good");
-    if (inAbyss() && e.kind === "boss" && !e.mob) { if (!bossAlive()) log(T("계단을 지키던 네임드 보스를 모두 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR); }
-    else if (e.kind === "boss" && !e.mob) log(T("보스를 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR);
+    if (inAbyss() && e.kind === "boss" && !e.mob) { if (!bossAlive()) log(OPEN_FLOORS ? T("계단을 지키던 네임드 보스를 모두 쓰러뜨렸다!") : T("계단을 지키던 네임드 보스를 모두 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR); }
+    else if (e.kind === "boss" && !e.mob) log(OPEN_FLOORS ? T("보스를 쓰러뜨렸다!") : T("보스를 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR);
     if (e.kind === "golden") log(T("{0}을(를) 잡았다! 보물이 쏟아진다!", e.name), null, RLMonsters.GOLDEN.color);
     if (s.killHeal) heal(s.killHeal);
     if (s.uq.reap && (player.reap || 0) < UQ_FX.reap.max) player.reap = Math.min(UQ_FX.reap.max, (player.reap || 0) + s.uq.reap);   // 사자의 낫
@@ -2795,11 +2947,108 @@
     gainXp(xp);
     Bless.onBoss(e);   // 보스: 유물 고르기 (dc#140)
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
+    floorProgress(e);
+  }
+  // ---- 넓은 지역의 층 진행 (dc#143) ----
+  //   몬스터를 다 잡으면(황금 고블린은 빼고): 보스 층이면 보스가 추가 몬스터들과 함께 나타나고, 아니면 마지막으로 쓰러진 자리에 계단
+  //   보스 층은 보스와 추가 몬스터를 모두 잡으면 계단. 끝이 없는 구멍은 계단을 지키는 네임드 2마리를 잡으면 계단
+  const BOSS_WAVE = { minDist: 4, maxDist: 11, adds: (d) => 2 + Math.floor(d / 10) };
+  const foesLeft = () => enemies.filter(x => x.hp > 0 && x.kind !== "golden" && !x.clone);
+  function floorProgress(last) {
+    if (!OPEN_FLOORS || floorSt.open || gameOver || scene !== "dungeon") return;
+    if (inAbyss()) { if (!bossAlive()) revealStairs(last); return; }
+    if (foesLeft().length) return;
+    if ((inGold() || RLMonsters.isBossFloor(depth)) && !floorSt.boss) { spawnBoss(); return; }
+    revealStairs(last);
+  }
+  function spawnBoss() {
+    floorSt.boss = true;
+    const far = [];
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      const d = dist({ x, y }, player);
+      if (map[y][x] === FLOOR && !isShop(x, y) && d >= BOSS_WAVE.minDist && d <= BOSS_WAVE.maxDist && !items.some(i => i.x === x && i.y === y)) far.push({ x, y });
+    }
+    const inSight = far.filter(p => visible[p.y]?.[p.x]);   // 보이는 곳에 나타나게 (나타나는 순간을 볼 수 있게)
+    const pool = inSight.length ? inSight : far;
+    const spot = pool.length ? pool[rnd(pool.length)] : randomFloor([player, ...enemies]);
+    if (!spot) { revealStairs(player); return; }
+    const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : inGold() ? RLMonsters.makeBoss(depth, monLevel()) : RLMonsters.makeNormalBoss(depth);
+    const cut = inGold() ? 0 : stats().bossHp;   // 축복 왕 사냥: 보스 최대 HP −%
+    if (cut) boss.hp = boss.maxHp = Math.max(1, Math.round(boss.maxHp * (1 - cut / 100)));
+    enemies.push({ ...spot, ...boss });
+    // 추가 몬스터: 보스 주변 2칸 안
+    const n = BOSS_WAVE.adds(depth), deep = nmMobs() || inHell();
+    for (let i = 0; i < n; i++) {
+      const near = [];
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = spot.x + dx, y = spot.y + dy; if (map[y]?.[x] === FLOOR && !isShop(x, y) && !enemies.some(e => e.x === x && e.y === y) && !(x === player.x && y === player.y)) near.push({ x, y }); }
+      if (!near.length) break;
+      const at = near[rnd(near.length)], kind = Math.random() < 0.35 ? "elite" : "normal";
+      const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
+        : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
+        : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
+      enemies.push({ ...at, ...m });
+    }
+    seen[spot.y][spot.x] = true;
+    Sfx("bossKill");
+    if (boss.named) log(T("✦ 몬스터를 모두 잡자 네임드 보스 {0} ({1})이(가) 부하 {2}마리와 함께 나타났다! {3}", boss.name, boss.title, n, namedTip(boss)), null, RLMonsters.NAMED_COLOR);
+    else log(T("몬스터를 모두 잡자 {0}이(가) 부하 {1}마리와 함께 나타났다! 쓰러뜨리면 계단이 열린다.", boss.name, n), null, BOSS_COLOR);
+    showDamage(enemies.find(e => e.kind === "boss") || player, T("보스!"), true, BOSS_COLOR);
+  }
+  // 계단: 마지막으로 쓰러진 몬스터 자리 (벽·상점이면 가장 가까운 바닥)
+  function revealStairs(at) {
+    let p = at && map[at.y]?.[at.x] === FLOOR && !isShop(at.x, at.y) ? { x: at.x, y: at.y } : nearestFloor(at || player);
+    if (!p) return;
+    floorSt.open = true;
+    map = map.map(r => r.slice());   // 3D 화면이 지도를 다시 그리게 새 배열로
+    map[p.y][p.x] = STAIRS;
+    seen[p.y][p.x] = true;
+    log(T("▼ 마지막 적을 쓰러뜨리자 아래층으로 내려가는 계단이 나타났다!"), null, "#ffcf5c");
+    showDamage(p, T("계단"), true, "#ffcf5c");
+    Sfx("waypoint");
   }
   // 카리스마 처치 폭발: 쓰러진 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로).
   // 폭발로 쓰러진 몬스터도 터짐 (분신은 이미 위에서 사라져 여기 오지 않음)
   // 떨어진 것 중 가장 좋은 것에 맞춰 한 번 (레어 이상 장비 · 룬은 레전더리처럼)
   const DROP_RANK = { rare: 1, epic: 2, legendary: 3, set: 3, unique: 4 };
+  // 지도 표시 (dc#143): 보물(!) · 계단(>) · 살아 있는 보스(빨간 왕관) · 이 층에서 가장 좋은 장비(★, 그 등급 색). 가 보지 않은 곳이어도 표시
+  function mapMarks() {
+    const out = [];
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (map[y][x] === STAIRS) out.push({ x, y, k: "stairs" });
+    let best = null, bestR = -1, bestP = -1;
+    for (const it of items) {
+      if (it.type === "treasure") out.push({ x: it.x, y: it.y, k: "treasure" });
+      else if (it.type === "gear") { const r = DROP_RANK[it.item.rarity] || 0, pw = RLItems.basePowerScore(it.item); if (r > bestR || (r === bestR && pw > bestP)) { best = it; bestR = r; bestP = pw; } }
+    }
+    if (best) out.push({ x: best.x, y: best.y, k: "best", color: rarityColor(best.item) });
+    for (const e of enemies) if (e.hp > 0 && !e.clone && (e.kind === "boss" || e.named)) out.push({ x: e.x, y: e.y, k: "boss" });
+    return out;
+  }
+  const MARK = { stairs: [">", "#ffcf5c"], treasure: ["!", "#ffd84a"], boss: ["", "#ff5a4a"], best: ["★", "#fff"] };
+  // g: 그릴 캔버스, K: 칸 크기, size: 글자 크기
+  //   win: 지도의 일부만 그릴 때 그 칸 범위 { x0, y0, x1, y1 } → 밖에 있는 표시는 가장자리에 붙임 (휴대폰 작은 지도, dc#144)
+  //   skipSeen: 전체 지도에서는 지금 보이는 칸을 건너뜀 (원래 그림이 있으니)
+  function drawMarks(g, K, size = K, win = null, skipSeen = false) {
+    g.save();
+    g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold ${Math.round(size)}px sans-serif`; g.lineJoin = "round";
+    const pin = (v, a, b) => (win ? Math.max(a * K + size * 0.75, Math.min(b * K - size * 0.75, v)) : v);
+    for (const m of mapMarks()) {
+      if (skipSeen && visible[m.y]?.[m.x]) continue;   // 전체 지도: 지금 보이는 칸은 원래 그림이 있으니 (무지개 장비 글자를 덮지 않게)
+      const [ch, c] = MARK[m.k], cx = pin((m.x + 0.5) * K, win?.x0, win?.x1), cy = pin((m.y + 0.5) * K, win?.y0, win?.y1);
+      const col = m.color || c;
+      g.fillStyle = "rgba(0, 0, 0, 0.75)"; g.beginPath(); g.arc(cx, cy, size * 0.7, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = col; g.lineWidth = Math.max(1.5, size * 0.12); g.stroke();   // 같은 색 고리: 작은 지도에서도 눈에 띄게
+      if (m.k === "boss") {   // 보스: 왕관 모양 (글꼴에 따라 해골 글자가 어둡게 나와서 직접 그림)
+        const u = size * 0.42;
+        g.beginPath(); g.moveTo(cx - u, cy + u * 0.6); g.lineTo(cx - u, cy - u * 0.5); g.lineTo(cx - u * 0.45, cy); g.lineTo(cx, cy - u * 0.75);
+        g.lineTo(cx + u * 0.45, cy); g.lineTo(cx + u, cy - u * 0.5); g.lineTo(cx + u, cy + u * 0.6); g.closePath();
+        g.fillStyle = col; g.fill(); g.strokeStyle = "#000"; g.lineWidth = 1; g.stroke();
+        continue;
+      }
+      g.strokeStyle = "#000"; g.lineWidth = Math.max(2, size * 0.16); g.strokeText(ch, cx, cy + size * 0.04);
+      g.fillStyle = col; g.fillText(ch, cx, cy + size * 0.04);
+    }
+    g.restore();
+  }
   function dropSound(dropped) {
     let best = null;
     for (const d of dropped) {
@@ -2953,20 +3202,27 @@
 
   function gainXp(amount) {
     player.xp += amount;
+    let up = false;
     while (player.xp >= player.xpNext) {
+      up = true;
       player.xp -= player.xpNext;
       player.plvl++;
-      player.xpNext = Math.floor(player.xpNext * 1.5);
+      player.xpNext = Math.floor(player.xpNext * XP_GROW);
       player.maxHp += 4;
       player.atk += 1;
       player.hp = stats().maxHp;
       log(T("레벨 업! Lv {0} — 최대 HP/공격력 증가 (레벨 보너스 +{1}%), HP 회복!", player.plvl, levelPct()), "good");
       Sfx("levelup");
+      Bless.onLevel();   // 레벨이 오를 때도 축복 하나 (dc#143)
     }
+    if (up) Bless.show();
   }
 
+  // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움. 예전 던전은 밟은 칸만
+  const PICK_R = 2;
   function pickup() {
-    for (const it of items.filter(i => i.x === player.x && i.y === player.y)) {
+    if (!player || gameOver) return;
+    for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
       if (it.type === "gear") {
         if (!takeGear(it)) continue;
         Sfx("pickup");
@@ -3234,7 +3490,7 @@
   function saveLevel() {
     if (gameOver || !map) { store.del(LEVEL_KEY); return; }
     store.set(LEVEL_KEY, JSON.stringify({
-      rid: player.rid, d: depth, z: player.zone, turn,
+      rid: player.rid, d: depth, z: player.zone, turn, w: MAP_W, h: MAP_H, fs: floorSt,   // 지도 크기·층 진행 (dc#143)
       map: map.map(r => r.join("")).join(""),
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
       px: player.x, py: player.y, shop, wp: wpSpot, grave, enemies, items,
@@ -3249,7 +3505,10 @@
   function restoreLevel() {
     let L = null;
     try { L = JSON.parse(store.get(LEVEL_KEY)); } catch {}
-    if (!L || L.rid !== player.rid || L.d !== depth || (L.z || "normal") !== (player.zone || "normal") || L.map?.length !== MAP_W * MAP_H || L.seen?.length !== MAP_W * MAP_H) return false;
+    const lw = Number.isInteger(L?.w) && L.w >= MAP_MIN_W && L.w <= 200 ? L.w : MAP_MIN_W, lh = Number.isInteger(L?.h) && L.h >= MAP_MIN_H && L.h <= 200 ? L.h : MAP_MIN_H;   // 예전 저장은 32×24
+    if (!L || L.rid !== player.rid || L.d !== depth || (L.z || "normal") !== (player.zone || "normal") || L.map?.length !== lw * lh || L.seen?.length !== lw * lh) return false;
+    MAP_W = lw; MAP_H = lh;
+    floorSt = { boss: !!L.fs?.boss, open: L.fs ? !!L.fs.open : true, ...(L.fs?.bx != null ? { bx: L.fs.bx, by: L.fs.by } : {}) };   // 예전 저장(fs 없음)은 계단이 이미 있음
     const grid = (str, f) => Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => f(str[y * MAP_W + x])));
     map = grid(L.map, Number);
     seen = grid(L.seen, c => c === "1");
@@ -3731,10 +3990,10 @@
     }
     // 파이어볼 (화염의 세트, 또는 룬워드 나무의 약한 파이어볼)
     const fbSet = s.fireball, fbOn = fbSet || s.rw.fireball;
-    const fbEvery = (fbSet ? s.fbEvery : RW_FX.fireball.every) - fast, fbMul = fbSet ? FB.mul : RW_FX.fireball.mul, fbR = s.fbRadius;
+    const fbEvery = (fbSet ? s.fbEvery : RW_FX.fireball.every) - fast, fbMul = fbSet ? s.fbMul : RW_FX.fireball.mul, fbR = s.fbRadius;
     if (fbOn && ready("fbCd")) {
       const inBlast = (c) => alive().filter(e => near8(e, c) <= fbR).length;
-      const center = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= FB.range)
+      const center = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= (fbSet ? s.fbRange : FB.range))
         .sort((a, b) => near8(a, player) - near8(b, player) || inBlast(b) - inBlast(a))[0];
       if (center) {
         player.fbCd = fbEvery;
@@ -3755,7 +4014,7 @@
       const hit = alive().filter(e => near8(e, player) <= nR);
       if (hit.length) {
         player.novaCd = s.novaEvery - fast;
-        const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
+        const { crit, dmg } = skillRoll(s, s.novaMul, s.novaPct + s.elem.ice);
         const cells = [];
         for (let dy = -nR; dy <= nR; dy++) for (let dx = -nR; dx <= nR; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
         if (reduceMotion) flash(cells, "rgba(111, 211, 255, 0.4)");
@@ -3768,10 +4027,10 @@
     }
     // 체인 라이트닝 (뇌전의 세트)
     if (s.chain && ready("chainCd")) {
-      let at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= CHAIN.range).sort((a, b) => near8(a, player) - near8(b, player))[0];
+      let at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= s.chainRange).sort((a, b) => near8(a, player) - near8(b, player))[0];
       if (at) {
         player.chainCd = s.chainEvery - fast;
-        const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
+        const { crit, dmg } = skillRoll(s, s.chainMul, s.chainPct + s.elem.bolt);
         const strikes = (s.chainStrikes || (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes)) + (s.uq.chainPlus || 0);   // 축복 단계(dc#142) · 여의주 검 +2
         const hitOnce = new Set(), cells = [];
         let n = 0;
@@ -3824,6 +4083,7 @@
       worldTurn();
     }
     if (!gameOver) { computeFOV(); noteSeen(); }
+    if (OPEN_FLOORS && !gameOver && scene === "dungeon") pickup();   // 싸움으로 떨어진 것도 가까우면 바로
     render();
     updateStats();
     saveGame();
@@ -3984,8 +4244,17 @@
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
   const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold() || hellish()) ? depth : 0);
 
+  // 새 조작 휴대폰의 던전은 세로로 긴 화면 (dc#144): 2D 캔버스 24×32칸, 3D는 CSS 3:4 (view3d.js가 캔버스 비율을 따름)
+  const tallView = () => !OLD_TOWN && matchMedia("(pointer: coarse) and (orientation: portrait)").matches;
+  function fitView() {
+    const tall = tallView() && scene === "dungeon";
+    document.body.classList.toggle("tall-view", tall);
+    if (setView(...(tall ? [24, 32] : [32, 24])) && player && map && scene === "dungeon") render();
+  }
+  addEventListener("resize", () => fitView());
   function setScene(s) {
     scene = s;
+    fitView();
     document.body.classList.toggle("in-lobby", s === "lobby");
     document.body.classList.toggle("in-tower", s === "jump");
     document.body.classList.toggle("side-view", s === "jump" || s === "lobby");   // 옆에서 보는 화면 (마을·점프 던전): 휴대폰 버튼 배치
@@ -4059,7 +4328,7 @@
       shopRerolls = 0;
       setScene("dungeon");
       if (which === "wp") log(T("◎ 웨이포인트를 타고 {0}에 왔다.", floorName()), null, WP_COLOR);
-      else log(depth === 1 ? T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.") : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
+      else log(depth === 1 ? (OPEN_FLOORS ? T("던전 1층에 발을 들였다. 몬스터를 모두 쓰러뜨리면 계단(>)이 나타난다.") : T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.")) : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
       newLevel(generateDungeon());
       saveGame(true);
     }
@@ -4587,6 +4856,11 @@
       }
       show();
     }
+    // 레벨 업 (dc#143): 축복 하나 더. 창은 gainXp 끝에서 한 번 (한꺼번에 여러 레벨이 올라도 차례로)
+    function onLevel() {
+      if (!zk() || !player) return;
+      queue().push({ r: 0, lv: player.plvl, s: `${player.rid}|lv|${player.plvl}` });
+    }
     // 보스를 쓰러뜨림: 유물 하나 (구멍 16~20층의 일반 자리 네임드·분신은 빼고)
     function onBoss(e) {
       if (!zk() || e.kind !== "boss" || e.mob || e.clone) return;
@@ -4637,8 +4911,8 @@
       const entry = scene === "dungeon" && !gameOver ? head() : null;
       if (!entry) { close(); return; }
       const ids = offerOf(entry), relic = !!entry.r, left = queue().length;
-      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : T("✦ 축복 고르기");
-      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
+      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
+      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
       modalEl.querySelector(".modal").classList.toggle("relic", relic);
       document.getElementById("bless-cards").replaceChildren(...ids.map((id, i) => {
         const d = RLBless.defOf(id), n = have(relic)[id] || 0, tier = relic ? null : RLBless.TIERS[d.tier];
@@ -4647,7 +4921,7 @@
           el("span", { className: "bc-ico" }, d.icon),
           el("b", {}, RLBless.nameOf(id)),
           el("small", { className: "bc-tier", style: tier ? { color: tier.color } : {} }, relic ? T("유물") : ({ common: T("일반"), rare: T("희귀"), legend: T("전설"), elem: T("속성") })[d.tier]),
-          el("span", { className: "bc-fx" }, RLBless.cardText(id, n + 1)),
+          el("span", { className: "bc-fx" }, RLBless.cardText(id, n + 1, RLBless.isElem(id) ? stats().atk : 0)),
           el("small", { className: "bc-n" }, T("{0} / {1}", n, d.max)));
         return b;
       }));
@@ -4696,7 +4970,7 @@
       return rows.length ? [...rows, ...(caps.length ? [T("오른 상한: {0}", caps.join(" · "))] : [])] : [T("아직 받은 축복이 없어요. 던전에서 새 층에 내려갈 때마다 하나씩 골라요.")];
     }
     barEl.addEventListener("click", () => showNotice(T("✦ 이 판의 축복·유물"), lines()));
-    return { enabled: () => !off(), start, reset, onFloor, onBoss, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
+    return { enabled: () => !off(), start, reset, onFloor, onLevel, onBoss, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
   })();
   window.RLBlessGame = { pending: () => Bless.pending(), offer: () => Bless.offerNow(), choose: (id) => Bless.choose(id), auto: () => Bless.autoRest(), totals: () => blessTotals() };   // 테스트용 (읽기·고르기)
 
@@ -4745,7 +5019,11 @@
   mapBtn.addEventListener("click", () => { toggleMap(); mapBtn.blur(); });
   // 화면 왼쪽 위가 지도의 어디인지(그리는 좌표)와 배율. 지도 끝에서는 더 밀려나지 않게
   function camera() {
-    if (scene !== "dungeon" || fullMap || !player) return { x: 0, y: 0, z: 1 };
+    if (scene !== "dungeon" || !player) return { x: 0, y: 0, z: 1 };
+    if (fullMap) {   // 전체 지도: 넓은 층이면 줄여서 화면에 다 들어오게, 가운데 맞춤 (dc#143)
+      const z = Math.min(1, VIEW_W / (MAP_W * TILE), VIEW_H / (MAP_H * TILE));
+      return { x: (MAP_W * TILE - VIEW_W / z) / 2, y: (MAP_H * TILE - VIEW_H / z) / 2, z };
+    }
     const o = Anim.of(player);   // 걷는 중이면 그 사이 위치를 따라감 (화면이 부드럽게 미끄러짐)
     const cx = Math.max(0, Math.min(MAP_W - CAM_W, player.x + o.walkX / TILE + 0.5 - CAM_W / 2));
     const cy = Math.max(0, Math.min(MAP_H - CAM_H, player.y + o.walkY / TILE + 0.5 - CAM_H / 2));
@@ -4787,14 +5065,11 @@
     }
     ctx.strokeStyle = "rgba(214, 200, 150, 0.8)"; ctx.lineWidth = 1.5; ctx.stroke();
     const mark = (x, y, color, r = 4) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x * TILE + TILE / 2, y * TILE + TILE / 2, r, 0, Math.PI * 2); ctx.fill(); };
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (seen[y][x] && map[y][x] === STAIRS) {
-      ctx.fillStyle = "#ffcf5c"; ctx.font = `bold ${TILE}px "Courier New", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(">", x * TILE + TILE / 2, y * TILE + TILE / 2 + 1);
-    }
     if (shop && seen[shop.y][shop.x]) mark(shop.x, shop.y, SHOP_COLOR);
     if (wpSpot && seen[wpSpot.y][wpSpot.x]) mark(wpSpot.x, wpSpot.y, WP_COLOR);
     if (grave && seen[grave.y][grave.x]) mark(grave.x, grave.y, TOMB.color);
     for (const it of items) if (it.type === "gear" && seen[it.y]?.[it.x]) mark(it.x, it.y, rarityColor(it.item), 3);
+    drawMarks(ctx, TILE, TILE * 0.8);
     // 나: 흰 점 + 고리
     mark(player.x, player.y, "#ffffff", 4);
     ctx.strokeStyle = "#5fd4ff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(player.x * TILE + TILE / 2, player.y * TILE + TILE / 2, 7, 0, Math.PI * 2); ctx.stroke();
@@ -4878,13 +5153,35 @@
     let start = null, swipe = null, hold = 0;
     const SWIPE = 24;
     const endHold = () => { clearTimeout(hold); clearInterval(hold); hold = 0; };
+    // 새 규칙 휴대폰 (dc#144): 내 캐릭터가 스틱 가운데. 누른 채 끌면 캐릭터에서 손가락 쪽으로 계속 걷고(붙은 몬스터는 그쪽 공격), 톡 누르면 회피
+    let joyT = null;
+    function joyStep() {
+      if (!joyT || scene !== "dungeon" || anyModalOpen() || gameOver) return;
+      const me = screenOf(player.x, player.y), r = canvas.getBoundingClientRect(), tile = r.width / VIEW_W * TILE * camera().z;
+      const dx = joyT.x - me.x, dy = joyT.y - me.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < tile * 0.6) return;   // 내 칸 위면 멈춤
+      tryMove(...(Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)]));
+      Tips.step("walk");
+    }
     canvas.addEventListener("pointerdown", (e) => {
       if (scene !== "dungeon" || anyModalOpen() || (e.pointerType === "mouse" && e.button !== 0)) return;
+      if (NEW_CTRL && e.pointerType !== "mouse") {
+        stop(); endHold(); clearInterval(joyT?.timer);
+        joyT = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0, timer: 0 };
+        try { canvas.setPointerCapture(e.pointerId); } catch {}
+        return;
+      }
       stop(); endHold();
       start = { x: e.clientX, y: e.clientY, t: performance.now() }; swipe = null;
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     });
     canvas.addEventListener("pointermove", (e) => {
+      if (joyT && e.pointerId === joyT.id) {
+        joyT.x = e.clientX; joyT.y = e.clientY;
+        joyT.moved = Math.max(joyT.moved, Math.hypot(e.clientX - joyT.x0, e.clientY - joyT.y0));
+        if (joyT.moved >= 12 && !joyT.timer) { joyStep(); joyT.timer = setInterval(joyStep, 150); }
+        return;
+      }
       if (!start || swipe) return;
       const dx = e.clientX - start.x, dy = e.clientY - start.y;
       if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;
@@ -4895,6 +5192,12 @@
       hold = setTimeout(() => { hold = setInterval(once, 130); }, 300);
     });
     const up = (e) => {
+      if (joyT && e.pointerId === joyT.id) {
+        const tap = !joyT.timer && joyT.moved < 12 && performance.now() - joyT.t0 < 400;
+        clearInterval(joyT.timer); joyT = null;
+        if (tap && e.type === "pointerup") dodge();
+        return;
+      }
       if (!start) return;
       const tap = !swipe && performance.now() - start.t < 600 && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 12;
       start = null; swipe = null; endHold();
@@ -5002,6 +5305,14 @@
           dust.push({ x: nx, y: ny, dx: 0, side: 1, t0: t + 290, dur: 360 });
         }
       },
+      // 회피 (dc#144): (지금 칸) → (nx, ny)로 낮게 미끄러지듯 굴러감, 반투명 + 먼지
+      dash(who, nx, ny) {
+        if (reduceMotion) return;
+        const t = now(), fx0 = who.x, fy0 = who.y;
+        last.set(who, { x: nx, y: ny });
+        add(who, "dash", DODGE.ms, { dx: fx0 - nx, dy: fy0 - ny });
+        if (Sprites.on) for (let k = 0; k < 3; k++) dust.push({ x: fx0 + (nx - fx0) * k / 3, y: fy0 + (ny - fy0) * k / 3, dx: nx - fx0, side: k % 2 ? 1 : -1, t0: t + k * 60, dur: 300 });
+      },
       die(e, at = 80) {
         if (reduceMotion) return;
         dying.push({ name: `mon_${e.id}`, ch: e.ch, color: e.color, x: e.x, y: e.y, t0: now() + at, dur: 380 });
@@ -5025,7 +5336,7 @@
           const p = (t - f.t0) / f.dur;
           if (p >= 1) continue;
           busy = true;
-          if (p < 0) { if (f.kind === "walk" || f.kind === "jump") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
+          if (p < 0) { if (f.kind === "walk" || f.kind === "jump" || f.kind === "dash") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
           const arc = Math.sin(p * Math.PI);
           if (f.kind === "walk") {
             o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
@@ -5037,6 +5348,12 @@
             o.lift = arc * TILE * 0.8;          // 높이 (그림자는 땅에)
             o.y -= o.lift;
             o.rot += -Math.sign(f.dx || 0) * arc * 0.25;   // 뛰는 쪽으로 몸을 숙임
+          }
+          else if (f.kind === "dash") {
+            o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
+            o.alpha = Math.min(o.alpha, 0.45 + 0.55 * p);   // 굴러가는 동안 반투명
+            o.rot += (f.dx ? -Math.sign(f.dx) : 1) * Math.PI * 2 * ease(p);   // 한 바퀴 구름
+            o.y -= arc * TILE * 0.1;
           }
           else if (f.kind === "lunge") { o.x += f.dx * TILE * 0.38 * arc; o.y += f.dy * TILE * 0.38 * arc; }
           else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
@@ -5290,7 +5607,7 @@
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=4"), sheetReady()]).then(([m, sheet]) => {
+      loading ||= Promise.all([import("./view3d.js?v=5"), sheetReady()]).then(([m, sheet]) => {
         // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
         view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
@@ -5337,9 +5654,51 @@
       const tx = Math.floor(x), ty = Math.floor(y);
       return (tx !== tile.x || ty !== tile.y) && enemies.some(e => e.hp > 0 && e.x === tx && e.y === ty);
     }
+    // 회피 (dc#144): 움직이는 쪽(멈춰 있으면 앞)으로 DODGE.range칸을 DODGE.ms 동안 미끄러지듯. 그동안 무적
+    let dash = null;
+    function dodge() {
+      if (!active() || paused() || dash) return false;
+      let f = held.f - held.b - joy.dy, s = held.r - held.l + (NEW_CTRL ? 0 : joy.dx);
+      if (Math.hypot(f, s) < 0.1) { f = 1; s = 0; }
+      const L = Math.hypot(f, s), fx = Math.sin(yaw), fy = -Math.cos(yaw), rx = Math.cos(yaw), ry = Math.sin(yaw);
+      dash = { dx: (fx * f + rx * s) / L, dy: (fy * f + ry * s) / L, left: DODGE.range };
+      player.jumpCd = DODGE.cooldown;
+      player.invUntil = performance.now() + DODGE.ms + 150;
+      Sfx("roll");
+      showDamage(player, T("회피!"), false, "#8fd3ff");
+      Tips.step("dodge");
+      return true;
+    }
+    // 걸어서 (vx, vy)만큼: 벽·몬스터에 막히면 그 축은 멈춤. 다른 칸에 들어서면 원래 규칙의 "도착". 막혔으면 true
+    function slide(vx, vy) {
+      let hit = false;
+      if (!blocked(pos.x + vx, pos.y)) pos.x += vx; else hit = true;
+      if (!blocked(pos.x, pos.y + vy)) pos.y += vy; else hit = true;
+      const tx = Math.floor(pos.x), ty = Math.floor(pos.y);
+      if (tx === tile.x && ty === tile.y) return hit;
+      // 다른 칸에 들어섬 → 원래 규칙의 "도착" (줍기·상점·계단…)
+      tile = { x: tx, y: ty };
+      Sfx("step", stepFoot ^= 1, "dungeon");
+      const ended = arrive(tx, ty);
+      if (!ended && scene === "dungeon" && !gameOver) { computeFOV(); noteSeen(); updateStats(); }
+      return hit;
+    }
     function move(dt) {
-      yaw += (held.tr - held.tl) * TURN_SPEED * dt;
-      let f = held.f - held.b - joy.dy, s = held.r - held.l + joy.dx;
+      if (dash) {
+        const d = Math.min(dash.left, DODGE.range / (DODGE.ms / 1000) * dt), x0 = pos.x, y0 = pos.y;
+        dash.left -= d;
+        bobT += dt * 3;
+        // 칸 가운데 쪽으로 살짝 당겨서 벽 모서리에 걸리지 않게 (곧게 구르는 쪽과 직각인 축만)
+        const k = Math.min(1, dt * 14);
+        if (Math.abs(dash.dx) < 0.3) pos.x += (Math.floor(pos.x) + 0.5 - pos.x) * k;
+        if (Math.abs(dash.dy) < 0.3) pos.y += (Math.floor(pos.y) + 0.5 - pos.y) * k;
+        slide(dash.dx * d, dash.dy * d);
+        if (dash && (dash.left <= 1e-6 || Math.hypot(pos.x - x0, pos.y - y0) < d * 0.2)) dash = null;   // 다 갔거나 벽·몬스터에 막힘
+        return;
+      }
+      // 새 규칙 휴대폰 (dc#144): 스틱 가로는 돌기, 세로는 앞뒤 (한 손가락으로 다니게)
+      yaw += (held.tr - held.tl + (NEW_CTRL ? joy.dx : 0)) * TURN_SPEED * dt;
+      let f = held.f - held.b - joy.dy, s = held.r - held.l + (NEW_CTRL ? 0 : joy.dx);
       const len = Math.hypot(f, s);
       if (len > 1) { f /= len; s /= len; }
       const moving = len > 0.05;
@@ -5348,15 +5707,7 @@
       const sp = SPEED * (player.slow > 0 ? 0.55 : 1) * dt;
       const fx = Math.sin(yaw), fy = -Math.cos(yaw), rx = Math.cos(yaw), ry = Math.sin(yaw);
       const vx = (fx * f + rx * s) * sp, vy = (fy * f + ry * s) * sp;
-      if (!blocked(pos.x + vx, pos.y)) pos.x += vx;
-      if (!blocked(pos.x, pos.y + vy)) pos.y += vy;
-      const tx = Math.floor(pos.x), ty = Math.floor(pos.y);
-      if (tx === tile.x && ty === tile.y) return;
-      // 다른 칸에 들어섬 → 원래 규칙의 "도착" (줍기·상점·계단…)
-      tile = { x: tx, y: ty };
-      Sfx("step", stepFoot ^= 1, "dungeon");
-      const ended = arrive(tx, ty);
-      if (!ended && scene === "dungeon" && !gameOver) { computeFOV(); noteSeen(); updateStats(); }
+      slide(vx, vy);
     }
     // 때릴 몬스터: 바로 옆 칸 중 보는 방향(±65°)에서 가장 가까운 것. 앞에 없으면 옆·뒤의 가장 가까운 몬스터 쪽으로 돌아서 때림
     //   (휴대폰에서도 쉽게: 둘러보지 않아도 붙어 있는 몬스터는 때릴 수 있음)
@@ -5372,6 +5723,7 @@
         if (d > 0.3 && (dx * fx + dy * fy) / d < 0.42) continue;
         if (d < bd) { bd = d; best = e; }
       }
+      if (NEW_CTRL) return any;   // 새 규칙 (dc#144): 보는 방향과 상관없이 가장 가까운 몬스터
       if (!best && any) faceTo = yawTo(any);
       return best || any;
     }
@@ -5405,7 +5757,7 @@
       if (!paused()) {
         turnToFace(dt);
         move(dt);
-        if (held.atk) swing();
+        if (held.atk || (NEW_CTRL && !dash && target())) swing();   // 새 규칙 (dc#144): 닿는 몬스터가 있으면 저절로 공격
         acc += dt;
         while (acc >= TURN && active() && !paused()) { acc -= TURN; Anim.newTurn(); endTurn(); }
       }
@@ -5520,17 +5872,27 @@
     function drawMap() {
       mapCv.className = mapMode;
       if (mapMode === "off") return;
-      const big = mapMode === "big", cw = view.canvas.clientWidth, K = big ? Math.floor(Math.min(cw / MAP_W, cw * 0.75 / MAP_H) * 0.92) : Math.max(4, Math.round(cw / 128));
-      const w = MAP_W * K, h = MAP_H * K, dpr = Math.min(2, window.devicePixelRatio || 1);
+      const big = mapMode === "big", cw = view.canvas.clientWidth;
+      // 새 규칙 휴대폰 (dc#144): 작은 지도를 크게 (화면 폭의 약 절반), 내 주변 23×17칸만. 멀리 있는 표시는 가장자리에 붙여 보여 줌
+      const phone = NEW_CTRL && !big && matchMedia("(pointer: coarse)").matches;
+      let x0 = 0, y0 = 0, cols = MAP_W, rows = MAP_H, K;
+      if (phone) {
+        cols = Math.min(MAP_W, 23); rows = Math.min(MAP_H, 17);
+        K = Math.max(4, Math.floor(cw * 0.48 / cols));
+        x0 = Math.max(0, Math.min(MAP_W - cols, Math.round(pos.x - cols / 2)));
+        y0 = Math.max(0, Math.min(MAP_H - rows, Math.round(pos.y - rows / 2)));
+      } else K = big ? Math.floor(Math.min(cw / MAP_W, cw * 0.75 / MAP_H) * 0.92) : Math.max(4, Math.round(cw / 128));
+      const w = cols * K, h = rows * K, dpr = Math.min(2, window.devicePixelRatio || 1);
       if (mapCv.width !== Math.round(w * dpr)) { mapCv.width = Math.round(w * dpr); mapCv.height = Math.round(h * dpr); mapCv.style.width = `${w}px`; mapCv.style.height = `${h}px`; }
       const g = mapCv.getContext("2d");
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, w, h);
       if (!big) { g.fillStyle = "rgba(0, 0, 0, 0.55)"; g.fillRect(0, 0, w, h); }
+      g.save(); g.translate(-x0 * K, -y0 * K);
       const open = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && map[y][x] !== WALL;
       g.fillStyle = "rgba(214, 200, 150, 0.14)";
       g.beginPath();
-      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      for (let y = y0; y < y0 + rows; y++) for (let x = x0; x < x0 + cols; x++) {
         if (!seen[y][x] || !open(x, y)) continue;
         const px = x * K, py = y * K;
         g.fillRect(px, py, K, K);
@@ -5541,12 +5903,12 @@
       }
       g.strokeStyle = "rgba(214, 200, 150, 0.85)"; g.lineWidth = big ? 1.5 : 1; g.stroke();
       const dot = (x, y, color, r = K * 0.32) => { g.fillStyle = color; g.beginPath(); g.arc((x + 0.5) * K, (y + 0.5) * K, Math.max(1.5, r), 0, Math.PI * 2); g.fill(); };
-      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (seen[y][x] && map[y][x] === STAIRS) dot(x, y, "#ffcf5c", K * 0.45);
       if (shop && seen[shop.y]?.[shop.x]) dot(shop.x, shop.y, SHOP_COLOR, K * 0.45);
       if (wpSpot && seen[wpSpot.y]?.[wpSpot.x]) dot(wpSpot.x, wpSpot.y, WP_COLOR, K * 0.45);
       if (grave && seen[grave.y]?.[grave.x]) dot(grave.x, grave.y, "#c8ccd8", K * 0.4);
       for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : "#ff6bd3", K * 0.22);
       for (const e of enemies) if (e.hp > 0 && visible[e.y]?.[e.x]) { const d = disp.get(e); dot(d ? d.x : e.x, d ? d.y : e.y, e.named ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : "#ff4a3a", K * 0.34); }
+      drawMarks(g, K, Math.max(9, K * (big ? 1.1 : phone ? 1.3 : 1.6)), phone ? { x0, y0, x1: x0 + cols, y1: y0 + rows } : null);
       // 나: 시야(옅은 부채꼴)와 보는 쪽 화살표
       const mx = pos.x * K, my = pos.y * K, a = yaw - Math.PI / 2;
       g.fillStyle = "rgba(255, 200, 120, 0.16)";
@@ -5555,6 +5917,7 @@
       const r = Math.max(5.5, K * 0.6);
       g.fillStyle = "#ffffff"; g.strokeStyle = "#000"; g.lineWidth = 1;
       g.beginPath(); g.moveTo(0, -r); g.lineTo(r * 0.7, r * 0.7); g.lineTo(0, r * 0.3); g.lineTo(-r * 0.7, r * 0.7); g.closePath(); g.fill(); g.stroke();
+      g.restore();
       g.restore();
     }
     // 피해 숫자 자리 (showDamage): 그 몬스터·나의 머리 위
@@ -5596,7 +5959,8 @@
         case "d": held.r = v; return true;
         case "arrowleft": held.tl = v; return true;
         case "arrowright": held.tr = v; return true;
-        case " ": case "f": case "enter": held.atk = down; if (down) swing(); return true;
+        case " ": if (NEW_CTRL) { if (down && !e.repeat) window.RLDodge(); return true; } held.atk = down; if (down) swing(); return true;   // 새 규칙: Space 회피 (dc#144)
+        case "f": case "enter": held.atk = down; if (down) swing(); return true;
         case "tab": if (down) cycleMap(); return true;
         default: return false;
       }
@@ -5616,17 +5980,20 @@
           return;
         }
         e.preventDefault();
+        // 새 규칙 휴대폰 (dc#144): 누른 자리가 스틱 가운데 (위·아래 앞뒤, 좌우 돌기), 톡 누르면 회피
+        if (NEW_CTRL) { if (joy.id == null) Object.assign(joy, { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: 0, t0: performance.now() }); cv.setPointerCapture?.(e.pointerId); return; }
         // 휴대폰 (dc#114): 이동은 방향 버튼, 화면은 어디를 끌든 둘러보기 · 톡 누르면 공격
         if (look.id == null) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; look.moved = 0; look.t0 = performance.now(); }
         cv.setPointerCapture?.(e.pointerId);
       });
       cv.addEventListener("pointermove", (e) => {
-        if (e.pointerId === joy.id) { const R0 = 46; joy.dx = Math.max(-1, Math.min(1, (e.clientX - joy.x0) / R0)); joy.dy = Math.max(-1, Math.min(1, (e.clientY - joy.y0) / R0)); }
+        if (e.pointerId === joy.id) { const R0 = 46, ddx = e.clientX - joy.x0, ddy = e.clientY - joy.y0; joy.moved = Math.max(joy.moved || 0, Math.hypot(ddx, ddy)); const dz = (v) => (Math.abs(v) < 8 ? 0 : v);   // 손 떨림은 무시
+          joy.dx = Math.max(-1, Math.min(1, dz(ddx) / R0)); joy.dy = Math.max(-1, Math.min(1, dz(ddy) / R0)); }
         else if (e.pointerId === look.id) { const dx = e.clientX - look.x, dy = e.clientY - look.y; look.x = e.clientX; look.y = e.clientY; look.moved += Math.abs(dx) + Math.abs(dy); turnBy(dx * 2.2, dy * 2.2); }
       });
       const up = (e) => {
         if (e.pointerType === "mouse") { held.atk = false; return; }
-        if (e.pointerId === joy.id) { joy.id = null; joy.dx = joy.dy = 0; }
+        if (e.pointerId === joy.id) { const tap = NEW_CTRL && (joy.moved || 0) < 12 && performance.now() - (joy.t0 || 0) < 400; joy.id = null; joy.dx = joy.dy = 0; if (tap && e.type === "pointerup") window.RLDodge(); }
         if (e.pointerId === look.id) { if (look.moved < 12 && performance.now() - look.t0 < 300) swing(); look.id = null; }
       };
       cv.addEventListener("pointerup", up);
@@ -5641,7 +6008,7 @@
     label();
     if (on) load();
     requestAnimationFrame(loop);
-    return { get on() { return on; }, active, toggle, key, release, hold, popAt, fx, swing, cycleMap, get mapMode() { return mapMode; },
+    return { get on() { return on; }, active, toggle, key, release, hold, popAt, fx, swing, cycleMap, dodge, get dashing() { return !!dash; }, get mapMode() { return mapMode; },
       get ready() { return active() && levelRef === map; },
       get partCount() { return view?.partCount || 0; },   // 시험용: 지금 떠 있는 속성 입자 수
       get hands() { return view?.hands || null; },          // 시험용: 3D 손에 든 모델
@@ -5880,7 +6247,7 @@
         const c = inReach(HR.fb)[0];
         if (c) {
           cd.fb = (fbSet ? FB.every : RW_FX.fireball.every) - fast;
-          const { crit, dmg } = skillRoll(s, fbSet ? FB.mul : RW_FX.fireball.mul, s.fireballPct + s.elem.fire);
+          const { crit, dmg } = skillRoll(s, fbSet ? s.fbMul : RW_FX.fireball.mul, s.fireballPct + s.elem.fire);
           // 화염구가 손끝에서 몬스터 쪽으로 날아가(따라가며) 닿는 순간 3×3으로 터짐 (피해도 그때)
           shots.push({ x: st.x + st.face * 0.4, y: st.y - 0.55, target: c, trail: [], g: gen,
             hit: (at) => {
@@ -5893,7 +6260,7 @@
         const hit = inReach(HR.nova);
         if (hit.length) {
           cd.nova = NOVA.every - fast;
-          const { crit, dmg } = skillRoll(s, NOVA.mul, s.novaPct + s.elem.ice);
+          const { crit, dmg } = skillRoll(s, s.novaMul, s.novaPct + s.elem.ice);
           fx.push({ kind: "nova", x: st.x, y: st.y - 0.45, r: HR.nova, color: EL.colors.ice, t0: now, dur: 520, parts: sparks(16) });
           for (const m of hit) damage(m, Math.max(1, Math.round(dmg * elemMul(m, "ice"))), crit, s, EL.colors.ice, ls);
         }
@@ -5902,7 +6269,7 @@
         let at = inReach(HR.chain)[0];
         if (at) {
           cd.chain = CHAIN.every - fast;
-          const { crit, dmg } = skillRoll(s, CHAIN.mul, s.chainPct + s.elem.bolt);
+          const { crit, dmg } = skillRoll(s, s.chainMul, s.chainPct + s.elem.bolt);
           // 튕길 차례를 먼저 정하고 (나 → 1번째 → 2번째 …) 0.12초마다 한 번씩 번개가 건너가며 그때 피해 + 번호
           const strikes = (s.chainMax ? CHAIN.strikesMax : CHAIN.strikes) + (s.uq.chainPlus || 0), order = [];
           for (let k = 0; k < strikes && at; k++) {
@@ -5955,7 +6322,7 @@
     // 그리기: 칸 = TILE, 화면은 플레이어를 따라감 (맵 끝에서 멈춤)
     function draw() {
       if (!map) return;
-      const vw = MAP_W / ZT, vh = MAP_H / ZT;   // 보이는 칸 (16×12)
+      const vw = VIEW_COLS / ZT, vh = VIEW_ROWS / ZT;   // 보이는 칸 (16×12)
       const cx = Math.max(0, Math.min(map.w - vw, st.x - vw / 2)), cy = Math.max(0, Math.min(map.h - vh, st.y - 0.5 - vh / 2));
       const z = PX * ZT, now = performance.now();
       ctx.fillStyle = "#0b0d14";
@@ -6172,6 +6539,26 @@
     }
     const blocked = () => !!document.querySelector(".overlay:not([hidden])");   // 창이 열려 있으면 움직이지 않음
     function input() { const i = { ...held, up: false, down: false, jumpHeld: held.jump, jump: jumpTap }; jumpTap = false; return i; }
+    // 회피 (dc#144, 새 규칙): 점프 대신 보는 쪽으로 DODGE.range칸 빠르게 미끄러짐 + 소리. 0.6초에 한 번
+    let dash = null, dashReady = 0, camX = 0;
+    function startDash(dir) {
+      const now = performance.now();
+      if (!ok() || dash || now < dashReady || blocked()) return false;
+      dir = dir || st.face || 1;
+      st.face = dir;
+      dash = { dir, left: DODGE.range };
+      dashReady = now + 600;
+      Sfx("roll");
+      fx.push({ x: st.x, y: st.y, t0: now, dash: dir });
+      return true;
+    }
+    function dashStep(dt) {
+      const d = Math.min(dash.left, DODGE.range / (DODGE.ms / 1000) * dt), nx = st.x + dash.dir * d;
+      const edge = Math.floor(nx + dash.dir * 0.35);
+      if (map.cell(edge, Math.floor(st.y - 0.5)) === "#") { dash = null; st.vx = 0; return; }
+      st.x = nx; dash.left -= d; st.vx = 0;
+      if (dash.left <= 1e-6) dash = null;
+    }
     function loop(t) {
       if (scene !== "lobby") { raf = 0; return; }
       raf = requestAnimationFrame(loop);
@@ -6180,7 +6567,7 @@
       if (document.hidden) return;
       if (blocked()) release();
       acc += dt;
-      while (acc >= STEP) { J.step(map, st, input(), STEP); acc -= STEP; }
+      while (acc >= STEP) { if (dash) dashStep(STEP); else J.step(map, st, input(), STEP); acc -= STEP; }
       if (st.landed !== lastLanded) { lastLanded = st.landed; landT = performance.now(); Sfx("land"); }   // 착지 '툭' (dc#104)
       townSteps(st);   // 발소리 (dc#104)
       if (st.jumped !== lastJumped) { lastJumped = st.jumped; Sfx("jump"); }   // 점프 소리 (dc#100)
@@ -6188,7 +6575,7 @@
       sync();
       Lobby.step(dt);
       // 움직이는 중이면 매 프레임, 서 있으면 초당 20번 (불빛·다른 사람 움직임) — 휴대폰 배터리
-      const moving = Math.abs(st.vx) > 0.01 || !st.ground || held.left || held.right || fx.length;
+      const moving = Math.abs(st.vx) > 0.01 || !st.ground || held.left || held.right || fx.length || dash;
       if (moving || t - lastDraw > 48) { lastDraw = t; render(); }
     }
     // 문에 들어가기 (예전 로비에서 문 칸을 밟을 때와 같은 일)
@@ -6226,6 +6613,7 @@
       return true;
     }
     function hold(name, on, repeat = false) {
+      if (name === "jump" && NEW_CTRL) { if (on && !repeat) startDash(); return; }   // 새 규칙(dc#144): Space·J·K는 회피
       if (name === "jump" && on && !held.jump && !repeat) jumpTap = true;
       held[name] = on;
     }
@@ -6473,8 +6861,9 @@
         ctx.fillText(T("마을을 불러오지 못했어요. 페이지를 새로고침해 주세요."), VIEW_W / 2, VIEW_H / 2);
         return;
       }
-      const t = performance.now() / 1000, now = performance.now(), vw = MAP_W / ZT, vh = MAP_H / ZT;
+      const t = performance.now() / 1000, now = performance.now(), vw = VIEW_COLS / ZT, vh = VIEW_ROWS / ZT;
       const cx = Math.max(0, Math.min(map.w - vw, st.x - vw / 2)), cy = Math.max(0, Math.min(map.h - vh, 0));
+      camX = cx;
       // 하늘: 밤하늘 → 지평선 쪽 보라, 별, 달, 먼 산 (천천히 따라옴)
       // 할로윈 (dc#130): 보랏빛 → 지평선 주황 하늘, 크고 둥근 주황 보름달, 날아다니는 박쥐, 짙은 보라 산
       const hw = Events.theme() === "halloween";
@@ -6546,7 +6935,13 @@
       person(st.x, st.y, mine.name, "#ffffff", myFloor, me?.crown, me?.staff, st.face, true, mine.lift);
       // 더블 점프 고리
       fx = fx.filter(f => now - f.t0 < 320);
-      for (const f of fx) { const p = (now - f.t0) / 320; ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, 0.7 * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      for (const f of fx.filter(f => f.dash)) {   // 회피 (dc#144): 지나온 자리에 흐릿한 바람 줄
+        const p = (now - f.t0) / 320, sx = f.x * TILE, sy = (f.y - 0.6) * TILE;   // 지도 좌표 (아래 원과 같게)
+        ctx.save(); ctx.globalAlpha = 0.7 * (1 - p); ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 1.2;
+        for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(sx - f.dash * k * 3, sy - 5 + k * 4); ctx.lineTo(sx - f.dash * (k * 3 + 11 + 15 * p), sy - 5 + k * 4); ctx.stroke(); }
+        ctx.restore();
+      }
+      for (const f of fx.filter(f => !f.dash)) { const p = (now - f.t0) / 320; ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(f.x * TILE, f.y * TILE, 0.7 * TILE * (0.3 + 0.7 * p), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       // 문 앞이면: ↑ 들어가기 (내 이름·포탈 층 글자 위에)
       const d = nearDoor();
       if (d) {
@@ -6556,12 +6951,41 @@
       // 화면 글자: 조작 안내
       ctx.setTransform(PX, 0, 0, PX, 0, 0);
       ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.font = '11px "Courier New", monospace';
-      const hint = narrowScreen() ? T("◀ ▶ 걷기 · 점프(공중에서 한 번 더) · 문 앞에서 ▲ 들어가기") : T("← → (A·D) 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감");
+      const hint = NEW_CTRL ? (narrowScreen() ? T("화면을 끌어 걷기 · 위로 끌면 문에 들어가기 · 톡 누르면 회피") : T("← → (A·D) 걷기 · Space 회피 · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감"))
+        : narrowScreen() ? T("◀ ▶ 걷기 · 점프(공중에서 한 번 더) · 문 앞에서 ▲ 들어가기") : T("← → (A·D) 걷기 · Space 점프(공중에서 한 번 더) · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감");
       ctx.fillStyle = "rgba(8, 10, 20, 0.7)"; ctx.fillRect(0, VIEW_H - 21, VIEW_W, 21);   // 땅 무늬 위에서도 읽히게
       ctx.fillStyle = "#c8cde0"; ctx.fillText(hint, 8, VIEW_H - 17);
     }
+    // 새 규칙 휴대폰 (dc#144): 화면을 누른 채 내 왼쪽·오른쪽으로 끌면 그쪽으로 걷기, 내 위쪽으로 끌면 문에 들어가기, 톡 누르면 회피
+    const touch = { id: null, x0: 0, y0: 0, t0: 0, moved: 0, entered: false };
+    function touchDir(e) {
+      const r = canvas.getBoundingClientRect(), vw = VIEW_COLS / ZT, vh = VIEW_ROWS / ZT;
+      const px = r.left + (st.x - camX) / vw * r.width, py = r.top + (st.y - 0.8) / vh * r.height;
+      const dx = e.clientX - px, dy = e.clientY - py, tile = r.width / vw;
+      held.left = dx < -tile * 0.5; held.right = dx > tile * 0.5;
+      if (!touch.entered && dy < -tile * 1.5 && Math.abs(dy) > Math.abs(dx)) { touch.entered = true; held.left = held.right = false; enterDoor(); }
+    }
+    canvas.addEventListener("pointerdown", (e) => {
+      if (!NEW_CTRL || scene !== "lobby" || e.pointerType === "mouse" || !ok() || blocked()) return;
+      e.preventDefault();
+      Object.assign(touch, { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0, entered: false });
+      try { canvas.setPointerCapture(e.pointerId); } catch {}
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== touch.id || scene !== "lobby") return;
+      touch.moved = Math.max(touch.moved, Math.hypot(e.clientX - touch.x0, e.clientY - touch.y0));
+      if (touch.moved >= 12) touchDir(e);
+    });
+    const touchUp = (e) => {
+      if (e.pointerId !== touch.id) return;
+      const tap = touch.moved < 12 && performance.now() - touch.t0 < 400;
+      touch.id = null; held.left = held.right = false;
+      if (tap && e.type === "pointerup" && scene === "lobby") startDash();
+    };
+    canvas.addEventListener("pointerup", touchUp);
+    canvas.addEventListener("pointercancel", touchUp);
     return {
-      start, place, draw, key, hold, release, enterDoor,
+      start, place, draw, key, hold, release, enterDoor, dash: startDash, get dashing() { return !!dash; },
       pos: () => (st ? { x: st.x, y: st.y, vx: st.vx, ground: st.ground, near: nearDoor()?.id || null } : null),
     };
   })();
@@ -6667,7 +7091,7 @@
     const art = Sprites.on, zone = zoneArt();
     // 화면에 보이는 칸만 (가까이 보기면 16×12칸 남짓)
     const tx0 = Math.max(0, Math.floor(cam.x / TILE)), ty0 = Math.max(0, Math.floor(cam.y / TILE));
-    const tx1 = Math.min(MAP_W - 1, tx0 + Math.ceil(MAP_W / cam.z)), ty1 = Math.min(MAP_H - 1, ty0 + Math.ceil(MAP_H / cam.z));
+    const tx1 = Math.min(MAP_W - 1, tx0 + Math.ceil(VIEW_COLS / cam.z) + 1), ty1 = Math.min(MAP_H - 1, ty0 + Math.ceil(VIEW_ROWS / cam.z) + 1);
     for (let y = ty0; y <= ty1; y++) {
       for (let x = tx0; x <= tx1; x++) {
         if (!seen[y][x]) continue;
@@ -6824,6 +7248,7 @@
       for (const c of f.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
     }
     Walk.draw();
+    if (fullMap) drawMarks(ctx, TILE, Math.max(TILE, 14 / cam.z), null, true);
     if (overlayMap && !fullMap) drawOverlay();
   }
 
@@ -9442,7 +9867,7 @@
       case "arrowright": case "d": tryMove(1, 0); break;
       case ".":                    wait(); break;           // 제자리 대기 (10/25부터 마침표, Space는 점프)
       case "q":                    usePotion(); break;
-      case " ": case "j":          aimJump(); break;        // 점프: Space(또는 J) + 방향
+      case " ": case "j":          if (NEW_CTRL) dodge(); else aimJump(); break;   // 회피: Space(또는 J) (dc#144) · 예전 테스트는 점프 + 방향
       case "escape":               if (jumpAim) aimJump(); else handled = false; break;   // 점프 고르기 취소
       case "p": case "r": case "l": portal(); break;  // R(예전 재시작)·L(예전 로비로)도 포탈
       default: handled = false;
