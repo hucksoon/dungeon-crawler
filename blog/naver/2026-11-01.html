@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 레벨 옆 숫자는 이제 경험치 %</title>
+<meta name="description" content="화면 위 레벨 옆의 &quot;+76%&quot;가 경험치처럼 보여서 헷갈렸어요. 이제 그 자리에는 다음 레벨까지 경험치가 몇 %인지 보여 주고, 레벨 보너스는 인벤토리 [능력치]에서 설명해요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-01.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 레벨 옆 숫자는 이제 경험치 %">
+<meta property="og:description" content="화면 위 레벨 옆의 &quot;+76%&quot;가 경험치처럼 보여서 헷갈렸어요. 이제 그 자리에는 다음 레벨까지 경험치가 몇 %인지 보여 주고, 레벨 보너스는 인벤토리 [능력치]에서 설명해요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-01.html">
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-01.html">블로그 글 보기</a></nav>
+<h1 id="title-text">레벨 옆 숫자는 이제 경험치 %</h1>
+<p class="meta">2026년 11월 1일 (일) · 태그: 개발일기, 레벨, Claude Code</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<p class="steps">이미지 2장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/level-xp.png" download="2026-11-01-1-level-xp.png">1. Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</a> · <a href="../images/level-bonus.png" download="2026-11-01-2-level-bonus.png">2. 인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</a></p>
+<div id="paper">
+<p>어제 끝이 없는 구멍의 경험치를 크게 올렸더니, 레벨이 쑥쑥 올라 39레벨이 됐어요. 그런데 화면 위 레벨 옆에 있는 &quot;+76%&quot;를 보고 &quot;이게 경험치인가?&quot; 하고 헷갈렸어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">+76%는 레벨 보너스였어요</span></b></p>
+<p>던전 크롤러는 레벨이 하나 오를 때마다 최대 HP와 공격력이 2%씩 더 붙어요. 39레벨이면 (39 − 1) × 2% = 76%예요. 화면 위 &quot;+76%&quot;는 이 레벨 보너스였어요. 그런데 바로 앞에 경험치 숫자가 있어서 경험치처럼 보였어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">이렇게 바꿨어요</span></b></p>
+<p>• 레벨 옆에는 <strong>다음 레벨까지 경험치가 몇 %인지</strong> 보여 줘요. 100%가 되면 레벨이 올라요</p>
+<p>• 레벨 보너스는 인벤토리의 [능력치]에 &quot;레벨 39 보너스: 최대 HP·공격력 +76% (레벨마다 +2%)&quot;처럼 설명해요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/level-xp.png" alt="Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</span></p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/level-bonus.png" alt="인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</span></p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-01.html">https://game.apacimtest.com/blog/2026-11-01.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>

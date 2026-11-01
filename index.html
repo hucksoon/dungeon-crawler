@@ -6462,9 +6462,10 @@
     document.getElementById("plvl").textContent = player.plvl;
     document.getElementById("xp").textContent = player.xp;
     document.getElementById("xpn").textContent = player.xpNext;
-    const lvb = document.getElementById("lvb");   // 레벨 보너스 (dc#95)
-    lvb.textContent = levelPct() ? ` +${levelPct()}%` : "";
-    lvb.parentElement.title = T("레벨 보너스: 최대 HP·공격력 +{0}%", levelPct());
+    // 다음 레벨까지 경험치 % (dc#139: 전에는 레벨 보너스 +N%였는데 경험치로 헷갈려서, 레벨 보너스는 인벤토리 [능력치]로)
+    const lvb = document.getElementById("lvb"), xpPct = player.xpNext > 0 ? Math.min(99, Math.floor(player.xp / player.xpNext * 100)) : 0;
+    lvb.textContent = ` ${xpPct}%`;
+    lvb.parentElement.title = T("다음 레벨까지 경험치 {0}% (100%가 되면 레벨 업)", xpPct);
     document.getElementById("zone").textContent = inAbyss() ? T("구멍 ") : inHell() ? T("헬 ") : inNM() ? T("나이트메어 ") : goldNM() ? T("골드 던전 · 나이트메어 ") : inGold() ? T("골드 던전 ") : "";
     document.getElementById("best").textContent = inAbyss() ? (abyssCleared ? T("{0} 완료", abyssBest) : (abyssBest || "-")) : inHell() ? (hellCleared ? T("{0} 완료", hellBest) : (hellBest || "-")) : inNM() ? (nmCleared ? T("{0} 완료", nmBest) : (nmBest || "-"))
       : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
@@ -6841,6 +6842,8 @@
     const s = stats();
     const statRows = [
       T("공격력 {0} (장비 +{1})", s.atk, `${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""}`), T("방어력 {0}", s.def) + (g.defPct ? ` (+${g.defPct}%)` : ""), T("최대 HP {0} (장비 +{1})", s.maxHp, `${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""}`),
+      // 레벨 보너스 (dc#95, dc#139: 화면 위 Lv 옆에서 여기로 옮김)
+      ...(levelPct() ? [T("레벨 {0} 보너스: 최대 HP·공격력 +{1}% (레벨마다 +{2}%)", player.plvl, levelPct(), LEVEL.pct)] : []),
       T("치명타 {0}% (피해 ×{1}) · 흡혈 {2}%", s.crit, s.critMul.toFixed(1), s.lifesteal) + (s.lifesteal >= lsCap(g) ? T(" (최대 {0}%)", lsCap(g)) : ""), T("골드 +{0}% · 경험치 +{1}%", s.gold, s.xp),
       ...(g.guard ? [T("장검 + 방패: 흡혈 +{0}% (흡혈 최대 {1}%)", RLItems.SHIELD_GUARD.lifesteal, RLItems.SHIELD_GUARD.cap)] : []),
       ...(s.killHeal ? [T("처치 시 HP +{0}", s.killHeal)] : []),

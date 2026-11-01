@@ -46,7 +46,13 @@ try {
   check("level up → Lv 12: base +4 HP / +1 atk, then +22%", s.plvl === 12 && s.baseHp === 64 && s.baseAtk === 14 && s.maxHp === Math.round(64 * 1.22) && s.atk === Math.round(14 * 1.22), JSON.stringify(s));
   check("level-up log shows the bonus", (await logText(A.page)).includes("레벨 보너스 +22%"));
   check("stats panel shows the bonused max HP", (await A.page.locator("#stats").innerText()).includes(String(s.maxHp)));
-  check("stats panel shows the level bonus next to Lv", (await A.page.locator("#lvb").innerText()).trim() === "+22%");
+  // dc#139: Lv 옆은 다음 레벨까지 경험치 %, 레벨 보너스는 인벤토리 [능력치]에
+  check("next to Lv: XP progress % (0/xpNext right after the level-up → 0%)", (await A.page.locator("#lvb").innerText()).trim() === "0%", await A.page.locator("#lvb").innerText());
+  await A.page.evaluate(() => window.__t.xp(Math.ceil(window.__t.s().xpNext * 0.37))); await sleep(100);
+  check("XP progress follows the bar (37%)", (await A.page.locator("#lvb").innerText()).trim() === "37%", await A.page.locator("#lvb").innerText());
+  await A.page.keyboard.press("i"); await sleep(300);
+  check("inventory [stats]: Level 12 bonus +22% (+2% per level)", (await A.page.locator("#inv-modal").innerText()).includes("레벨 12 보너스: 최대 HP·공격력 +22% (레벨마다 +2%)"));
+  await A.page.keyboard.press("Escape");
   check("A: no page errors", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
 

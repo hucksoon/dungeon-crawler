@@ -209,6 +209,15 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(30, "blog-abwp", {}, { hb: 51, hclr: 1 }), "rl_inv:g:DEV": inv(g150) } });
     await goDoor(o.page, "waypoint"); await sleep(300);
     return { ...o, shot: "#wp-modal .modal" }; }],
+  // Lv 옆 경험치 % (dc#139): 화면 위 능력치 줄, 레벨 보너스는 인벤토리 [능력치]에
+  ["level-xp", "Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)", async () => {
+    const o = await open({ dsf: 1.6, seed: { rl_save: save(12, "blog-lvxp", { l: 39, x: 40394602, xn: 46727380, hp: 1200, mh: 1200 }), "rl_inv:g:DEV": inv(g40) } });
+    return { ...o, shot: "#stats" }; }],
+  ["level-bonus", "인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-lvb", { l: 39, x: 40394602, xn: 46727380, hp: 1200, mh: 1200 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("i"); await sleep(400);
+    await o.page.locator('.inv-tab[data-tab="stats"]').click().catch(() => {}); await sleep(400);
+    return { ...o, shot: "#inv-summary" }; }],
   // 구멍 경험치 150배 (dc#138): 웨이포인트로 구멍 1층에 들어가면 기록 창에 안내
   ["abyss-xp", "끝이 없는 구멍에 들어가면: 장비·골드 대신 경험치를 150배", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_save: save(30, "blog-abxp", {}, { hb: 51, hclr: 1 }), "rl_inv:g:DEV": inv(g150) } });
