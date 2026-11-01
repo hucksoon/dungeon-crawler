@@ -11,7 +11,8 @@ const I = require("../items.js"), M = require("../monsters.js"), B = require("..
 
 const RUNS = +(process.argv[2] || 200), ZONE = process.argv[3] || "all";
 const OPT = JSON.parse(process.argv[4] || "{}");
-const KILL_SHARE = OPT.kill ?? 0.5, ELEM_MUL = OPT.elem ?? 1.2;
+// 넓은 지역(dc#143): 층의 몬스터를 모두 잡아야 계단(보스 층은 보스+부하)이 나오므로 모두 잡음
+const KILL_SHARE = OPT.kill ?? 1, ELEM_MUL = OPT.elem ?? 1.2;
 // 한 번에 붙는 몬스터 수: 일반 던전 앞쪽은 1~2마리, 깊을수록 많이 (나이트메어·헬은 몰려옴)
 const GROUP = (zone, f) => OPT.group ?? (zone === "normal" ? (f <= 5 ? 1 : f <= 20 ? 2 : 3) : 4);
 if (OPT.mul) Object.assign(I.POWER.mul, OPT.mul);
@@ -29,7 +30,9 @@ function newPlayer(level = 1) {
   while (p.lvl < level) levelUp(p);
   return p;
 }
-function levelUp(p) { p.lvl++; p.xpNext = Math.floor(p.xpNext * 1.5); p.maxHp += 4; p.atk += 1; }
+// 레벨 (dc#143): 다음 레벨까지 ×XP_GROW (게임과 같게 1.3), 레벨이 오를 때마다 축복 하나 (p.lvBless가 있으면)
+const XP_GROW = OPT.xpGrow ?? 1.3;
+function levelUp(p) { p.lvl++; p.xpNext = Math.floor(p.xpNext * XP_GROW); p.maxHp += 4; p.atk += 1; if (p.lvBless) p.lvBless(p.lvl); }
 function gainXp(p, n) { p.xp += n; while (p.xp >= p.xpNext) { p.xp -= p.xpNext; levelUp(p); } }
 
 function stats(p) {
@@ -38,7 +41,7 @@ function stats(p) {
   return {
     maxHp: Math.round(pct(p.maxHp + g.hp, (b.hpPct || 0) + lp)), atk: Math.round(pct(p.atk + g.atk, (b.atkPct || 0) + lp)), def: Math.round(pct(g.def, b.defPct || 0)),
     crit: Math.min(cap.crit, b.crit || 0), ls: Math.min(cap.lifesteal, b.lifesteal || 0), dr: Math.min(cap.dmgReduce, b.dmgReduce || 0), parry: Math.min(cap.parry, b.parry || 0),
-    ef: Object.fromEntries(B.ELEM_IDS.map(k => { const lv = Math.min(5, b[`${k}Lv`] || 0); return [k, lv ? B.ELEM[k](lv) : null]; })),
+    ef: Object.fromEntries(B.ELEM_IDS.map(k => { const lv = Math.min(B.ELEM_MAX, b[`${k}Lv`] || 0); return [k, lv ? B.ELEM[k](lv) : null]; })),
     first: b.firstHit || 0, bossHp: b.bossHp || 0, pot: 0.3 * (1 + (b.potPct || 0) / 100), potCd: 10 - (b.potCd || 0), floorHeal: b.floorHeal || 0, xp: b.xp || 0, elite: b.elite || 0, treasure: b.treasure || 0,
   };
 }
@@ -116,7 +119,7 @@ function castElem(s, foes, st, r, killed) {
     if (st.ecd[k] > 0 || !foes.length) continue;
     st.ecd[k] = e.every;
     const d = roll(e);
-    if (k === "fire") for (const m of foes.slice(0, e.radius >= 2 ? 6 : 3)) hit(m, d + s.atk * 0.5, k);
+    if (k === "fire") for (const m of foes.slice(0, e.radius >= 3 ? 9 : e.radius >= 2 ? 6 : 3)) hit(m, d + s.atk * 0.5, k);
     else if (k === "ice") for (const m of foes) { hit(m, d, k); if (!(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }
     else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
     for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
@@ -165,6 +168,7 @@ function pickBest(list, pri) { return [...list].sort((a, b) => priOf(pri, a) - p
 // 한 던전 50층 (p를 이어서 씀). 쓰러지면 쓰러진 층, 다 깨면 0
 function runZone(p, zone, r, rid, out, from = 1) {
   const st = { hp: stats(p).maxHp, cd: 0, killed: [] };
+  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { const off = B.offer(`${rid}|lv|${lvl}`, p.bl); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
   for (let f = from; f <= 50; f++) {
     // 새 층: 축복 하나
     const off = B.offer(`${rid}|${zone}|${f}`, p.bl);
@@ -197,8 +201,10 @@ function runZone(p, zone, r, rid, out, from = 1) {
       const boss = makeBoss(zone, f, r);
       boss.hp = Math.round(boss.hp * (1 - s.bossHp / 100));
       st.killed = [];
-      if (!fight(p, s, [boss], st, r, zone)) { out.bossDeaths = (out.bossDeaths || 0) + 1; out.where[`${zone}${f}b`] = (out.where[`${zone}${f}b`] || 0) + 1; return f; }
-      gainXp(p, boss.xp);
+      // 넓은 지역(dc#143): 보스는 부하 2 + 층/10마리와 함께 (부하 먼저 잡는다고 보고 앞에)
+      const adds = OPT.noAdds ? [] : Array.from({ length: 2 + Math.floor(f / 10) }, () => fm.make(r() < 0.35 ? "elite" : "normal"));
+      if (!fight(p, s, [...adds, boss], st, r, zone)) { out.bossDeaths = (out.bossDeaths || 0) + 1; out.where[`${zone}${f}b`] = (out.where[`${zone}${f}b`] || 0) + 1; return f; }
+      for (const m of st.killed) gainXp(p, Math.round(m.xp * (1 + s.xp / 100)));
       for (let k = 0; k < 2; k++) { const it = I.rollDrop(`${rid}|${tag(zone)}${f}|b${k}`, L, "boss"); if (it) autoGear(p, it, log); }
       if (!OPT.noBless) { const ro = B.offer(`${rid}|${zone}|r${f}`, p.rl, true); if (ro.length) { const id = pickBest(ro, RELIC_PRI); p.rl[id] = (p.rl[id] || 0) + 1; } }
       autoEnhance(p);

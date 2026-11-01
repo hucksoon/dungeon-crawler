@@ -11,6 +11,7 @@
 
   // elem (dc#142): 속성 스킬 축복. 희귀보다 자주 보이게 (후보 3개 중 속성 축복이 하나라도 있을 확률 약 54%, 희귀보다 4배 자주). 꼭 나오지는 않음
   const TIERS = { common: { weight: 75, color: "#8fd3ff" }, rare: { weight: 20, color: "#5aa9ff" }, legend: { weight: 5, color: "#ffcf5c" }, elem: { weight: 26, color: "#ff8a5c" } };
+  const ELEM_MAX = 10;   // 속성 스킬 최고 단계 (dc#143)
   // fx: 한 번 고를 때 더하는 값 (stats 키). max: 겹칠 수 있는 최대 횟수
   const BLESSINGS = {
     might: { icon: "⚔", name: "전사의 맹세", tier: "common", max: 10, fx: { atkPct: 4 } },
@@ -28,21 +29,25 @@
     guide: { icon: "🧭", name: "길잡이", tier: "legend", max: 1, fx: { guide: 1 } },
     eye: { icon: "👁", name: "넓은 눈", tier: "legend", max: 2, fx: { sight: 1 } },
     hero: { icon: "✨", name: "영웅의 기운", tier: "legend", max: 3, fx: { atkPct: 6, defPct: 6, hpPct: 6 } },
-    // 속성 스킬 (dc#142): 처음 고르면 스킬이 생기고, 또 고르면 단계(Lv)가 올라 피해·범위·횟수가 커짐 (ELEM). 최대 Lv 5 = 마스터
-    fire: { icon: "🔥", name: "화염구", tier: "elem", max: 5, fx: { fireLv: 1 } },
-    ice: { icon: "❄", name: "얼음 폭발", tier: "elem", max: 5, fx: { iceLv: 1 } },
-    bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: 5, fx: { boltLv: 1 } },
+    // 속성 스킬 (dc#142): 처음 고르면 스킬이 생기고, 또 고르면 단계(Lv)가 올라 피해·범위·횟수가 커짐 (ELEM). 최대 Lv 10 = 마스터 (dc#143, 예전 Lv 5)
+    fire: { icon: "🔥", name: "화염구", tier: "elem", max: ELEM_MAX, fx: { fireLv: 1 } },
+    ice: { icon: "❄", name: "얼음 폭발", tier: "elem", max: ELEM_MAX, fx: { iceLv: 1 } },
+    bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: ELEM_MAX, fx: { boltLv: 1 } },
   };
-  // 속성 스킬 단계별 값. 한 판에 속성 축복은 모두 합쳐 ELEM_CAP번까지 → 세 속성을 모두 마스터(Lv 5)할 수는 없음 (최대 둘)
-  //   피해는 시뮬레이션으로 (tools/sim-v2.mjs): 처음 값(mul 0.8 · 0.7 · 0.4, 단계마다 +30%)은 셋을 모으면 너무 세서 낮춤
-  //   fire: every턴마다 range칸 안 가장 가까운 적 중심 (2·radius+1)² 폭발, 공격력 × mul × (1 + pct%) 불 피해 + 화상
-  //   ice: every턴마다 내 주변 radius칸 적 모두 공격력 × mul × (1 + pct%) 얼음 피해 + 느려짐
-  //   bolt: every턴마다 가장 가까운 적부터 strikes번 튕김 (한 번에 공격력 × mul × (1 + pct%) 번개 피해). shock: 같은 적 다시 맞힘 + 감전
-  const ELEM_CAP = 10;
+  // 속성 스킬 단계별 값 (dc#143: Lv 10까지, 단계마다 조금씩 세짐). 한 판에 속성 축복은 모두 합쳐 ELEM_CAP번까지 → 세 속성을 모두 마스터(Lv 10)할 수는 없음 (최대 둘)
+  //   피해는 언제나 내 공격력 × mul × (1 + pct%) (공격력이 오르면 같이 셈). 숫자는 시뮬레이션으로 (tools/sim-v2.mjs)
+  //   fire: every턴마다 range칸 안 가장 가까운 적 중심 (2·radius+1)² 폭발 + 화상
+  //   ice: every턴마다 내 주변 radius칸 적 모두 + 느려짐
+  //   bolt: every턴마다 가장 가까운 적부터 strikes번 튕김. shock: 같은 적 다시 맞힘 + 감전
+  //   Lv  1  2  3  4  5  6  7  8  9  10
+  //   주기 3  3  3  3  2  2  2  2  2  2   (화염구·얼음 폭발 범위: Lv 4부터 2칸, Lv 8부터 3칸 · 연쇄 번개: 1+Lv번, Lv 4부터 감전)
+  //   피해 +12%씩, Lv 10 마스터는 +30% 더 (+138%) · 화염구·연쇄 번개 거리 Lv 7부터 4칸
+  const ELEM_CAP = 20;
+  const grow = (lv) => 12 * (lv - 1) + (lv >= ELEM_MAX ? 30 : 0);
   const ELEM = {
-    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: 3, radius: lv >= 3 ? 2 : 1, mul: 0.3, pct: 15 * (lv - 1) }),
-    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= 3 ? 2 : 1, mul: 0.25, pct: 15 * (lv - 1) }),
-    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: 3, strikes: 1 + lv, mul: 0.15, pct: 15 * (lv - 1), shock: lv >= 3 }),
+    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= 8 ? 3 : lv >= 4 ? 2 : 1, mul: 0.5, pct: grow(lv) }),
+    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= 8 ? 3 : lv >= 4 ? 2 : 1, mul: 0.4, pct: grow(lv) }),
+    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: 1 + lv, mul: 0.25, pct: grow(lv), shock: lv >= 4 }),
   };
   const ELEM_IDS = ["fire", "ice", "bolt"];
   const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
@@ -147,8 +152,14 @@
 
   const isElem = (id) => ELEM_IDS.includes(id);
   // 카드·기록에 쓰는 설명: 속성 스킬은 그 단계(lv)의 설명, 나머지는 한 번 고를 때 효과
-  const cardText = (id, lv = 1) => { const d = defOf(id); return d ? fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1) : id; };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_CAP, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  //   atk를 주면 속성 스킬은 지금 공격력으로 한 번에 주는 피해도 (dc#143)
+  const elemDmg = (id, lv, atk) => { const e = ELEM[id](Math.max(1, Math.min(ELEM_MAX, lv))); return Math.max(1, Math.round(atk * e.mul * (1 + e.pct / 100))); };
+  const cardText = (id, lv = 1, atk = 0) => {
+    const d = defOf(id); if (!d) return id;
+    const t = fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1);
+    return isElem(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
+  };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_MAX, ELEM_CAP, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

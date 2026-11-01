@@ -15,7 +15,7 @@ const OUT = process.env.SHOTS_OUT || path.join(REPO, "blog/images");   // SHOTS_
 const require = createRequire((process.env.NODE_PATH || "/usr/lib/node_modules") + "/");
 const { chromium } = require("playwright");
 const local = createRequire(import.meta.url);
-const I = local(path.join(REPO, "items.js")), M = local(path.join(REPO, "monsters.js"));
+const I = local(path.join(REPO, "items.js")), M = local(path.join(REPO, "monsters.js")), BL = local(path.join(REPO, "blessings.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php", STORE = "https://store.xsolla.com/api/v2/project/317991";
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const only = process.argv.slice(2);
@@ -143,6 +143,24 @@ async function view3d(opts, mobs, { wait = 1200, reveal = false, map = "small" }
   await o.page.evaluate(() => window.RLView3D.look(Number(localStorage.getItem("blog_yaw")), -0.05));
   await sleep(wait);
   return { ...o, shot: "#stage" };
+}
+// 저장된 층을 고치고 다시 불러옴 (넓은 지역은 층마다 크기가 달라 L.w를 씀, dc#143)
+async function editLevel(page, fn, arg = null) {
+  await page.evaluate(([src, arg]) => { const L = JSON.parse(localStorage.getItem("rl_level")); new Function("L", "arg", `(${src})(L, arg)`)(L, arg); localStorage.setItem("rl_level", JSON.stringify(L)); }, [fn.toString(), arg]);
+  await page.reload(); await sleep(900);
+}
+// 몬스터를 하나만 남겨 바로 옆(바닥)에 HP 1로 세움 → 그쪽 방향 키를 돌려줌 (한 번 때리면 층의 마지막 몬스터가 쓰러짐)
+async function lastFoe(page) {
+  let key = "ArrowRight";
+  await editLevel(page, (L) => {
+    const dirs = [[1, 0, "ArrowRight"], [-1, 0, "ArrowLeft"], [0, 1, "ArrowDown"], [0, -1, "ArrowUp"]].filter(([dx, dy]) => L.map[(L.py + dy) * L.w + L.px + dx] === "1");
+    const [dx, dy, k] = dirs[0];
+    L.enemies = [{ ...L.enemies.find(e => e.kind !== "boss"), x: L.px + dx, y: L.py + dy, hp: 1, atk: 0, kind: "normal" }];
+    L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 10 ? "1" : "0"; }).join("");
+    localStorage.setItem("blog_dir", k);
+  });
+  key = await page.evaluate(() => localStorage.getItem("blog_dir")) || key;
+  return key;
 }
 const press = async (page, keys, gap = 60) => { for (const k of keys) { await page.keyboard.press(k); await sleep(gap); } };
 
@@ -549,6 +567,47 @@ const SCENES = [
     await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
     await press(o.page, [".", ".", ".", ".", ".", "."], 420);
     return { ...o, shot: "#log" }; }],
+  // dc#143: 넓은 지역 · 몬스터를 다 잡으면 계단 · 보스와 부하 · 지도 표시 · 레벨 업 축복
+  ["v4-open", "복도 대신 넓게 트인 지역 (일반 12층)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v4open", { l: 14 , hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => { L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 13 ? "1" : "0"; }).join(""); });
+    return { ...o, shot: "#stage" }; }],
+  ["v4-map", "전체 지도: 가 보지 않은 곳의 보물(!), 보스(빨간 왕관), 가장 좋은 장비(★)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(15, "blog-v4map", { l: 20 , hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    const best = I.generate("blog-v4map|best", "golden", 22);
+    await editLevel(o.page, (L, best) => {
+      const far = []; for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (L.map[i] === "1" && Math.abs(x - L.px) + Math.abs(y - L.py) > 30) far.push({ x, y }); }
+      L.items.push({ ...far[Math.floor(far.length * 0.3)], type: "gear", item: best });
+      L.enemies.push({ ...L.enemies[0], ...far[Math.floor(far.length * 0.8)], kind: "boss", name: "고블린 대장", hp: 900, maxHp: 900 });
+    }, best);
+    await o.page.keyboard.press("m"); await sleep(600);
+    return { ...o, shot: "#stage" }; }],
+  ["v4-boss", "보스 층에서 몬스터를 다 잡으면 보스가 부하들과 함께 나타나요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(15, "blog-v4boss", { l: 22 , hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    const dir = await lastFoe(o.page);
+    await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
+    await o.page.keyboard.press(dir); await sleep(900);
+    return { ...o, shot: "#game" }; }],
+  ["v4-levelup", "레벨이 오르면 축복 하나를 더 골라요. 속성 축복 카드에는 지금 공격력으로 주는 피해가 보여요", async () => {
+    // 레벨 업 후보에 속성 축복이 둘 이상 나오는 판 번호를 찾음 (후보는 판 번호·레벨로 정해짐)
+    const have = { fire: 3, might: 2, vigor: 2 };
+    let rid = "blog-v4lv0"; for (let k = 0; k < 500; k++) { const r = `blog-v4lv${k}`, off = BL.offer(`${r}|lv|19|0`, have); if (off.filter(BL.isElem).length >= 2) { rid = r; break; } }
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(12, rid, { l: 18, x: 990, xn: 1000, bz: { normal: 12 }, bl: have }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    const dir = await lastFoe(o.page);
+    await o.page.keyboard.press(dir); await sleep(900);
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v4-stairs", "마지막 몬스터를 쓰러뜨린 자리에 계단(>)이 나타났어요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v4stairs", { l: 18 , hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    const dir = await lastFoe(o.page);
+    await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
+    await o.page.keyboard.press(dir); await sleep(900);
+    return { ...o, shot: "#game" }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

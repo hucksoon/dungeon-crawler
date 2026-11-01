@@ -170,6 +170,7 @@
       "bfx.iceLv": (n, ev, r, d) => `Lv ${n}: every ${ev} turns, ${d}% of attack as ice damage to all enemies within ${r} tiles + slow`,
       "bfx.boltLv": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each`,
       "bfx.boltLvS": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each + shock`,
+      "bfx.now": (n) => ` (with your current attack: ${n} per hit)`,
     },
   });
 })(typeof self !== "undefined" ? self : this);

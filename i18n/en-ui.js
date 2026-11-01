@@ -1302,5 +1302,18 @@
     "새 판은 레벨 1, 일반 던전 1층부터 시작한다. 장비는 그대로다.": "A new run starts at level 1 on Normal floor 1. Your gear stays.",
     "† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다.": "† Left a tombstone where you fell on {0}. Step on it again to get {1} gold back.",
     "로비에서 새로 시작한다. 레벨 1·골드 0으로 돌아갔고, 장비는 그대로다.": "Starting over from the lobby. You are back to level 1 with 0 gold; your gear stays.",
+    "이 층에는 상점(&)이 있다. 다음 층은 보스 층! 시작 자리 옆에서 골드로 장비를 갖추자.": "There's a shop (&) on this floor. The next floor is a boss floor! Gear up with gold next to where you started.",
+    "🧭 길잡이: 이 층의 지도가 모두 보인다.": "🧭 Pathfinder: the whole map of this floor is shown.",
+    "계단을 지키던 네임드 보스를 모두 쓰러뜨렸다!": "Defeated every named boss guarding the stairs!",
+    "보스를 쓰러뜨렸다!": "Boss defeated!",
+    "✦ 몬스터를 모두 잡자 네임드 보스 {0} ({1})이(가) 부하 {2}마리와 함께 나타났다! {3}": "✦ With every monster down, the named boss {0} ({1}) appears with {2} minions! {3}",
+    "몬스터를 모두 잡자 {0}이(가) 부하 {1}마리와 함께 나타났다! 쓰러뜨리면 계단이 열린다.": "With every monster down, {0} appears with {1} minions! Defeat it to open the stairs.",
+    "보스!": "Boss!",
+    "▼ 마지막 적을 쓰러뜨리자 아래층으로 내려가는 계단이 나타났다!": "▼ The last enemy falls, and stairs down to the next floor appear!",
+    "계단": "Stairs",
+    "✦ 레벨 업! Lv {0} 축복 고르기": "✦ Level up! Lv {0} — pick a blessing",
+    "레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.": "You leveled up! Pick one more blessing for this run.",
+    "몬스터를 모두 잡으면 나오는 계단(>)으로": "Clear every monster, then take the stairs (>)",
+    "던전 1층에 발을 들였다. 몬스터를 모두 쓰러뜨리면 계단(>)이 나타난다.": "You step into floor 1 of the dungeon. Defeat every monster and the stairs (>) appear.",
   } });
 })(typeof self !== "undefined" ? self : this);
