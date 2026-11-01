@@ -1277,5 +1277,9 @@
     "던전에서 새 층에 내려갈 때마다 축복 3개 중 1개, 보스를 쓰러뜨리면 상한을 올리는 유물 1개를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요. 던전을 완료하면 축복을 가진 채 다음 던전으로 이어갈 수 있어요.": "Each time you go down to a new floor, choose 1 of 3 blessings; defeat a boss to choose a relic that raises a cap. They stay through portal trips and are lost when you fall and start over. After clearing a dungeon you can continue into the next one with your blessings.",
     "세트·룬워드·보석·유니크 고유 효과는 이제 쓰이지 않아요. 가진 보석·룬은 저장본에 그대로 남아 있어요.": "Set, runeword, gem and unique effects are no longer used. Your gems and runes are kept in your save.",
     "가지고 있던 보석·룬 대신 강화석 {0}개와 악몽 강화석 {1}개를 받았어요.": "In place of your gems and runes, you got {0} enhancement stones and {1} nightmare stones.",
+    // 운영자 장비 지우기 (dc#141)
+    "🧹 운영자: 장비·강화석 모두 지우기 (테스트)": "🧹 Staff: wipe all gear and stones (test)",
+    "운영자 테스트: 가방과 낀 장비, 강화석을 모두 지울까요? 되돌릴 수 없어요.": "Staff test: wipe your bag, equipped gear and stones? This cannot be undone.",
+    "장비 {0}개와 강화석을 모두 지웠어요.": "Wiped {0} items and all stones.",
   } });
 })(typeof self !== "undefined" ? self : this);

@@ -152,13 +152,23 @@ try {
   await D.page.locator("#death-modal button.staff-revive").click(); await sleep(400);
   const lvl3 = await D.page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   check("operator revive → back on floor 5 (new map), gold/level kept", lvl3?.d === 5 && (lvl3?.z || "normal") === "normal" && lvl3?.rid !== lvl?.rid && await D.page.locator("#death-modal").isHidden() && (await D.page.locator("#gold").innerText()) === "0", JSON.stringify([lvl3?.d, lvl3?.z]));
-  // 로비 → 시간 상점 진열 바꾸기 4번
+  // 운영자 테스트용 장비 지우기 (dc#141): 가방·낀 장비·강화석을 모두 비움 (확인 창). 시간 상점은 없앰
   await press(D.page, "p"); await sleep(300);
-  // 정식 v2 (dc#140): 대장간(옵션 재련)이 쉬어서 그 확인은 뺌
-  await goDoor(D.page, "hourshop");
-  check("hour shop opened", !(await D.page.locator("#shop-modal").isHidden()), await D.page.locator("#shop-title").innerText().catch(() => ""));
-  for (let k = 0; k < 4; k++) { await D.page.locator("#shop-reroll").click(); await sleep(120); }
-  check("operator: hour-shop reroll past 3 times, free", (await D.page.locator("#shop-reroll").innerText()).includes("운영자: 횟수 제한 없음 · 4번 바꿈") && await D.page.locator("#shop-reroll").isEnabled() && (await D.page.locator("#gold").innerText()) === "0", await D.page.locator("#shop-reroll").innerText());
+  check("no 시간 상점 door in the town (dc#141)", await D.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "hourshop") && !window.RLJump.TOWN.buildings.some(b => b.id === "hourshop")));
+  const invOf = () => D.page.evaluate(() => { const k = Object.keys(localStorage).find(k => k.startsWith("rl_inv:u:")); return k && JSON.parse(localStorage.getItem(k)); });
+  await D.page.evaluate(() => { const k = Object.keys(localStorage).find(k => k.startsWith("rl_inv:u:")); const v = JSON.parse(localStorage.getItem(k)); v.stones = 50; v.nmStones = 7; localStorage.setItem(k, JSON.stringify(v)); });
+  await D.page.reload(); await sleep(1500);
+  const invBefore = await invOf();
+  await press(D.page, "i"); await sleep(300);
+  check("operator: wipe button shown", await D.page.locator("#inv-staff-wipe").isVisible());
+  let wipeAsk = "";
+  D.page.once("dialog", (d) => { wipeAsk = d.message(); });   // 확인 창은 open()이 이미 "예"로 받음
+  await D.page.locator("#inv-staff-wipe").click(); await sleep(400);
+  const after = await invOf();
+  check("operator wipe: asks first, then bag/equip/stones are all empty", wipeAsk.includes("모두 지울까요") && after.bag.length === 0 && Object.values(after.equip).every(v => !v) && !after.stones && !after.nmStones && !after.hellStones,
+    JSON.stringify([wipeAsk, invBefore?.stones, after?.bag?.length, after?.stones]));
+  check("operator wipe: message in the side panel", (await D.page.locator("#inv-detail").innerText()).includes("강화석을 모두 지웠어요"));
+  await D.page.locator("#inv-close").click(); await sleep(100);
   await D.page.screenshot({ path: `${OUT}/staff.png` });
   check("operator: no page errors", D.errors.length === 0, D.errors.join("; "));
   await D.ctx.close();
@@ -166,7 +176,7 @@ try {
   // 일반 사용자: 그대로 막힘
   const P = await open(A); await sleep(1000);
   await press(P.page, "i"); await sleep(200);
-  check("normal user: no operator text, no gift button", !(await P.page.locator("#inv-count").innerText()).includes("운영자") && await P.page.locator("#inv-staff-gift").isHidden());
+  check("normal user: no operator text, no gift/wipe button", !(await P.page.locator("#inv-count").innerText()).includes("운영자") && await P.page.locator("#inv-staff-gift").isHidden() && await P.page.locator("#inv-staff-wipe").isHidden());
   // 정식 v2 (dc#140): 고대 다시 굴리기·확률 강화·홈이 없어져서 그 확인은 뺌 (강화석 +4는 v2-e2e)
   await P.page.locator("#inv-close").click(); await sleep(100);
   await press(P.page, "p"); await sleep(300);

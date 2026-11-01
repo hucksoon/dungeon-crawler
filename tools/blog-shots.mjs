@@ -529,6 +529,12 @@ const SCENES = [
     await goDoor(o.page, "mailbox", { enter: false });
     await o.page.keyboard.down("ArrowRight"); await sleep(260); await o.page.keyboard.up("ArrowRight"); await sleep(900);
     return { ...o, shot: "#stage" }; }],
+  // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
+  ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "waypoint", { enter: false });
+    await o.page.keyboard.down("ArrowLeft"); await sleep(200); await o.page.keyboard.up("ArrowLeft"); await sleep(900);
+    return { ...o, shot: "#stage" }; }],
   ["v2-market", "거래소는 점검 중: 우편함은 그대로", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-v2town"), "rl_inv:g:DEV": inv(g40) } });
     await goDoor(o.page, "market"); await sleep(600);

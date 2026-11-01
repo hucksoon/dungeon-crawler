@@ -533,7 +533,7 @@
   .cmp .chip.up { color: #6fdc6f; } .cmp .chip.down { color: #ff7a6b; }
   .bag-item small { opacity: 0.55; }
   .bag-empty { font-size: 12px; opacity: 0.6; padding: 8px 2px; }
-  #inv-sell-all, #inv-staff-gift { width: 100%; font-size: 12px; flex: none; }
+  #inv-sell-all, #inv-staff-gift, #inv-staff-wipe { width: 100%; font-size: 12px; flex: none; }
   .gift-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
   .gift-row button { font-size: 12px; padding: 4px 6px; }
   #inv-sell-ask { flex: none; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; }
@@ -788,6 +788,7 @@
         <div id="inv-bag" class="bag"></div>
         <button id="inv-sell-all" type="button"></button>
         <button id="inv-staff-gift" class="staff-btn" type="button" hidden data-t>🎁 운영자: 아이템 받기 (유니크·세트·장신구·룬워드 베이스)</button>
+        <button id="inv-staff-wipe" class="staff-btn" type="button" hidden data-t>🧹 운영자: 장비·강화석 모두 지우기 (테스트)</button>
         <div id="inv-sell-ask" hidden></div>
       </div>
       <div id="inv-side" class="inv-side">
@@ -988,7 +989,7 @@
 <script src="blessings.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
-<script src="jump.js?v=101"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=102"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
@@ -1566,6 +1567,13 @@
         data.bag.push(item);
         write();
         return true;
+      },
+      // 운영자 테스트 (dc#141): 가방·낀 장비·강화석(3종)을 모두 비움. 보석·룬(서버 보관)·보상 표시(v2c)는 그대로
+      staffWipe() {
+        const n = all().length;
+        data.bag = []; data.equip = fullEquip({}); data.stones = 0; data.nmStones = 0; data.hellStones = 0;
+        write();
+        return n;
       },
       stones: () => data.stones || 0,
       stonesOf: (k) => data[k] || 0,
@@ -6448,7 +6456,7 @@
         if (hw && lx < map.w - 1.5) jack(px + TILE * 0.55, t);
       }
       // 할로윈: 문을 피해 길가에 잭오랜턴 몇 개 더
-      if (hw) for (const jx of [3.2, 17.3, 30.6, 35.4, 47.6, 57.4]) if (jx >= x0 - 1 && jx <= x1 + 1 && !TW.doors.some(d => shown(d) && Math.abs(d.x - jx) < 0.9)) jack(jx * TILE, t);
+      if (hw) for (const jx of [3.2, 15.3, 29.4, 33.0, 41.2, 54.3, 61.8]) if (jx >= x0 - 1 && jx <= x1 + 1 && !TW.doors.some(d => shown(d) && Math.abs(d.x - jx) < 0.9)) jack(jx * TILE, t);
       for (const d of TW.doors) if (shown(d) && d.x >= x0 - 1 && d.x <= x1 + 1) doorArt(d, t);
       // 땅·옆 벽
       for (let y = 0; y < map.h; y++) for (let x = x0; x <= x1; x++) {
@@ -7221,6 +7229,7 @@
     sellAllBtn.hidden = sellAsk;
     renderSellAsk();
     document.getElementById("inv-staff-gift").hidden = !isStaff();
+    document.getElementById("inv-staff-wipe").hidden = !isStaff();
     renderSkins();
 
     renderDetail();
@@ -7866,6 +7875,13 @@
   document.getElementById("inv-sell-all").addEventListener("click", sellAll);
   for (const b of invSide.querySelectorAll(".inv-tab")) b.addEventListener("click", () => showTab(b.dataset.tab));
   document.getElementById("inv-staff-gift").addEventListener("click", openStaffGift);
+  document.getElementById("inv-staff-wipe").addEventListener("click", async () => {
+    if (!isStaff() || !(await ask(T("운영자 테스트: 가방과 낀 장비, 강화석을 모두 지울까요? 되돌릴 수 없어요.")))) return;
+    const n = Inv.staffWipe();
+    selected = null; staffGift = false; invTab = "detail"; sideOpen = true;
+    invMsg = { cls: "good", text: T("장비 {0}개와 강화석을 모두 지웠어요.", n) };
+    afterGearChange();
+  });
   invSide.querySelector(".detail-close").addEventListener("click", closeSide);
   invModal.addEventListener("click", (e) => { if (e.target === invModal) closeInventory(); });
 
