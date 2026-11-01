@@ -194,6 +194,9 @@ try {
   // 서버에 저장된 것뿐 아니라 게임이 응답까지 받아야(rev 1, 저장 완료) 새로고침해도 다시 올리지 않음
   check("F: first upload", await waitFor(async () => fRow()?.rev === 1 && (await meta(F.page, SUB3))?.rev === 1 && !(await meta(F.page, SUB3)).dirty));
   await F.page.evaluate(() => sessionStorage.setItem("rl_scene", "dungeon"));
+  // 이 층의 아이템·몬스터를 비움: 걷다가 아이템을 주우면(인벤토리 바뀜) 2초 뒤에 바로 올려서
+  // "걷기만 하면 1분 뒤" 확인이 던전 배치에 따라 흔들림 (CI에서 가끔 2번 올림)
+  await F.page.evaluate(() => { const L = JSON.parse(localStorage.getItem("rl_level") || "null"); if (L) { L.items = []; L.enemies = []; localStorage.setItem("rl_level", JSON.stringify(L)); } });
   const gets = () => F.state.profileDone.filter(m => m === "GET").length, g0 = gets();
   await F.page.reload();
   // 새로고침 뒤 서버와 맞추기(GET)가 끝나야 이동을 "1분 뒤 저장"으로 미룸. 그 전에 움직이면 맞춘 직후 바로 올림
