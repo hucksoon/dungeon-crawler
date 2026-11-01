@@ -138,13 +138,7 @@ try {
   check("dex: 헬 네임드 보스 section with 5 cards and 염라대왕 known", dex.includes("헬 네임드 보스") && dex.includes("염라대왕") && dex.includes("속성이 불 → 얼음 → 번개") && (await page.locator("#dex-count").innerText()).includes(`/${M.MONSTERS.length + M.BOSSES.length + 1 + 5}`), (await page.locator("#dex-count").innerText()));
   await page.screenshot({ path: `${OUT}/named-dex.png` });
   await ctx.close();
-  // 7. 층 고르기 문: 버튼에 네임드 이름
-  ({ ctx, page, errors } = await open("namedtest-g", { rl_save: JSON.stringify({ v: 1, f50: 1, season: 4, best: 50, clr: 1, nb: 50, nclr: 1, hb: 11, run: { d: 30, hp: 9e6, mh: 9e6, a: 30, g: 500, l: 40, x: 0, xn: 1e12, rid: "nmG", k: 0, pp: 0 } }), rl_level: lv(30, "nmG", "normal"), "rl_inv:g:DEV": inv(v4) }));
-  await press(page, "p"); await sleep(300);
-  await goDoor(page, "hellPick"); await sleep(100);
-  check("hell pick buttons show named boss names", (await page.locator("#hellpick-list").innerText()).includes("10층 · 불가사리") && (await page.locator("#hellpick-list").innerText()).includes("20층 · 구미호 (미완료)"), await page.locator("#hellpick-list").innerText());
-  await page.screenshot({ path: `${OUT}/named-pick.png` });
-  await ctx.close();
+  // 7. 층 고르기 문은 정식 v2(dc#140)에서 없앰
 } finally { await browser.close(); }
 const pass = results.filter(Boolean).length;
 console.log(`\n${pass}/${results.length} passed`);

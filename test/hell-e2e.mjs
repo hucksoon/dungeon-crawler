@@ -114,15 +114,7 @@ try {
   S = await stored(page, "rl_save");
   check("hell stairs: floor 6, hb 6, floor reward gold", S.run.d === 6 && S.hb === 6 && S.run.g > g0 && (await logs(page)).includes("헬 5층 돌파!"), JSON.stringify([S.run.d, S.hb, g0, S.run.g]));
   await ctx.close();
-  // 4. 층 고르기 문: 10층 완료(hb 11) → 10층만 열림
-  ({ ctx, page, errors } = await open("helltest-d", { rl_save: save(30, "hlD", { hb: 11 }), rl_level: lv(30, "hlD", "normal"), "rl_inv:g:DEV": inv(v4) }));
-  await walkToHell(page, 5);
-  check("pick door: 10층 enabled, 20층 locked", !(await page.locator("#hellpick-modal").isHidden()) && await page.locator("#hellpick-list button", { hasText: "10층" }).isEnabled() && await page.locator("#hellpick-list button", { hasText: "20층" }).isDisabled());
-  await page.screenshot({ path: `${OUT}/hell-pick.png` });
-  await page.locator("#hellpick-list button", { hasText: "10층" }).click(); await sleep(400);
-  S = await stored(page, "rl_save");
-  check("pick 10층 → hell floor 10 (named boss floor)", S.run.z === "hell" && S.run.d === 10 && (await stored(page, "rl_level")).enemies.some(e => e.kind === "boss"), JSON.stringify(S.run));
-  await ctx.close();
+  // 4. 층 고르기 문은 정식 v2(dc#140)에서 없앰 (헬 10~50층은 마을 웨이포인트로)
   // 5. 헬 50층 완료 → 헬 완료, 랭킹(따로)
   ({ ctx, page, errors } = await open("helltest-e", { rl_save: save(50, "hlE", { hb: 50 }, { z: "hell" }), rl_level: lv(50, "hlE", "hell"), "rl_inv:g:DEV": inv(v4) }, true));
   await press(page, "ArrowRight"); await sleep(400);

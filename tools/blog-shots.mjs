@@ -99,7 +99,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     localStorage.setItem("rl_game_lang", lang); localStorage.setItem("rl_lang", lang); if (auth) localStorage.setItem("rl_auth", auth);
     if (!("rl_3d" in seed)) localStorage.setItem("rl_3d", "0");   // 3D가 기본이 된 뒤(dc#111)에도 예전 장면은 2D로 (3D 장면은 seed에 rl_3d "1")
     // 정식 v2(dc#140) 전 장면은 축복 창·안내 창·자동 장비 없이 (v2 장면은 seed에 넣음)
-    for (const [k, v] of [["rl_bless", "off"], ["rl_v2notice", "off"], ["rl_autogear", "0"]]) if (!(k in seed)) localStorage.setItem(k, v);
+    for (const [k, v] of [["rl_bless", "off"], ["rl_v2notice", "off"], ["rl_autogear", "0"], ["rl_market", "open"]]) if (!(k in seed)) localStorage.setItem(k, v);
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v); }, [seed, dev, scene, NOTICES, lang, auth]);
   await page.goto(ORIGIN + file); await sleep(900);
   return { ctx, page, errors };
@@ -358,7 +358,7 @@ const SCENES = [
   // 마을 (dc#90): 옆에서 보는 로비. 대장간 앞에서 오른쪽으로 걸으며 더블 점프, 다른 사람(게스트)도 보임. 화면 전체를 3/8 크기로 60ms마다
   ["town-walk", "옆에서 보는 마을: 걷고 더블 점프하며 건물 문 앞으로", async () => {
     const o = await open({ scene: "lobby", api: true, dsf: 1.6, others: [["게스트 #3fa2c1", 15], ["게스트 #a81d05", 19], ["게스트 #9b07de", 27]], seed: { rl_save: save(40, "blog-town"), "rl_inv:g:DEV": inv(g40) } });
-    await goDoor(o.page, "forge", { enter: false }); await sleep(1200);
+    await goDoor(o.page, "market", { enter: false }); await sleep(1200);
     const plan = [["ArrowRight", 200, 2600], [" ", 900, 1200], [" ", 1250, 1550], ["ArrowRight", 3300, 4300], [" ", 3500, 3800]];
     const frames = await o.page.evaluate(([plan, ms]) => new Promise(done => {
       const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = c.width * 0.375; cut.height = c.height * 0.375;
@@ -523,6 +523,16 @@ const SCENES = [
     await o.page.keyboard.press("i"); await sleep(400);
     await o.page.locator("#inv-equip .slot").nth(1).click(); await sleep(300);
     return { ...o, shot: "#inv-detail" }; }],
+  // 거래소 점검·마을 정리: 거래소 문 앞(회색 "점검 중"), 들어가면 점검 안내와 우편함
+  ["v2-town", "정리한 마을 왼쪽: 거래소(점검 중) 옆에 우편함, 바로 옆 시간 상점", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-v2town"), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "mailbox", { enter: false });
+    await o.page.keyboard.down("ArrowRight"); await sleep(260); await o.page.keyboard.up("ArrowRight"); await sleep(900);
+    return { ...o, shot: "#stage" }; }],
+  ["v2-market", "거래소는 점검 중: 우편함은 그대로", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-v2town"), "rl_inv:g:DEV": inv(g40) } });
+    await goDoor(o.page, "market"); await sleep(600);
+    return { ...o, shot: "#market-modal .modal" }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

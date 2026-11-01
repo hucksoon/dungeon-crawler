@@ -200,6 +200,23 @@
     };
   }
 
+  // ---- 일반 던전 깊이 배율 (정식 v2, dc#140) ----
+  // 축복·자동 장비로 일반 던전이 너무 쉬워서(1층부터 한 판으로 끝까지 97%) 깊을수록 HP·공격력을 더: 1층 ×1 → 50층 ×(1 + ramp)
+  // ramp는 시뮬레이션으로 끝까지 약 75%가 되게 (tools/sim-v2.mjs: 1.3 → 86%, 1.34 → 76%, 1.4 → 70%, 1.5 → 39%). 쓰러지는 곳은 대부분 41~50층
+  const NORMAL = { ramp: 1.34 };
+  const normalMul = (n) => 1 + NORMAL.ramp * (Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1);
+  // n: 일반 던전 층 (1~50). 강함은 effLevel(n) 레벨 × 깊이 배율
+  function makeNormal(t, kind, n) {
+    const m = makeMonster(t, kind, effLevel(n)), k = normalMul(n);
+    const hp = Math.round(m.hp * k);
+    return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k) };
+  }
+  function makeNormalBoss(n) {
+    const b = makeBoss(n, effLevel(n)), k = normalMul(n);
+    const hp = Math.round(b.hp * k);
+    return { ...b, hp, maxHp: hp, atk: Math.round(b.atk * k) };
+  }
+
   // ---- 나이트메어 던전: 일반 던전(최대 층)을 완료하고 v4 이후 장비만 낀 사람이 들어가는 50층 던전 ----
   // 몬스터 = 최대 층(75층) 몬스터 × 배율 × 층 배율. 아이템 레벨 = 75 + 나이트메어 층 (76~125)
   // 층 배율 = 1 + 2% × (층 − 1) + 0.3% × (층 − 1)²: 앞쪽 층은 천천히, 깊을수록 가파르게 (5층 ×1.13, 10층 ×1.42, 25층 ×3.2, 50층 ×9.2)
@@ -451,7 +468,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

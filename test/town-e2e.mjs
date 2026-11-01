@@ -81,7 +81,7 @@ try {
   check("Space jumps (> 2.5 tiles) and lands back on the ground", h1 > 2.5 && (await pos(N.page)).ground && (await pos(N.page)).y === 10, String(h1));
   check("Space again in the air = double jump (higher)", h2 > h1 + 1.5, `${h1} → ${h2}`);
   // 벽: 끝까지 걸어도 마을 밖으로 안 나감 (서버 칸 0~63)
-  await goDoor(N.page, "forge", { enter: false }); await hold(N.page, "ArrowLeft", 1500); await sleep(200);
+  await goDoor(N.page, "market", { enter: false }); await hold(N.page, "ArrowLeft", 2500); await sleep(200);   // 대장간은 정식 v2(dc#140)에서 없어짐
   p = await pos(N.page);
   check("left wall stops you inside the town", p.x >= 1 && p.x < 2 && (await st(N.page)).lx >= 0, String(p.x));
   await N.page.screenshot({ path: path.join(SHOTS, "town-left.png") });
@@ -102,9 +102,7 @@ try {
   await goDoor(N.page, "hourshop");
   check("시간 상점 door → hour shop opens", !(await N.page.locator("#shop-modal").isHidden()));
   await N.page.keyboard.press("Escape"); await sleep(100);
-  await goDoor(N.page, "forge");
-  skipV2("대장간 door → inventory as 대장간", !(await N.page.locator("#inv-modal").isHidden()) && (await N.page.locator("#inv-title").innerText()) === "대장간");
-  await N.page.keyboard.press("Escape"); await sleep(100);
+  check("no 대장간 door in the town (dc#140)", await N.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "forge")));
   // 닫힌 문: 안내만, 마을에 그대로
   for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 50층을 완료해야"], ["nightmare", "50층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
     await goDoor(N.page, id);

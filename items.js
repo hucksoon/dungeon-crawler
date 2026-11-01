@@ -1401,7 +1401,7 @@
       head: { def: 1, hp: 1 }, chest: { def: 1.2, hp: 1.2 }, arms: { def: 1, hp: 1 }, pants: { def: 1, hp: 1 }, boots: { def: 1, hp: 1 },
       neck: { atk: 0.3, def: 0.3, hp: 0.3 }, ring: { atk: 0.3, def: 0.3, hp: 0.3 },
     },
-    mul: { atk: 3.5, def: 1, hp: 1 },   // 몬스터에 맞춘 배율 (시뮬레이션 tools/sim-v2.mjs: 1층부터 한 판으로 끝까지 일반 97% · 나이트메어 90% · 헬 38%)
+    mul: { atk: 3.5, def: 1, hp: 1 },   // 몬스터에 맞춘 배율 (시뮬레이션 tools/sim-v2.mjs: 1층부터 한 판으로 끝까지 일반 약 75% · 이어가기 나이트메어 87% · 헬 44%, 일반 던전 몬스터 배율 monsters.js NORMAL)
   };
   const itemZone = (item) => (isHellItem(item) || item?.rarity === "unique" ? "hell" : isNightmareItem(item) ? "nightmare" : "normal");
   // 강화 전 바탕 힘 { atk, def, hp } (enh: 계산에 쓸 강화 단계, 없으면 아이템 것)

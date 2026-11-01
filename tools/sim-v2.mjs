@@ -85,13 +85,15 @@ function floorMonsters(zone, f, r) {
   return { count: Math.round(count * KILL_SHARE), make: (kind) => {
     if (zone === "hell") return M.makeHell(M.pickNightmareType(r), kind, f);
     if (zone === "nm") return M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r));
-    return M.makeMonster(M.pickType(L, r), kind, L);
+    if (OPT.nramp != null) { const m = M.makeMonster(M.pickType(L, r), kind, L), k = 1 + OPT.nramp * (f - 1) / 49; m.hp = Math.round(m.hp * k); m.atk = Math.round(m.atk * k); return m; }
+    return OPT.nmul ? (() => { const m = M.makeMonster(M.pickType(L, r), kind, L); m.hp = Math.round(m.hp * OPT.nmul.hp); m.atk = Math.round(m.atk * OPT.nmul.atk); return m; })() : M.makeNormal(M.pickType(L, r), kind, f);
   }, eliteBase: M.eliteChance(deep ? M.NIGHTMARE.base : L) };
 }
 function makeBoss(zone, f, r) {
   if (zone === "hell") return M.makeHellBoss(f, M.pickElement(r));
   if (zone === "nm") return M.makeNightmareBoss(f, M.pickElement(r));
-  return M.makeBoss(f, M.effLevel(f));
+  if (OPT.nramp != null) { const b = M.makeBoss(f, M.effLevel(f)), k = 1 + OPT.nramp * (f - 1) / 49; b.hp = Math.round(b.hp * k); b.atk = Math.round(b.atk * k); return b; }
+  return OPT.nmul ? (() => { const b = M.makeBoss(f, M.effLevel(f)); b.hp = Math.round(b.hp * OPT.nmul.hp); b.atk = Math.round(b.atk * OPT.nmul.atk); return b; })() : M.makeNormalBoss(f);
 }
 const itemLevel = (zone, f) => (zone === "hell" ? I.UNIQUE ? 125 + f : 125 + f : zone === "nm" ? 75 + f : M.effLevel(f));
 const tag = (zone) => (zone === "hell" ? "j" : zone === "nm" ? "n" : "e");

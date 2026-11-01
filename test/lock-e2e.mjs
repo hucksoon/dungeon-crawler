@@ -81,26 +81,11 @@ try {
   const pick = async (it) => { await page.locator(".bag-item", { hasText: I.itemName(it) }).first().click(); await sleep(120); };
   await pick(D);
   check("rare items have no lock button", (await page.locator("#inv-detail button.lock-btn").count()) === 0);
+  // 정식 v2 (dc#140): 잠그기 버튼을 없앰 (자동 장비라 필요 없음). 레전더리·세트에도 버튼이 없음
   await pick(A);
-  await page.locator("#inv-detail button.lock-btn").click(); await sleep(120);
-  inv = await readInv(page);
-  check("lock: saved, 🔒 in the bag, sell button disabled", inv.bag.find(x => x.id === A.id).lock === true && (await page.locator(".bag-item", { hasText: I.itemName(A) }).innerText()).includes("🔒")
-    && await page.locator("#inv-detail button", { hasText: "판매 (잠김)" }).isDisabled() && (await page.locator("#inv-detail button.lock-btn").innerText()).includes("잠금 풀기"));
-  check("sell-all button counts the locked item out", (await page.locator("#inv-sell-all").innerText()).includes("잠금·보석 1개 빼고"));
-  await page.locator("#inv-sell-all").click(); await sleep(150);
-  const ask = await page.locator("#inv-sell-ask").innerText();
-  check("sell-all asks about the other (unlocked) legendary/set only", ask.includes(`레전더리·세트 ${[B, C, multi].filter(x => x.rarity === "legendary" || x.rarity === "set").length}개도 같이 팔까요?`) && !ask.includes(I.itemName(A)), ask);
-  await page.locator("#inv-sell-ask button", { hasText: "모두 판매" }).click(); await sleep(200);
-  inv = await readInv(page);
-  check("모두 판매 → only the locked legendary is left", inv.bag.length === 1 && inv.bag[0].id === A.id, inv.bag.map(x => x.id).join());
-  await pick(A);
-  await page.locator("#inv-detail button.lock-btn").click(); await sleep(120);
-  inv = await readInv(page);
-  check("unlock → sell button back", !inv.bag[0].lock && (await page.locator("#inv-detail button", { hasText: "판매 (" }).first().isEnabled()) && !(await page.locator(".bag-item").first().innerText()).includes("🔒"));
-  await page.locator("#inv-detail button.lock-btn").click(); await sleep(120);
-  await page.locator("#inv-detail button", { hasText: "장착" }).click(); await sleep(150);
-  check("equipped legendary can be locked/unlocked too (lock kept)", (await page.locator("#inv-detail button.lock-btn").count()) === 1 && (await readInv(page)).equip[A.slot]?.lock === true);
-  check("banner mentions lock", (await page.locator("#update-text").innerText()).includes("잠글 수"));
+  check("v2: legendary/set items have no lock button either", (await page.locator("#inv-detail button.lock-btn").count()) === 0);
+  for (const n of ["lock: saved, 🔒 in the bag, sell button disabled", "sell-all button counts the locked item out", "sell-all asks about the other (unlocked) legendary/set only",
+    "모두 판매 → only the locked legendary is left", "unlock → sell button back", "equipped legendary can be locked/unlocked too (lock kept)", "banner mentions lock"]) console.log(`SKIP (v2) ${n}`);
   await page.screenshot({ path: `${OUT}/lock.png` });
   check("no page errors", errors.length === 0, errors.join("; "));
   await ctx.close();

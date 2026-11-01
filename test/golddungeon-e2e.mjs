@@ -120,7 +120,7 @@ try {
   ({ ctx, page, errors } = await open("gdtest-e00", { rl_save: saveG(75, "gdE", 300, {}, { z: "gold" }), rl_level: lv(75, "gdE", "gold", [], {}, [11, 10]), "rl_inv:g:DEV": inv() }));
   await press(page, "ArrowRight"); await sleep(300);
   check("stairs after the boss: reward gold, back to the lobby", (await gold(page)) === 300 + REWARD && await inLobby(page) && (await logs(page)).includes(`보상 골드 +${REWARD.toLocaleString()}`), String(await gold(page)));
-  check("notice explains the reward", (await page.locator("body").innerText()).includes("골드 던전 완료!") && (await page.locator("body").innerText()).includes("고대 굴리기 20번"));
+  check("notice explains the reward", (await page.locator("body").innerText()).includes("골드 던전 완료!") && (await page.locator("body").innerText()).includes(`보상으로 골드 ${REWARD.toLocaleString()}을 받았어요.`));
   await page.screenshot({ path: path.join(OUT, "gd-clear.png") });
   await press(page, "Escape"); await sleep(100);
   // 로비 포탈로 새 골드 던전 (새 지도)

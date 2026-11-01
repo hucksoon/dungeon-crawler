@@ -22,6 +22,7 @@ const HOOK = `
     die: () => { player.hp = 0; death(); render(); },
     complete: () => { depth = RLMonsters.MAX_FLOOR; completeFloor(); },
     portal: () => portal(),
+    market: (t) => openMarket(t),
     resume: () => enterDungeon("resume"),
   };
   // ---- 시작 ----`;
@@ -45,7 +46,7 @@ async function open(storage) {
 const save = (run, extra = {}) => JSON.stringify({ v: 1, f50: 1, best: 30, ...extra, run: { d: 3, hp: 200, mh: 200, a: 20, g: 50000, l: 10, x: 0, xn: 577, rid: "v2-run", k: 0, pp: 0, ...run } });
 const st = (page) => page.evaluate(() => window.__t.s());
 const shot = (page, n) => page.screenshot({ path: path.join(SHOTS, `v2-${n}.png`) }).catch(() => {});
-const BASE = { rl_bless: "on", rl_autogear: "1", rl_device_id: "v2-dev" };
+const BASE = { rl_bless: "on", rl_autogear: "1", rl_market: "paused", rl_device_id: "v2-dev" };
 
 try {
   // ---- 1. 장비 숫자 (items.js) ----
@@ -138,6 +139,10 @@ try {
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k5", "legendary", "head", 1));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k6", "legendary", "head", 1));
   check("legendary duplicates also merge (+1)", r.eq.head?.enh >= 1);
+  await D.page.keyboard.press("i"); await sleep(200);
+  await D.page.locator("#inv-equip .slot", { hasText: "머리" }).click(); await sleep(150);
+  check("no lock button on a legendary (dc#140)", (await D.page.locator("#inv-detail .lock-btn").count()) === 0 && !(await D.page.locator("#inv-detail").innerText()).includes("잠그기"));
+  await D.page.keyboard.press("Escape"); await sleep(100);
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k7", "legendary", "boots", 1));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k8", "set", "boots", 40));
   check("a replaced legendary goes to the bag (not dismantled)", r.bag.length === 1);
@@ -163,6 +168,13 @@ try {
   await E.page.reload(); await E.page.waitForFunction(() => window.__t); await sleep(200);
   const ei2 = await E.page.evaluate(() => window.__t.inv());
   check("no second compensation after reload", ei2.stones === 22 && ei2.nmStones === 21);
+  // 거래소 점검 중 · 대장간 없음 · 자물쇠 버튼 없음 (dc#140)
+  await E.page.evaluate(() => { document.getElementById("notice-ok").click(); }); await sleep(100);
+  check("market is under maintenance (mailbox only)", await E.page.evaluate(() => { window.__t.market("buy"); const t = document.getElementById("market-modal").innerText; return t.includes("거래소 점검 중") && [...document.querySelectorAll("#market-tabs button")].filter(b => !b.hidden).map(b => b.dataset.tab).join() === "mail"; }));
+  await E.page.evaluate(() => document.querySelector(".market-paused button").click()); await sleep(200);
+  check("mailbox still opens from there", await E.page.evaluate(() => document.getElementById("market-title").textContent === "우편함"));
+  await E.page.keyboard.press("Escape"); await sleep(100);
+  check("no forge door in the town", await E.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "forge")));
   check("E: no page errors", E.errors.length === 0, E.errors.join("; "));
   await E.ctx.close();
 

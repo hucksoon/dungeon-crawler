@@ -455,6 +455,10 @@
   .bl-ico.relic { border-color: #e0b44c; background: #2a2410; box-shadow: 0 0 6px rgba(224, 180, 76, 0.5); }
   .bl-ico sup { position: absolute; top: -5px; right: -4px; font-size: 10px; background: #000; border-radius: 6px; padding: 0 3px; color: #fff; }
   @media (max-width: 520px) { .bless-cards { grid-template-columns: 1fr; } .modal.notice .bless-card { min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; } }
+  .market-paused { text-align: center; padding: 18px 8px; }
+  .market-paused .mp-ico { font-size: 40px; }
+  .market-paused h3 { margin: 6px 0; color: #ffcf5c; }
+  .market-paused button { margin-top: 10px; }
   .modal.death { max-width: 360px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.death h2 { color: #ff6b6b; }
   .modal.death button { width: 100%; padding: 10px; }
@@ -984,7 +988,7 @@
 <script src="blessings.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
-<script src="jump.js?v=100"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
+<script src="jump.js?v=101"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
 <script src="builds.js"></script>
@@ -2268,7 +2272,7 @@
         for (let x = far.x; x < far.x + far.w; x++)
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
-      const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth, monLevel());
+      const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : inGold() ? RLMonsters.makeBoss(depth, monLevel()) : RLMonsters.makeNormalBoss(depth);   // 일반 던전: 깊이 배율 (dc#140)
       const cut = inGold() ? 0 : stats().bossHp;   // 축복 왕 사냥: 보스 최대 HP −%
       if (cut) boss.hp = boss.maxHp = Math.max(1, Math.round(boss.maxHp * (1 - cut / 100)));
       if (spot) {
@@ -2290,7 +2294,7 @@
       const kind = Math.random() < Math.min(1, RLMonsters.eliteChance(deep ? NM.base : monLevel()) * (1 + eliteUp / 100)) ? "elite" : "normal";   // 축복 정예 사냥
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
-        : RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel());
+        : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
       enemies.push({ x: spot.x, y: spot.y, ...m });
     }
 
@@ -3078,9 +3082,7 @@
     enterLobby({ from: "clear" });
     updateStats();
     showNotice(T("골드 던전 완료!"), [
-      goldNM()
-        ? T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드 × {3}, 나이트메어 난이도)", reward.toLocaleString(), itemLevel(), GD.rewardRolls, RLItems.NM_SHOP.priceMul)
-        : T("보상으로 골드 {0}을 받았어요. ({1}레벨 레전더리 하나를 고대 굴리기 {2}번 할 수 있는 골드)", reward.toLocaleString(), GD.floor, GD.rewardRolls),
+      T("보상으로 골드 {0}을 받았어요.", reward.toLocaleString()),
       T("로비의 파란 포탈이나 골드 던전 건물로 새 골드 던전에 다시 들어갈 수 있어요."),
     ]);
   }
@@ -6313,7 +6315,7 @@
         case "hell": return { open: nmOpen, color: nmOpen ? fire : "#6a3a30", label: nmOpen ? T("1층") : T("닫힘") };
         case "hellPick": { const o = nmOpen && hellMilestones().length > 0; return { open: o, color: o ? fire : "#6a3a30", label: o ? T("층 고르기") : T("닫힘") }; }
         case "forge": return { open: true, color: FORGE_COLOR };
-        case "market": return { open: true, color: "#5ee7c8" };
+        case "market": return MARKET_PAUSED ? { open: true, color: "#7a8494", label: T("점검 중") } : { open: true, color: "#5ee7c8" };
         case "hourshop": return { open: true, color: SHOP_COLOR };
       }
       return { open: true, color: "#d0d4e0" };
@@ -7747,9 +7749,7 @@
     } else {
       actions.append(el("button", { type: "button", onclick: () => unequipSlot(selected.slot) }, T("해제")), enhanceBtn);
     }
-    if (canLock(item)) actions.append(el("button", { type: "button", className: "lock-btn", title: T("잠긴 아이템은 판매(가방 전부 판매 포함)되지 않아요"),
-      onclick: () => { const on = Inv.toggleLock(item.id); invMsg = { cls: "good", text: on ? T("🔒 잠갔어요. 판매되지 않아요 (가방 전부 판매에서도 남아요).") : T("🔓 잠금을 풀었어요.") }; renderInventory(); } },
-      item.lock ? T("🔓 잠금 풀기") : T("🔒 잠그기")));
+    // 자물쇠 버튼은 정식 v2(dc#140)에서 뺌 (자동 장비가 레전더리 이상을 가방에 남김). 이미 잠근 아이템은 그대로 팔리지 않음
     if (ancientBtn) actions.append(ancientBtn);
     if (canMakeAncient(item)) actions.append(el("button", { type: "button", className: "staff-btn", onclick: () => {
       const r = Inv.makeAncient(item.id);
@@ -8297,13 +8297,22 @@
     if (!marketModal.hidden && Market.tab === tab) renderMarket();
   }
 
+  // 거래소 점검 중 (정식 v2, dc#140): 아이템이 숫자만 남아서, 나중에 스킨 거래로 다시 열 때까지 우편함만
+  const MARKET_PAUSED = store.get("rl_market") !== "open";   // rl_market "open": 예전 거래소 회귀 테스트용
+  const marketPausedView = () => [el("div", { className: "market-paused" },
+    el("div", { className: "mp-ico" }, "🚧"),
+    el("h3", {}, T("거래소 점검 중")),
+    el("p", {}, T("정식 v2에서 아이템이 숫자만 남아서 거래소를 잠시 닫아요. 나중에 스킨을 사고팔 수 있는 거래소로 다시 열 거예요.")),
+    el("p", { className: "meta" }, T("우편함(상자·돌아온 아이템)은 그대로 쓸 수 있어요.")),
+    el("button", { type: "button", className: "primary", onclick: () => { Market.tab = "mail"; renderMarket(); refreshMarket(); } }, T("우편함 보기")))];
   function renderMarket() {
-    for (const b of document.querySelectorAll("#market-tabs button")) b.classList.toggle("on", b.dataset.tab === Market.tab);
+    if (MARKET_PAUSED && Market.tab !== "mail") Market.tab = "paused";
+    for (const b of document.querySelectorAll("#market-tabs button")) { b.classList.toggle("on", b.dataset.tab === Market.tab); b.hidden = MARKET_PAUSED && b.dataset.tab !== "mail"; }
     document.getElementById("market-title").textContent = Market.tab === "mail" ? T("우편함") : T("거래소");
     const wallet = document.getElementById("market-wallet");
     wallet.replaceChildren(T("이번 판 골드 {0} · ", player.gold.toLocaleString()),
       Account.loggedIn() ? el("span", { className: "cash" }, T("캐시 ◆ {0}", Market.cash ?? "…")) : T("캐시: 계정 연결 필요"));
-    const views = { buy: viewBuy, sell: viewSell, mine: viewMine, mail: viewMail };
+    const views = { buy: viewBuy, sell: viewSell, mine: viewMine, mail: viewMail, paused: marketPausedView };
     marketBody.replaceChildren(...views[Market.tab]());
   }
 

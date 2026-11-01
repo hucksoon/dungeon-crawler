@@ -1217,6 +1217,12 @@
     "쓰는 중": "On",
     "쓰기": "Wear",
     // 정식 v2 (dc#140)
+    "보상으로 골드 {0}을 받았어요.": "You got {0} gold as a reward.",
+    "점검 중": "Maintenance",
+    "거래소 점검 중": "Market under maintenance",
+    "정식 v2에서 아이템이 숫자만 남아서 거래소를 잠시 닫아요. 나중에 스킨을 사고팔 수 있는 거래소로 다시 열 거예요.": "In v2, items only give numbers, so the market is closed for now. It will reopen later as a market for buying and selling skins.",
+    "우편함(상자·돌아온 아이템)은 그대로 쓸 수 있어요.": "The mailbox (boxes and returned items) still works.",
+    "우편함 보기": "Open mailbox",
     "예전 규칙 장비 {0}개 착용 중 · 이 장비를 끼면 정식 랭킹에 기록되지 않아요.": "Wearing {0} old-rule items · runs with them aren't recorded in the official ranking.",
     "이 판의 축복·유물": "Blessings and relics of this run",
     "+{0}부터는 같은 부위·같은 던전·같은 등급 장비를 또 얻으면 올라가요.": "From +{0}, it goes up when you get the same slot, dungeon and rarity again.",

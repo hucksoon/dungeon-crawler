@@ -175,11 +175,8 @@ try {
   await walkIn(page); await sleep(3500);
   check("no skill: a monster walled in 4 rows up can't be reached by the swing (still alive after 3.5 s)", !(await logs(page)).includes("처치!"));
   await ctx.close();
-  ({ ctx, page, errors } = await open({ map: "high", inv: invOf(FIRE) }));
-  await walkIn(page); await sleep(3500);
-  check("fire set: the fireball (7 tiles) kills the monster 4 rows up without touching it", (await logs(page)).includes("처치! (남은 몬스터 0마리)"), (await logs(page)).slice(-200));
-  check("ranged skill map: no page errors", errors.length === 0, errors.join("; "));
-  await ctx.close();
+  // 정식 v2 (dc#140): 세트 효과(파이어볼)가 없어져서 원거리 스킬 확인은 건너뜀
+  console.log("SKIP (v2) fire set: the fireball (7 tiles) kills the monster 4 rows up without touching it");
 
   // ---- 쓰러지면 처음부터 (HP 1) ----
   ({ ctx, page, errors } = await open({ map: "fight", run: { hp: 1, mh: 1, a: 0 } }));
