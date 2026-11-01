@@ -125,10 +125,12 @@
     return () => { h += 0x6d2b79f5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
   // 고를 후보 3개: 아직 최대가 아닌 것 중에서, 축복은 등급 가중치로 (seed가 같으면 같은 후보)
-  function offer(seed, have = {}, relic = false) {
+  // elemOnly (dc#146): 첫 레벨 업처럼 속성 스킬 축복만 (고를 수 있는 게 없으면 보통 후보)
+  function offer(seed, have = {}, relic = false, elemOnly = false) {
     const r = rng(seed);
     const elemFull = !relic && elemUsed(have) >= ELEM_CAP;   // 속성 축복을 다 쓰면 더는 안 나옴
-    const pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)));
+    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)));
+    if (elemOnly && !relic && pool.some(isElem)) pool = pool.filter(isElem);
     const out = [];
     while (out.length < OFFER && pool.length) {
       let i;

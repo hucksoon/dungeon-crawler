@@ -58,7 +58,7 @@ try {
   check("cap: 20 element picks per run in total → can't master all three", B.ELEM_CAP === 20 && B.ELEM_CAP < 3 * 10 && B.offer("cap", { fire: 10, bolt: 10 }).every(id => !B.isElem(id)));
   let any = 0; for (let i = 0; i < 3000; i++) if (B.offer(`w${i}`, {}).some(B.isElem)) any++;
   check(`element offers are common but not guaranteed (${Math.round(any / 30)}% of floors)`, any / 3000 > 0.45 && any / 3000 < 0.65);
-  check("monsters: normal depth ramp 4.4, nightmare/hell v2 multipliers", M.NORMAL.ramp === 4.4 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 5.4) < 1e-9);
+  check("monsters: normal depth ramp 4.6 (dc#146), nightmare/hell v2 multipliers", M.NORMAL.ramp === 4.6 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 5.6) < 1e-9);
   const legacy = J.TOWN.doors.filter(d => d.legacy).map(d => d.id).sort().join();
   check("town: nightmare · hell · gold dungeon · waypoint doors are legacy (hidden)", legacy === "golddungeon,golddungeonNM,hell,nightmare,waypoint" && J.TOWN.buildings.filter(b => !b.legacy).map(b => b.id).join() === "market,gate", legacy);
 

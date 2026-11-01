@@ -1031,7 +1031,7 @@
   // 화면은 언제나 32×24칸 크기. 던전 지도는 층마다 넓이가 다름 (dc#143: 몬스터 수에 따라 넓어지는 넓은 지역, 최소 32×24)
   // 화면 칸 수: 보통 32×24 (4:3). 새 조작 휴대폰의 던전은 세로로 긴 24×32 (dc#144, setView)
   let VIEW_COLS = 32, VIEW_ROWS = 24;
-  const MAP_MIN_W = 32, MAP_MIN_H = 24;   // 지도 크기의 최소 (화면 모양과 상관없이)
+  const MAP_MIN_W = 32, MAP_MIN_H = 24;   // 예전 방·복도 던전의 지도 크기 (화면 모양과 상관없이)
   let MAP_W = VIEW_COLS, MAP_H = VIEW_ROWS;    // 지금 층 지도 크기(타일 단위)
   let VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE;   // 화면 크기 (그리는 좌표)
   const PX = 1.6;                  // 캔버스 실제 픽셀 = 그리는 좌표 × 1.6 (픽셀 그림 32px = TILE 20 × 1.6)
@@ -2192,32 +2192,55 @@
   const bossAlive = () => enemies.some(e => e.kind === "boss" && !e.mob);   // 구멍 16~20층의 일반 자리 네임드(mob)는 계단을 막지 않음
 
   // ---- 던전 생성 (방 + 통로) ----
-  // ---- 넓은 지역 (dc#143): 복도와 방 대신 동굴처럼 트인 지역. 몬스터가 많은 층일수록 넓게 (최소 32×24, 최대 96×72) ----
+  // ---- 넓은 지역 (dc#143, dc#145부터 기둥이 선 넓은 광장): 복도와 방 대신 트인 지역. 몬스터가 많은 층일수록 넓게 (광장 최소 12×9, 최대 94×70, 바깥은 벽) ----
   //   rl_oldtown(예전 회귀 테스트)이면 예전 방·복도 던전
   const OPEN_FLOORS = !OLD_TOWN;
   let floorSt = { boss: false, open: true };   // 이 층: 보스가 나왔는지(boss), 계단이 열렸는지(open)
   // 이 층에 놓일 몬스터 수 (대략): 넓이를 정할 때
-  const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : (nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5);
-  const OPEN = { base: 260, perFoe: 26, fill: 0.55, maxW: 96, maxH: 72 };
+  // 몬스터 무리 (dc#146): 넓은 광장 층은 몬스터 ×SWARM.count, 한 마리당 경험치·드롭·골드는 줄임 (끝이 없는 구멍 제외)
+  const swarmOn = () => OPEN_FLOORS && !inAbyss();
+  const swarm = (m) => { if (swarmOn() && m.kind !== "boss" && m.kind !== "golden") { const W = RLMonsters.SWARM; m.xp = Math.max(1, Math.round(m.xp * W.xp)); m.goldMul = (m.goldMul || 1) * W.gold; m.dropMul = W.drop; } return m; };
+  const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
+  // dc#145: 다니는 광장(aw×ah)은 처음 층에 작게 (1층 약 21×16) 시작해서 몬스터가 늘수록 커짐 (20층 약 40×30, 40층 약 69×52, 최대 94×70)
+  //   dc#146: 몬스터 무리(×2)라 몬스터 한 마리당 넓이를 20 → 12로 (크기는 비슷하게, 더 붐비게)
+  //   지도(w×h)는 화면을 채울 만큼은 되게 (최소 OPEN.mapW×OPEN.mapH): 광장 바깥은 모두 벽 (검은 빈 곳 대신). 예전(dc#143)은 최소 32×24
+  const OPEN = { base: 20, perFoe: 12, fill: 0.65, minW: 12, minH: 9, maxW: 94, maxH: 70, mapW: 24, mapH: 18 };
   function openSize(n) {
     const area = (OPEN.base + n * OPEN.perFoe) / OPEN.fill;
-    const w = Math.max(MAP_MIN_W, Math.min(OPEN.maxW, Math.round(Math.sqrt(area * 4 / 3))));
-    return { w, h: Math.max(MAP_MIN_H, Math.min(OPEN.maxH, Math.round(w * 3 / 4))) };
+    const aw = Math.max(OPEN.minW, Math.min(OPEN.maxW, Math.round(Math.sqrt(area * 4 / 3))));
+    const ah = Math.max(OPEN.minH, Math.min(OPEN.maxH, Math.round(aw * 3 / 4)));
+    return { aw, ah, w: Math.max(OPEN.mapW, aw + 2), h: Math.max(OPEN.mapH, ah + 2) };
   }
+  // band: 울퉁불퉁한 가장자리 띠 두께, wallP: 띠 바깥쪽 벽 확률, gap: 기둥 격자 간격, pillarP: 그 자리에 기둥이 설 확률, bigP: 2×2 기둥 확률, center: 기둥 없는 한가운데 마당 반지름(짧은 변의 비율)
+  const ARENA = { band: 4, wallP: 0.75, gap: 6, pillarP: 0.55, bigP: 0.4, center: 0.16 };
+  let lastArena = null;   // 시험용: 마지막에 만든 광장 자리
   function generateOpen() {
-    const { w, h } = openSize(foesExpected());
+    const { w, h, aw, ah } = openSize(foesExpected());
     MAP_W = w; MAP_H = h;
+    const ax = Math.floor((w - aw) / 2), ay = Math.floor((h - ah) / 2);   // 광장의 왼쪽 위 (바깥은 벽)
+    // 넓은 광장 (dc#145): 가운데는 크게 뚫려 있고 중간중간 기둥. 가장자리 띠(band칸)만 울퉁불퉁한 동굴 벽
     let best = null;
+    const band = Math.max(2, Math.min(ARENA.band, Math.round(Math.min(aw, ah) / 8)));   // 작은 광장(처음 층)은 가장자리 띠를 얇게
     for (let tryN = 0; tryN < 6 && !best; tryN++) {
-      // 세포 자동자: 무작위로 벽을 뿌리고 다듬기 → 둥근 동굴
-      let g = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 || Math.random() < 0.42 ? WALL : FLOOR)));
-      for (let it = 0; it < 4; it++) {
+      const edge = (x, y) => Math.min(x - ax, y - ay, ax + aw - 1 - x, ay + ah - 1 - y);   // 광장 테두리까지 (밖이면 음수)
+      let g = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => { const e = edge(x, y); return e < 1 ? WALL : e < band ? (Math.random() < ARENA.wallP * (1 - (e - 1) / band) ? WALL : FLOOR) : FLOOR; }));
+      for (let it = 0; it < 3; it++) {   // 가장자리 띠만 다듬기 → 둥글게 굽은 벽
         g = g.map((row, y) => row.map((c, x) => {
-          if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) return WALL;
+          const e = edge(x, y);
+          if (e < 1) return WALL;
+          if (e > band) return c;
           let walls = 0;
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && g[y + dy][x + dx] === WALL) walls++;
-          return walls >= 5 || (walls === 0 && it < 2 && Math.random() < 0.08) ? WALL : FLOOR;   // 넓은 곳에 가끔 기둥
+          return walls >= 5 ? WALL : FLOOR;
         }));
+      }
+      // 기둥: 흔들린 격자 자리마다 확률로 1×1 또는 2×2. 한가운데 둥근 마당과 왼쪽 시작 자리 근처는 비움
+      const cx = ax + aw / 2, cy = ay + ah / 2, clear = Math.min(aw, ah) * ARENA.center;
+      for (let gy = ay + band + 2; gy < ay + ah - band - 2; gy += ARENA.gap) for (let gx = ax + band + 2; gx < ax + aw - band - 2; gx += ARENA.gap) {
+        if (Math.random() > ARENA.pillarP) continue;
+        const x = gx + rnd(3) - 1, y = gy + rnd(3) - 1, big = Math.random() < ARENA.bigP;
+        if (Math.hypot(x - cx, (y - cy) * 1.25) < clear || (x < ax + band + 6 && Math.abs(y - cy) < 5)) continue;
+        for (let dy = 0; dy <= (big ? 1 : 0); dy++) for (let dx = 0; dx <= (big ? 1 : 0); dx++) if (edge(x + dx, y + dy) > band) g[y + dy][x + dx] = WALL;
       }
       // 가장 큰 이어진 바닥만 남김
       const id = Array.from({ length: h }, () => new Array(w).fill(-1));
@@ -2225,14 +2248,16 @@
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         if (g[y][x] !== FLOOR || id[y][x] >= 0) continue;
         const k = y * w + x, q = [[x, y]]; id[y][x] = k; let n = 0;
-        while (q.length) { const [cx, cy] = q.pop(); n++; for (const [dx, dy] of DIRS) { const nx = cx + dx, ny = cy + dy; if (g[ny]?.[nx] === FLOOR && id[ny][nx] < 0) { id[ny][nx] = k; q.push([nx, ny]); } } }
+        while (q.length) { const [qx, qy] = q.pop(); n++; for (const [dx, dy] of DIRS) { const nx = qx + dx, ny = qy + dy; if (g[ny]?.[nx] === FLOOR && id[ny][nx] < 0) { id[ny][nx] = k; q.push([nx, ny]); } } }
         if (n > bigN) { bigN = n; bigId = k; }
       }
-      if (bigN < w * h * 0.38) continue;   // 너무 좁으면 다시
+      if (bigN < aw * ah * 0.5) continue;
+      lastArena = { ax, ay, aw, ah, band };   // 너무 좁으면 다시
       best = g.map((row, y) => row.map((c, x) => (c === FLOOR && id[y][x] === bigId ? FLOOR : WALL)));
     }
-    if (!best) {   // 거의 없지만, 다 실패하면 큰 방 하나
-      best = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? WALL : FLOOR)));
+    if (!best) {   // 거의 없지만, 다 실패하면 기둥 없는 큰 방 하나
+      best = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (x <= ax || y <= ay || x >= ax + aw - 1 || y >= ay + ah - 1 ? WALL : FLOOR)));
+      lastArena = { ax, ay, aw, ah, band };
     }
     map = best;
     visible = Array.from({ length: h }, () => new Array(w).fill(false));
@@ -2394,7 +2419,7 @@
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
     const deep = nmMobs() || inHell(), eliteUp = stats().elite;
     const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
-    const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2);
+    const count = Math.round((deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2)) * (swarmOn() ? RLMonsters.SWARM.count : 1));
     for (let i = 0; i < count; i++) {
       let spot = randomFloor([player, ...enemies]);
       for (let t = 0; OPEN_FLOORS && t < 15 && spot && dist(spot, player) <= 5; t++) spot = randomFloor([player, ...enemies]);   // 넓은 지역: 시작 자리 바로 옆은 피함
@@ -2403,7 +2428,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ x: spot.x, y: spot.y, ...m });
+      enemies.push({ x: spot.x, y: spot.y, ...swarm(m) });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
@@ -2986,7 +3011,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ ...at, ...m });
+      enemies.push({ ...at, ...swarm(m) });
     }
     seen[spot.y][spot.x] = true;
     Sfx("bossKill");
@@ -3107,7 +3132,7 @@
     const rolls = e.kind === "golden" ? (e.drops || RLMonsters.GOLDEN.ranks.normal.drops) : (RLItems.DROPS[e.kind]?.rolls || 1);
     for (let i = 0; i < rolls; i++) {
       const seed = `${player.rid}|${floorTag()}${depth}|k${player.kills++}`;
-      const item = RLItems.rollDrop(seed, itemLevel(), e.kind, dropMul());
+      const item = RLItems.rollDrop(seed, itemLevel(), e.kind, dropMul() * (e.dropMul || 1));   // 몬스터 무리(dc#146)는 ×SWARM.drop
       if (!item) continue;
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gear", item, from: e.kind === "normal" ? "monster" : e.kind });
@@ -3505,7 +3530,7 @@
   function restoreLevel() {
     let L = null;
     try { L = JSON.parse(store.get(LEVEL_KEY)); } catch {}
-    const lw = Number.isInteger(L?.w) && L.w >= MAP_MIN_W && L.w <= 200 ? L.w : MAP_MIN_W, lh = Number.isInteger(L?.h) && L.h >= MAP_MIN_H && L.h <= 200 ? L.h : MAP_MIN_H;   // 예전 저장은 32×24
+    const lw = Number.isInteger(L?.w) && L.w >= 12 && L.w <= 200 ? L.w : MAP_MIN_W, lh = Number.isInteger(L?.h) && L.h >= 9 && L.h <= 200 ? L.h : MAP_MIN_H;   // 예전 저장은 32×24
     if (!L || L.rid !== player.rid || L.d !== depth || (L.z || "normal") !== (player.zone || "normal") || L.map?.length !== lw * lh || L.seen?.length !== lw * lh) return false;
     MAP_W = lw; MAP_H = lh;
     floorSt = { boss: !!L.fs?.boss, open: L.fs ? !!L.fs.open : true, ...(L.fs?.bx != null ? { bx: L.fs.bx, by: L.fs.by } : {}) };   // 예전 저장(fs 없음)은 계단이 이미 있음
@@ -3946,8 +3971,8 @@
   // 스킬 피해는 속성 피해 (몬스터 속성 저항만큼). 룬워드(태산·마음가짐·몰래)면 스킬에도 흡혈
   // at: 이펙트가 닿는 때(ms) — 그때 맞은 몬스터가 흔들리고 붉게 번쩍
   function skillHit(e, dmg, crit, color, s, at = 80) {
-    const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : "bolt";   // 파이어볼 불·노바 얼음·체인 번개
-    const d = Math.max(1, Math.round(dmg * shockMul(e) * elemMul(e, el) * bossMul(e, s)));
+    const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : color === STARTER.color ? null : "bolt";   // 파이어볼 불·노바 얼음·체인 번개 · 마력탄은 속성 없음
+    const d = Math.max(1, Math.round(dmg * shockMul(e) * (el ? elemMul(e, el) : 1) * bossMul(e, s)));
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     showDamage(e, d, crit, color);
@@ -3964,8 +3989,23 @@
     const crit = Math.random() * 100 < s.crit;
     return { crit, dmg: s.atk * mul * (1 + pct / 100) * (crit ? s.critMul : 1) };
   };
+  // 기본 스킬 마력탄 (dc#146): 새 규칙에서는 처음부터. STARTER.every턴마다 STARTER.range칸 안 몬스터 하나(2칸 거리를 먼저)에게
+  //   공격력 × STARTER.mul (방어력 무시, 치명타 가능). 바로 옆은 칼로, 조금 떨어진 몬스터는 마력탄으로
+  const STARTER = { every: 2, range: 2, mul: 0.6, color: "#c9a7ff" };
+  function castStarter(s, alive) {
+    if (!NEW_CTRL || !ready("starterCd")) return;
+    const t = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= STARTER.range && e.kind !== "golden")
+      .sort((a, b) => near8(b, player) - near8(a, player) || dist(a, player) - dist(b, player))[0];
+    if (!t) return;
+    player.starterCd = STARTER.every;
+    const { crit, dmg } = skillRoll(s, STARTER.mul, 0);
+    if (reduceMotion) flash([{ x: t.x, y: t.y }], "rgba(201, 167, 255, 0.45)"); else Fx.chain([player, t], true);
+    Sfx("swing");
+    skillHit(t, dmg, crit, STARTER.color, s, 60);
+  }
   function castSkills(s) {
     const alive = () => enemies.filter(e => e.hp > 0);
+    castStarter(s, alive);
     const fast = s.rw.skillFast ? 1 : 0;   // 마음가짐: 세트 스킬 1턴 더 자주
     // 폭풍전야: every턴마다 radius칸 안 몬스터의 속성 저항 −vuln% (turns턴 동안)
     if (s.rw.vuln && turn % RW_FX.vuln.every === 0) {
@@ -4074,6 +4114,19 @@
     return out;
   }
 
+  // 위험할 때 회피 튜토리얼 (dc#145): 처음으로 위험해졌을 때 딱 한 번만 (기기에 기억, rl_tip_dodge)
+  //   위험 = 붙은 몬스터가 DANGER.foes마리 이상이거나, 붙어 있는데 HP DANGER.hp 아래거나, 보스가 붙어 있고 HP DANGER.bossHp 아래
+  const DANGER = { foes: 3, hp: 0.35, bossHp: 0.6 };
+  function dangerCue() {
+    if (store.get("rl_tip_dodge") === "1" || player.jumpCd > 0) return;
+    const s = stats(), touching = enemies.filter(e => e.hp > 0 && e.kind !== "golden" && near8(e, player) <= 1);
+    const boss = touching.some(e => e.kind === "boss" || e.named);
+    const danger = touching.length >= DANGER.foes || (touching.length > 0 && player.hp <= s.maxHp * DANGER.hp) || (boss && player.hp <= s.maxHp * DANGER.bossHp);
+    if (!danger) return;
+    store.set("rl_tip_dodge", "1");
+    showDamage(player, T("⚠ 위험! 회피"), true, "#ff6b6b");
+    log(matchMedia("(pointer: coarse)").matches ? T("📘 위험할 때는 회피! 화면을 톡 누르면 움직이던 쪽으로 3칸 굴러가고, 그동안은 무적이에요.") : T("📘 위험할 때는 회피! Space를 누르면 움직이던 쪽으로 3칸 굴러가고, 그동안은 무적이에요."), "info");
+  }
   function endTurn() {
     if (!gameOver && scene === "dungeon") { computeFOV(); castSkills(stats()); }
     worldTurn();
@@ -4084,6 +4137,7 @@
     }
     if (!gameOver) { computeFOV(); noteSeen(); }
     if (OPEN_FLOORS && !gameOver && scene === "dungeon") pickup();   // 싸움으로 떨어진 것도 가까우면 바로
+    if (NEW_CTRL && !gameOver && scene === "dungeon") dangerCue();
     render();
     updateStats();
     saveGame();
@@ -4859,7 +4913,9 @@
     // 레벨 업 (dc#143): 축복 하나 더. 창은 gainXp 끝에서 한 번 (한꺼번에 여러 레벨이 올라도 차례로)
     function onLevel() {
       if (!zk() || !player) return;
-      queue().push({ r: 0, lv: player.plvl, s: `${player.rid}|lv|${player.plvl}` });
+      // 새 규칙 첫 레벨 업 (dc#146): 속성 스킬을 아직 안 배웠으면 속성 스킬 셋 중에서 (바로 스킬을 배워 쉬워지게)
+      const first = NEW_CTRL && player.plvl === 2 && !RLBless.elemUsed(player.bl);
+      queue().push({ r: 0, lv: player.plvl, s: `${player.rid}|lv|${player.plvl}`, ...(first ? { el: 1 } : {}) });
     }
     // 보스를 쓰러뜨림: 유물 하나 (구멍 16~20층의 일반 자리 네임드·분신은 빼고)
     function onBoss(e) {
@@ -4867,7 +4923,7 @@
       queue().push({ r: 1, s: `${player.rid}|${player.zone || "normal"}|${depth}|r` });
       show();
     }
-    const offerOf = (entry) => RLBless.offer(`${entry.s}|${entry.n || 0}`, have(entry.r), !!entry.r);
+    const offerOf = (entry) => RLBless.offer(`${entry.s}|${entry.n || 0}`, have(entry.r), !!entry.r, !!entry.el);
     // 다 모아서 고를 것이 없으면 넘김 (유물이 다 차면 축복으로)
     function head() {
       const q = queue();
@@ -4911,8 +4967,8 @@
       const entry = scene === "dungeon" && !gameOver ? head() : null;
       if (!entry) { close(); return; }
       const ids = offerOf(entry), relic = !!entry.r, left = queue().length;
-      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
-      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
+      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.el ? T("✦ 레벨 업! 첫 스킬 배우기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
+      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.el ? T("속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
       modalEl.querySelector(".modal").classList.toggle("relic", relic);
       document.getElementById("bless-cards").replaceChildren(...ids.map((id, i) => {
         const d = RLBless.defOf(id), n = have(relic)[id] || 0, tier = relic ? null : RLBless.TIERS[d.tier];
@@ -7327,7 +7383,7 @@
   // ---- 초기화 ----
   // keep: 이어 가는 레벨 (쓰러진 뒤 새로 시작, dc#95). 없으면 Lv 1부터
   // 새 판 (dc#142): 언제나 레벨 1·골드 0 (장비는 인벤토리라 그대로). 쓰러진 뒤 새로 시작할 때도, 마을에서 1층 문으로 새로 들어갈 때도
-  const FRESH = { plvl: 1, xp: 0, xpNext: 10, maxHp: 20, atk: 3, gold: 0 };
+  const FRESH = { plvl: 1, xp: 0, xpNext: OLD_TOWN ? 10 : 6, maxHp: 20, atk: 3, gold: 0 };   // dc#146: 첫 레벨 업을 금방 (몬스터 두셋)
   function newGame() {
     depth = 1;
     gameOver = false;
