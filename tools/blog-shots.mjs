@@ -176,6 +176,18 @@ const record = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page
   grab();
 }), [keys, ms, cols * 64, rows * 64, every]);
 
+// 넓은 지역(dc#143)처럼 지도 크기가 달라도: 지금 내 캐릭터가 있는 화면 자리를 가운데로 잘라 찍음 (keys: [키, ms])
+const recordMe = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page.evaluate(([keys, ms, W, H, every]) => new Promise(done => {
+  const out = [], t0 = performance.now();
+  for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
+  const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
+  const L = JSON.parse(localStorage.getItem("rl_level")), me = window.RLWalk.screenOf(L.px, L.py), r = c.getBoundingClientRect();
+  const px = (me.x - r.left) / r.width * c.width, py = (me.y - r.top) / r.height * c.height;
+  const sx = Math.max(0, Math.min(c.width - W, px - W / 2)), sy = Math.max(0, Math.min(c.height - H, py - H / 2));
+  const grab = () => { cut.getContext("2d").drawImage(c, sx, sy, W, H, 0, 0, W, H); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, every); else done(out); };
+  grab();
+}), [keys, ms, cols * 64, rows * 64, every]);
+
 // ---- 장면: 이름, 설명(그림 아래 글), 찍기 ----
 const g40 = gear(40), g90 = gear(90, "golden", "blognm"), g150 = gear(150, "golden", "bloghell");
 const SCENES = [
@@ -608,6 +620,29 @@ const SCENES = [
     await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
     await o.page.keyboard.press(dir); await sleep(900);
     return { ...o, shot: "#game" }; }],
+  // dc#144: 회피(점프 대신) · 휴대폰은 버튼 없이 화면을 끌어 움직이고 톡 눌러 회피, 세로로 긴 던전 화면
+  ["v5-dodge", "Space를 누르면 움직이던 쪽으로 3칸 굴러 피해요 (그동안 무적)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(6, "blog-v5dodge", { l: 10, hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    // 앞 3칸이 바닥인 쪽을 보게 하고, 그 반대쪽 옆에 몬스터를 세움
+    const dir = await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const d = [[1, 0], [-1, 0]].find(([dx, dy]) => [1, 2, 3, 4, 5].every(k => ok(L.px + dx * k, L.py + dy * k)) && ok(L.px - dx, L.py - dy)) || [1, 0];   // 가로로 (그림이 가로로 길어서)
+      L.enemies = [{ ...L.enemies[0], x: L.px - d[0], y: L.py - d[1], hp: 9999, maxHp: 9999, atk: 1 }];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 9 ? "1" : "0"; }).join("");
+      localStorage.setItem("blog_dir", JSON.stringify(d));
+    });
+    const [dx, dy] = JSON.parse(await o.page.evaluate(() => localStorage.getItem("blog_dir")));
+    const step = dx > 0 ? "ArrowRight" : dx < 0 ? "ArrowLeft" : dy > 0 ? "ArrowDown" : "ArrowUp";
+    // 몬스터 옆에서 → 그쪽으로 한 걸음, 회피(Space)로 3칸 굴러감, 한 번 더 걸음
+    return { ...o, frames: await recordMe(o.page, [[step, 300], [" ", 900], [step, 1700]], 2300, { cols: 9, rows: 5, every: 40 }), delay: 4 }; }],
+  ["v5-phone", "휴대폰: 버튼 없이 화면을 끌어 움직이고, 톡 누르면 회피. 던전 화면은 세로로 길게", async () => {
+    const o = await open({ dsf: 2, touch: true, viewport: { width: 390, height: 844 }, seed: { rl_save: save(6, "blog-v5phone", { l: 10, hp: 99999, x: 120, xn: 400 }), "rl_inv:g:DEV": inv(g40), rl_tut: JSON.stringify(["intro", "enter", "dungeon"]) } });
+    await o.page.evaluate(() => { const b = document.getElementById("tip-close"); if (b && !document.getElementById("tip").hidden) b.click(); });
+    await sleep(400);
+    await o.page.evaluate(() => window.scrollTo(0, document.getElementById("stats").getBoundingClientRect().top + scrollY - 8));
+    await sleep(300);
+    return { ...o }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

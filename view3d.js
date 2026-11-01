@@ -469,7 +469,8 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   }
   let w0 = 0, h0 = 0;
   function fit() {
-    const w = Math.round(canvas.parentElement ? canvas.clientWidth || host.clientWidth : 640), h = Math.round(w * 0.75);
+    // 높이는 화면에 보이는 캔버스 비율대로 (휴대폰 새 조작은 세로로 긴 화면, dc#144). 아직 안 보이면 4:3
+    const w = Math.round(canvas.parentElement ? canvas.clientWidth || host.clientWidth : 640), ch = canvas.clientHeight, h = Math.round(ch && w && canvas.clientWidth ? ch * w / canvas.clientWidth : w * 0.75);
     if (w && (w !== w0 || h !== h0)) {
       w0 = w; h0 = h; renderer.setSize(w, h, false); camera.aspect = vmCam.aspect = w / h; camera.updateProjectionMatrix(); vmCam.updateProjectionMatrix();
       if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); bloomPass.resolution.set(w / 2, h / 2); }

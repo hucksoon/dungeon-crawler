@@ -1315,5 +1315,18 @@
     "레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.": "You leveled up! Pick one more blessing for this run.",
     "몬스터를 모두 잡으면 나오는 계단(>)으로": "Clear every monster, then take the stairs (>)",
     "던전 1층에 발을 들였다. 몬스터를 모두 쓰러뜨리면 계단(>)이 나타난다.": "You step into floor 1 of the dungeon. Defeat every monster and the stairs (>) appear.",
+    "이동: 방향키 / WASD (붙은 몬스터 쪽으로 누르면 가장 가까운 몬스터를 공격) &nbsp;·&nbsp; 회피: Space (움직이던 쪽으로 3칸, 그동안 무적) &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 포탈(로비로): P<br>": "Move: arrow keys / WASD (press toward an adjacent monster to attack the nearest one) &nbsp;·&nbsp; Dodge: Space (3 tiles the way you were moving, invulnerable meanwhile) &nbsp;·&nbsp; Potion: Q &nbsp;·&nbsp; Inventory: I &nbsp;·&nbsp; Codex: B &nbsp;·&nbsp; Full map: M &nbsp;·&nbsp; Map overlay: Tab &nbsp;·&nbsp; Click a tile: auto-walk &nbsp;·&nbsp; Portal (to lobby): P<br>",
+    "3D 화면: V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 가까운 몬스터에게 저절로 &nbsp;·&nbsp; 회피: Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br>": "3D view: V &nbsp;·&nbsp; Forward/back W·S &nbsp;·&nbsp; Strafe A·D &nbsp;·&nbsp; Look: mouse or ← → &nbsp;·&nbsp; Attack: automatic on the nearest monster &nbsp;·&nbsp; Dodge: Space &nbsp;·&nbsp; Map: Tab (small · large · off)<br>",
+    "3D 화면: 화면을 누른 채 끌면 스틱 (위·아래 앞뒤, 좌우 돌기) · 가까운 몬스터는 저절로 공격 · 화면을 톡 누르면 회피<br>": "3D view: touch and drag for a stick (up/down forward/back, left/right turn) · nearby monsters are attacked automatically · tap the screen to dodge<br>",
+    "화면을 누른 채 끌면 내 캐릭터에서 손가락 쪽으로 걸어요 (붙은 몬스터는 공격). 화면을 톡 누르면 회피.<br>": "Touch and drag: you walk from your character toward your finger (adjacent monsters get attacked). Tap the screen to dodge.<br>",
+    "화면을 누른 채 끌어 걷기": "Touch and drag to walk",
+    "화면을 톡 눌러 회피 (그동안 무적)": "Tap the screen to dodge (invulnerable meanwhile)",
+    "Space로 회피 (움직이던 쪽으로 3칸, 그동안 무적)": "Dodge with Space (3 tiles the way you were moving, invulnerable meanwhile)",
+    "회피는 {0}턴 뒤에 다시 할 수 있다.": "You can dodge again in {0} turns.",
+    "그쪽으로는 피할 곳이 없다.": "There's no room to dodge that way.",
+    "회피!": "Dodge!",
+    "회피": "Dodged",
+    "화면을 끌어 걷기 · 위로 끌면 문에 들어가기 · 톡 누르면 회피": "Drag to walk · drag up to enter a door · tap to dodge",
+    "← → (A·D) 걷기 · Space 회피 · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감": "← → (A·D) walk · Space dodge · ↑ (W) at a door to enter · I inventory · B codex",
   } });
 })(typeof self !== "undefined" ? self : this);
