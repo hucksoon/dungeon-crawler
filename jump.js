@@ -48,8 +48,9 @@
     "########################################",
   ];
   // ---- 마을 (dc#90): 옆에서 보는 로비. 폭 64 × 높이 12, 바닥 윗면 y=10 (서버는 로비 위치를 0~63칸으로 받음) ----
-  // 건물은 왼쪽부터 거래소(점검 중)+우편함 · 던전 입구 · [가운데 웨이포인트] · 나이트메어 · 헬 · 골드 던전. 문 앞에서 ↑로 들어감
-  //   던전은 가는 순서대로(일반 → 나이트메어 → 헬), 따로 도는 골드 던전은 오른쪽 끝 (dc#141)
+  // 건물은 거래소(점검 중)+우편함 · 가운데 큰 던전 입구(1층 · 이어하기 포탈)만 (dc#142). 문 앞에서 ↑로 들어감
+  //   판은 언제나 레벨 1·일반 1층부터: 나이트메어·헬·끝이 없는 구멍은 같은 판에서 앞 던전을 깨고 "이어가기"로만 (마을 문·웨이포인트 없음)
+  //   dc#141: 던전 순서대로(일반 → 나이트메어 → 헬), 골드 던전은 오른쪽 끝이었음
   // 정식 v2 (dc#140): 대장간과 나이트메어 50층 문(룬)·헬 층 고르기 문은 없앰 (나이트메어·헬 10~50층은 마을 웨이포인트로)
   // dc#141: 시간 상점(골드로 장비 사기)도 없앰 — 장비는 줍는 즉시 자동 장비·강화라 살 이유가 없고, 골드는 축복 다시 뽑기에 씀
   // doors: id(하는 일), x(문 가운데), staff(운영자만 보이고 열림). buildings: x0~x1칸, h(바닥에서 몇 칸 높이), staff(운영자만 보임)
@@ -71,18 +72,21 @@
   ];
   const TOWN = {
     rows: TOWN_ROWS, ground: 10,
+    // legacy: 예전 건물·문 (나이트메어·헬·골드 던전·웨이포인트). 사용자에게는 안 보이고, 예전 회귀 테스트만 rl_oldtown=on으로 씀 (dc#142)
     buildings: [
-      { id: "market", x0: 7, x1: 11, h: 4 },
-      { id: "gate", x0: 19, x1: 27, h: 6 },
-      { id: "nightmare", x0: 34, x1: 39, h: 5 }, { id: "hell", x0: 43, x1: 52, h: 6 }, { id: "golddungeon", x0: 56, x1: 60, h: 4 },
+      { id: "golddungeon", x0: 4, x1: 8, h: 4, legacy: true },
+      { id: "market", x0: 13, x1: 17, h: 4 },
+      { id: "gate", x0: 24, x1: 38, h: 7 },
+      { id: "nightmare", x0: 45, x1: 50, h: 5, legacy: true }, { id: "hell", x0: 53, x1: 62, h: 6, legacy: true },
     ],
     doors: [
-      { id: "towerHell", x: 1.5, staff: true }, { id: "market", x: 9.5 }, { id: "mailbox", x: 12.5 },
-      { id: "start", x: 21.5 }, { id: "resume", x: 24 }, { id: "waypoint", x: 31.5 },
-      { id: "nightmare", x: 36.5 }, { id: "hell", x: 47.5 }, { id: "golddungeon", x: 57.5 }, { id: "golddungeonNM", x: 59.5 },
+      { id: "towerHell", x: 1.5, staff: true }, { id: "golddungeon", x: 5.5, legacy: true }, { id: "golddungeonNM", x: 7.5, legacy: true },
+      { id: "market", x: 15.5 }, { id: "mailbox", x: 19.5 },
+      { id: "start", x: 29.5 }, { id: "resume", x: 33.5 }, { id: "waypoint", x: 42, legacy: true },
+      { id: "nightmare", x: 47.5, legacy: true }, { id: "hell", x: 57.5, legacy: true },
     ],
     // 처음 들어올 때 서는 곳 (이 사이 아무 데나)
-    spawn: [22, 32],
+    spawn: [27, 36],
   };
 
   // zone: 몬스터·저항 기준 (normal 일반 던전 / hell 헬). hell50은 운영자 시험용 (같은 맵, 헬 50층 몬스터)

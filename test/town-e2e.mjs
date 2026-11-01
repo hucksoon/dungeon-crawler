@@ -107,8 +107,9 @@ try {
     check(`closed door ${id}: stays in the town with a note`, await inLobby(N.page) && (await logText(N.page)).includes(msg), (await logText(N.page)).split("\n").slice(-1)[0]);
   }
   // 웨이포인트는 마을 정가운데 (dc#100): 폭 64칸의 가운데, 왼쪽은 던전 입구, 오른쪽은 골드 던전
-  check("waypoint stands in the middle of the town (between the dungeon gate and the nightmare, dc#141)", await N.page.evaluate(() => { const T = window.RLJump.TOWN, w = T.rows[0].length, wp = T.doors.find(d => d.id === "waypoint"), b = (id) => T.buildings.find(x => x.id === id);
-    return Math.abs(wp.x - w / 2) <= 0.5 && b("gate").x1 < wp.x && b("nightmare").x0 > wp.x && b("golddungeon").x0 > b("hell").x1; }));
+  // dc#142: 가운데는 큰 던전 입구 (웨이포인트·나이트메어·헬·골드 던전은 예전 문 legacy, 이 테스트는 rl_oldtown으로 봄)
+  check("the dungeon gate stands in the middle of the town; nightmare/hell/gold/waypoint are legacy", await N.page.evaluate(() => { const T = window.RLJump.TOWN, w = T.rows[0].length, b = (id) => T.buildings.find(x => x.id === id);
+    return b("gate").x0 < w / 2 && b("gate").x1 > w / 2 && ["nightmare", "hell", "golddungeon"].every(id => b(id).legacy) && T.doors.find(d => d.id === "waypoint").legacy; }));
   // 파란 포탈 문: 돌아갈 층이 없으면 안 보이고, 그 자리에 서도 문이 아님
   await goDoor(N.page, "resume", { enter: false });
   check("no portal floor: no blue portal door", (await pos(N.page)).near === null && (await st(N.page)).resume === 0);

@@ -137,6 +137,9 @@
       "bless.guide": "Pathfinder",
       "bless.eye": "Wide Eyes",
       "bless.hero": "Hero's Aura",
+      "bless.fire": "Fireball",
+      "bless.ice": "Frost Burst",
+      "bless.bolt": "Chain Lightning",
       "relic.hawk": "Hawk Eye",
       "relic.grail": "Blood Grail",
       "relic.wall": "Rampart Shard",
@@ -163,6 +166,10 @@
       "bfx.parryCap": (n) => `Parry cap +${n}%p`,
       "bfx.dmgReduce": (n) => `Damage taken −${n}%`,
       "bfx.drCap": (n) => `Damage reduction cap +${n}%p`,
+      "bfx.fireLv": (n, ev, a, d) => `Lv ${n}: every ${ev} turns, a ${a} blast on the nearest enemy, ${d}% of attack as fire damage + burn`,
+      "bfx.iceLv": (n, ev, r, d) => `Lv ${n}: every ${ev} turns, ${d}% of attack as ice damage to all enemies within ${r} tiles + slow`,
+      "bfx.boltLv": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each`,
+      "bfx.boltLvS": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each + shock`,
     },
   });
 })(typeof self !== "undefined" ? self : this);

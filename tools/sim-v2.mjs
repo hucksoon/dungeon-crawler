@@ -20,7 +20,8 @@ if (OPT.zone) Object.assign(I.POWER.zone, OPT.zone);
 const between = (r, a, b) => a + Math.floor(r() * (b - a + 1));
 const SLOTS9 = ["weapon", "offhand", "head", "chest", "arms", "pants", "boots", "neck", "ring1", "ring2"];
 const ENH_ORDER = SLOTS9;
-const BLESS_PRI = OPT.bpri || ["hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
+// 속성 스킬 축복 (dc#142)은 재미로 많이 고른다고 보고 앞쪽 (OPT.noElem: 고르지 않음)
+const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fire", "bolt", "ice"]), "hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
 const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall"];
 
 function newPlayer(level = 1) {
@@ -37,6 +38,7 @@ function stats(p) {
   return {
     maxHp: Math.round(pct(p.maxHp + g.hp, (b.hpPct || 0) + lp)), atk: Math.round(pct(p.atk + g.atk, (b.atkPct || 0) + lp)), def: Math.round(pct(g.def, b.defPct || 0)),
     crit: Math.min(cap.crit, b.crit || 0), ls: Math.min(cap.lifesteal, b.lifesteal || 0), dr: Math.min(cap.dmgReduce, b.dmgReduce || 0), parry: Math.min(cap.parry, b.parry || 0),
+    ef: Object.fromEntries(B.ELEM_IDS.map(k => { const lv = Math.min(5, b[`${k}Lv`] || 0); return [k, lv ? B.ELEM[k](lv) : null]; })),
     first: b.firstHit || 0, bossHp: b.bossHp || 0, pot: 0.3 * (1 + (b.potPct || 0) / 100), potCd: 10 - (b.potCd || 0), floorHeal: b.floorHeal || 0, xp: b.xp || 0, elite: b.elite || 0, treasure: b.treasure || 0,
   };
 }
@@ -83,27 +85,53 @@ function floorMonsters(zone, f, r) {
   const L = M.effLevel(f), deep = zone !== "normal";
   const count = deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2);
   return { count: Math.round(count * KILL_SHARE), make: (kind) => {
-    if (zone === "hell") return M.makeHell(M.pickNightmareType(r), kind, f);
-    if (zone === "nm") return M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r));
+    if (zone === "hell") return zm("hell", M.makeHell(M.pickNightmareType(r), kind, f));
+    if (zone === "nm") return zm("nm", M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r)));
     if (OPT.nramp != null) { const m = M.makeMonster(M.pickType(L, r), kind, L), k = 1 + OPT.nramp * (f - 1) / 49; m.hp = Math.round(m.hp * k); m.atk = Math.round(m.atk * k); return m; }
     return OPT.nmul ? (() => { const m = M.makeMonster(M.pickType(L, r), kind, L); m.hp = Math.round(m.hp * OPT.nmul.hp); m.atk = Math.round(m.atk * OPT.nmul.atk); return m; })() : M.makeNormal(M.pickType(L, r), kind, f);
   }, eliteBase: M.eliteChance(deep ? M.NIGHTMARE.base : L) };
 }
+// OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
+function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
-  if (zone === "hell") return M.makeHellBoss(f, M.pickElement(r));
-  if (zone === "nm") return M.makeNightmareBoss(f, M.pickElement(r));
+  if (zone === "hell") return zm("hell", M.makeHellBoss(f, M.pickElement(r)));
+  if (zone === "nm") return zm("nm", M.makeNightmareBoss(f, M.pickElement(r)));
   if (OPT.nramp != null) { const b = M.makeBoss(f, M.effLevel(f)), k = 1 + OPT.nramp * (f - 1) / 49; b.hp = Math.round(b.hp * k); b.atk = Math.round(b.atk * k); return b; }
   return OPT.nmul ? (() => { const b = M.makeBoss(f, M.effLevel(f)); b.hp = Math.round(b.hp * OPT.nmul.hp); b.atk = Math.round(b.atk * OPT.nmul.atk); return b; })() : M.makeNormalBoss(f);
 }
 const itemLevel = (zone, f) => (zone === "hell" ? I.UNIQUE ? 125 + f : 125 + f : zone === "nm" ? 75 + f : M.effLevel(f));
 const tag = (zone) => (zone === "hell" ? "j" : zone === "nm" ? "n" : "e");
 
+// 속성 스킬 (dc#142): 게임과 같은 주기·피해. 몰려온 적은 서로 붙어 있다고 보고 폭발 3×3은 3마리, 5×5는 6마리까지
+//   피해 = 공격력 × mul × (1 + pct%) × (1 − 그 속성 저항) (방어력 무시), 치명타 가능. 화상은 공격력 10% × 5번을 한 번에, 얼음은 느려짐(2턴에 한 번 행동)
+const ELKEY = { fire: "fire", ice: "ice", bolt: "bolt" };
+function castElem(s, foes, st, r, killed) {
+  const res = (m, k) => Math.max(0, 1 - ((m.res?.[k] || 0) / 100));
+  const hit = (m, d, k) => { m.hp -= Math.round(d * res(m, k)); };
+  const roll = (e) => s.atk * e.mul * (1 + e.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
+  for (const k of B.ELEM_IDS) {
+    const e = s.ef[k];
+    if (!e) continue;
+    st.ecd[k] = (st.ecd[k] || 0) - 1;
+    if (st.ecd[k] > 0 || !foes.length) continue;
+    st.ecd[k] = e.every;
+    const d = roll(e);
+    if (k === "fire") for (const m of foes.slice(0, e.radius >= 2 ? 6 : 3)) hit(m, d + s.atk * 0.5, k);
+    else if (k === "ice") for (const m of foes) { hit(m, d, k); if (!(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }
+    else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
+    for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
+  }
+}
+
 // 싸움: foes 배열과 동시에. 이기면 true
 function fight(p, s, foes, st, r, zone) {
   let turn = 0;
+  st.ecd = st.ecd || {};
   while (foes.length) {
     turn++;
     if (st.cd > 0) st.cd--;
+    castElem(s, foes, st, r, st.killed);
+    if (!foes.length) break;
     if (st.hp < s.maxHp * 0.45 && st.cd === 0) { st.hp = Math.min(s.maxHp, st.hp + Math.max(8, Math.round(s.maxHp * s.pot))); st.cd = s.potCd; }
     else {
       const t = foes[0];
@@ -118,6 +146,8 @@ function fight(p, s, foes, st, r, zone) {
     }
     const crowd = M.crowdCut(foes.length);
     for (const m of foes) {
+      if (m.slowImm > 0) m.slowImm--;
+      if (m.slow > 0) { m.slow--; if (turn % 2) continue; }   // 느려짐: 2턴에 한 번
       if (s.parry && r() * 100 < s.parry) continue;
       let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), s.def) * (1 - s.dr / 100) * (1 - crowd);
       if (zone !== "normal") d *= ELEM_MUL;
@@ -129,7 +159,8 @@ function fight(p, s, foes, st, r, zone) {
   return true;
 }
 
-function pickBest(list, pri) { return [...list].sort((a, b) => pri.indexOf(a) - pri.indexOf(b))[0]; }
+const priOf = (pri, id) => { const i = pri.indexOf(id); return i < 0 ? 1e9 : i; };   // 목록에 없는 것은 맨 뒤 (noElem이면 속성 축복은 다른 게 없을 때만)
+function pickBest(list, pri) { return [...list].sort((a, b) => priOf(pri, a) - priOf(pri, b))[0]; }
 
 // 한 던전 50층 (p를 이어서 씀). 쓰러지면 쓰러진 층, 다 깨면 0
 function runZone(p, zone, r, rid, out, from = 1) {

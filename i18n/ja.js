@@ -136,6 +136,9 @@
       "bless.guide": "道しるべ",
       "bless.eye": "広い目",
       "bless.hero": "英雄のオーラ",
+      "bless.fire": "火炎球",
+      "bless.ice": "氷の爆発",
+      "bless.bolt": "連鎖稲妻",
       "relic.hawk": "鷹の目",
       "relic.grail": "血の聖杯",
       "relic.wall": "城壁のかけら",
@@ -162,6 +165,10 @@
       "bfx.parryCap": (n) => `パリィ上限+${n}%p`,
       "bfx.dmgReduce": (n) => `被ダメージ−${n}%`,
       "bfx.drCap": (n) => `被ダメージ軽減上限+${n}%p`,
+      "bfx.fireLv": (n, ev, a, d) => `Lv ${n}：${ev}ターンごとに最も近い敵へ${a}の爆発、攻撃力の${d}%の炎ダメージ＋火傷`,
+      "bfx.iceLv": (n, ev, r, d) => `Lv ${n}：${ev}ターンごとに周囲${r}マスの敵すべてに攻撃力の${d}%の氷ダメージ＋鈍足`,
+      "bfx.boltLv": (n, ev, k, d) => `Lv ${n}：${ev}ターンごとに稲妻が${k}回跳ね、1回ごとに攻撃力の${d}%の雷ダメージ`,
+      "bfx.boltLvS": (n, ev, k, d) => `Lv ${n}：${ev}ターンごとに稲妻が${k}回跳ね、1回ごとに攻撃力の${d}%の雷ダメージ＋感電`,
     },
   });
 })(typeof self !== "undefined" ? self : this);

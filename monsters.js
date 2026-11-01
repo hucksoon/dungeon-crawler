@@ -203,7 +203,14 @@
   // ---- 일반 던전 깊이 배율 (정식 v2, dc#140) ----
   // 축복·자동 장비로 일반 던전이 너무 쉬워서(1층부터 한 판으로 끝까지 97%) 깊을수록 HP·공격력을 더: 1층 ×1 → 50층 ×(1 + ramp)
   // ramp는 시뮬레이션으로 끝까지 약 75%가 되게 (tools/sim-v2.mjs: 1.3 → 86%, 1.34 → 76%, 1.4 → 70%, 1.5 → 39%). 쓰러지는 곳은 대부분 41~50층
-  const NORMAL = { ramp: 1.34 };
+  //   dc#142: 속성 스킬 축복(화염구·얼음 폭발·연쇄 번개)이 생겨 1.34면 98% → 2.22 (시뮬레이션: 2.2 → 79%, 2.22 → 76~78%, 2.25 → 70%, 2.5 → 43%)
+  //   속성 축복을 고르는 판 기준 (후보에 나오면 고름, 한 판 합쳐 10번까지). 속성 축복을 하나도 안 고르면 31~40층에서 거의 모두 쓰러짐
+  const NORMAL = { ramp: 2.22 };
+  // 나이트메어·헬 몬스터 HP·공격력에 더 곱함 (dc#142, 속성 스킬 축복 뒤 시뮬레이션 300판: 이어가기 나이트메어 약 90% · 헬 약 45%)
+  //   없으면 둘 다 100%. 나이트메어 ×2 / ×1.45 → 11%, ×1.6 / ×1.3 → 87~92%. 헬 ×1.6 / ×1.35 → 11%, ×1.43 / ×1.23 → 43~47%, ×1.4 / ×1.2 → 60~65%
+  //   헬 몬스터는 나이트메어 50층 몬스터를 바탕으로 만들지만 나이트메어 배율은 곱하지 않음 (헬 배율만). 끝이 없는 구멍(헬 바탕)도 헬 배율
+  const V2 = { nightmare: { hp: 1.6, atk: 1.3 }, hell: { hp: 1.43, atk: 1.23 } };
+  const v2mul = (m, k) => { const hp = Math.round(m.hp * k.hp); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k.atk) }; };
   const normalMul = (n) => 1 + NORMAL.ramp * (Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1);
   // n: 일반 던전 층 (1~50). 강함은 effLevel(n) 레벨 × 깊이 배율
   function makeNormal(t, kind, n) {
@@ -300,12 +307,14 @@
     return list[list.length - 1];
   }
   // el: 속성 ("fire" | "ice" | "bolt", 없으면 속성 없음)
-  function makeNightmare(t, kind, n, el = null) {
+  const makeNightmare = (t, kind, n, el = null) => v2mul(nmRaw(t, kind, n, el), V2.nightmare);
+  const makeNightmareBoss = (n, el = null) => v2mul(nmBossRaw(n, el), V2.nightmare);
+  function nmRaw(t, kind, n, el = null) {
     const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
     const hp = Math.round(m.hp * NIGHTMARE.hp * k * e);
     return withElement({ ...m, base: m.name, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n) * e), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
   }
-  function makeNightmareBoss(n, el = null) {
+  function nmBossRaw(n, el = null) {
     const b = makeBoss(NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
     const hp = Math.round(b.hp * NIGHTMARE.bossHp * k * e);
     return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n) * e), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
@@ -345,14 +354,14 @@
   }
   const toHell = (m, n, el, boss) => ({ ...m, name: zoneName("hell", m.el || null, m.base), nm: 0, hell: 1, res: hellRes(n, el, boss) });
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
-    const m = makeNightmare(t, kind, HELL.startNm, el), e = entryMul(HELL.entry, n);
+    const m = nmRaw(t, kind, HELL.startNm, el), e = entryMul(HELL.entry, n) * V2.hell.hp, ea = entryMul(HELL.entry, n) * V2.hell.atk;
     const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
-    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * e), def: Math.round(m.def * hellAtkScale(n) * e) }, n, el, false);
+    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * ea), def: Math.round(m.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, false);
   }
   function makeHellBoss(n, el = pickElement(Math.random)) {
-    const b = makeNightmareBoss(HELL.startNm, el), e = entryMul(HELL.entry, n);
+    const b = nmBossRaw(HELL.startNm, el), e = entryMul(HELL.entry, n) * V2.hell.hp, ea = entryMul(HELL.entry, n) * V2.hell.atk;
     const hp = Math.round(b.hp * HELL.bossHp * hellScale(n) * e);
-    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n) * e), def: Math.round(b.def * hellAtkScale(n) * e) }, n, el, true);
+    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n) * ea), def: Math.round(b.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, true);
   }
 
   // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
@@ -468,7 +477,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
