@@ -2947,10 +2947,11 @@
   }
   const MARK = { stairs: [">", "#ffcf5c"], treasure: ["!", "#ffd84a"], boss: ["", "#ff5a4a"], best: ["★", "#fff"] };
   // g: 그릴 캔버스, K: 칸 크기, size: 글자 크기
-  function drawMarks(g, K, size = K) {
+  function drawMarks(g, K, size = K, win = null, skipSeen = false) {
     g.save();
     g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold ${Math.round(size)}px sans-serif`; g.lineJoin = "round";
     for (const m of mapMarks()) {
+      if (skipSeen && visible[m.y]?.[m.x]) continue;   // 전체 지도: 지금 보이는 칸은 원래 그림이 있으니 (무지개 장비 글자를 덮지 않게)
       const [ch, c] = MARK[m.k], cx = (m.x + 0.5) * K, cy = (m.y + 0.5) * K;
       const col = m.color || c;
       g.fillStyle = "rgba(0, 0, 0, 0.75)"; g.beginPath(); g.arc(cx, cy, size * 0.7, 0, Math.PI * 2); g.fill();
@@ -7008,7 +7009,7 @@
       for (const c of f.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
     }
     Walk.draw();
-    if (fullMap) drawMarks(ctx, TILE, Math.max(TILE, 14 / cam.z));
+    if (fullMap) drawMarks(ctx, TILE, Math.max(TILE, 14 / cam.z), null, true);
     if (overlayMap && !fullMap) drawOverlay();
   }
 
