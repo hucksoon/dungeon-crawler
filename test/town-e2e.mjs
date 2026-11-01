@@ -99,9 +99,7 @@ try {
   await goDoor(N.page, "mailbox");
   check("우편함 → market opens on the mail tab", await N.page.locator("#market-modal").isVisible() && (await N.page.locator("#market-modal").innerText()).includes("우편함은 계정을 연결하면 쓸 수 있어요"));
   await N.page.keyboard.press("Escape"); await sleep(100);
-  await goDoor(N.page, "hourshop");
-  check("시간 상점 door → hour shop opens", !(await N.page.locator("#shop-modal").isHidden()));
-  await N.page.keyboard.press("Escape"); await sleep(100);
+  check("no 시간 상점 building/door in the town (dc#141)", await N.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "hourshop") && !window.RLJump.TOWN.buildings.some(b => b.id === "hourshop")));
   check("no 대장간 door in the town (dc#140)", await N.page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "forge")));
   // 닫힌 문: 안내만, 마을에 그대로
   for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 50층을 완료해야"], ["nightmare", "50층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {
@@ -109,8 +107,8 @@ try {
     check(`closed door ${id}: stays in the town with a note`, await inLobby(N.page) && (await logText(N.page)).includes(msg), (await logText(N.page)).split("\n").slice(-1)[0]);
   }
   // 웨이포인트는 마을 정가운데 (dc#100): 폭 64칸의 가운데, 왼쪽은 던전 입구, 오른쪽은 골드 던전
-  check("waypoint stands in the middle of the town (between the dungeon gate and the gold dungeon)", await N.page.evaluate(() => { const T = window.RLJump.TOWN, w = T.rows[0].length, wp = T.doors.find(d => d.id === "waypoint"), b = (id) => T.buildings.find(x => x.id === id);
-    return Math.abs(wp.x - w / 2) <= 0.5 && b("gate").x1 < wp.x && b("golddungeon").x0 > wp.x; }));
+  check("waypoint stands in the middle of the town (between the dungeon gate and the nightmare, dc#141)", await N.page.evaluate(() => { const T = window.RLJump.TOWN, w = T.rows[0].length, wp = T.doors.find(d => d.id === "waypoint"), b = (id) => T.buildings.find(x => x.id === id);
+    return Math.abs(wp.x - w / 2) <= 0.5 && b("gate").x1 < wp.x && b("nightmare").x0 > wp.x && b("golddungeon").x0 > b("hell").x1; }));
   // 파란 포탈 문: 돌아갈 층이 없으면 안 보이고, 그 자리에 서도 문이 아님
   await goDoor(N.page, "resume", { enter: false });
   check("no portal floor: no blue portal door", (await pos(N.page)).near === null && (await st(N.page)).resume === 0);

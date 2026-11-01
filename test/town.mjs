@@ -1,5 +1,5 @@
 // 마을(옆에서 보는 로비, dc#90) 테스트 도우미: 문 id(jump.js RLJump.TOWN.doors)까지 진짜 키로 걸어가서 ↑로 들어감
-//   문: jumptower · towerHell(운영자) · forge · market · mailbox · hourshop · start(1층) · resume(파란 포탈) · skip(최고−10층) · staff(운영자)
+//   문: jumptower · towerHell(운영자) · market · mailbox · start(1층) · resume(파란 포탈) · skip(최고−10층) · staff(운영자)
 //       golddungeon · golddungeonNM · nightmare · hell (대장간·나이트메어 50층·헬 층 고르기 문은 dc#140에서 없앰)
 // 멀면 오래 누르고, 가까우면 짧게 톡톡 (마찰로 미끄러지는 만큼 덜 누름). 위치는 window.RLTownPos() (읽기만)
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
