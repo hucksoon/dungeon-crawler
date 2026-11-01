@@ -651,6 +651,7 @@ function item_view(array $it): array {
         // 아이템 참조: 게임·랭킹 화면이 같은 아이템을 다시 만들어 그 언어의 이름으로 보여줌 (text·name은 한국어)
         'ref' => item_ref($it),
         'main' => $main, 'lines' => $lines,
+        'power' => r_power($it),   // 정식 v2 (dc#140): 실제로 쓰이는 숫자 (공격력·방어력·최대 HP)
         'runeword' => ($w = r_runeword_of($it)) ? $w['name'] : null,   // 완성된 룬워드 이름
         // 홈에 넣은 보석·룬: [이름, 효과, 룬인지]
         'gems' => array_map(function ($g) use ($it) {
@@ -737,7 +738,7 @@ function read_score(array $body, int $oldBest, string $key): array {
     $oldGear = false;
     foreach ($ordered as $it) if (($it['v'] ?? 1) < SEASONS[CURRENT_SEASON]['minItemV']) $oldGear = true;
     if ($oldGear) { $stage = 0; $nm = 0; $hell = 0; $abyss = 0; }
-    $totals = r_totals($ordered);
+    $totals = r_power_totals($ordered);   // 정식 v2 (dc#140): 장비 숫자만
     $snapshot = [
         'stage' => $stage,
         'stats' => r_player_stats($plvl, $totals),

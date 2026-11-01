@@ -98,6 +98,8 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     localStorage.setItem("rl_device_id", dev); for (const k of N) localStorage.setItem(`${k}:g:${dev}`, "1");
     localStorage.setItem("rl_game_lang", lang); localStorage.setItem("rl_lang", lang); if (auth) localStorage.setItem("rl_auth", auth);
     if (!("rl_3d" in seed)) localStorage.setItem("rl_3d", "0");   // 3D가 기본이 된 뒤(dc#111)에도 예전 장면은 2D로 (3D 장면은 seed에 rl_3d "1")
+    // 정식 v2(dc#140) 전 장면은 축복 창·안내 창·자동 장비 없이 (v2 장면은 seed에 넣음)
+    for (const [k, v] of [["rl_bless", "off"], ["rl_v2notice", "off"], ["rl_autogear", "0"]]) if (!(k in seed)) localStorage.setItem(k, v);
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v); }, [seed, dev, scene, NOTICES, lang, auth]);
   await page.goto(ORIGIN + file); await sleep(900);
   return { ctx, page, errors };
@@ -490,6 +492,37 @@ const SCENES = [
     await sleep(600);
     return o; }],
   ["pixel-dex", "도감에도 몬스터 그림", async () => { const seen = Object.fromEntries([...M.MONSTERS.slice(0, 30).map(m => m.id), ...M.BOSSES.map(b => b.id)].map(k => [k, true])); const o = await open({ seed: { rl_save: save(30, "blog-pxdex"), "rl_dex:g:DEV": JSON.stringify({ seen, kills: Object.fromEntries(Object.keys(seen).map((k, i) => [k, 3 + i * 7])) }) } }); await press(o.page, ["b"]); await sleep(300); await o.page.evaluate(() => document.querySelectorAll("#dex-modal, #dex-modal *").forEach(e => { e.scrollTop = 0; })); return o; }],
+  // 정식 v2 (dc#140): 매 층 축복 · 보스 유물 · 아이콘 줄 · 자동 장비 · 숫자만 남은 아이템
+  ["v2-bless", "새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(12, "blog-v2b", { bz: { normal: 11 }, bl: { might: 3, vigor: 2, first: 1 }, rl: { grail: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v2-relic", "보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(15, "blog-v2r", { bz: { normal: 15 }, pq: [{ r: 1, s: "blog-v2r|normal|15|r" }], bl: { might: 4, vigor: 3, stone: 2, king: 1 }, rl: { grail: 1, hawk: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v2-bar", "능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록", async () => {
+    const o = await open({ dsf: 2, seed: { rl_bless: "on", rl_save: save(23, "blog-v2bar", { bz: { normal: 23 }, bl: { might: 5, vigor: 4, stone: 3, first: 2, king: 1, brew: 2, guide: 1, hero: 1 }, rl: { grail: 2, hawk: 1, heart: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    return { ...o, shot: "#bless-bar" }; }],
+  ["v2-autogear", "줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해", async () => {
+    const pick = (seed, want, lvl) => { for (let k = 0; k < 3000; k++) { const it = I.generate(`${seed}|${k}`, "drop", lvl); if (want(it)) return it; } return I.generate(seed, "drop", lvl); };
+    const eq = g40.map(it => ({ ...it, rarity: it.slot === "chest" ? "rare" : it.slot === "head" ? "epic" : it.rarity }));
+    const dupe = { ...pick("blog-v2ag-a", it => it.slot === "chest", 40), rarity: "rare" }, better = pick("blog-v2ag-b", it => it.slot === "head" && it.rarity === "legendary", 48), weak = pick("blog-v2ag-c", it => it.rarity === "common", 30);
+    const o = await explored({ dsf: 1.4, seed: { rl_autogear: "1", rl_save: save(24, "blog-v2ag", { bz: { normal: 24 } }), "rl_inv:g:DEV": inv(eq) } });
+    // 세 아이템을 바로 옆 바닥 한 칸에 겹쳐 놓고 한 걸음 (한 칸의 아이템은 한꺼번에 주움)
+    const key = await o.page.evaluate((its) => { const L = JSON.parse(localStorage.getItem("rl_level")), W = 32;
+      const dirs = [[1, 0, "ArrowRight"], [-1, 0, "ArrowLeft"], [0, 1, "ArrowDown"], [0, -1, "ArrowUp"]], d = dirs.find(([dx, dy]) => L.map[(L.py + dy) * W + L.px + dx] !== "0") || dirs[0];
+      L.enemies = []; L.items = its.map(item => ({ x: L.px + d[0], y: L.py + d[1], type: "gear", item, from: "monster" }));
+      localStorage.setItem("rl_level", JSON.stringify(L)); return d[2]; }, [dupe, better, weak]);
+    await o.page.reload(); await sleep(900);
+    await o.page.evaluate(() => { document.getElementById("log").innerHTML = ""; });
+    await press(o.page, [key], 600);
+    return { ...o, shot: "#log" }; }],
+  ["v2-item", "아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(24, "blog-v2it"), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("i"); await sleep(400);
+    await o.page.locator("#inv-equip .slot").nth(1).click(); await sleep(300);
+    return { ...o, shot: "#inv-detail" }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

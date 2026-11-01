@@ -18,7 +18,8 @@ const NM = M.NIGHTMARE;
 // ---- 규칙 ----
 check("nightmare: 50 floors, 2%/floor + 0.3%×(floor−1)², monsters 20 → 50 (floor 41), items 76~125, clear 51", NM.floors === 50 && NM.perFloor === 0.02 && NM.perFloor2 === 0.003 && M.nmMonsterCount(1) === 20 && M.nmMonsterCount(40) === 49 && M.nmMonsterCount(41) === 50 && M.nmMonsterCount(50) === 50 && NM.itemBase === 75 && NM.clearStage === 51);
 const b1 = M.makeNightmareBoss(1), b50 = M.makeNightmareBoss(50), base = M.makeBoss(75);
-check("nightmare boss = 75층 boss × 1.44 HP (dc#54), ×9.18 at 50", b1.hp === Math.round(base.hp * M.NIGHTMARE.bossHp) && M.NIGHTMARE.bossHp === 1.44 && Math.abs(b50.hp / b1.hp - 9.18) < 0.01 && b1.name.startsWith("악몽의"));
+// 정식 v2 (dc#140): 1~10층은 입구 배율 (1층 × 0.6 → 10층 × 1)
+check("nightmare boss = 75층 boss × 1.44 HP (dc#54) × entry 0.6 on floor 1 (dc#140), ×9.18 at 50", b1.hp === Math.round(base.hp * M.NIGHTMARE.bossHp * M.entryMul(NM.entry, 1)) && NM.entry.from === 0.6 && M.NIGHTMARE.bossHp === 1.44 && Math.abs(b50.hp / (base.hp * M.NIGHTMARE.bossHp) - 9.18) < 0.01 && b1.name.startsWith("악몽의"));
 const pool = M.nightmarePool().map(m => m.id);
 check("nightmare pool has floor-75 monsters plus 대악마·타이탄·공허의 군주·고룡", ["archdemon", "titan", "void_lord", "ancient_dragon"].every(id => pool.includes(id)) || pool.length >= 8, pool.join());
 

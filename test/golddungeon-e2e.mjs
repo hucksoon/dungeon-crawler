@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
 import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -69,14 +71,7 @@ try {
   let { ctx, page, errors } = await open("gdtest-a00", { rl_save: saveG(20, "gdA", 5000), rl_level: lv(20, "gdA", "normal"), "rl_inv:g:DEV": JSON.stringify({ bag: [leg, done], equip: eqOf(), log: [], stones: 0 }) });
   await press(page, "i"); await sleep(150);
   check("inventory header shows gold", (await page.locator("#inv-count").innerText()).startsWith("골드 5,000 · 강화석"), await page.locator("#inv-count").innerText());
-  await pick(page, leg);
-  const cost = I.ancientRerollCost(leg);
-  check("ancient roll line shows cost and gold on hand", (await page.locator("#inv-detail").innerText()).includes(`${cost.toLocaleString()}골드 (보유 5,000골드)`));
-  await page.locator("#inv-detail button", { hasText: "고대 굴리기" }).click(); await sleep(150);
-  check("failure message shows gold left, header updates", (await page.locator("#inv-detail").innerText()).includes(`남은 골드 ${(5000 - cost).toLocaleString()}`) && (await page.locator("#inv-count").innerText()).startsWith(`골드 ${(5000 - cost).toLocaleString()}`));
-  await pick(page, done);
-  const btn = page.locator("#inv-detail button", { hasText: "20/20번 실패" });
-  check("20 rolls used: fixed disabled button 고대 굴리기 20/20번 실패", (await btn.count()) === 1 && await btn.isDisabled() && (await page.locator("#inv-detail").innerText()).includes("20번 모두 실패했어요"));
+  // 정식 v2 (dc#140): 고대 다시 굴리기가 쉬어서 그 확인은 뺌
   await press(page, "Escape");
   // 골드가 모자라면 버튼에 골드 부족
   await page.evaluate(() => {});

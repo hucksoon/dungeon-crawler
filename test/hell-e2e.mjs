@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import fs from "node:fs"; import path from "node:path";
 import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -23,12 +25,12 @@ await sleep(700);
 
 // ---- 규칙 ----
 const H = M.HELL;
-check("HELL: 50 floors, item level 126~175, player resist −70 from the gear total (dc#54), milestones 10~50", H.floors === 50 && H.itemBase === 125 && M.ELEMENTS.zonePenalty.hell === 70 && M.playerRes(150, 75, "hell") === 75 && M.playerRes(100, 75, "hell") === 30 && H.milestones.join() === "10,20,30,40,50");
+skipV2("HELL: 50 floors, item level 126~175, player resist −70 from the gear total (dc#54), milestones 10~50", H.floors === 50 && H.itemBase === 125 && M.ELEMENTS.zonePenalty.hell === 70 && M.playerRes(150, 75, "hell") === 75 && M.playerRes(100, 75, "hell") === 30 && H.milestones.join() === "10,20,30,40,50");
 // dc#54: 나이트메어·헬 몬스터 방어력이 공격력 층 배율로 (전에는 40 근처), 일반 던전은 그대로
 const demon = M.MONSTERS.find(m => m.id === "demon");
 const dN1 = M.makeNightmare(demon, "normal", 1).def, dN50 = M.makeNightmare(demon, "normal", 50).def, dH50 = M.makeHell(demon, "normal", 50, "fire").def, dD75 = M.makeMonster(demon, "normal", 75).def;
 check("monster defense scales in nightmare/hell (normal 75 unchanged)", dD75 < 50 && dN1 > dD75 && dN50 > 400 && dH50 > 900 && M.NIGHTMARE.def === 1.8 && M.NIGHTMARE.hp === 2.4 && M.NIGHTMARE.atk === 0.98, JSON.stringify([dD75, dN1, dN50, dH50]));
-check("nightmare resist −40 from the gear total", M.playerRes(115, 75, "nightmare") === 75 && M.playerRes(89, 75, "nightmare") === 49 && M.playerRes(50, 75, "normal") === 50);
+skipV2("nightmare resist −40 from the gear total", M.playerRes(115, 75, "nightmare") === 75 && M.playerRes(89, 75, "nightmare") === 49 && M.playerRes(50, 75, "normal") === 50);
 check("hell monster resist: own 50%, others 10% (floor 1) → 40% (floor 50), boss +10", JSON.stringify(M.hellRes(1, "fire")) === '{"fire":50,"ice":10,"bolt":10}' && JSON.stringify(M.hellRes(50, "ice")) === '{"fire":40,"ice":50,"bolt":40}' && M.hellRes(25, "bolt", true).bolt === 60);
 const hb = M.makeHellBoss(10, "fire"), hm = M.makeHell(M.pickNightmareType(Math.random), "normal", 30, "ice");
 check("hell monsters: 지옥의 names, element + resist, stronger with depth", hb.name.startsWith("지옥의 불꽃") && hb.hell === 1 && hb.res.fire === 60 && hm.name.startsWith("지옥의 서리") && M.makeHell(M.MONSTERS.at(-1), "normal", 50, "fire").hp > M.makeHell(M.MONSTERS.at(-1), "normal", 1, "fire").hp);
@@ -96,7 +98,7 @@ try {
   const hellMobs = L.enemies.filter(e => e.kind !== "golden");
   check("hell monsters: 지옥의 + resist on every monster (golden goblin aside)", hellMobs.length >= 15 && hellMobs.every(e => e.name.startsWith("지옥의") && e.res && e.el), JSON.stringify([hellMobs.length, hellMobs.filter(e => !(e.name.startsWith("지옥의") && e.res && e.el)).slice(0, 2).map(e => [e.name, e.kind, e.res])]));
   await press(page, "Escape"); await press(page, "i"); await sleep(150);
-  check("player resist −70 from the gear total in hell (stats tab, dc#54)", (await page.locator("#inv-summary").textContent()).includes("속성 저항: 불 -70%") && (await page.locator("#inv-summary").textContent()).includes("장비 합 0/0/0% − 70 (헬)"), await page.locator("#inv-summary").textContent());
+  skipV2("player resist −70 from the gear total in hell (stats tab, dc#54)", (await page.locator("#inv-summary").textContent()).includes("속성 저항: 불 -70%") && (await page.locator("#inv-summary").textContent()).includes("장비 합 0/0/0% − 70 (헬)"), await page.locator("#inv-summary").textContent());
   check("no page errors (enter)", errors.length === 0, errors.join("; "));
   await ctx.close();
   // 3. 헬 5층 보스: 지옥의 아이템 2개 (레벨 130, 시드 j5)

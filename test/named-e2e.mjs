@@ -2,6 +2,8 @@
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
 import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -79,7 +81,7 @@ try {
   await press(page, "ArrowRight"); await sleep(250);
   L = await stored(page, "rl_level"); lg = await logs(page);
   const runes = L.items.filter(i => i.type === "rune");
-  check("named kill: log + 2 runes + gear", lg.includes("네임드 보스 불가사리을(를) 쓰러뜨렸다") && runes.length === 2 && runes.every(r => r.rune >= 0 && r.rune < 14) && L.items.some(i => i.type === "gear"), JSON.stringify(L.items.map(i => i.type)));
+  skipV2("named kill: log + 2 runes + gear", lg.includes("네임드 보스 불가사리을(를) 쓰러뜨렸다") && runes.length === 2 && runes.every(r => r.rune >= 0 && r.rune < 14) && L.items.some(i => i.type === "gear"), JSON.stringify(L.items.map(i => i.type)));
   check("no page errors (불가사리)", errors.length === 0, errors.join("; "));
   await ctx.close();
   // 3. 구미호: HP 50% 이하가 되면 분신 2마리. 분신은 장비·골드 없음

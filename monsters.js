@@ -231,7 +231,11 @@
     gold: { kill: 3, pile: 8, floor: 0.75 },
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
+    // 입구 (정식 v2, dc#140): 마을에서 새로 들어오면 축복이 0개라 1~until층은 HP·공격·방어 × (from → 1)로 천천히 (시뮬레이션 tools/sim-v2.mjs)
+    entry: { until: 10, from: 0.6 },
   };
+  // 입구 배율: 1층 from에서 until층까지 고르게 올라 그 뒤 1
+  const entryMul = (entry, n) => (n > entry.until ? 1 : entry.from + (1 - entry.from) * (Math.max(1, n) - 1) / entry.until);
   // 둘러싸임 방어: 플레이어 주변 8칸에 몬스터가 from마리 이상 붙어 있으면 받는 피해(방어력으로 줄어든 뒤) −per × (수 − from + 1), 최대 max
   // (3마리 −8% … 8마리 −40%). 몬스터가 계속 몰려오면 흡혈·포션으로 버틸 수 없어서 고대 장비로도 나이트메어 40층에서 쓰러졌음
   const CROWD = { from: 3, per: 0.08, max: 0.4 };
@@ -257,7 +261,7 @@
     resCap: 75,
     // 던전마다 내 속성 저항 감소 (dc#54): 장비 저항 합에서 먼저 빼고, 그 뒤 최대치(75%). 저항 줄을 더 모아야 최대치에 닿음
     //   (전에는 최대치로 자른 뒤 헬만 −10 → 저항이 넘쳐서(나이트메어 추천 장비 합 111%, 헬 130~158%) 파밍할 이유가 없었음)
-    zonePenalty: { normal: 0, nightmare: 40, hell: 70 },
+    zonePenalty: { normal: 0, nightmare: 0, hell: 0 },   // 정식 v2 (dc#140): 장비에 저항 줄이 없어져서 감소도 없앰 (예전 나이트메어 40 · 헬 70)
   };
   // 그 던전에서의 내 속성 저항: min(최대치, 장비 저항 합 − 던전 감소)
   const playerRes = (raw, cap, zone) => Math.min(cap, raw - (ELEMENTS.zonePenalty[zone] || 0));
@@ -280,14 +284,14 @@
   }
   // el: 속성 ("fire" | "ice" | "bolt", 없으면 속성 없음)
   function makeNightmare(t, kind, n, el = null) {
-    const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n);
-    const hp = Math.round(m.hp * NIGHTMARE.hp * k);
-    return withElement({ ...m, base: m.name, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n)), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
+    const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
+    const hp = Math.round(m.hp * NIGHTMARE.hp * k * e);
+    return withElement({ ...m, base: m.name, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n) * e), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
   }
   function makeNightmareBoss(n, el = null) {
-    const b = makeBoss(NIGHTMARE.base), k = nmScale(n);
-    const hp = Math.round(b.hp * NIGHTMARE.bossHp * k);
-    return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n)), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n)), nm: 1 }, el);
+    const b = makeBoss(NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
+    const hp = Math.round(b.hp * NIGHTMARE.bossHp * k * e);
+    return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n) * e), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
   }
 
   // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 50층 던전 (완료하면 끝이 없는 구멍) ----
@@ -306,7 +310,7 @@
     hp: 1.0, atk: 1.0, bossHp: 1.0, bossAtk: 1.0,
     // 입구: 1~until층 몬스터 HP·공격 × mul. 나이트메어 장비(악몽의 힘 ×3)로 들어오는 층이라, 그대로면 나이트메어 50층보다 어려웠음
     //   (줄 품질 95% 장비로 몰려오는 20마리 48% vs 나이트메어 50층 37%). 5층 보스부터 지옥의 장비(×5)가 나와서 그 뒤로는 그대로
-    entry: { until: 4, mul: 0.9 },
+    entry: { until: 15, from: 0.4 },   // 정식 v2 (dc#140): 예전 1~4층 × 0.9 → 1층 0.4에서 15층까지 천천히 (시뮬레이션 tools/sim-v2.mjs)
     monsters: NIGHTMARE.monsters,
     res: { own: 50, otherFrom: 10, otherTo: 40, boss: 10 },
     gold: { kill: 5, pile: 12, floor: 0.75 },
@@ -324,14 +328,14 @@
   }
   const toHell = (m, n, el, boss) => ({ ...m, name: zoneName("hell", m.el || null, m.base), nm: 0, hell: 1, res: hellRes(n, el, boss) });
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
-    const m = makeNightmare(t, kind, HELL.startNm, el), e = n <= HELL.entry.until ? HELL.entry.mul : 1;
+    const m = makeNightmare(t, kind, HELL.startNm, el), e = entryMul(HELL.entry, n);
     const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
     return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * e), def: Math.round(m.def * hellAtkScale(n) * e) }, n, el, false);
   }
   function makeHellBoss(n, el = pickElement(Math.random)) {
-    const b = makeNightmareBoss(HELL.startNm, el);
-    const hp = Math.round(b.hp * HELL.bossHp * hellScale(n));
-    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n)), def: Math.round(b.def * hellAtkScale(n)) }, n, el, true);
+    const b = makeNightmareBoss(HELL.startNm, el), e = entryMul(HELL.entry, n);
+    const hp = Math.round(b.hp * HELL.bossHp * hellScale(n) * e);
+    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n) * e), def: Math.round(b.def * hellAtkScale(n) * e) }, n, el, true);
   }
 
   // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
@@ -447,7 +451,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

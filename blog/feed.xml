@@ -6,11 +6,11 @@
 <description>Claude Code와 같이 라이브 코딩으로 만드는 브라우저 로그라이크 게임의 개발 이야기</description>
 <language>ko</language>
 <item>
-<title>레벨 옆 숫자는 이제 경험치 %</title>
+<title>정식 v2: 매 층 축복과 자동 장비</title>
 <link>https://game.apacimtest.com/blog/2026-11-01.html</link>
 <guid>https://game.apacimtest.com/blog/2026-11-01.html</guid>
 <pubDate>Sun, 01 Nov 2026 12:00:00 GMT</pubDate>
-<description>화면 위 레벨 옆의 &quot;+76%&quot;가 경험치처럼 보여서 헷갈렸어요. 이제 그 자리에는 다음 레벨까지 경험치가 몇 %인지 보여 주고, 레벨 보너스는 인벤토리 [능력치]에서 설명해요.</description>
+<description>장비는 숫자만 남기고 줍는 즉시 자동으로 끼고 강화해요. 대신 새 층마다 축복을, 보스마다 유물을 골라 판마다 다른 캐릭터를 만들어요. 레벨 옆 숫자도 경험치 %로 바꿨어요.</description>
 </item>
 <item>
 <title>할로윈 첫날, 스킨은 모두에게, 구멍 경험치 150배</title>

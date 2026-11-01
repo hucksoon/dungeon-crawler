@@ -37,11 +37,14 @@ for (let i = 0; i < NN; i++) {
   const ja = { item: a, name: I2.itemName(a), eb: I2.enhancedBase(a), el: I2.enhancedLines(a), efb: q.v === 1 ? null : I2.effectiveBase(a), efl: q.v === 1 ? null : I2.effectiveLines(a), gate: I.rngFrom(`v${q.v}|drop?|${q.seed}`)() };
   const js1 = (x) => { const t = JSON.stringify(x); return t === "[]" ? "{}" : t; };   // PHP 빈 배열 = JS 빈 객체 (저항 줄 0개 장신구)
   for (const k of ["name", "eb", "el", "efb", "efl", "gate"]) if (js1(ja[k]) !== js1(b[k])) { if (bad++ < 5) console.log("DIFF", k, i, q, JSON.stringify(ja[k]), JSON.stringify(b[k])); }
+  // 정식 v2 장비 숫자 (dc#140): items.js power == rules.php r_power
+  if (JSON.stringify(I2.power(a)) !== JSON.stringify(b.pw)) { if (bad++ < 5) console.log("DIFF power", i, q, JSON.stringify(I2.power(a)), JSON.stringify(b.pw)); }
   for (const k of ["id", "rarity", "slot", "type", "set", "lvl", "ancient", "parry", "v", "r", "ar"]) if (a[k] !== b.item[k]) { if (bad++ < 5) console.log("DIFF item." + k, i, q, a[k], b.item[k]); }
   for (const k of ["main", "lines", "base"]) if (JSON.stringify(a[k] ?? null) !== JSON.stringify(b.item[k] ?? null)) { if (bad++ < 5) console.log("DIFF item." + k, i, q, JSON.stringify(a[k]), JSON.stringify(b.item[k])); }
 }
 for (let i = 0; i < sets.length; i++) {
-  const eq = sets[i].items.map(js), t = I2.totals(eq);
+  const eq = sets[i].items.map(js), t = I2.totals(eq), pt = I2.powerTotals(eq).stats;
+  if (JSON.stringify(pt) !== JSON.stringify(php.tot[i].pt)) { if (bad++ < 5) console.log("DIFF powerTotals", i, JSON.stringify(pt), JSON.stringify(php.tot[i].pt)); }
   if (JSON.stringify(t.stats) !== JSON.stringify(php.tot[i].t.stats)) { if (bad++ < 5) console.log("DIFF totals", i, JSON.stringify(t.stats), JSON.stringify(php.tot[i].t.stats)); }
   if (JSON.stringify(t.sets.map(s => [s.name, s.count, s.full, s.bonuses.map(b => b.on)])) !== JSON.stringify(php.tot[i].t.sets.map(s => [s.name, s.count, s.full, s.bonuses.map(b => b.on)]))) { if (bad++ < 5) console.log("DIFF sets", i); }
   // 랭킹 스냅샷 능력치 = 게임 stats(): 레벨마다 +4 HP·+1 공격력, 그리고 레벨 보너스 +2% (dc#95)

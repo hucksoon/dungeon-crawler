@@ -10,6 +10,8 @@ const M = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
 const ORIGIN = "https://hucksoon.github.io/hucksoon/";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x ? " — " + x : ""}`); };
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const DEV = "bbbb2222-0000-4000-8000-00000000cafe";
 // 헤드리스에서도 WebGL (SwiftShader)
@@ -170,7 +172,7 @@ try {
   await until(() => document.getElementById("hand3d").hidden && document.getElementById("hand3d-l").hidden);
   let h = await hands();
   check("3D hands: longsword model in the right hand, shield model in the left (2D picture hands hidden)", /^sword_[A-E]\|longsword$/.test(h.r) && /^shield_[A-C]\|shield$/.test(h.l) && await o.page.evaluate(() => document.getElementById("hand3d").hidden && document.getElementById("hand3d-l").hidden), JSON.stringify(h));
-  check("lightning weapon glows yellow (속성 빛)", h.glow === "#ffe14d", JSON.stringify(h));
+  skipV2("lightning weapon glows yellow (속성 빛)", h.glow === "#ffe14d", JSON.stringify(h));
   check("bloom (빛 번짐) on a desktop", h.bloom === true);
   await o.page.evaluate(() => window.RLView3D.fx("block"));
   // 자세 값(kb: 0 → 1 → 0)으로 확인: 그리는 속도와 상관없이 막는 순간 올라갔다가 내려옴
@@ -182,7 +184,7 @@ try {
   check("burning / frozen monster keeps giving off flames and ice", fumes, String(pc0));
   await o.page.keyboard.press("Space"); await sleep(120);
   const pc1 = await o.page.evaluate(() => window.RLView3D.partCount);
-  check("lightning weapon hit → sparks on the monster (속성 공격이 보임)", pc1 >= pc0 + 6, `${pc0} → ${pc1}`);
+  skipV2("lightning weapon hit → sparks on the monster (속성 공격이 보임)", pc1 >= pc0 + 6, `${pc0} → ${pc1}`);
   await o.page.locator("#stage").screenshot({ path: path.join(SHOTS, "view3d-hands.png") });
   check("no page errors (hands)", !o.errors.length, o.errors.join(" | "));
   await o.ctx.close();
@@ -195,7 +197,7 @@ try {
   // 왼손 휘두름이 오른손 뒤(0.15초)로 잡혔는지 (그리는 속도와 상관없이 시각으로 확인)
   const swung = await o.page.waitForFunction((t0) => { const p = window.RLView3D.handPose; return p.swingR >= t0 && p.swingL > p.swingR + 100; }, tPress, { timeout: 3000, polling: 30 }).then(() => true, () => false);
   h = await o.page.evaluate(() => window.RLView3D.hands);
-  check("off-hand dagger: dagger model in the left hand, swings right after the right hand (두 손 무기)", /^axe_/.test(h.r) && /^dagger_[AB]\|dagger$/.test(h.l) && swung, JSON.stringify(h));
+  skipV2("off-hand dagger: dagger model in the left hand, swings right after the right hand (두 손 무기)", /^axe_/.test(h.r) && /^dagger_[AB]\|dagger$/.test(h.l) && swung, JSON.stringify(h));
   await o.ctx.close();
 
   // ---- 계단: 밟으면 원래처럼 다음 층, 3D도 새 층으로 ----

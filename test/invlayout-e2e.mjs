@@ -1,5 +1,7 @@
 // 인벤토리 화면 구조: 넓은 화면 = 왼쪽 장비·가방 / 오른쪽 탭, 휴대폰 = 능력치 한 줄 + 아래에서 올라오는 탭 창 (60%)
 import { createRequire } from "node:module"; import fs from "node:fs"; import path from "node:path";
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/"); const { chromium, devices } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3], ORIGIN = "https://game.apacimtest.com/";
 const I = createRequire(import.meta.url)(path.join(REPO, "items.js"));
@@ -33,14 +35,7 @@ try {
     check("desk: tabs sit to the right of the bag", side.left > bagB.left + 400, JSON.stringify(side));
     check("desk: bag scrolls on its own (40 items)", await page.evaluate(() => { const g = document.getElementById("inv-bag"); return g.scrollHeight > g.clientHeight && getComputedStyle(g).overflowY === "auto"; }));
     check("desk: opens on the 능력치 tab, mobile stat line hidden", await page.locator("#inv-summary").isVisible() && !(await page.locator("#inv-statline").isVisible()) && !(await page.locator(".detail-close").isVisible()));
-    check("desk: sets and gem pouch start folded (one line each)", await page.locator("#inv-summary details.fold").count() === 3 && await page.locator("#inv-summary details.fold[open]").count() === 0);
-    const sum = await page.locator("#inv-summary details.fold").first().locator("summary").innerText();
-    check("desk: set line shows 화염의 세트 (2/5) · 효과 1/3", sum.includes("화염의 세트 (2/5)") && sum.includes("효과 1/3"), sum);
-    await page.locator("#inv-summary details.fold summary").first().click(); await sleep(150);
-    check("desk: clicking a set line shows all its tiers", (await page.locator("#inv-summary details.fold").first().innerText()).includes("5세트:"));
-    await page.locator("#inv-equip .slot", { hasText: "가슴" }).click(); await sleep(200);
-    check("desk: picking an item opens 상세 with long sections open", await page.locator("#inv-detail").isVisible() && await page.locator("#inv-detail details.fold[open]").count() >= 2);
-    check("desk: set fold stays open after re-render", await page.locator(".inv-tab[data-tab=stats]").click().then(() => sleep(150)).then(() => page.locator("#inv-summary details.fold[open]").count()) === 1);
+    // 정식 v2 (dc#140): 세트·보석 주머니 접기 확인은 뺌 (세트 효과·보석이 없어짐)
     check("desk: no page errors", errors.length === 0, errors.join("; "));
     await ctx.close();
   }
@@ -50,7 +45,7 @@ try {
     const vh = await page.evaluate(() => innerHeight);
     check("phone: sheet is closed when the inventory opens", !(await page.locator("#inv-side").isVisible()));
     const line = await page.locator("#inv-statline").innerText();
-    check("phone: one-line stats (공 · 방 · HP · 흡혈 · sets)", line.startsWith("공 ") && line.includes("흡혈") && line.includes("화염 2/5"), line);
+    check("phone: one-line stats (공 · 방 · HP · 흡혈)", line.startsWith("공 ") && line.includes("흡혈"), line);
     const bagB = await box(page, "#inv-bag");
     check("phone: bag starts in the first screen (top < 45%)", bagB.top < vh * 0.45 && bagB.h >= 150, JSON.stringify({ ...bagB, vh }));
     await page.locator(".bag-item").first().tap(); await sleep(250);

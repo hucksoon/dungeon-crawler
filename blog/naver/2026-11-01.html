@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 레벨 옆 숫자는 이제 경험치 %</title>
-<meta name="description" content="화면 위 레벨 옆의 &quot;+76%&quot;가 경험치처럼 보여서 헷갈렸어요. 이제 그 자리에는 다음 레벨까지 경험치가 몇 %인지 보여 주고, 레벨 보너스는 인벤토리 [능력치]에서 설명해요.">
+<title>[네이버 옮기기] 정식 v2: 매 층 축복과 자동 장비</title>
+<meta name="description" content="장비는 숫자만 남기고 줍는 즉시 자동으로 끼고 강화해요. 대신 새 층마다 축복을, 보스마다 유물을 골라 판마다 다른 캐릭터를 만들어요. 레벨 옆 숫자도 경험치 %로 바꿨어요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-01.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 레벨 옆 숫자는 이제 경험치 %">
-<meta property="og:description" content="화면 위 레벨 옆의 &quot;+76%&quot;가 경험치처럼 보여서 헷갈렸어요. 이제 그 자리에는 다음 레벨까지 경험치가 몇 %인지 보여 주고, 레벨 보너스는 인벤토리 [능력치]에서 설명해요.">
+<meta property="og:title" content="[네이버 옮기기] 정식 v2: 매 층 축복과 자동 장비">
+<meta property="og:description" content="장비는 숫자만 남기고 줍는 즉시 자동으로 끼고 강화해요. 대신 새 층마다 축복을, 보스마다 유물을 골라 판마다 다른 캐릭터를 만들어요. 레벨 옆 숫자도 경험치 %로 바꿨어요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-01.html">
 
 <style>
@@ -78,12 +78,12 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-01.html">블로그 글 보기</a></nav>
-<h1 id="title-text">레벨 옆 숫자는 이제 경험치 %</h1>
-<p class="meta">2026년 11월 1일 (일) · 태그: 개발일기, 레벨, Claude Code</p>
+<h1 id="title-text">정식 v2: 매 층 축복과 자동 장비</h1>
+<p class="meta">2026년 11월 1일 (일) · 태그: 개발일기, 업데이트, 밸런스, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 2장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/level-xp.png" download="2026-11-01-1-level-xp.png">1. Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</a> · <a href="../images/level-bonus.png" download="2026-11-01-2-level-bonus.png">2. 인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</a></p>
+<p class="steps">이미지 7장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/level-xp.png" download="2026-11-01-1-level-xp.png">1. Lv 옆 숫자는 다음 레벨까지 경험치 % (100%가 되면 레벨 업)</a> · <a href="../images/level-bonus.png" download="2026-11-01-2-level-bonus.png">2. 인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</a> · <a href="../images/v2-item.png" download="2026-11-01-3-v2-item.png">3. 아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만</a> · <a href="../images/v2-autogear.png" download="2026-11-01-4-v2-autogear.png">4. 줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해</a> · <a href="../images/v2-bless.png" download="2026-11-01-5-v2-bless.png">5. 새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)</a> · <a href="../images/v2-relic.png" download="2026-11-01-6-v2-relic.png">6. 보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요</a> · <a href="../images/v2-bar.png" download="2026-11-01-7-v2-bar.png">7. 능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록</a></p>
 <div id="paper">
 <p>어제 끝이 없는 구멍의 경험치를 크게 올렸더니, 레벨이 쑥쑥 올라 39레벨이 됐어요. 그런데 화면 위 레벨 옆에 있는 &quot;+76%&quot;를 보고 &quot;이게 경험치인가?&quot; 하고 헷갈렸어요.</p>
 <p><br></p>
@@ -99,6 +99,55 @@
 <p><br></p>
 <p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/level-bonus.png" alt="인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)" style="max-width:100%;height:auto;"></p>
 <p style="text-align:center;"><span style="font-size:13px;color:#888888;">인벤토리 능력치 탭: 레벨 39 보너스 +76% (레벨마다 +2%)</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">정식 v2: 아이템 관리는 자동으로, 고민은 축복으로</span></b></p>
+<p>지금까지 던전 크롤러는 줍고, 비교하고, 팔고, 강화하고, 보석을 끼우는 일이 많았어요. 처음 온 사람에게는 이게 큰 벽이었어요. 그래서 Claude Code와 몇 번이나 설계를 주고받은 끝에 게임의 중심을 바꿨어요.</p>
+<p><br></p>
+<p>• 아이템 관리는 <strong>자동</strong>으로</p>
+<p>• 플레이어가 고민하는 곳은 <strong>&quot;이번 층에 어떤 축복을 고를까&quot;</strong> 하나로</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">장비는 이제 숫자만</span></b></p>
+<p>장비는 부위·등급·던전·레벨·강화로 정해지는 <strong>공격력·방어력·최대 HP 숫자만</strong> 줘요. 세트·룬워드·보석 같은 복잡한 효과는 쓰지 않아요. 등급이 높을수록, 깊은 던전에서 얻을수록 숫자가 커져요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-item.png" alt="아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">아이템 상세: 이제 부위·등급·던전·레벨·강화로 정해지는 숫자만</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">줍는 즉시 자동 장비</span></b></p>
+<p>• <strong>같은 부위·같은 던전·같은 등급</strong>을 또 주우면 낀 장비가 <strong>+1</strong> 돼요. 확률 없이 무조건, +12까지</p>
+<p>• 더 좋은 장비를 주우면 바꿔 끼고, <strong>강화 단계를 그대로 이어받아요</strong>. 좋은 등급을 주웠는데 손해 보는 일이 없어요</p>
+<p>• 나머지는 분해돼서 강화석이 되고, 강화석은 +4까지 무기부터 차례로 자동으로 써요</p>
+<p>• 레전더리 이상은 분해하지 않고 가방에 남겨요 (거래소에 팔 수 있게)</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-autogear.png" alt="줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">줍는 즉시: 중복이면 강화 +1, 더 좋으면 강화를 이어받아 바꿔 끼고, 나머지는 분해</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">매 층 축복, 보스마다 유물</span></b></p>
+<p>새 층에 내려갈 때마다 <strong>축복 3개 중 1개</strong>를 골라요. 공격력·HP·방어력, 첫 공격 피해, 보스 HP 줄이기, 포션, 새 층에서 회복, 계단 보기 같은 것들이에요. 마음에 안 들면 강화석이나 골드로 다시 뽑을 수 있어요 (같은 층에서 또 뽑으면 2배).</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-bless.png" alt="새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">새 층에 내려가면 축복 3개 중 1개를 골라요 (1·2·3 키, 강화석이나 골드로 다시 뽑기)</span></p>
+<p><br></p>
+<p>보스를 쓰러뜨리면 <strong>유물</strong>을 골라요. 유물은 치명타·흡혈·패링·받는 피해 감소를 주면서, 원래 넘을 수 없던 <strong>상한까지 올려 줘요</strong>.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-relic.png" alt="보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">보스를 쓰러뜨리면 유물: 능력치와 그 상한을 같이 올려요</span></p>
+<p><br></p>
+<p>모은 축복과 유물은 능력치 줄 바로 아래에 아이콘으로 보여요. 누르면 전체 목록이 나와요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v2-bar.png" alt="능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">능력치 줄 아래 아이콘: 유물(금테)과 축복, 겹친 수. 누르면 전체 목록</span></p>
+<p><br></p>
+<p><b><span style="font-size:19px;">포탈로 파밍해도 괜찮아요</span></b></p>
+<p>축복을 모으면 &quot;포탈 없이 끝까지 가야 하나?&quot; 하는 걱정이 생겨요. 그래서 축복은 <strong>그 판에 붙여</strong> 포탈로 마을을 오가도 남게 했어요. 쓰러져서 새로 시작할 때만 사라져요. 일반 던전을 완료하면 축복을 가진 채 나이트메어로 <strong>바로 이어갈</strong> 수도 있어요.</p>
+<p><br></p>
+<p><b><span style="font-size:19px;">시뮬레이션으로 맞춘 밸런스</span></b></p>
+<p>사용자 데이터가 아직 적어서, Claude Code가 실제 드롭 규칙과 자동 장비·축복으로 1층부터 끝까지 200판을 돌려 숫자를 맞췄어요.</p>
+<p><br></p>
+<p>• 한 판으로 끝까지 가는 비율: 일반 약 97%, 이어서 나이트메어 약 90%, 헬 약 40%</p>
+<p>• 처음에는 마을에서 바로 헬에 들어가면 축복이 없어서 1~10층에서 모두 쓰러졌어요. 그래서 던전 입구 몇 층을 천천히 세지게 하고, 중간부터 들어가면 건너뛴 만큼 축복을 먼저 고르게 했어요</p>
+<p>• 가지고 있던 보석·룬은 그대로 보관하고, 그만큼 강화석으로 보상했어요</p>
+<p><br></p>
+<p>다음에는 등급과 던전마다 확실히 다른 장비 모습과, 고른 모습을 입을 수 있는 옷장을 만들 거예요.</p>
 <p><br></p>
 <p><br></p>
 <p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-01.html">https://game.apacimtest.com/blog/2026-11-01.html</a></p>

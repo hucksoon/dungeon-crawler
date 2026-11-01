@@ -9,6 +9,8 @@ const REPO = process.argv[2], SHOTS = process.argv[3];
 const ORIGIN = "https://hucksoon.github.io/hucksoon/";
 const results = [];
 const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x ? " — " + x : ""}`); };
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const HOOK = `
   window.__t = { s: () => ({ scene, depth, lx: lobbyPos.x, ly: lobbyPos.y, resume: resumeFloor() }) };
@@ -101,7 +103,7 @@ try {
   check("시간 상점 door → hour shop opens", !(await N.page.locator("#shop-modal").isHidden()));
   await N.page.keyboard.press("Escape"); await sleep(100);
   await goDoor(N.page, "forge");
-  check("대장간 door → inventory as 대장간", !(await N.page.locator("#inv-modal").isHidden()) && (await N.page.locator("#inv-title").innerText()) === "대장간");
+  skipV2("대장간 door → inventory as 대장간", !(await N.page.locator("#inv-modal").isHidden()) && (await N.page.locator("#inv-title").innerText()) === "대장간");
   await N.page.keyboard.press("Escape"); await sleep(100);
   // 닫힌 문: 안내만, 마을에 그대로
   for (const [id, msg] of [["golddungeon", "골드 던전은 일반 던전 50층을 완료해야"], ["nightmare", "50층을 완료해야 들어갈 수 있다"], ["hell", "헬 던전은 나이트메어 50층을 완료해야"]]) {

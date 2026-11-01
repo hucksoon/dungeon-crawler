@@ -432,6 +432,29 @@
   .wp-row.wp-abyss { margin-top: 6px; padding-top: 8px; border-top: 1px solid #3a2a4a; }
   .wp-row.wp-abyss b { color: #c9a0ff; }
   .wp-row.wp-abyss button:not(:disabled) { border-color: #a070ff; color: #e2d0ff; }
+  /* 축복·유물 (dc#140) */
+  #bless-modal { z-index: 15; }
+  .modal.bless h2 { color: #8fd3ff; text-shadow: 0 0 10px rgba(143, 211, 255, 0.5); }
+  .modal.bless.relic h2 { color: #ffcf5c; text-shadow: 0 0 10px rgba(255, 207, 92, 0.6); }
+  .bless-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .modal.notice .bless-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; padding: 10px 6px; min-height: 150px; border: 2px solid #3a5a7a; border-radius: 8px; text-align: center; white-space: normal; }
+  .bless-card.t-rare { border-color: #5aa9ff; }
+  .bless-card.t-legend { border-color: #ffcf5c; box-shadow: 0 0 10px rgba(255, 207, 92, 0.35); }
+  .bless-card.relic { border-color: #e0b44c; background: linear-gradient(#2a2410, #1a1608); box-shadow: 0 0 12px rgba(224, 180, 76, 0.4); }
+  .bless-card .bc-key { position: absolute; top: 4px; left: 6px; font-size: 11px; opacity: 0.6; }
+  .bless-card .bc-ico { font-size: 28px; line-height: 1.2; }
+  .bless-card .bc-fx { font-size: 12px; line-height: 1.4; }
+  .bless-card .bc-n, .bless-card .bc-tier { font-size: 11px; opacity: 0.8; }
+  .bless-rr { display: flex; gap: 6px; }
+  .modal.notice .bless-rr button { flex: 1; margin: 0; font-size: 12px; padding: 8px 4px; }
+  #bless-bar { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 0 4px; cursor: pointer; }
+  #bless-bar[hidden] { display: none; }
+  .bl-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; font-size: 15px; border: 1px solid #3a5a7a; border-radius: 6px; background: #121a24; }
+  .bl-ico.t-rare { border-color: #5aa9ff; }
+  .bl-ico.t-legend { border-color: #ffcf5c; }
+  .bl-ico.relic { border-color: #e0b44c; background: #2a2410; box-shadow: 0 0 6px rgba(224, 180, 76, 0.5); }
+  .bl-ico sup { position: absolute; top: -5px; right: -4px; font-size: 10px; background: #000; border-radius: 6px; padding: 0 3px; color: #fff; }
+  @media (max-width: 520px) { .bless-cards { grid-template-columns: 1fr; } .modal.notice .bless-card { min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; } }
   .modal.death { max-width: 360px; display: flex; flex-direction: column; gap: 8px; text-align: center; }
   .modal.death h2 { color: #ff6b6b; }
   .modal.death button { width: 100%; padding: 10px; }
@@ -707,6 +730,7 @@
     <span class="lvl">Lv <b id="plvl">1</b> (<span id="xp">0</span>/<span id="xpn">0</span>)<small id="lvb"></small></span>
     <span id="status" hidden></span>
   </div>
+  <div id="bless-bar" role="button" tabindex="0" aria-label="이 판의 축복·유물" data-t-aria hidden></div>
   <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
@@ -766,7 +790,7 @@
         <div class="inv-tabs" role="tablist">
           <button type="button" class="inv-tab" role="tab" data-tab="detail" data-t>상세</button>
           <button type="button" class="inv-tab" role="tab" data-tab="stats" data-t>능력치</button>
-          <button type="button" class="inv-tab" role="tab" data-tab="guide" data-t>추천</button>
+          <button type="button" class="inv-tab" role="tab" data-tab="guide" data-t hidden>추천</button>
           <button type="button" class="detail-close" data-t>▼ 닫기</button>
         </div>
         <div id="inv-detail" class="detail inv-pane" data-pane="detail"></div>
@@ -799,6 +823,18 @@
     <div id="death-revive"></div>
     <p id="death-msg"></p>
     <button id="death-restart" type="button" data-t>로비에서 새로 시작 (R)</button>
+  </div>
+</div>
+
+<div id="bless-modal" class="overlay" hidden>
+  <div class="modal notice bless" role="dialog" aria-modal="true" aria-labelledby="bless-title">
+    <h2 id="bless-title"></h2>
+    <p id="bless-sub" class="meta"></p>
+    <div id="bless-cards" class="bless-cards"></div>
+    <p id="bless-left" class="meta"></p>
+    <div class="bless-rr"><button id="bless-reroll-stones" type="button"></button><button id="bless-reroll-gold" type="button"></button></div>
+    <p id="bless-have" class="meta"></p>
+    <button id="bless-auto" type="button" hidden></button>
   </div>
 </div>
 
@@ -945,6 +981,7 @@
 <script src="i18n/ja-ui.js"></script>
 <script src="items.js"></script>
 <script src="monsters.js"></script>
+<script src="blessings.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
 <script src="jump.js?v=100"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
@@ -1338,6 +1375,9 @@
   // 계정(로그인) 또는 게스트(기기 ID)마다 따로 저장. 로그인하면 게임 서버에도 저장 (Profile), 게스트는 이 브라우저에만.
   // 장비는 죽어도 사라지지 않음. 얻거나 버린 기록은 전부 log에 남김 (시드로 서버에서 다시 계산해 검증 가능)
   const BAG_SIZE = 48;
+  const V2_NO_GEMS = true;   // 보석·룬 드롭 끔 (dc#140)
+  const AUTO_ENH_MAX = 4;   // 강화석으로 올리는 최대 (dc#140)
+  const autoGearOn = () => store.get("rl_autogear") !== "0";   // 자동 장비 (기본 켜짐)
   const canLock = (item) => item.rarity === "legendary" || item.rarity === "set" || item.rarity === "unique" || RLItems.runewordHighlight(item);   // 자물쇠는 레전더리·세트·유니크·(헬) 룬워드 재료만
   // 운영자(개발자 계정)이면서 등록한 운영자 기기(최대 3대, 서버 admin.php devices)일 때만: 테스트용으로 골드·강화석·보석을 쓰지 않고
   // 고대 굴리기·진열 바꾸기 횟수 제한도 없음. 운영자는 랭킹에 기록되지 않아서 랭킹에는 영향 없음
@@ -1374,11 +1414,31 @@
       // 장검(방패 전용)과 보조무기를 같이 끼고 있으면 보조무기를 가방으로 (예전 견고의 도끼 + 보조무기였던 경우)
       if (RLItems.isShieldOnly(d.equip.weapon) && d.equip.offhand && RLItems.isWeaponLike(d.equip.offhand)) { d.bag.push(d.equip.offhand); d.equip.offhand = null; remade++; }
       for (const it of [...d.bag, ...Object.values(d.equip)]) if (it?.main) it.ancient = RLItems.isAncient(it);
+      // 정식 v2 (dc#140): 보석·룬은 쓰지 않지만 저장본(서버)에는 그대로 남기고, 가진 만큼 강화석으로 한 번 보상
+      if (!d.v2c) {
+        const c = gemRuneComp(d);
+        d.stones = (d.stones || 0) + c.stones;
+        d.nmStones = (d.nmStones || 0) + c.nmStones;
+        d.v2c = 1;
+        if (c.stones || c.nmStones) { compNote = c; remade++; }
+      }
       return d;
+    }
+    // 보석: 조각 2 · 보석 6 · 완벽한 보석 18 강화석 (3개 = 한 등급 위), 룬: 가 5부터 한 단계마다 ×1.5 악몽 강화석. 홈에 넣은 것도
+    function gemRuneComp(d) {
+      const GEM = [2, 6, 18], rune = (k) => Math.round(5 * 1.5 ** k);
+      let stones = 0, nmStones = 0;
+      for (const n of Object.values(d.gems || {})) if (Array.isArray(n)) n.forEach((c, g) => { stones += (c | 0) * (GEM[g] || 0); });
+      (d.runes || []).forEach((c, k) => { nmStones += (c | 0) * rune(k); });
+      for (const it of [...d.bag, ...Object.values(d.equip)]) for (const g of it?.gems || []) {
+        if (RLItems.isRune(g)) nmStones += rune(g[1]); else if (RLItems.isGem(g)) stones += GEM[g[1]] || 0;
+      }
+      return { stones, nmStones };
     }
     // 규칙이 바뀌어 저장된 모습과 달라진 아이템을 시드로 다시 만듦 (견고의 도끼 → 견고의 장검, 속성 피해 줄 여러 개 → 하나).
     // 강화·시도·고대 굴림·넣은 보석·잠금은 그대로
     let remade = 0;   // 읽으면서 다시 만든 아이템 수 (있으면 바로 저장)
+    let compNote = null;   // 보석·룬 보상 (안내를 한 번 띄움)
     // 나이트메어 아이템의 속성 피해 줄이 여러 개면 다시 만들어 하나만 (RLItems oneElementDmg)
     const staleSturdy = (it) => it?.set === "sturdy" && it.slot === "weapon" && it.type !== RLItems.SETS.sturdy.weapon && it.v >= 3;
     const multiElement = (it) => RLItems.isNightmareItem(it) && (it.lines || []).filter(([k]) => RLItems.isElementDmg(k)).length > 1;
@@ -1440,11 +1500,13 @@
       use(o) { owner = o; data = read(o); if (remade) { remade = 0; store.set(key(owner), JSON.stringify(data)); } },
       owner: () => owner,
       // 서버에 올리는 부분 (얻은·버린 기록 log는 커서 이 기기에만)
-      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, hellStones: data.hellStones || 0, gems: data.gems || {}, runes: data.runes || [] }),
+      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, hellStones: data.hellStones || 0, gems: data.gems || {}, runes: data.runes || [], ...(data.v2c ? { v2c: 1 } : {}) }),
+      // 보석·룬 보상이 막 들어왔으면 한 번 돌려줌 (안내용)
+      takeCompNote: () => { const c = compNote; compNote = null; return c; },
       // 서버 저장본으로 바꿈 (기록은 이 기기 것 유지)
       load(o, inv) {
         owner = o;
-        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, hellStones: inv?.hellStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], log: read(o).log });
+        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, hellStones: inv?.hellStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], ...(inv?.v2c ? { v2c: 1 } : {}), log: read(o).log });
         store.set(key(owner), JSON.stringify(data));
       },
       // 이 기기에만 있던 장비를 합침. 옮긴 개수
@@ -1464,7 +1526,7 @@
       equipKey: (item, at) => equipKey(item, at),
       log: () => data.log,
       full: () => data.bag.length >= BAG_SIZE,
-      totals: () => RLItems.totals(Object.values(data.equip)),
+      totals: () => RLItems.powerTotals(Object.values(data.equip)),   // 정식 v2 (dc#140): 장비는 부위·등급·던전·레벨·강화 숫자만
 
       // "ok" | "full" | "dup" (같은 시드로 이미 얻은 아이템)
       add(item, extra) {
@@ -1502,6 +1564,9 @@
         return true;
       },
       stones: () => data.stones || 0,
+      stonesOf: (k) => data[k] || 0,
+      // 강화석 쓰기 (축복 다시 뽑기, dc#140). 모자라면 false
+      spendStones(k, n) { if (!(n > 0) || (data[k] || 0) < n) return false; data[k] -= n; write(); return true; },
       nmStones: () => data.nmStones || 0,
       hellStones: () => data.hellStones || 0,   // 지옥 강화석 (지옥의 아이템 강화)
       // 대장간 옵션 재련: 골드는 부르는 쪽(판의 골드)에서 냄. 바뀐 줄 [능력치, 값] 또는 null
@@ -1627,10 +1692,12 @@
         if (!item) return { error: T("아이템이 없어요.") };
         const to = (item.enh || 0) + 1;
         if (to > RLItems.ENHANCE.max) return { error: T("+{0}이 최대예요.", RLItems.ENHANCE.max) };
+        // 정식 v2 (dc#140): 강화석으로는 +4까지(항상 성공), +5부터는 같은 아이템(같은 부위·던전·등급)을 또 얻을 때만
+        if (to > AUTO_ENH_MAX && !isStaff()) return { error: T("+{0}부터는 같은 부위·같은 던전·같은 등급 장비를 또 얻으면 올라가요.", AUTO_ENH_MAX + 1) };
         const cost = isStaff() ? 0 : RLItems.enhanceCost(to, item), k = RLItems.stoneKey(item);   // 운영자는 강화석 안 씀
         if ((data[k] || 0) < cost) return { error: T("{0}이 부족해요. (필요 {1}개)", RLItems.STONE_NAMES[k], cost) };
         const result = RLItems.rollEnhance(item);
-        if (isStaff()) result.ok = true;   // 운영자 테스트: 강화는 항상 성공 (서버는 강화 단계만 확인)
+        result.ok = true;   // 정식 v2: 확률 없음   // 운영자 테스트: 강화는 항상 성공 (서버는 강화 단계만 확인)
         data[k] = (data[k] || 0) - cost;
         item.tries = (item.tries || 0) + 1;
         if (result.ok) item.enh = to;
@@ -1658,6 +1725,67 @@
         return r;
       },
 
+      // ---- 자동 장비 (정식 v2, dc#140) ----
+      // 새 아이템을 주우면: 같은 부위·같은 던전·같은 등급(중복)이면 낀 장비 강화 +1 (확률 없음, 최대 +12. 새 것의 레벨이 더 높으면 새 것으로 바꾸고 +1 이어받기)
+      // → 아니고 바탕 힘(강화 전)이 더 크면 강화 단계를 이어받아 바꿔 낌 → 아니면 분해(강화석·골드). 레전더리 이상·고대·잠금·보석 넣은 것은 분해하지 않고 가방에
+      // 결과 { kind: "dup" | "equip" | "swap" | "bag" | "sold" | "have", at, to, gold, stones, key, item, out }
+      autoTake(item, extra = {}) {
+        if (all().some(x => x.id === item.id)) return { kind: "have" };
+        const keys = RLItems.equipKeysFor(item);
+        const keep = (it) => ["legendary", "set", "unique"].includes(it.rarity) || it.ancient || it.lock || !!it.gems?.length;
+        // 바꿔 낀 옛 장비·필요 없는 새 아이템: 지킬 것은 가방, 나머지는 분해
+        const dispose = (it, why) => {
+          if (keep(it) && data.bag.length < BAG_SIZE) { data.bag.push(it); record("get", it, { ...extra, auto: why }); return { kind: "bag" }; }
+          const k = RLItems.stoneKey(it), stones = RLItems.sellStones(it), gold = RLItems.sellGold(it);
+          data[k] = (data[k] || 0) + stones;
+          record("sell", it, { [k]: stones, auto: why });
+          return { kind: "sold", key: k, stones, gold };
+        };
+        const dupKey = keys.filter(k => RLItems.isDupOf(data.equip[k], item) && (data.equip[k].enh || 0) < RLItems.ENHANCE.max)
+          .sort((a, b) => (data.equip[a].enh || 0) - (data.equip[b].enh || 0))[0];
+        let res;
+        if (dupKey) {
+          const cur = data.equip[dupKey], to = (cur.enh || 0) + 1;
+          if ((item.lvl || 0) > (cur.lvl || 0)) {
+            data.equip[dupKey] = Object.assign(item, { enh: to });
+            record("get", item, { ...extra, auto: "dup", to });
+            res = { kind: "dup", at: dupKey, to, item, out: dispose(cur, "replaced") };
+          } else {
+            cur.enh = to;
+            record("merge", item, { ...extra, into: cur.id, to });
+            res = { kind: "dup", at: dupKey, to, item: cur };
+          }
+        } else {
+          const empty = keys.find(k => !data.equip[k]);
+          const worst = [...keys].sort((a, b) => RLItems.basePowerScore(data.equip[a]) - RLItems.basePowerScore(data.equip[b]))[0];
+          if (empty) { data.equip[empty] = item; record("get", item, { ...extra, auto: "equip" }); res = { kind: "equip", at: empty, item }; }
+          else if (RLItems.basePowerScore(item) > RLItems.basePowerScore(data.equip[worst])) {
+            const cur = data.equip[worst];
+            item.enh = Math.max(item.enh || 0, cur.enh || 0);   // 강화 이어받기
+            data.equip[worst] = item;
+            record("get", item, { ...extra, auto: "swap", from: cur.id });
+            res = { kind: "swap", at: worst, item, old: cur, out: dispose(cur, "replaced") };
+          } else res = { item, ...dispose(item, "weaker") };
+        }
+        write();
+        return res;
+      },
+      // 강화석으로 +4까지: 무기부터 한 번씩 돌아가며 (성공하면 다음 장비로). 오른 것 [{ at, to }]
+      autoEnhance() {
+        const up = [];
+        for (let pass = 0; pass < 4; pass++) for (const k of RLItems.EQUIP_SLOTS) {
+          const it = data.equip[k];
+          if (!it || (it.enh || 0) >= 4) continue;
+          const to = (it.enh || 0) + 1, cost = RLItems.enhanceCost(to, it), sk = RLItems.stoneKey(it);
+          if ((data[sk] || 0) < cost) continue;
+          data[sk] -= cost;
+          it.enh = to;
+          record("enhance", it, { to, ok: true, cost, auto: 1 });
+          up.push({ at: k, to, item: it });
+        }
+        if (up.length) write();
+        return up;
+      },
       // 상점 구매: "ok" | "full" | "owned"
       buy(item, price) {
         if (all().some(x => x.id === item.id)) return "owned";  // 같은 아이템(다른 기기에서 이미 산 시간 상점 칸 등)
@@ -1941,22 +2069,27 @@
   }
 
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과. TT: 다른 장비 조합의 합계 (장비 비교, dc#91)
+  // 정식 v2 (dc#140): 장비 숫자(공격력·방어력·최대 HP) + 레벨 + 이 판의 축복·유물 (blessings.js). 다른 아이템 효과는 0
+  const blessTotals = () => RLBless.totals({ ...(player?.bl || {}), ...(player?.rl || {}) });
   function stats(TT = Inv.totals()) {
-    const g = TT.stats;
+    const g = TT.stats, b = blessTotals(), cap = RLBless.capsOf(b);
     const pct = (v, p) => Math.round(v * (1 + p / 100));
-    const maxHp = pct(player.maxHp + g.hp, g.hpPct + levelPct());
+    const maxHp = pct(player.maxHp + g.hp, g.hpPct + (b.hpPct || 0) + levelPct());
     return {
       maxHp,
-      atk: pct(player.atk + g.atk, g.atkPct + (player.reap || 0) + levelPct()),   // 사자의 낫: 처치할 때마다 +%
-      def: Math.round(pct(g.def, g.defPct + (player.iron || 0)) * (1 - (player.shred || 0) / 100)),   // 쇠비늘 갑옷 +%, 불가사리에게 갉아먹힌 만큼 −%
-      crit: Math.min(75, g.crit),
+      atk: pct(player.atk + g.atk, g.atkPct + (b.atkPct || 0) + (player.reap || 0) + levelPct()),   // 사자의 낫: 처치할 때마다 +%
+      def: Math.round(pct(g.def, g.defPct + (b.defPct || 0) + (player.iron || 0)) * (1 - (player.shred || 0) / 100)),   // 쇠비늘 갑옷 +%, 불가사리에게 갉아먹힌 만큼 −%
+      crit: Math.min(cap.crit, g.crit + (b.crit || 0)),   // 상한 75% (유물 매의 눈으로 오름)
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
-      lifesteal: g.lifesteal,  // 합계 최대 20% (RLItems.LIFESTEAL)
-      dmgReduce: g.dmgReduce,  // 받는 피해 감소 % (시험의 세트 5세트)
-      gold: g.gold,
-      xp: g.xp,
+      lifesteal: Math.min(cap.lifesteal, g.lifesteal + (b.lifesteal || 0)),  // 상한 20% (유물 핏빛 성배로 오름)
+      dmgReduce: Math.min(cap.dmgReduce, g.dmgReduce + (b.dmgReduce || 0)),  // 받는 피해 감소 % (상한 30%, 유물 강철 심장)
+      gold: g.gold + (b.gold || 0),
+      xp: g.xp + (b.xp || 0),
       killHeal: g.killHeal + Math.round(maxHp * g.killHealPct / 100),
-      parry: g.parry,         // 몬스터 공격을 막을 확률 (방패 + 견고 세트, 최대 40%)
+      parry: Math.min(cap.parry, g.parry + (b.parry || 0)),   // 몬스터 공격을 막을 확률 (상한 40%, 유물 성벽 조각)
+      // 축복 (dc#140): 첫 공격 +% · 보스 HP −% · 포션 회복 +% · 포션 대기 −턴 · 새 층 회복 % · 정예 +% · 보물 자리 +N · 계단 보기 · 시야 +N
+      first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, floorHeal: b.floorHeal || 0,
+      elite: b.elite || 0, treasure: b.treasure || 0, guide: !!b.guide, sight: b.sight || 0,
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
@@ -1974,7 +2107,7 @@
       rw: TT.runewords.special,
       // 유니크 특수 효과 (RLItems.UNIQUE special): bite·ironHide·dodge·chainPlus·shield·reap·bossDmg·reflect·lastStand
       uq: TT.uniques.special,
-      lsCap: g.lsCap,         // 흡혈 최대치 (장검 + 방패·룬워드로 오름)
+      lsCap: cap.lifesteal,   // 흡혈 최대치 (유물로 오름)
       mf: RLItems.findPct(g.mf),   // 아이템 발견 % (최대치 없음): 보너스 아이템·유니크 확률
     };
   }
@@ -2136,6 +2269,8 @@
           if (map[y][x] === FLOOR && !isShop(x, y) && !(x === player.x && y === player.y)) tiles.push({ x, y });
       const spot = tiles.length ? tiles[rnd(tiles.length)] : randomFloor([player]);
       const boss = inHell() ? RLMonsters.makeNamedBoss(depth) || RLMonsters.makeHellBoss(depth) : nmMobs() ? RLMonsters.makeNightmareBoss(depth, RLMonsters.pickElement(Math.random)) : RLMonsters.makeBoss(depth, monLevel());
+      const cut = inGold() ? 0 : stats().bossHp;   // 축복 왕 사냥: 보스 최대 HP −%
+      if (cut) boss.hp = boss.maxHp = Math.max(1, Math.round(boss.maxHp * (1 - cut / 100)));
       if (spot) {
         enemies.push({ ...spot, ...boss });
         if (quiet) {}
@@ -2146,13 +2281,13 @@
 
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
-    const deep = nmMobs() || inHell();
+    const deep = nmMobs() || inHell(), eliteUp = stats().elite;
     const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
     const count = deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2);
     for (let i = 0; i < count; i++) {
       const spot = randomFloor([player, ...enemies]);
       if (!spot) break;
-      const kind = Math.random() < RLMonsters.eliteChance(deep ? NM.base : monLevel()) ? "elite" : "normal";
+      const kind = Math.random() < Math.min(1, RLMonsters.eliteChance(deep ? NM.base : monLevel()) * (1 + eliteUp / 100)) ? "elite" : "normal";   // 축복 정예 사냥
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel());
@@ -2173,7 +2308,7 @@
 
     // 보물 자리(!) 1~3곳: 주우면 레어 이상 장비 (예전의 포션 자리). 골드 던전에는 없음
     items = [];
-    const treasures = inGold() ? 0 : dropMul() > 1 ? between(2, 4) : between(1, 3);   // 일반 던전 50층은 평균 3곳 (예전 2곳 × 1.5)
+    const treasures = inGold() ? 0 : (dropMul() > 1 ? between(2, 4) : between(1, 3)) + stats().treasure;   // 축복 보물 냄새: +N   // 일반 던전 50층은 평균 3곳 (예전 2곳 × 1.5)
     for (let i = 0; i < treasures; i++) {
       const spot = randomFloor([player, ...enemies, ...items]);
       if (spot) items.push({ x: spot.x, y: spot.y, type: "treasure" });
@@ -2186,8 +2321,10 @@
       if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (inHell() ? HELL.gold.pile : nmMobs() ? NM.gold.pile : 1) });
     }
 
+    if (stats().guide) { seen[far.cy][far.cx] = true; if (!quiet) log(T("🧭 길잡이: 계단 위치가 지도에 보인다."), null, RLBless.TIERS.legend.color); }
     computeFOV();
     noteSeen();
+    if (!quiet) Bless.onFloor();   // 축복 (dc#140): 이 판에서 처음 온 층이면 3개 중 1개 + 숨 고르기 회복
   }
 
   // 끝이 없는 구멍의 한 층 (dc#124): 계단 방에 네임드 2마리(계단을 지킴) + 헬 50층 몬스터 수만큼 일반 몬스터
@@ -2227,7 +2364,7 @@
     for (let y = 0; y < MAP_H; y++)
       for (let x = 0; x < MAP_W; x++) visible[y][x] = false;
 
-    const R = 7;
+    const R = 7 + (player ? stats().sight : 0);   // 축복 넓은 눈: +N칸
     for (let a = 0; a < 360; a += 2) {
       const rad = a * Math.PI / 180;
       const dx = Math.cos(rad), dy = Math.sin(rad);
@@ -2262,6 +2399,7 @@
   function tryMove(dx, dy) {
     if (scene === "lobby") return;   // 마을은 Town (← → 걷기, ↑ 들어가기)
     if (gameOver) return;
+    if (Bless.isOpen()) return;   // 축복을 고르는 중
     if (jumpAim) { jump(dx, dy); return; }   // 점프를 고른 뒤의 방향 (키보드·터치 모두)
     Anim.newTurn();
     let nx = player.x + dx, ny = player.y + dy;
@@ -2379,7 +2517,7 @@
       hits.forEach((mul, i) => {
         if (target.hp <= 0 || !enemies.includes(target)) return;
         const crit = Math.random() * 100 < s.crit;
-        const raw = (s.atk + rnd(2)) * (crit ? s.critMul : 1) * mul;
+        const raw = (s.atk + rnd(2)) * (crit ? s.critMul : 1) * mul * (s.first && !target.hit1 ? 1 + s.first / 100 : 1);   // 축복 첫 수: 처음 때리는 적에게 +%
         // 속성 피해: 공격력의 (불 + 얼음 + 번개)%를 더함. 방어력에 줄지 않고, 치명타면 같이 커짐
         const elem = elemPct ? s.atk * elemPct / 100 * (crit ? s.critMul : 1) * mul : 0;
         // 광란 세트: 대상 주변 1칸(대각선 포함)의 다른 적도 피해의 50%를 맞음 (각자 방어력만큼 줄어듦)
@@ -2596,6 +2734,7 @@
   function hitEnemy(target, raw, crit, s, tag, elem = 0) {
     const dmg = Math.round((Math.max(1, Math.round(raw) - target.def) + Math.round(elem * elemMix(target, s))) * shockMul(target) * bossMul(target, s));  // 감전이면 받는 피해 +%, 속성 피해는 몬스터 속성 저항만큼
     const taken = Math.min(dmg, Math.max(0, target.hp));  // 흡혈은 실제로 깎은 HP만큼만 (넘친 피해는 회복 안 함)
+    target.hit1 = true;
     target.hp -= dmg;
     // 속성 피해가 섞이면 피해 숫자를 가장 센 속성 색으로 (불 주황 · 얼음 하늘 · 번개 노랑, dc#111)
     const elKey = elem > 0 ? ["fire", "ice", "bolt"].reduce((a, k) => (s.elem[k] > s.elem[a] ? k : a), "fire") : null;
@@ -2641,6 +2780,7 @@
     dropLoot(e);
     dropSound(items.slice(n0));
     gainXp(xp);
+    Bless.onBoss(e);   // 보스: 유물 고르기 (dc#140)
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
   }
   // 카리스마 처치 폭발: 쓰러진 몬스터가 터져 주변 8칸 적에게 그 몬스터 최대 HP의 blast% (방어력 무시, 흡혈 그대로).
@@ -2721,15 +2861,15 @@
         gearLog(T("🔍 아이템 발견: {0}이(가) {1}을(를) 하나 더 떨어뜨렸다!{2}", e.name, RLItems.itemName(bonus), isRainbow(bonus) ? " ✨" : ""), bonus);
       }
     }
-    // 보석: 장비와 따로 굴림 (반드시 떨어지지는 않음). 나이트메어는 높은 등급이 잘 나옴
-    const gem = RLItems.rollGem(`${player.rid}|${floorTag()}${depth}|g${player.kills}`, e.kind, inNM() || inHell());
+    // 보석·룬: 정식 v2 (dc#140)부터 떨어지지 않음 (예전에 모은 것은 서버에 그대로)
+    const gem = V2_NO_GEMS ? null : RLItems.rollGem(`${player.rid}|${floorTag()}${depth}|g${player.kills}`, e.kind, inNM() || inHell());
     if (gem) {
       const spot = dropSpot(e.x, e.y);
       items.push({ x: spot.x, y: spot.y, type: "gem", gem: gem[0], grade: gem[1] });
       log(T("{0}이(가) {1}을(를) 떨어뜨렸다.", e.name, RLItems.gemName(gem[0], gem[1])), null, RLItems.GEMS[gem[0]].color);
     }
     // 룬: 나이트메어 50층 보스와 헬 네임드 보스, 2개 확정
-    if ((inNM() && depth === RLItems.RUNE_DROP.floor && e.kind === "boss") || (inHell() && e.named)) {
+    if (!V2_NO_GEMS && ((inNM() && depth === RLItems.RUNE_DROP.floor && e.kind === "boss") || (inHell() && e.named))) {
       for (const k of RLItems.rollRunes(`${player.rid}|${floorTag()}${depth}|r${player.kills}`)) {
         const spot = dropSpot(e.x, e.y);
         items.push({ x: spot.x, y: spot.y, type: "rune", rune: k });
@@ -2766,6 +2906,7 @@
 
   // 가방에 넣으면 true, 가방이 가득 차서 못 넣으면 false
   function takeGear(gear) {
+    if (autoGearOn()) return autoGear(gear);
     const result = Inv.add(gear.item, { depth, from: gear.from });
     if (result === "full") { log(T("가방이 가득 찼다. 인벤토리(I)에서 정리해 주세요."), "bad"); return false; }
     if (result === "ok") {
@@ -2774,6 +2915,26 @@
     }
     const rw = RLItems.runewordsFor(gear.item);
     if (result === "ok" && RLItems.runewordHighlight(gear.item)) log(T("✦ 룬워드 재료! 홈 {0}개 커먼 — {1}을(를) 만들 수 있다. (인벤토리에서 확인)", RLItems.socketCount(gear.item), rw.map(w => w.label).join(", ")), "rainbow");
+    return true;
+  }
+
+  // 자동 장비 (dc#140): 줍는 즉시 강화(중복)·착용·분해, 그 뒤 강화석으로 +4까지
+  const SLOT_LABEL = (k) => T(RLItems.SLOT_NAMES[k] || k);
+  function autoGear(gear) {
+    const it = gear.item, name = RLItems.itemName(it);
+    const r = Inv.autoTake(it, { depth, from: gear.from });
+    if (r.kind === "have") return true;
+    const soldGold = (o) => (o?.kind === "sold" ? sellGoldIn(o.gold) : 0);
+    if (r.kind === "dup") gearLog(T("⬆ {0} 중복! {1} +{2}", name, SLOT_LABEL(r.at), r.to), r.item);
+    else if (r.kind === "equip") gearLog(T("⚔ {0}을(를) {1}에 꼈다.", name, SLOT_LABEL(r.at)), it);
+    else if (r.kind === "swap") gearLog(T("⚔ 더 좋은 {0}로 바꿔 꼈다. (강화 +{1} 이어받기)", name, r.item.enh || 0), it);
+    else if (r.kind === "bag") gearLog(T("{0}을(를) 가방에 넣었다. (거래소에 팔 수 있어요)", name), it);
+    else log(T("{0} 분해: {1} +{2}{3}", name, RLItems.STONE_NAMES[r.key], r.stones, r.gold && !gameOver ? T(", 골드 +{0}", r.gold) : ""), null, "#9aa4b2");
+    soldGold(r); soldGold(r.out);
+    for (const u of Inv.autoEnhance()) log(T("✦ 자동 강화: {0} +{1}", SLOT_LABEL(u.at), u.to), null, "#8fd3ff");
+    if (r.kind !== "sold" && r.kind !== "bag") { Sfx("enhance"); afterGearChange?.(); }
+    if (Tips.newbie()) Tips.want("gear");
+    updateStats();
     return true;
   }
 
@@ -2823,8 +2984,9 @@
     if (gameOver || scene !== "dungeon") return;
     if (player.potCd > 0) { log(T("포션은 {0}턴 뒤에 다시 마실 수 있다.", player.potCd), "bad"); return; }
     // 개수 제한 없이 10턴마다 한 번. 최대 HP의 30% (최소 8) 회복: 깊은 층에서도 쓸모 있게
-    player.potCd = POTION.cooldown;
-    const amount = Math.max(POTION.min, Math.round(stats().maxHp * POTION.heal));
+    const s = stats();
+    player.potCd = Math.max(1, POTION.cooldown - s.potCd);   // 축복 빠른 손: 대기 −N턴
+    const amount = Math.max(POTION.min, Math.round(s.maxHp * POTION.heal * (1 + s.potPct / 100)));   // 축복 물약 장인: 회복량 +%
     const before = player.hp;
     Tips.step("heal");
     heal(amount);
@@ -2895,6 +3057,15 @@
       ...(counts ? [] : [T("이번 판은 예전(v3까지) 장비를 써서 정식 v1 랭킹에는 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 기록돼요.")]),
       T("로비의 파란 포탈로 {0}층의 새 구역에 다시 들어갈 수 있어요.", depth),
     ]);
+    if (cleared) offerContinue("nm");
+  }
+  // 이어가기 (dc#140): 던전을 완료하면 이 판(축복·유물)을 그대로 가지고 다음 던전 1층으로 바로
+  async function offerContinue(to) {
+    if (!Bless.enabled()) return;   // 축복을 끈 테스트 등
+    const nb = Object.values(player.bl || {}).reduce((a, b) => a + b, 0), nr = Object.values(player.rl || {}).reduce((a, b) => a + b, 0);
+    const name = to === "nm" ? T("나이트메어") : T("헬");
+    if (!(await ask(T("{0} 1층으로 바로 이어갈까요?\n지금 모은 축복 {1}개·유물 {2}개를 그대로 가져가요. (취소하면 마을에 남아요. 나중에 마을에서 들어가면 축복을 처음부터 모아요.)", name, nb, nr)))) return;
+    if (to === "nm") enterNightmare(1, { cont: true }); else enterHell(1, { cont: true });
   }
 
   // 골드 던전 보스를 쓰러뜨리고 계단을 밟음: 완료 보상 골드 → 로비로, 포탈 문으로 골드 던전 새 구역
@@ -2931,6 +3102,7 @@
       T("{0} 보스를 쓰러뜨려 나이트메어를 완료했어요. 나이트메어 랭킹에 \"완료\"로 기록돼요.", floorName()),
       T("로비의 파란 포탈로 들어가면 {0}의 새 구역에서 계속 파밍할 수 있어요.", floorName()),
     ] : [T("{0} 보스를 또 쓰러뜨리고 로비로 돌아왔어요. 파란 포탈로 다시 들어갈 수 있어요.", floorName())]);
+    offerContinue("hell");
   }
 
   // 헬 50층 보스를 쓰러뜨리고 계단을 밟음: 헬 완료 (끝이 없는 구멍이 열림) → 로비로, 포탈 문으로 50층 새 구역
@@ -3013,7 +3185,17 @@
     ...(["nm", "gold", "hell", "abyss"].includes(player.zone) ? { z: player.zone } : {}),
     ...(goldNM() ? { gn: player.gn } : {}),
     ...(player.deathAt ? { da: [player.deathAt.x, player.deathAt.y] } : {}),   // 쓰러진 자리 (묘비, dc#97)
+    // 축복·유물 (dc#140): 이 판에 붙음
+    ...(player.bl && Object.keys(player.bl).length ? { bl: player.bl } : {}),
+    ...(player.rl && Object.keys(player.rl).length ? { rl: player.rl } : {}),
+    ...(player.bz ? { bz: player.bz } : {}),
+    ...(player.pq?.length ? { pq: player.pq } : {}),
+    ...(player.rr ? { rr: player.rr } : {}),
   });
+  // 저장본의 축복·유물 읽기 (모르는 것·잘못된 값은 버림)
+  const blessCounts = (o, defs) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => defs[k] && Number.isInteger(v) && v > 0).map(([k, v]) => [k, Math.min(v, defs[k].max)]));
+  const blessZones = (o) => Object.fromEntries(["normal", "nm", "hell"].filter(k => Number.isInteger(o?.[k]) && o[k] >= 0).map(k => [k, Math.min(o[k], 50)]));
+  const blessQueue = (q) => (Array.isArray(q) ? q : []).filter(e => e && typeof e.s === "string" && e.s.length < 80).slice(0, 200).map(e => ({ r: e.r ? 1 : 0, s: e.s, ...(Number.isInteger(e.n) && e.n > 0 ? { n: Math.min(e.n, 50) } : {}) }));
   function makeSave() {
     return {
       v: 1,
@@ -3213,8 +3395,12 @@
       zone: ["nm", "gold", "hell", "abyss"].includes(r.z) ? r.z : "normal",
       gn: r.z === "gold" ? Math.max(0, Math.min(NM.floors, r.gn | 0)) : 0,
       deathAt: Array.isArray(r.da) && Number.isInteger(r.da[0]) && Number.isInteger(r.da[1]) ? { x: r.da[0], y: r.da[1] } : null,
+      bl: blessCounts(r.bl, RLBless.BLESSINGS), rl: blessCounts(r.rl, RLBless.RELICS), bz: blessZones(r.bz), pq: blessQueue(r.pq),
+      rr: r.rr && typeof r.rr.k === "string" && Number.isInteger(r.rr.n) ? { k: r.rr.k, n: Math.min(r.rr.n, 50) } : null,
     };
     depth = Math.min(maxFloor(), depth);
+    // 정식 v2 전에 시작한 판: 지금 층까지 건너뛴 만큼 축복·유물을 먼저 고르게 (한 번)
+    if (!r.bz && ["normal", "nm", "hell"].includes(player.zone) && depth > 1) Bless.start(player.zone, depth);
     noteOldGear(true);  // 이 표시가 생기기 전의 판: 지금 예전 장비를 끼고 있으면 제외
     shopBought = Array.isArray(r.sb) ? r.sb : [];
     shopRerolls = r.sr || 0;
@@ -3230,6 +3416,7 @@
     }
     render();
     updateStats();
+    Bless.show();   // 고르지 않은 축복·유물이 남아 있으면
   }
 
   // 계정 저장본이 있으면 그걸로 이어하고, 없으면 지금(게스트) 진행 상황을 계정에 올림
@@ -3849,6 +4036,7 @@
       depth = from;
       player.zone = "normal";
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
+      Bless.start("normal", from);   // 새 판: 축복·유물을 비우고, 웨이포인트면 건너뛴 만큼 먼저 고름
       player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 정식 v1 랭킹에 기록됨
       noteOldGear();
       if (!player.oldGear) bestDepth = Math.max(bestDepth, 1);
@@ -3881,6 +4069,7 @@
     player.zone = to.z;
     if (to.z === "gold" && to.gn) player.gn = to.gn; else delete player.gn;
     player.rid = newRunId();
+    Bless.start(to.z, to.d);
     player.oldGear = false;
     player.hp = stats().maxHp;
     player.potCd = 0;
@@ -3899,7 +4088,7 @@
   // 나이트메어 입구(로비 오른쪽 건물): 일반 던전을 완료하고, 장착한 장비가 모두 v4 이후일 때만
   // 오른쪽 문(from = 50): 나이트메어를 완료한 사람만, 50층(룬이 나오는 보스 층)에 바로
   // wp: 웨이포인트로 (활성화한 10·20·30·40·50층, dc#97)
-  async function enterNightmare(from = 1, { wp = false } = {}) {
+  async function enterNightmare(from = 1, { wp = false, cont = false } = {}) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
     if (wp && !waypoints.nm.includes(from)) return;
@@ -3907,7 +4096,7 @@
     if (from > 1 && !wp && !nmCleared) { log(T("나이트메어 {0}층 문은 나이트메어를 완료하면 열린다 ({0}층 보스가 룬을 떨어뜨림).", NM.floors), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
-    if (resumeFloor() && !(await ask(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
+    if (!cont && resumeFloor() && !(await ask(T("나이트메어 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3915,6 +4104,7 @@
     player.zone = "nm";
     depth = from;
     player.rid = newRunId();
+    Bless.start("nm", from, cont);   // 이어가기면 축복·유물 그대로
     player.oldGear = false;
     nmBest = Math.max(nmBest, 1);
     shopBought = [];
@@ -3931,7 +4121,7 @@
   }
 
   // 헬 던전 입구(로비 맨 위): 나이트메어를 완료하고, 장착한 장비가 모두 v4 이후일 때만. from: 1층 또는 완료한 10·20·30·40·50층
-  async function enterHell(from = 1, { wp = false } = {}) {
+  async function enterHell(from = 1, { wp = false, cont = false } = {}) {
     if (gameOver) { openDeath(); return; }
     if (entering) return;
     if (wp && !waypoints.hell.includes(from)) return;
@@ -3939,7 +4129,7 @@
     if (from > 1 && !wp && !hellMilestones().includes(from)) { log(T("헬 {0}층은 그 층을 완료해야 골라서 들어갈 수 있다.", from), "bad"); return; }
     const old = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
     if (old) { log(T("예전(v3까지) 장비 {0}개를 끼고 있어서 들어갈 수 없다. 인벤토리에서 빼고 다시 오자.", old), "bad"); return; }
-    if (resumeFloor() && !(await ask(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
+    if (!cont && resumeFloor() && !(await ask(T("헬 {0}층부터 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))) return;
     entering = true;
     let ok = false;
     try { ok = await allowEntry(); } finally { entering = false; }
@@ -3947,6 +4137,7 @@
     player.zone = "hell";
     depth = from;
     player.rid = newRunId();
+    Bless.start("hell", from, cont);
     player.oldGear = false;
     hellBest = Math.max(hellBest, from);
     shopBought = [];
@@ -3974,6 +4165,7 @@
     player.zone = "abyss";
     depth = 1;
     player.rid = newRunId();
+    Bless.reset();   // 끝이 없는 구멍: 축복 없음 (새 판)
     player.oldGear = false;
     abyssBest = Math.max(abyssBest, 1);
     shopBought = [];
@@ -4047,6 +4239,7 @@
     player.gn = nm ? Math.min(NM.floors, nmBest) : 0;
     depth = player.gn || GD.floor;
     player.rid = newRunId();
+    Bless.reset();   // 골드 던전: 축복 없음 (새 판)
     shopBought = [];
     shopRerolls = 0;
     setScene("dungeon");
@@ -4339,6 +4532,158 @@
   // ---- 렌더링 ----
   // ---- 픽셀 그림 (img/sprites.png, 만들기: tools/sprites-build.mjs) ----
   // 늘 그림으로 (dc#90에서 글자로 보기 버튼을 없앰, 예전 설정 rl_gfx도 지움). 그림을 아직 못 받았거나 못 받으면 글자로 대신 그림
+  // ---- 축복·유물 (정식 v2, dc#140) ---- 규칙과 숫자는 blessings.js
+  // 이 판(player)에 붙음: bl 축복 { id: 횟수 } · rl 유물 · bz 던전마다 축복을 받은 마지막 층 · pq 고를 차례 [{ r: 유물이면 1, s: 시드, n: 다시 뽑은 횟수 }]
+  // · rr 이 층에서 다시 뽑은 횟수 { k: 층 키, n }. 포탈·부활해도 남고, 새 판(1층·웨이포인트·다른 던전으로 새로 들어가기, 쓰러진 뒤 새로 시작)이면 비움
+  const Bless = (() => {
+    const modalEl = document.getElementById("bless-modal");
+    const BZ = { normal: "normal", nm: "nightmare", hell: "hell" };
+    const off = () => store.get("rl_bless") === "off";   // 테스트용 (기존 회귀 테스트가 축복 창에 막히지 않게)
+    const zk = () => (off() ? null : BZ[player?.zone || "normal"] || null);   // 축복이 있는 던전 (골드 던전·끝이 없는 구멍은 없음)
+    const STONE = { normal: "stones", nightmare: "nmStones", hell: "hellStones" };
+    const have = (relic) => (relic ? (player.rl ||= {}) : (player.bl ||= {}));
+    const queue = () => (player.pq ||= []);
+    const rrN = () => (player.rr?.k === floorKey() ? player.rr.n : 0);
+    // 자동으로 고를 때 순서 (tools/sim-v2.mjs와 같음)
+    const PRI = ["hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin", "grail", "heart", "hawk", "wall"];
+    const pickBest = (ids) => [...ids].sort((a, b) => PRI.indexOf(a) - PRI.indexOf(b))[0];
+    function reset() { player.bl = {}; player.rl = {}; player.bz = {}; player.pq = []; player.rr = null; }
+    // 새 판 시작: keep이면 지금 축복을 그대로 (던전 완료 후 이어가기). 중간 층·다음 던전부터 새로 시작하면 건너뛴 층의 절반만큼 축복, 1/10만큼 유물을 먼저 고름
+    function start(zone, from = 1, keep = false) {
+      if (!keep) reset();
+      if (!BZ[zone] || off()) return;
+      const skipped = keep ? 0 : (from - 1) + (zone === "nm" ? NM.floors : zone === "hell" ? NM.floors + HELL.floors : 0);
+      for (let i = 0; i < Math.floor(skipped / 10); i++) queue().push({ r: 1, s: `${player.rid}|c|r${i}` });
+      for (let i = 0; i < Math.floor(skipped / 2); i++) queue().push({ r: 0, s: `${player.rid}|c|b${i}` });
+      player.bz = { ...(player.bz || {}), [zone]: Math.max(0, from - 1) };
+      if (skipped) log(T("✦ {0}층을 건너뛴 만큼 축복 {1}개와 유물 {2}개를 먼저 고른다.", skipped, Math.floor(skipped / 2), Math.floor(skipped / 10)), null, RLBless.TIERS.legend.color);
+    }
+    // 새 층 (newLevel): 이 판에서 처음 온 층이면 축복 하나 + 숨 고르기 회복
+    function onFloor() {
+      if (!zk() || !player) return;
+      const z = player.zone || "normal";
+      player.bz ||= {};
+      if (depth > (player.bz[z] || 0)) {
+        player.bz[z] = depth;
+        queue().push({ r: 0, s: `${player.rid}|${z}|${depth}` });
+        const s = stats();
+        if (s.floorHeal && player.hp < s.maxHp) { const before = player.hp; heal(Math.round(s.maxHp * s.floorHeal / 100)); log(T("🌬 숨 고르기: HP +{0}", player.hp - before), "good"); }
+      }
+      show();
+    }
+    // 보스를 쓰러뜨림: 유물 하나 (구멍 16~20층의 일반 자리 네임드·분신은 빼고)
+    function onBoss(e) {
+      if (!zk() || e.kind !== "boss" || e.mob || e.clone) return;
+      queue().push({ r: 1, s: `${player.rid}|${player.zone || "normal"}|${depth}|r` });
+      show();
+    }
+    const offerOf = (entry) => RLBless.offer(`${entry.s}|${entry.n || 0}`, have(entry.r), !!entry.r);
+    // 다 모아서 고를 것이 없으면 넘김 (유물이 다 차면 축복으로)
+    function head() {
+      const q = queue();
+      while (q.length && !offerOf(q[0]).length) { if (q[0].r) q[0] = { r: 0, s: q[0].s }; else q.shift(); }
+      return q[0] || null;
+    }
+    const isOpen = () => !modalEl.hidden;
+    const close = () => { modalEl.hidden = true; };
+    function choose(id) {
+      const entry = head();
+      if (!entry || !offerOf(entry).includes(id)) return;
+      queue().shift();
+      const h = have(entry.r), before = stats().maxHp;
+      h[id] = (h[id] || 0) + 1;
+      const d = RLBless.defOf(id), now = stats();
+      if (now.maxHp > before) player.hp = Math.min(now.maxHp, player.hp + now.maxHp - before);   // 최대 HP가 늘면 그만큼 HP도
+      log(T("{0} {1} {2} ({3}/{4}): {5}", entry.r ? T("✦ 유물") : T("✦ 축복"), d.icon, RLBless.nameOf(id), h[id], d.max, RLBless.fxText(d.fx)), entry.r ? "rainbow" : null, entry.r ? null : RLBless.TIERS[d.tier].color);
+      Sfx(entry.r ? "bossKill" : "levelup");
+      saveGame(true);
+      updateStats();
+      show();
+    }
+    function autoRest() {
+      for (let guard = 0; guard < 200; guard++) { const e = head(); if (!e) break; choose(pickBest(offerOf(e))); }
+    }
+    // 다시 뽑기: 강화석(그 던전 강화석) 또는 골드. 같은 층에서 2배씩
+    function reroll(kind) {
+      const entry = head();
+      if (!entry) return;
+      const z = zk() || "normal", cost = RLBless.rerollCost(z, depth, rrN()), key = STONE[z];
+      if (kind === "stones") { if (!Inv.spendStones(key, cost.stones)) return; }
+      else { if (player.gold < cost.gold) return; player.gold -= cost.gold; }
+      entry.n = (entry.n || 0) + 1;
+      player.rr = { k: floorKey(), n: rrN() + 1 };
+      Sfx("pickup");
+      saveGame(true);
+      updateStats();
+      show();
+    }
+    function show() {
+      const entry = scene === "dungeon" && !gameOver ? head() : null;
+      if (!entry) { close(); return; }
+      const ids = offerOf(entry), relic = !!entry.r, left = queue().length;
+      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : T("✦ 축복 고르기");
+      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
+      modalEl.querySelector(".modal").classList.toggle("relic", relic);
+      document.getElementById("bless-cards").replaceChildren(...ids.map((id, i) => {
+        const d = RLBless.defOf(id), n = have(relic)[id] || 0, tier = relic ? null : RLBless.TIERS[d.tier];
+        const b = el("button", { type: "button", className: `bless-card${relic ? " relic" : ` t-${d.tier}`}`, onclick: () => choose(id) },
+          el("span", { className: "bc-key" }, String(i + 1)),
+          el("span", { className: "bc-ico" }, d.icon),
+          el("b", {}, RLBless.nameOf(id)),
+          el("small", { className: "bc-tier", style: tier ? { color: tier.color } : {} }, relic ? T("유물") : ({ common: T("일반"), rare: T("희귀"), legend: T("전설") })[d.tier]),
+          el("span", { className: "bc-fx" }, RLBless.fxText(d.fx)),
+          el("small", { className: "bc-n" }, T("{0} / {1}", n, d.max)));
+        return b;
+      }));
+      const z = zk() || "normal", cost = RLBless.rerollCost(z, depth, rrN()), stones = Inv.stonesOf(STONE[z]);
+      const sb = document.getElementById("bless-reroll-stones"), gb = document.getElementById("bless-reroll-gold");
+      sb.textContent = T("다시 뽑기 · {0} {1}개", RLItems.STONE_NAMES[STONE[z]], cost.stones.toLocaleString());
+      sb.disabled = stones < cost.stones;
+      gb.textContent = T("다시 뽑기 · 골드 {0}", cost.gold.toLocaleString());
+      gb.disabled = player.gold < cost.gold;
+      document.getElementById("bless-have").textContent = T("가진 {0} {1}개 · 골드 {2}", RLItems.STONE_NAMES[STONE[z]], stones.toLocaleString(), player.gold.toLocaleString());
+      const auto = document.getElementById("bless-auto");
+      auto.hidden = left < 2;
+      auto.textContent = T("남은 {0}개 자동으로 고르기", left);
+      document.getElementById("bless-left").textContent = left > 1 ? T("남은 고르기 {0}개", left) : "";
+      modalEl.hidden = false;
+    }
+    document.getElementById("bless-reroll-stones").addEventListener("click", () => reroll("stones"));
+    document.getElementById("bless-reroll-gold").addEventListener("click", () => reroll("gold"));
+    document.getElementById("bless-auto").addEventListener("click", autoRest);
+    function key(e) {
+      const k = keyName(e), i = ["1", "2", "3"].indexOf(k);
+      const entry = head();
+      if (i >= 0 && entry) { const id = offerOf(entry)[i]; if (id) choose(id); }
+      e.preventDefault();
+    }
+    // 화면 위 아이콘 줄: 유물(금테) → 축복. 누르면 전체 목록
+    const barEl = document.getElementById("bless-bar");
+    function renderBar() {
+      if (!player) return;
+      const items = [...Object.entries(player.rl || {}).map(([id, n]) => [id, n, true]), ...Object.entries(player.bl || {}).map(([id, n]) => [id, n, false])].filter(([id, n]) => RLBless.defOf(id) && n > 0);
+      barEl.hidden = !items.length;
+      barEl.replaceChildren(...items.map(([id, n, relic]) => {
+        const d = RLBless.defOf(id);
+        return el("span", { className: `bl-ico${relic ? " relic" : ` t-${d.tier}`}`, title: `${RLBless.nameOf(id)} ×${n}: ${RLBless.fxText(d.fx, n)}` }, d.icon, n > 1 ? el("sup", {}, String(n)) : "");
+      }));
+    }
+    function lines() {
+      const b = blessTotals(), cap = RLBless.capsOf(b);
+      const rows = [...Object.entries(player.rl || {}), ...Object.entries(player.bl || {})].filter(([id, n]) => RLBless.defOf(id) && n > 0)
+        .map(([id, n]) => { const d = RLBless.defOf(id); return `${d.icon} ${RLBless.nameOf(id)} ${n}/${d.max}: ${RLBless.fxText(d.fx, n)}`; });
+      const caps = [];
+      if (cap.crit > RLBless.CAPS.crit) caps.push(T("치명타 상한 {0}%", cap.crit));
+      if (cap.lifesteal > RLBless.CAPS.lifesteal) caps.push(T("흡혈 상한 {0}%", cap.lifesteal));
+      if (cap.parry > RLBless.CAPS.parry) caps.push(T("패링 상한 {0}%", cap.parry));
+      if (cap.dmgReduce > RLBless.CAPS.dmgReduce) caps.push(T("피해 감소 상한 {0}%", cap.dmgReduce));
+      return rows.length ? [...rows, ...(caps.length ? [T("오른 상한: {0}", caps.join(" · "))] : [])] : [T("아직 받은 축복이 없어요. 던전에서 새 층에 내려갈 때마다 하나씩 골라요.")];
+    }
+    barEl.addEventListener("click", () => showNotice(T("✦ 이 판의 축복·유물"), lines()));
+    return { enabled: () => !off(), start, reset, onFloor, onBoss, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
+  })();
+  window.RLBlessGame = { pending: () => Bless.pending(), offer: () => Bless.offerNow(), choose: (id) => Bless.choose(id), auto: () => Bless.autoRest(), totals: () => blessTotals() };   // 테스트용 (읽기·고르기)
+
   const Sprites = (() => {
     const S = window.RLSprites, sheet = new Image();
     let ready = false;
@@ -5964,7 +6309,7 @@
         case "golddungeon": return { open: cleared, color: cleared ? "#ffcf5c" : "#7a6a3a", label: cleared ? T("{0}층", RLMonsters.MAX_FLOOR) : T("닫힘") };
         case "golddungeonNM": return { open: cleared && nmBest >= 1, color: nmBest >= 1 ? "#ffcf5c" : "#7a6a3a", label: nmBest >= 1 ? T("악몽{0}", Math.min(NM.floors, nmBest)) : T("닫힘") };
         case "nightmare": return { open: cleared, color: cleared ? "#d07bff" : "#7a5a8a", label: cleared ? T("1층") : T("닫힘") };
-        case "nightmare50": return { open: nmOpen, color: nmOpen ? (reduceMotion ? "#ff6bd3" : rainbowColor(d.x)) : "#7a5a8a", label: nmOpen ? T("{0}층 룬", NM.floors) : T("닫힘") };
+        case "nightmare50": return { open: nmOpen, color: nmOpen ? (reduceMotion ? "#ff6bd3" : rainbowColor(d.x)) : "#7a5a8a", label: nmOpen ? T("{0}층", NM.floors) : T("닫힘") };
         case "hell": return { open: nmOpen, color: nmOpen ? fire : "#6a3a30", label: nmOpen ? T("1층") : T("닫힘") };
         case "hellPick": { const o = nmOpen && hellMilestones().length > 0; return { open: o, color: o ? fire : "#6a3a30", label: o ? T("층 고르기") : T("닫힘") }; }
         case "forge": return { open: true, color: FORGE_COLOR };
@@ -6448,6 +6793,7 @@
 
   // ---- HUD ----
   function updateStats() {
+    Bless.renderBar();
     document.getElementById("depth").textContent = depth;
     const s = stats();
     document.getElementById("hp").textContent = `${Math.max(0, player.hp)}/${s.maxHp}`;
@@ -6743,30 +7089,14 @@
 
   // 아이템 능력치 줄: 주 능력치(★, 강화로 오름)와 추가 능력치(◆). 값 옆에 [최소~최대], 최대치면 ▲
   // 예전(v2·v3) 아이템의 % 능력치가 지금 규칙 최대치로 잘리면 (적용 N%)
+  // 정식 v2 (dc#140): 아이템이 주는 것은 공격력·방어력·최대 HP 숫자뿐 (부위·등급·던전·레벨·강화)
+  const ZONE_NAME = { normal: "일반 던전", nightmare: "나이트메어", hell: "헬" };
   function statLines(item, tag = "div") {
-    const enhanced = RLItems.enhancedBase(item);
-    const effBase = item.main ? RLItems.effectiveBase(item) : enhanced;
-    const effLines = item.main ? RLItems.effectiveLines(item) : null;
-    const row = (mark, k, v, rolled, range, plus, color, applied = v) => {
-      const isMax = range && rolled === range[1];
-      return el(tag, { className: `stat-line${isMax ? " max" : ""}`, style: color ? { color } : {} },
-        `${mark} ${RLItems.formatStat(k, v)}`,
-        range ? el("span", { className: "range" }, ` [${RLItems.formatRange(k, range)}]${isMax ? " ▲" : ""}`) : null,
-        plus ? el("span", { className: "meta" }, T(" (강화 +{0})", plus)) : null,
-        applied < v ? el("span", { className: "meta capped" }, T(" (적용 {0})", RLItems.formatRange(k, [applied, applied]))) : null);
-    };
-    // 방패의 패링 확률 (🛡, 강화로 오르지 않음)
-    const parryRange = item.parry != null ? RLItems.PARRY.ranges[item.rarity] : null;
+    const p = RLItems.power(item), base = RLItems.power(item, 0), z = RLItems.itemZone(item);
+    const row = (k, v, b) => el(tag, { className: "stat-line" }, `★ ${RLItems.formatStat(k, v)}`, v > b ? el("span", { className: "meta" }, T(" (강화 +{0})", v - b)) : null);
     return [
-      // 나이트메어 아이템의 힘: 굴린 값·범위도 ×배율로 보여줌 (강화로 오른 양은 그 뒤)
-      ...RLItems.mainStatsOf(item).map(([k, v]) => {
-        const m = RLItems.nmPower(item, k), range = RLItems.statRange(item, "main", k);
-        if (k === "power") return row("★", k, v, v, range, 0, null, v);   // r7 장신구 공방HP%: 강화로 안 오름
-        return row("★", k, enhanced[k], v * m, range && range.map(x => x * m), enhanced[k] - v * m, null, effBase[k]);
-      }),
-      ...(parryRange ? [row("🛡", "parry", item.parry, item.parry, parryRange, 0, "#5fd4ff")] : []),
-      ...RLItems.enhancedLines(item).map(([k, v, plus], i) =>
-        row("◆", k, v, v - plus, RLItems.statRange(item, "line", k), plus, rarityColor(item), effLines ? effLines[i][1] : v)),
+      ...["atk", "def", "hp"].filter(k => p[k] > 0).map(k => row(k, p[k], base[k])),
+      el(tag, { className: "stat-line meta" }, T("{0} · 아이템 레벨 {1}{2}", T(ZONE_NAME[z]), item.lvl || 1, item.ancient ? T(" · 고대 +10%") : "")),
     ];
   }
 
@@ -6777,7 +7107,7 @@
     eq[Inv.equipKey(item, at)] = item;
     if (RLItems.isShieldOnly(item) && eq.offhand && RLItems.isWeaponLike(eq.offhand)) eq.offhand = null;
     else if (item.slot === "offhand" && RLItems.isWeaponLike(item) && RLItems.isShieldOnly(eq.weapon)) eq.weapon = null;
-    return RLItems.totals(Object.values(eq));
+    return RLItems.powerTotals(Object.values(eq));
   }
   // 바뀌는 능력치 [{ name, d, unit }] + 생기거나 없어지는 스킬 [{ name, skill: ±1 }]
   function statDiff(item, at) {
@@ -6838,52 +7168,31 @@
     }));
 
     // 능력치 합계와 세트 효과
-    const { stats: g, sets } = Inv.totals();
+    const { stats: g } = Inv.totals();
     const s = stats();
+    const b = blessTotals();
     const statRows = [
-      T("공격력 {0} (장비 +{1})", s.atk, `${g.atk}${g.atkPct ? `, +${g.atkPct}%` : ""}`), T("방어력 {0}", s.def) + (g.defPct ? ` (+${g.defPct}%)` : ""), T("최대 HP {0} (장비 +{1})", s.maxHp, `${g.hp}${g.hpPct ? `, +${g.hpPct}%` : ""}`),
+      T("공격력 {0} (장비 +{1})", s.atk, `${g.atk}${b.atkPct ? T(", 축복 +{0}%", b.atkPct) : ""}`), T("방어력 {0}", s.def) + (b.defPct ? T(" (축복 +{0}%)", b.defPct) : ""), T("최대 HP {0} (장비 +{1})", s.maxHp, `${g.hp}${b.hpPct ? T(", 축복 +{0}%", b.hpPct) : ""}`),
       // 레벨 보너스 (dc#95, dc#139: 화면 위 Lv 옆에서 여기로 옮김)
       ...(levelPct() ? [T("레벨 {0} 보너스: 최대 HP·공격력 +{1}% (레벨마다 +{2}%)", player.plvl, levelPct(), LEVEL.pct)] : []),
-      T("치명타 {0}% (피해 ×{1}) · 흡혈 {2}%", s.crit, s.critMul.toFixed(1), s.lifesteal) + (s.lifesteal >= lsCap(g) ? T(" (최대 {0}%)", lsCap(g)) : ""), T("골드 +{0}% · 경험치 +{1}%", s.gold, s.xp),
-      ...(g.guard ? [T("장검 + 방패: 흡혈 +{0}% (흡혈 최대 {1}%)", RLItems.SHIELD_GUARD.lifesteal, RLItems.SHIELD_GUARD.cap)] : []),
-      ...(s.killHeal ? [T("처치 시 HP +{0}", s.killHeal)] : []),
-      ...(s.parry ? [T("패링 {0}% (최대 {1}%)", s.parry, RLItems.PARRY.max)] : []),
-      ...(s.dual ? [T("두 손 무기: 한 턴에 2번 공격 (왼손 {0}%)", Math.round(RLItems.DUAL_WIELD.secondHit * 100))] : []),
-      ...(s.longsword ? [T("장검: 기본 공격 피해 ×{0} (스킬은 그대로)", RLItems.LONGSWORD.hitMul)] : []),
+      ...(s.crit || s.lifesteal ? [T("치명타 {0}% (피해 ×{1}) · 흡혈 {2}%", s.crit, s.critMul.toFixed(1), s.lifesteal)] : []),
+      ...(s.gold || s.xp ? [T("골드 +{0}% · 경험치 +{1}%", s.gold, s.xp)] : []),
+      ...(s.parry ? [T("패링 {0}%", s.parry)] : []),
       ...(s.dmgReduce ? [T("받는 피해 −{0}%", s.dmgReduce)] : []),
-      ...(s.mf ? [T("🔍 아이템 발견 +{0}%: 처치마다 {1}% 확률로 보너스 아이템(레어 이상), 네임드 유니크 확률 ×{2}", s.mf, Math.round(RLItems.findBonusChance(s.mf) * 1000) / 10, RLItems.findUniqueMul(s.mf).toFixed(2))] : []),
-      ...(s.splash ? [T("광란: 때린 적 주변 1칸도 피해의 {0}%", Math.round(RLItems.SPLASH.mul * 100))] : []),
-      ...(s.fireball ? [T("파이어볼: {0}턴마다 3×3, 피해 약 {1} (방어력 무시)", RLItems.FIREBALL.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FIREBALL.mul * (1 + (s.fireballPct + s.elem.fire) / 100))) + (s.fireballBurn ? T(" · 화상") : "")] : []),
-      ...(s.nova ? [T("프로스트 노바: {0}턴마다 주변 8칸, 피해 약 {1} (방어력 무시)", RLItems.FROST_NOVA.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.FROST_NOVA.mul * (1 + (s.novaPct + s.elem.ice) / 100))) + (s.novaSlow ? T(" · 느려짐") : "")] : []),
-      ...(s.chain ? [T("체인 라이트닝: {0}턴마다 {1}번 튕김, 한 번에 약 {2} (방어력 무시)", RLItems.CHAIN.every - (s.rw.skillFast ? 1 : 0), (s.chainMax ? RLItems.CHAIN.strikesMax : RLItems.CHAIN.strikes) + (s.uq.chainPlus || 0), Math.round(s.atk * RLItems.CHAIN.mul * (1 + (s.chainPct + s.elem.bolt) / 100))) + (s.chainMax ? T(" · 감전 (받는 피해 +{0}%)", RLItems.CHAIN.shock.pct) : "")] : []),
-      ...(EL.list.some(k => s.elem[k]) ? [T("속성 피해: {0}", EL.list.map(k => `${EL.names[k]} +${s.elem[k]}%`).join(" · "))] : []),
-      ...(EL.list.some(k => s.res[k]) ? [T("속성 저항: {0}", EL.list.map(k => `${EL.names[k]} ${s.res[k]}%${resCapOf(g, k) !== EL.resCap ? T(" (최대 {0}%)", resCapOf(g, k)) : ""}`).join(" · ")) + (EL.list.every(k => resCapOf(g, k) === EL.resCap) ? T(" (최대 {0}%)", EL.resCap) : "") + (resZone() !== "normal" ? T(" · 장비 합 {0}% − {1} ({2})", EL.list.map(k => s.resRaw[k]).join("/"), EL.zonePenalty[resZone()], resZone() === "hell" ? T("헬") : T("나이트메어")) : "")] : []),
-      // 룬워드: 낀 룬워드와 특수 효과 (같은 종류는 가장 큰 것 하나)
-      ...(Inv.totals().runewords.names.length ? [T("✦ 룬워드: {0}", Inv.totals().runewords.names.map(rwLabel).join(" · ")), ...RLItems.runewordSpecialText(s.rw).map(t => `  ✦ ${t}`)] : []),
-      ...(Inv.totals().uniques.names.length ? [T("✦ 유니크: {0}", Inv.totals().uniques.names.join(" · ")), ...Inv.totals().uniques.names.map(n => `  ✦ ${Object.values(RLItems.UNIQUE.items).find(u => u.name === n).text}`)] : []),
-      ...(!s.fireball && s.rw.fireball ? [T("파이어볼(나무): {0}턴마다 3×3, 피해 약 {1}", RLItems.RUNEWORD_FX.fireball.every - (s.rw.skillFast ? 1 : 0), Math.round(s.atk * RLItems.RUNEWORD_FX.fireball.mul * (1 + (s.fireballPct + s.elem.fire) / 100)))] : []),
     ];
     const oldEquipped = Object.values(Inv.equipped()).filter(it => it && isLegacy(it)).length;
-    const pouch = RLItems.GEM_KINDS.filter(k => Inv.gemCount(k).some(Boolean));
-    const runeTotal = Inv.runeCount().reduce((a, b) => a + b, 0);
     invSummary.replaceChildren(
       el("h3", {}, T("능력치")), ...statRows.map(t => el("div", {}, t)),
-      ...(oldEquipped ? [el("div", { className: "meta" }, T("예전 규칙 장비 {0}개 착용 중 · % 능력치가 새 기준까지만 적용돼요. 새로 파밍하면 더 강해질 수 있어요.", oldEquipped))] : []),
+      ...(oldEquipped ? [el("div", { className: "meta" }, T("예전 규칙 장비 {0}개 착용 중 · 이 장비를 끼면 정식 랭킹에 기록되지 않아요.", oldEquipped))] : []),
       ...(player?.oldGear ? [el("div", { className: "msg-bad" }, T("이번 판은 예전 장비를 껴서 정식 v1 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."))] : []),
-      // 세트는 한 줄씩 (누르면 모든 단계), 보석 주머니는 접어서
-      ...sets.map(set => fold(`set:${set.id}`,
-        [el("span", { style: { color: RLItems.RARITIES.set.color } }, `${set.name} (${Math.min(set.count, set.full)}/${set.full})`),
-          el("span", { className: "meta" }, T(" · 효과 {0}/{1}", set.bonuses.filter(b => b.on).length, set.bonuses.length))],
-        set.bonuses.map(b => el("div", { className: b.on ? "" : "off" }, T("{0}세트: {1}", b.count, b.text))), true)),
-      ...(pouch.length ? [fold("pouch", T("보석 주머니 ({0}종)", pouch.length),
-        [el("div", { className: "gem-pouch" }, ...pouch.map(k => el("div", { style: { color: RLItems.GEMS[k].color } }, `♦ ${RLItems.GEMS[k].name}: ${countText(Inv.gemCount(k))}`)))], true)] : []),
-      ...(runeTotal ? [fold("runes", [el("span", { className: "rainbow" }, T("룬 주머니")), T(" ({0}개)", runeTotal)],
-        [el("div", { className: "rune-pouch" }, `♦ ${runeCountText(Inv.runeCount())}`), el("div", { className: "meta" }, T("아래 룬 3개 = 바로 위 룬 1개 (홈에 넣을 때 자동으로 합쳐요)"))], true)] : []),
+      // 이 판의 축복·유물 (dc#140)
+      el("h3", {}, T("✦ 이 판의 축복·유물")), ...(player ? Bless.lines() : []).map(t => el("div", { className: "meta" }, t)),
+      el("label", { className: "auto-gear" }, el("input", { type: "checkbox", checked: autoGearOn(), onchange: (e) => { store.set("rl_autogear", e.target.checked ? "1" : "0"); } }), T(" 자동 장비 (줍는 즉시 착용·중복 강화·분해)")),
     );
     // 휴대폰: 능력치 한 줄 요약 (누르면 [능력치] 탭)
     const short = (n) => (n >= 10000 ? (RLI18N.lang === "ko" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}만` : RLI18N.lang === "ja" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}万` : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`) : String(n));
     const statline = document.getElementById("inv-statline");
-    statline.textContent = T("공 {0} · 방 {1} · HP {2} · 흡혈 {3}%", short(s.atk), short(s.def), short(s.maxHp), s.lifesteal) + (sets.length ? ` · ${sets.map(x => `${x.name.replace(/의 세트$| Set$|のセット$/, "").replace(/^Set of /, "")} ${Math.min(x.count, x.full)}/${x.full}`).join(" · ")}` : "") + " ▼";
+    statline.textContent = T("공 {0} · 방 {1} · HP {2} · 흡혈 {3}%", short(s.atk), short(s.def), short(s.maxHp), s.lifesteal) + " ▼";
     statline.onclick = () => showTab("stats");
     // 탭: 고른 탭의 칸만 보임. 휴대폰은 탭 창이 열렸을 때만
     for (const b of invSide.querySelectorAll(".inv-tab")) b.classList.toggle("on", b.dataset.tab === invTab);
@@ -7403,59 +7712,20 @@
     rows.push(
       el("h3", { className: [item.ancient ? "ancient-name" : "", isRainbow(item) ? "rainbow" : ""].join(" ").trim(), style: { color: rarityColor(item) } }, itemIcon(item), RLItems.itemName(item)),
       el("div", { className: "meta" }, `${RLItems.RARITIES[item.rarity].name} · ${kind} · Lv${item.lvl}`),
-      ...(item.ancient ? [el("div", { className: "ancient-note" }, T("고대 아이템 · 모든 능력치가 최대치예요!"))] : []),
+      ...(item.ancient ? [el("div", { className: "ancient-note" }, T("고대 아이템 · 숫자 +10%"))] : []),
       ...(RLItems.isBought(item) ? [el("div", { className: "meta" }, T("💰 고대 유니크 선택 상자에서 고른 아이템 (현금 구매) · 랭킹에 \"구매 아이템\"으로 표시돼요"))] : []),
-      ...(RLItems.isAccessory(item) && item.rarity !== "unique" ? [el("div", { className: "meta" }, item.main?.[0]?.[0] === "power"
-        ? T("예전 장신구(r7): ★ 공격력·방어력·최대 HP +%와 ◆ 속성 저항 줄. 강화로 오르지 않아요")
-        : T("장신구: ★ 공격력·방어력·최대 HP(강화하면 오름{0})와 ◆ 속성 저항 줄(얻은 곳에 따라 일반 0~1 · 나이트메어 1~2 · 헬 1~3줄, 강화로 안 오름). 고대는 드롭할 때만", RLItems.isHellItem(item) ? T(", 지옥의 힘 ×{0}", RLItems.HELL_POWER.mul) : RLItems.isNightmareItem(item) ? T(", 악몽의 힘 ×{0}", RLItems.NM_POWER.mul) : "") + (RLItems.accTier(item.seed) === "normal" ? T(" · 일반 던전 장신구라 공격력·방어력·최대 HP가 약 절반") : ""))]
-        : RLItems.isHellItem(item) ? [el("div", { className: "nm-note hell-note" }, T("지옥의 힘: 주 능력치 공격력·방어력·최대 HP ×{0} (아래 값에 반영됨)", RLItems.HELL_POWER.mul))]
-        : RLItems.isNightmareItem(item) ? [el("div", { className: "nm-note" }, T("악몽의 힘: 주 능력치 공격력·방어력·최대 HP ×{0} (아래 값에 반영됨)", RLItems.NM_POWER.mul))] : []),
-      ...(RLItems.isShieldOnly(item) ? [el("div", { className: "meta" }, T("장검: 보조 손에는 방패만 낄 수 있어요 (보조무기를 끼면 장검이 가방으로). 공격력 ×{0}, 다른 주 능력치도 ×{1}", RLItems.WEAPONS[item.type].atkMul, RLItems.WEAPONS[item.type].mainMul) + (item.main?.some(([k]) => k === "allRes") ? T(" · 모든 속성 저항은 강화로 오르지 않아요") : ""))] : []),
       ...statLines(item),
-      ...(item.v >= 2 && item.v < RLItems.RULES_VERSION ? [el("div", { className: "meta" }, T("예전 규칙(v{0}) 아이템: % 능력치는 지금 규칙의 같은 등급 최대치까지만 적용돼요.", item.v))] : []),
-      el("div", { className: "meta" }, item.main
-        ? T("★ 주 능력치(강화하면 오름) · ◆ 추가 능력치(+4·6·8·10 강화 때 하나씩 오름){0} · [최소~최대] ▲ 최대치", item.parry != null ? T(" · 🛡 패링 확률(강화로 오르지 않음)") : "")
-        : T("예전 규칙 아이템: 기본 능력치는 범위가 없어요.")),
+      el("div", { className: "meta" }, T("정식 v2: 아이템은 부위·등급·던전·레벨·강화로 정해지는 숫자만 줘요. 같은 부위·같은 던전·같은 등급을 또 얻으면 +1 (+12까지).")),
     );
-    // 홈과 보석
-    rows.push(...runewordRows(item), ...uniqueRows(item));
-    if (RLItems.socketCount(item)) { const [h, ...rest] = socketRows(item); rows.push(fold("sock", h.textContent, rest)); }
-    // 이 부위의 추천 능력치 (끝판 목표)
-    rows.push(...recommendRows(item));
-    // 대장간 (로비 대장간에서 열었을 때만)
-    if (forgeMode) rows.push(...forgeRows(item));
-    if (item.set) {
-      // 세트의 모든 단계 (지금 입은 개수로 켜진 단계는 밝게)
-      const set = RLItems.SETS[item.set], worn = Inv.totals().sets.find(x => x.id === item.set)?.count || 0;
-      rows.push(fold("settier", [el("span", { style: { color: RLItems.RARITIES.set.color } }, T("{0} 단계", set.name)), el("span", { className: "meta" }, T(" · {0}개 착용", worn))],
-        [el("div", { className: "meta" }, setNote(item.set)),
-          ...set.bonuses.map(b => el("div", { className: worn >= b.count ? "set-on" : "meta" }, T("{0}세트: {1}", b.count, b.text)))]));
-    }
-
     const to = (item.enh || 0) + 1;
-    const canEnhance = to <= RLItems.ENHANCE.max;
-    const enhGold = canEnhance ? RLItems.enhanceGold(to, item) : 0, myGold = player && !gameOver ? player.gold : 0;
-    rows.push(el("div", { className: "meta" }, canEnhance
-      ? T("다음 강화 +{0}: 성공 {1} · {2} {3}개 (보유 {4}개)", to, isStaff() ? T("100% (운영자)") : `${Math.round(RLItems.enhanceChance(to) * 100)}%`, RLItems.STONE_NAMES[RLItems.stoneKey(item)], RLItems.enhanceCost(to, item), Inv.stonesFor(item)) + (enhGold ? T(" + {0}골드 (보유 {1}골드)", enhGold.toLocaleString(), myGold.toLocaleString()) : "") + T(", 실패해도 아이템은 그대로")
-      : T("최대 강화(+{0})예요.", RLItems.ENHANCE.max)));
+    const canEnhance = to <= AUTO_ENH_MAX || (isStaff() && to <= RLItems.ENHANCE.max);
+    rows.push(el("div", { className: "meta" }, (item.enh || 0) >= RLItems.ENHANCE.max ? T("최대 강화(+{0})예요.", RLItems.ENHANCE.max)
+      : canEnhance ? T("다음 강화 +{0}: {1} {2}개 (보유 {3}개), 항상 성공", to, RLItems.STONE_NAMES[RLItems.stoneKey(item)], RLItems.enhanceCost(to, item), Inv.stonesFor(item))
+      : T("+{0}부터는 같은 부위·같은 던전·같은 등급 장비를 또 얻으면 올라가요.", AUTO_ENH_MAX + 1)));
     const enhanceBtn = el("button", {
-      type: "button", disabled: !canEnhance || (!isStaff() && (Inv.stonesFor(item) < RLItems.enhanceCost(to, item) || (enhGold > 0 && myGold < enhGold))), onclick: () => enhanceItem(item),
-    }, enhGold ? T("강화 ({0}골드)", enhGold.toLocaleString()) : T("강화"));
-    // 고대 다시 굴리기 (고대가 아닌 v4 레전더리·세트): 판의 골드를 씀
-    const AR = RLItems.ANCIENT_REROLL;
-    const canAncient = RLItems.canRerollAncient(item, isStaff());
-    const arCost = RLItems.ancientRerollCost(item);
-    // 20번 모두 실패한 아이템은 버튼 자리에 "20/20번 실패"를 눌리지 않는 버튼으로 고정
-    const gold = player && !gameOver ? player.gold : 0;
-    const arUsed = item.ar || 0;
-    const arOver = (item.rarity === "legendary" || item.rarity === "set") && item.v === 4 && !item.ancient && arUsed >= AR.max && !isStaff();
-    if (canAncient) rows.push(el("div", { className: "meta" },
-      T("고대 굴리기: {0}로 고대(모든 능력치 최대치) · {1}골드 (보유 {2}골드) · {3}", isStaff() ? T("100%(운영자)") : T("{0}% 확률", Math.round(AR.chance * 100)), arCost.toLocaleString(), gold.toLocaleString(), isStaff() ? T("운영자: 횟수 제한 없음 ({0}번 굴림)", arUsed) : T("남은 횟수 {0}/{1}", AR.max - arUsed, AR.max))));
-    else if (arOver) rows.push(el("div", { className: "meta" }, T("고대 굴리기를 {0}번 모두 실패했어요. 이 아이템은 더 굴릴 수 없어요.", AR.max)));
-    const ancientBtn = canAncient ? el("button", {
-      type: "button", disabled: !canPay(arCost), onclick: () => ancientItem(item),
-    }, !canPay(arCost) ? T("고대 굴리기 ({0}골드 · 골드 부족)", arCost.toLocaleString()) : T("고대 굴리기 ({0}골드)", arCost.toLocaleString()))
-      : arOver ? el("button", { type: "button", className: "ancient-done", disabled: true }, T("고대 굴리기 {0}/{0}번 실패", AR.max)) : null;
+      type: "button", disabled: !canEnhance || (!isStaff() && Inv.stonesFor(item) < RLItems.enhanceCost(to, item)), onclick: () => enhanceItem(item),
+    }, T("강화"));
+    const ancientBtn = null;
 
     const actions = el("div", { className: "row" }), cmpRows = [];
     if (selected.from === "bag") {
@@ -7488,7 +7758,7 @@
       afterGearChange();
     } }, T("고대로 만들기 (운영자)")));
     // 버튼은 이름 바로 아래에 (능력치를 다 읽고 내려가지 않아도 바로 팔거나 장착하게)
-    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0) + (RLItems.isDeepItem(item) ? 1 : 0);
+    const head = (invMsg ? 1 : 0) + 2 + (item.ancient ? 1 : 0);
     invDetail.replaceChildren(...rows.slice(0, head), actions, ...cmpRows, ...rows.slice(head));
   }
 
@@ -7585,8 +7855,8 @@
   // 대장간: 인벤토리와 같은 창에서 아이템을 고르면 옵션 재련·홈 초기화가 보임
   function openForge() {
     if (gameOver) { openDeath(); return; }
-    openInventory(true);
-    invMsg = { cls: "good", text: T("⚒ 대장간이에요. 아이템을 고르면 옵션 재련(레전더리·세트)과 홈 초기화를 할 수 있어요.") };
+    openInventory(false);   // 정식 v2 (dc#140): 옵션 재련·홈 초기화는 쉬어요 (아이템은 숫자만)
+    invMsg = { cls: "good", text: T("⚒ 대장간은 정식 v2에서 쉬어요. 아이템은 이제 숫자만 줘서 옵션 재련·홈 초기화가 없어졌어요. 강화는 강화석으로 +4까지, 그 뒤로는 같은 장비를 또 얻으면 올라가요.") };
     renderDetail();
   }
   function closeInventory() { invModal.hidden = true; forgeMode = false; }
@@ -8255,7 +8525,7 @@
         el("button", { type: "button", className: "primary pick-uq", value: k, disabled: Market.busy, onclick: () => openBox(m.id, k, it) }, T("고르기")));
     };
     return [
-      el("p", { className: "market-note" }, T("🎁 {0}: 하나만 고를 수 있고, 고른 뒤에는 바꿀 수 없어요. 모든 능력치가 최대치인 고대 유니크로 가방에 들어가요 (가방 {1}/{2}칸). 랭킹에는 \"구매 아이템\"으로 표시돼요.", T("고대 유니크 선택 상자"), Inv.bag().length, BAG_SIZE)),
+      el("p", { className: "market-note" }, T("🎁 {0}: 하나만 고를 수 있고, 고른 뒤에는 바꿀 수 없어요. 고대 유니크(가장 높은 등급, 숫자 +10%)로 가방에 들어가요 (가방 {1}/{2}칸). 랭킹에는 \"구매 아이템\"으로 표시돼요.", T("고대 유니크 선택 상자"), Inv.bag().length, BAG_SIZE)),
       el("button", { type: "button", onclick: () => { Market.boxPick = null; renderMarket(); }, style: { marginBottom: "8px" } }, T("← 우편함으로")),
       el("h3", {}, T("유니크 장비")), el("div", { className: "market-list" }, ...U.filter(([, u]) => !u.acc).map(row)),
       el("h3", {}, T("유니크 장신구")), el("div", { className: "market-list" }, ...U.filter(([, u]) => u.acc).map(row)),
@@ -8784,7 +9054,23 @@
     if (!quiet) log(T("예전(v3까지) 장비를 껴서 이번 판은 정식 v1 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."), "bad");
   }
   // 안내 창 (계정·게스트마다 한 번): 예전 장비가 있으면 규칙 변경 안내, 아니면 이미 하던 사람에게 75층·드롭 변경 안내
+  // 정식 v2 안내 (dc#140): 계정·게스트마다 한 번. 보석·룬 보상이 있으면 같이
+  function v2Notice() {
+    const owner = Inv.owner(), key = `rl_notice_v2:${owner}`, c = Inv.takeCompNote();
+    if (PORTAL || store.get("rl_v2notice") === "off" || (store.get(key) && !c)) return false;   // rl_v2notice: 기존 회귀 테스트용
+    if (!Inv.items().length && bestDepth <= 1 && !c) { store.set(key, "1"); return false; }   // 처음 온 사람
+    store.set(key, "1");
+    showNotice(T("정식 v2: 축복과 자동 장비"), [
+      T("장비는 이제 부위·등급·던전·강화로 정해지는 공격력·방어력·최대 HP 숫자만 줘요. 줍는 순간 자동으로 더 좋은 것을 끼고, 같은 부위·같은 던전·같은 등급을 또 얻으면 강화 +1 (확률 없이, +12까지), 나머지는 분해돼요."),
+      T("더 좋은 등급·던전 장비로 바뀔 때 강화 단계를 그대로 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 레전더리 이상은 분해하지 않고 가방에 남겨요 (거래소용)."),
+      T("던전에서 새 층에 내려갈 때마다 축복 3개 중 1개, 보스를 쓰러뜨리면 상한을 올리는 유물 1개를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요. 던전을 완료하면 축복을 가진 채 다음 던전으로 이어갈 수 있어요."),
+      T("세트·룬워드·보석·유니크 고유 효과는 이제 쓰이지 않아요. 가진 보석·룬은 저장본에 그대로 남아 있어요."),
+      ...(c ? [T("가지고 있던 보석·룬 대신 강화석 {0}개와 악몽 강화석 {1}개를 받았어요.", c.stones.toLocaleString(), c.nmStones.toLocaleString())] : []),
+    ]);
+    return true;
+  }
   function legacyNotice() {
+    if (v2Notice()) return;
     const owner = Inv.owner();
     const key = `rl_notice_v4:${owner}`;
     // 위쪽 안내 줄: 가장 최근 업데이트만 (닫으면 다시 안 뜸). 새 업데이트를 알릴 때는 키를 바꿈
@@ -9008,6 +9294,7 @@
       if (["escape", "enter", " "].includes(keyName(e))) { e.preventDefault(); closeNotice(); }
       return;
     }
+    if (Bless.isOpen()) { Bless.key(e); return; }   // 축복·유물 고르기 (1·2·3)
     if (!hellPickModal.hidden) {
       if (e.key === "Escape") { e.preventDefault(); closeHellPick(); }
       return;

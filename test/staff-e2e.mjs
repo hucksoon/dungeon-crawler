@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto"; import fs from "node:fs"; import path from "node:path";
 import { goDoor } from "./town.mjs";   // 마을(옆에서 보는 로비) 문까지 걸어가 ↑
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -81,25 +83,7 @@ try {
   await D.page.locator("#inv-detail button", { hasText: /^강화/ }).first().click(); await sleep(150);
   let d = await readInv(D.page);
   check("operator: +10 → +11 always succeeds (5% normally), 0 stones and 0 gold", d.bag.find(x => x.id === epic.id).tries === 1 && d.bag.find(x => x.id === epic.id).enh === 11 && d.stones === 0 && (await D.page.locator("#gold").innerText()) === "0", JSON.stringify(d.bag.find(x => x.id === epic.id)));
-  await pick(D.page, L);
-  check("operator: ancient roll allowed after 20 failures, 0 gold", (await D.page.locator("#inv-detail").innerText()).includes("운영자: 횟수 제한 없음 (20번 굴림)") && await D.page.locator("#inv-detail button", { hasText: "고대 굴리기" }).isEnabled());
-  check("operator: ancient chance shown as 100%", (await D.page.locator("#inv-detail").innerText()).includes("100%(운영자)로 고대"));
-  await D.page.locator("#inv-detail button", { hasText: "고대 굴리기" }).click(); await sleep(150);
-  d = await readInv(D.page); const l2 = d.bag.find(x => x.id === L.id);
-  const hitAt = [...Array(200)].map((_, k) => k + 1).find(n => n > 20 && I.ancientRerollHit(L, n));
-  check(`operator: one click → ancient, recorded at the next hit roll (${hitAt}) so the server agrees`, l2.ancient && l2.ar === hitAt, JSON.stringify([l2.ar, l2.ancient]));
-  await pick(D.page, chest);
-  await D.page.selectOption("#inv-detail select.gem-kind", "diamond"); await D.page.selectOption("#inv-detail select.gem-grade", "2"); await sleep(100);
-  check("operator: gem plan says free, button enabled with empty pouch", (await D.page.locator("#inv-detail").innerText()).includes("운영자: 보석을 쓰지 않고 넣어요") && await D.page.locator("#inv-detail button.gem-put").isEnabled());
-  await D.page.locator("#inv-detail button.gem-put").click(); await sleep(150);
-  d = await readInv(D.page);
-  check("operator: perfect diamond socketed, pouch untouched", JSON.stringify(d.bag.find(x => x.id === chest.id).gems) === '[["diamond",2]]' && !(d.gems?.diamond || []).some(Boolean));
-  // 운영자: 룬도 주머니가 비어 있어도 아무 룬이나 (하 룬)
-  await D.page.selectOption("#inv-detail select.gem-kind", "rune"); await sleep(80); await D.page.selectOption("#inv-detail select.gem-grade", "13"); await sleep(100);
-  check("operator: rune option shown with an empty pouch, plan free", (await D.page.locator("#inv-detail").innerText()).includes("운영자: 룬을 쓰지 않고 넣어요") && await D.page.locator("#inv-detail button.gem-put").isEnabled());
-  await D.page.locator("#inv-detail button.gem-put").click(); await sleep(150);
-  d = await readInv(D.page);
-  check("operator: 하 rune socketed, rune pouch untouched", JSON.stringify(d.bag.find(x => x.id === chest.id).gems) === '[["diamond",2],["rune",13]]' && !(d.runes || []).some(Boolean), JSON.stringify([d.bag.find(x => x.id === chest.id).gems, d.runes]));
+  // 정식 v2 (dc#140): 고대 다시 굴리기·홈(보석·룬)이 쉬어서 그 확인은 뺌
   // 운영자: 장신구·유니크는 고대 굴리기가 없고 "고대로 만들기 (운영자)"만
   for (const [nm, it] of [["accessory", accL], ["unique", uq7]]) {
     await pick(D.page, it);
@@ -168,16 +152,9 @@ try {
   await D.page.locator("#death-modal button.staff-revive").click(); await sleep(400);
   const lvl3 = await D.page.evaluate(() => JSON.parse(localStorage.getItem("rl_level")));
   check("operator revive → back on floor 5 (new map), gold/level kept", lvl3?.d === 5 && (lvl3?.z || "normal") === "normal" && lvl3?.rid !== lvl?.rid && await D.page.locator("#death-modal").isHidden() && (await D.page.locator("#gold").innerText()) === "0", JSON.stringify([lvl3?.d, lvl3?.z]));
-  // 로비 → 대장간에서 0골드로 재련, 시간 상점 진열 바꾸기 4번
+  // 로비 → 시간 상점 진열 바꾸기 4번
   await press(D.page, "p"); await sleep(300);
-  await goDoor(D.page, "forge");
-  await pick(D.page, L);
-  check("operator: reforge enabled with 0 gold", await D.page.locator("#inv-detail button.reforge-btn").first().isEnabled());
-  await D.page.locator("#inv-detail button.reforge-btn").first().click(); await sleep(150);
-  d = await readInv(D.page);
-  check("operator: every line still has a reforge button after reforging", (await D.page.locator("#inv-detail button.reforge-btn").count()) === L.lines.filter(([k]) => k !== "socket").length && (await D.page.locator("#inv-detail").innerText()).includes("운영자: 모든 줄을 재련할 수 있어요"));
-  check("operator: reforged (rf saved), gold still 0", JSON.stringify(d.bag.find(x => x.id === L.id).rf) === "[0]" && (await D.page.locator("#gold").innerText()) === "0" && (await D.page.locator("#inv-detail").innerText()).includes("운영자 무료"));
-  await D.page.locator("#inv-close").click(); await sleep(100);
+  // 정식 v2 (dc#140): 대장간(옵션 재련)이 쉬어서 그 확인은 뺌
   await goDoor(D.page, "hourshop");
   check("hour shop opened", !(await D.page.locator("#shop-modal").isHidden()), await D.page.locator("#shop-title").innerText().catch(() => ""));
   for (let k = 0; k < 4; k++) { await D.page.locator("#shop-reroll").click(); await sleep(120); }
@@ -190,12 +167,7 @@ try {
   const P = await open(A); await sleep(1000);
   await press(P.page, "i"); await sleep(200);
   check("normal user: no operator text, no gift button", !(await P.page.locator("#inv-count").innerText()).includes("운영자") && await P.page.locator("#inv-staff-gift").isHidden());
-  await pick(P.page, L);
-  check("normal user: 20 failures → fixed 20/20 button", await P.page.locator("#inv-detail button", { hasText: "고대 굴리기 20/20번 실패" }).isDisabled());
-  await pick(P.page, (await readInv(P.page)).bag.find(x => x.rarity === "epic"));
-  check("normal user: enhance needs stones, chance 5%", await P.page.locator("#inv-detail button", { hasText: /^강화/ }).first().isDisabled() && (await P.page.locator("#inv-detail").innerText()).includes("+11: 성공 5%"));
-  await pick(P.page, chest);
-  check("normal user: no gems → can't socket", await P.page.locator("#inv-detail button.gem-put").isDisabled());
+  // 정식 v2 (dc#140): 고대 다시 굴리기·확률 강화·홈이 없어져서 그 확인은 뺌 (강화석 +4는 v2-e2e)
   await P.page.locator("#inv-close").click(); await sleep(100);
   await press(P.page, "p"); await sleep(300);
   check("normal user: no operator door in the town", await P.page.evaluate(() => document.body.classList.contains("in-lobby") && !window.RLJump.TOWN.doors.some(d => d.id === "staff")));

@@ -2,6 +2,8 @@
 // 캔버스 픽셀을 칸 단위(전체 지도, 한 칸 = 캔버스 32px)로 셈. 시간은 페이지 안에서 키를 누르고 setTimeout으로 잼
 import { createRequire } from "node:module";
 import fs from "node:fs"; import path from "node:path";
+// 정식 v2 (dc#140): 아이템 효과(세트·룬워드·보석·속성·패링 등)가 없어져서 건너뛰는 확인
+const skipV2 = (n) => console.log(`SKIP (v2) ${n}`);
 const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const REPO = process.argv[2], OUT = process.argv[3];
@@ -128,7 +130,7 @@ try {
   await o.page.evaluate(() => { Math.random = () => 0; });
   const block = await measure(o.page, 5, 5, ".", 260);
   const hp = await o.page.evaluate(() => JSON.parse(localStorage.getItem("rl_save")).run.hp);
-  check("block: shield parry takes no damage and a white flash shows toward the attacker", hp === 1e6 && block.white > calm.white + 6 && block.red <= calm.red + 5, JSON.stringify({ hp, calm, block }));
+  skipV2("block: shield parry takes no damage and a white flash shows toward the attacker", hp === 1e6 && block.white > calm.white + 6 && block.red <= calm.red + 5, JSON.stringify({ hp, calm, block }));
   await o.ctx.close();
 
   // ---- 세트 스킬 이펙트: 제자리 대기 한 번에 스킬이 나감 → 이펙트 색 픽셀이 생겼다가 사라짐 ----
@@ -140,7 +142,7 @@ try {
     const fx = await measure(o.page, x, y, ".", ms);
     await o.page.waitForTimeout(900);
     const after = await measure(o.page, x, y);
-    check(`${name}: effect drawn (${key} colored pixels) and then gone`, fx[key] >= 15 && fx[key] > calm[key] + 12 && after[key] <= calm[key] + 5, JSON.stringify({ calm: calm[key], fx: fx[key], after: after[key] }));
+    skipV2(`${name}: effect drawn (${key} colored pixels) and then gone`, fx[key] >= 15 && fx[key] > calm[key] + 12 && after[key] <= calm[key] + 5, JSON.stringify({ calm: calm[key], fx: fx[key], after: after[key] }));
     check(`${name}: no page errors`, o.errors.length === 0, o.errors.join("; "));
     await o.ctx.close();
   }
@@ -155,7 +157,7 @@ try {
     await o.page.keyboard.press("ArrowRight"); await o.page.waitForTimeout(150);
     const pop = await o.page.evaluate(() => [...document.querySelectorAll("#popups .dmg.heal")].map(d => [d.textContent, getComputedStyle(d).color]));
     // 공격력 2000 · 흡혈 4% → 약 +80 (여러 번 맞혀도 한 턴에 숫자 하나)
-    if (hp < 1e9) check("lifesteal: one green +N over the player", pop.length === 1 && /^\+\d+$/.test(pop[0][0]) && pop[0][1] === "rgb(74, 222, 128)" && +pop[0][0].slice(1) >= 10, JSON.stringify(pop));
+    if (hp < 1e9) skipV2("lifesteal: one green +N over the player", pop.length === 1 && /^\+\d+$/.test(pop[0][0]) && pop[0][1] === "rgb(74, 222, 128)" && +pop[0][0].slice(1) >= 10, JSON.stringify(pop));
     else check("lifesteal at full HP: no green number", pop.length === 0, JSON.stringify(pop));
     await o.ctx.close();
   }
