@@ -207,13 +207,18 @@
   //   속성 축복을 고르는 판 기준 (후보에 나오면 고름, 한 판 합쳐 10번까지). 속성 축복을 하나도 안 고르면 31~40층에서 거의 모두 쓰러짐
   //   dc#143: 넓은 지역(층의 몬스터를 모두 잡음 · 보스는 부하와 함께) · 레벨이 더 쉽게 오르고 레벨 업마다 축복 · 속성 축복 Lv 10 → 2.22면 96%
   //     → 4.4 (시뮬레이션: 4 → 88%, 4.3 → 79%, 4.4 → 73~74%, 4.6 → 56%, 5 → 26%). 속성 축복을 안 고르면 여전히 11~30층에서 쓰러짐
-  const NORMAL = { ramp: 4.4 };
+  //   dc#146: 몬스터 무리(×2, 경험치·드롭 절반) · 처음부터 마력탄 · 첫 레벨 업에 속성 스킬 → 4.4면 81% → 4.6
+  const NORMAL = { ramp: 4.6 };
   // 나이트메어·헬 몬스터 HP·공격력에 더 곱함 (dc#142, 속성 스킬 축복 뒤 시뮬레이션 300판: 이어가기 나이트메어 약 90% · 헬 약 45%)
   //   없으면 둘 다 100%. 나이트메어 ×2 / ×1.45 → 11%, ×1.6 / ×1.3 → 87~92%. 헬 ×1.6 / ×1.35 → 11%, ×1.43 / ×1.23 → 43~47%, ×1.4 / ×1.2 → 60~65%
   //   헬 몬스터는 나이트메어 50층 몬스터를 바탕으로 만들지만 나이트메어 배율은 곱하지 않음 (헬 배율만). 끝이 없는 구멍(헬 바탕)도 헬 배율
   //   dc#143: 위의 규칙 변화로 둘 다 99%가 되어 한 번 더 곱함: 나이트메어 ×1.2 (×1.15 → 96%, ×1.3 → 70%), 헬 ×1.2 (×1.15 → 66%, ×1.3 → 9%)
   //     → 이어가기 나이트메어 92% · 헬 44% (300판)
-  const V2 = { nightmare: { hp: 1.92, atk: 1.56 }, hell: { hp: 1.72, atk: 1.48 } };
+  //   dc#146: 위 변화로 나이트메어 96% · 헬 62% → 나이트메어 ×1.05, 헬 ×1.04
+  const V2 = { nightmare: { hp: 2.02, atk: 1.64 }, hell: { hp: 1.79, atk: 1.54 } };
+  // 몬스터 무리 (dc#146, 넓은 광장): 한 층 몬스터 수 ×count, 대신 한 마리당 경험치 ×xp · 장비 드롭 확률 ×drop · 처치 골드 ×gold
+  //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
+  const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
   const v2mul = (m, k) => { const hp = Math.round(m.hp * k.hp); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k.atk) }; };
   const normalMul = (n) => 1 + NORMAL.ramp * (Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1);
   // n: 일반 던전 층 (1~50). 강함은 effLevel(n) 레벨 × 깊이 배율
@@ -481,7 +486,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

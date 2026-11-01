@@ -1328,5 +1328,10 @@
     "회피": "Dodged",
     "화면을 끌어 걷기 · 위로 끌면 문에 들어가기 · 톡 누르면 회피": "Drag to walk · drag up to enter a door · tap to dodge",
     "← → (A·D) 걷기 · Space 회피 · 문 앞에서 ↑ (W) 들어가기 · I 인벤토리 · B 도감": "← → (A·D) walk · Space dodge · ↑ (W) at a door to enter · I inventory · B codex",
+    "⚠ 위험! 회피": "⚠ Danger! Dodge",
+    "📘 위험할 때는 회피! 화면을 톡 누르면 움직이던 쪽으로 3칸 굴러가고, 그동안은 무적이에요.": "📘 When in danger, dodge! Tap the screen to roll 3 tiles the way you were moving — you're invulnerable meanwhile.",
+    "📘 위험할 때는 회피! Space를 누르면 움직이던 쪽으로 3칸 굴러가고, 그동안은 무적이에요.": "📘 When in danger, dodge! Press Space to roll 3 tiles the way you were moving — you're invulnerable meanwhile.",
+    "✦ 레벨 업! 첫 스킬 배우기": "✦ Level up! Learn your first skill",
+    "속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.": "Learn one element skill. It casts by itself, and picking the same skill again makes it stronger.",
   } });
 })(typeof self !== "undefined" ? self : this);

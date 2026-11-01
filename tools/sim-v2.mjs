@@ -26,7 +26,7 @@ const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fire", "bolt", "ice"]), "
 const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall"];
 
 function newPlayer(level = 1) {
-  const p = { lvl: 1, xp: 0, xpNext: 10, maxHp: 20, atk: 3, eq: {}, stones: { stones: 0, nmStones: 0, hellStones: 0 }, bl: {}, rl: {} };
+  const p = { lvl: 1, xp: 0, xpNext: OPT.xpFirst ?? 6, maxHp: 20, atk: 3, eq: {}, stones: { stones: 0, nmStones: 0, hellStones: 0 }, bl: {}, rl: {} };
   while (p.lvl < level) levelUp(p);
   return p;
 }
@@ -86,14 +86,19 @@ function autoEnhance(p) {
 // ---- 몬스터 ----
 function floorMonsters(zone, f, r) {
   const L = M.effLevel(f), deep = zone !== "normal";
-  const count = deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2);
-  return { count: Math.round(count * KILL_SHARE), make: (kind) => {
+  const count = (deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2)) * SW.count;
+  return { count: Math.round(count * KILL_SHARE), make: (kind) => swarmM(mk(kind)) };
+  function mk(kind) {
     if (zone === "hell") return zm("hell", M.makeHell(M.pickNightmareType(r), kind, f));
     if (zone === "nm") return zm("nm", M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r)));
     if (OPT.nramp != null) { const m = M.makeMonster(M.pickType(L, r), kind, L), k = 1 + OPT.nramp * (f - 1) / 49; m.hp = Math.round(m.hp * k); m.atk = Math.round(m.atk * k); return m; }
     return OPT.nmul ? (() => { const m = M.makeMonster(M.pickType(L, r), kind, L); m.hp = Math.round(m.hp * OPT.nmul.hp); m.atk = Math.round(m.atk * OPT.nmul.atk); return m; })() : M.makeNormal(M.pickType(L, r), kind, f);
-  }, eliteBase: M.eliteChance(deep ? M.NIGHTMARE.base : L) };
+  }
 }
+function eliteBaseOf(zone, f) { return M.eliteChance(zone !== "normal" ? M.NIGHTMARE.base : M.effLevel(f)); }
+// 몬스터 무리 (dc#146): 몬스터 ×count, 한 마리당 경험치 ×xp · 드롭 ×drop (OPT.swarm: false면 예전)
+const SW = OPT.swarm === false ? { count: 1, xp: 1, drop: 1 } : { ...M.SWARM, ...(OPT.sw || {}) };
+const swarmM = (m) => ({ ...m, xp: Math.max(1, Math.round(m.xp * SW.xp)) });
 // OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
 function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
@@ -112,6 +117,8 @@ function castElem(s, foes, st, r, killed) {
   const res = (m, k) => Math.max(0, 1 - ((m.res?.[k] || 0) / 100));
   const hit = (m, d, k) => { m.hp -= Math.round(d * res(m, k)); };
   const roll = (e) => s.atk * e.mul * (1 + e.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
+  // 기본 스킬 마력탄 (dc#146): 2턴마다 하나에게 공격력 60% (방어 무시)
+  if (!OPT.noStarter && foes.length) { st.scd = (st.scd || 0) - 1; if (st.scd <= 0) { st.scd = 2; const m = foes[foes.length > 1 ? 1 : 0]; m.hp -= Math.round(s.atk * 0.6 * (r() * 100 < s.crit ? 2 : 1)); if (m.hp <= 0) killed.push(foes.splice(foes.indexOf(m), 1)[0]); } }
   for (const k of B.ELEM_IDS) {
     const e = s.ef[k];
     if (!e) continue;
@@ -168,7 +175,7 @@ function pickBest(list, pri) { return [...list].sort((a, b) => priOf(pri, a) - p
 // 한 던전 50층 (p를 이어서 씀). 쓰러지면 쓰러진 층, 다 깨면 0
 function runZone(p, zone, r, rid, out, from = 1) {
   const st = { hp: stats(p).maxHp, cd: 0, killed: [] };
-  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { const off = B.offer(`${rid}|lv|${lvl}`, p.bl); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
+  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
   for (let f = from; f <= 50; f++) {
     // 새 층: 축복 하나
     const off = B.offer(`${rid}|${zone}|${f}`, p.bl);
@@ -176,7 +183,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
     let s = stats(p);
     st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * s.floorHeal / 100));
     const fm = floorMonsters(zone, f, r), L = itemLevel(zone, f), log = out.log;
-    const eliteP = Math.min(1, fm.eliteBase * (1 + s.elite / 100));
+    const eliteP = Math.min(1, eliteBaseOf(zone, f) * (1 + s.elite / 100));
     let left = fm.count, kills = 0;
     while (left > 0) {
       const n = Math.min(GROUP(zone, f), left); left -= n;
@@ -185,7 +192,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
       if (!fight(p, s, foes, st, r, zone)) { out.where[`${zone}${f}`] = (out.where[`${zone}${f}`] || 0) + 1; return f; }
       for (const m of st.killed) {
         gainXp(p, Math.round(m.xp * (1 + s.xp / 100)));
-        const it = I.rollDrop(`${rid}|${tag(zone)}${f}|k${kills++}`, L, m.kind, zone === "normal" ? 1.5 : 1);
+        const it = I.rollDrop(`${rid}|${tag(zone)}${f}|k${kills++}`, L, m.kind, (zone === "normal" ? 1.5 : 1) * SW.drop);
         if (it) autoGear(p, it, log);
       }
       autoEnhance(p); s = stats(p);

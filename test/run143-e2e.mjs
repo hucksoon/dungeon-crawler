@@ -35,6 +35,12 @@ const HOOK = `
       return { unseen: [a, b, c, d].every(p => !seen[p.y][p.x]), best: rarityColor(items[items.length - 1].item) }; },
     marks: () => mapMarks().map(m => m.k + (m.color ? ":" + m.color : "")),
     full: (on) => { fullMap = on; render(); },
+    // 넓은 광장 (dc#145): 가장자리 띠 안쪽에서 벽(기둥) 비율, 한가운데 마당이 비었는지, 기둥 덩어리 수
+    arena: () => { const A = lastArena, B = A.band + 1; let inner = 0, walls = 0, centerWalls = 0; const cx = A.ax + A.aw / 2, cy = A.ay + A.ah / 2, cr = Math.min(A.aw, A.ah) * ARENA.center - 1.5;
+      for (let y = A.ay + B; y < A.ay + A.ah - B; y++) for (let x = A.ax + B; x < A.ax + A.aw - B; x++) { inner++; if (map[y][x] === WALL) { walls++; if (Math.hypot(x - cx, (y - cy) * 1.25) < cr) centerWalls++; } }
+      return { inner, walls, ratio: walls / inner, centerWalls }; },
+    // 위험할 때 회피 튜토리얼: 몬스터 셋을 붙이고 한 턴
+    danger: () => { enemies = []; for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0]]) { const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + dx, y: player.y + dy }; e.atk = 0; e.hp = e.maxHp = 1e6; map[e.y][e.x] = FLOOR; enemies.push(e); } player.jumpCd = 0; endTurn(); return store.get("rl_tip_dodge"); },
     xp: (n) => gainXp(n),
     near: (n) => { player.xp = player.xpNext - n; },
     auto: () => Bless.autoRest(),
@@ -67,15 +73,17 @@ try {
   // ---- 1. 넓은 지역: 몬스터가 많을수록 넓게, 모든 바닥이 이어짐 ----
   const A = await open({ ...BASE, rl_save: save({}) });
   const z1 = await T(A.page, "size", 8), z2 = await T(A.page, "size", 60), z3 = await T(A.page, "size", 2000);
-  check("size grows with monsters (8 → 60 monsters), from 32×24 up to 96×72", z1.w >= 32 && z1.h >= 24 && z2.w > z1.w && z2.h > z1.h && z3.w === 96 && z3.h === 72, JSON.stringify([z1, z2, z3]));
+  check("arena grows with monsters (8 → 60 monsters): small at first (about 19×14, walls around fill the screen), up to 94×70", z1.aw < 22 && z1.ah < 17 && z1.w >= 24 && z1.h >= 18 && z2.aw > z1.aw && z2.ah > z1.ah && z3.aw === 94 && z3.ah === 70 && z3.w === 96, JSON.stringify([z1, z2, z3]));
   let a = await T(A.page, "s");
-  check("floor 1: open area, no stairs yet, stairs closed", a.scene === "dungeon" && a.w >= 32 && a.stairs === 0 && a.open === false, JSON.stringify(a));
+  check("floor 1: small open area, no stairs yet, stairs closed", a.scene === "dungeon" && a.w >= 24 && a.w < 30 && a.stairs === 0 && a.open === false, JSON.stringify(a));
   const r1 = await T(A.page, "reach");
-  check("every floor tile can be reached from the start (floor 1)", r1.got === r1.total && r1.total > 32 * 24 * 0.3, JSON.stringify(r1));
+  check("every floor tile can be reached from the start (floor 1)", r1.got === r1.total && r1.total > 12 * 9 * 0.6, JSON.stringify(r1));
   await T(A.page, "floor", 40);
   a = await T(A.page, "s");
   const r40 = await T(A.page, "reach");
-  check(`floor 40 is bigger (${a.w}×${a.h}, ${a.n} monsters) and all connected`, a.w > 60 && a.h > 45 && r40.got === r40.total, JSON.stringify([a, r40]));
+  check(`floor 40 is bigger (${a.w}×${a.h}, ${a.n} monsters) and all connected`, a.w > 55 && a.h > 40 && r40.got === r40.total, JSON.stringify([a, r40]));
+  const ar = await T(A.page, "arena");
+  check(`open arena with pillars: inner area mostly open (${(ar.ratio * 100).toFixed(1)}% pillars), center yard empty`, ar.ratio > 0.01 && ar.ratio < 0.12 && ar.centerWalls === 0, JSON.stringify(ar));
   await A.page.screenshot({ path: path.join(SHOTS, "run143-open.png") }).catch(() => {});
 
   // ---- 2. 일반 층: 다 잡으면 마지막 적 자리에 계단 ----
@@ -117,6 +125,14 @@ try {
   await T(A.page, "full", false); await sleep(150);
   check("no page errors (open floors · boss · pickup · map)", A.errors.length === 0, A.errors.join("; "));
 
+  // ---- 5b. 위험할 때 회피: 튜토리얼로 한 번만 ----
+  await T(A.page, "floor", 3);
+  const tip1 = await T(A.page, "danger");
+  const log1 = await A.page.locator("#log").innerText();
+  await T(A.page, "danger");
+  const log2 = await A.page.locator("#log").innerText();
+  const count = (t) => t.split("위험할 때는 회피").length - 1;
+  check("surrounded by 3 monsters → one-time dodge tutorial, not repeated", tip1 === "1" && count(log1) === 1 && count(log2) === 1, JSON.stringify([tip1, count(log1), count(log2)]));
   // ---- 6. 크기는 저장했다가 그대로 불러옴 ----
   await T(A.page, "floor", 40); await T(A.page, "save");
   const before = await T(A.page, "s");
