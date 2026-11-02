@@ -1,5 +1,5 @@
 // dc#144: 점프 대신 회피 (움직이던 쪽으로 3칸, 그동안 무적, 소리) · 가장 가까운 몬스터 공격 (2D 누른 쪽 · 3D 저절로)
-//   · 휴대폰은 버튼 없이 화면을 끌어 움직이고(2D는 내 캐릭터가 스틱 가운데) 톡 눌러 회피, 3D 작은 지도 크게 · 마을도 같은 조작
+//   · 휴대폰은 버튼 없이 화면을 끌어 움직이고(2D는 누른 자리가 스틱 가운데, dc#151) 톡 눌러 회피, 3D 작은 지도 크게 · 마을도 같은 조작
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -144,15 +144,16 @@ try {
   await P.touch.tap(me.x + 30, me.y + 30); await sleep(500);
   let q = await T(P.page, "s");
   check("phone 2D: tap the screen → dodge 3 tiles", pdir && q.x === p.x + pdir.dx * 3 && q.y === p.y + pdir.dy * 3, JSON.stringify([pdir, p, q]));
-  // 캐릭터에서 손가락 쪽으로: 바닥이 이어진 쪽을 찾아 그쪽으로 끌고 있기
+  // 누른 자리가 스틱 가운데 (dc#151): 캐릭터 반대쪽에서 눌러도, 누른 자리에서 끈 쪽으로 걸음
   const wdir = await T(P.page, "clearFace");
   p = await T(P.page, "s");
   const m2 = await T(P.page, "screen");
-  await P.touch.drag(m2.x, m2.y + 80, m2.x + wdir.dx * 120, m2.y + wdir.dy * 120, 420);
+  const sx = m2.x - wdir.dx * 110 + wdir.dy * 40, sy = m2.y - wdir.dy * 110 + wdir.dx * 40;   // 캐릭터에서 반대쪽으로 떨어진 곳
+  await P.touch.drag(sx, sy, sx + wdir.dx * 70, sy + wdir.dy * 70, 420);
   await sleep(200);
   q = await T(P.page, "s");
   const steps = (q.x - p.x) * wdir.dx + (q.y - p.y) * wdir.dy;
-  check(`phone 2D: hold a finger on one side of the player → walks that way (${steps} steps)`, steps >= 2, JSON.stringify([wdir, p, q]));
+  check(`phone 2D: press anywhere and drag → walks the way you dragged, from where you pressed (${steps} steps)`, steps >= 2, JSON.stringify([wdir, p, q]));
   check("no page errors (phone 2D)", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 

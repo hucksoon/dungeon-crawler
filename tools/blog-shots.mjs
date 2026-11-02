@@ -724,6 +724,32 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1300], ["ArrowUp", 2200]], 3400, { cols: 9, rows: 7, every: 60 }), delay: 6 }; }],
+  // dc#151: 경험치 구슬 — 마력탄이 2칸 떨어진 몬스터를 잡으면 초록 구슬이 떨어지고, 한 칸 다가가면 주워서 +XP
+  ["v12-xp-orb", "멀리서 잡은 몬스터의 경험치 구슬은 다가가서 주워요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(3, "blog-v12orb", { l: 3, hp: 99999, xn: 1e9 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-1, 0, 1, 2, 3].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 2, y: L.py, hp: 1, maxHp: 30, atk: 0, ranged: false }, { ...base, kind: "normal", x: L.px + 9, y: L.py + 9, hp: 99999, maxHp: 99999, atk: 0, ranged: false }];
+      L.items = [];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 1900]], 3000, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
+  // dc#151: 축복 상점 — 밟으면 축복 하나를 공짜로
+  ["v12-shrine", "축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(4, "blog-v12shrine", { l: 8, hp: 99999, xn: 1e9, bz: { normal: 4 } }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      if (!ok(L.px + 1, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (ok(x, y) && ok(x + 1, y)) { L.px = x; L.py = y; break; } }
+      L.shop = { x: L.px + 1, y: L.py };
+      L.enemies = L.enemies.filter(e => Math.abs(e.x - L.px) + Math.abs(e.y - L.py) > 6);
+    });
+    await o.page.keyboard.press("ArrowRight"); await sleep(900);
+    return { ...o, shot: "#bless-modal .modal" }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

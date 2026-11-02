@@ -32,6 +32,8 @@ function newPlayer(level = 1) {
 }
 // 레벨 (dc#143): 다음 레벨까지 ×XP_GROW (게임과 같게 1.3), 레벨이 오를 때마다 축복 하나 (p.lvBless가 있으면)
 const XP_GROW = OPT.xpGrow ?? 1.3;
+// 경험치 구슬 (dc#151): 주워야 오름 → 줍는 몫 OPT.xpPick (기본 0.9, 멀리서 스킬로 잡은 것 일부는 못 주움)
+const XP_PICK = OPT.xpPick ?? 0.9;
 function levelUp(p) { p.lvl++; p.xpNext = Math.floor(p.xpNext * XP_GROW); p.maxHp += 4; p.atk += 1; if (p.lvBless) p.lvBless(p.lvl); }
 function gainXp(p, n) { p.xp += n; while (p.xp >= p.xpNext) { p.xp -= p.xpNext; levelUp(p); } }
 
@@ -194,6 +196,8 @@ function runZone(p, zone, r, rid, out, from = 1) {
     // 새 층: 축복 하나
     const off = B.offer(`${rid}|${zone}|${f}`, p.bl);
     if (off.length && !OPT.noBless) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; }
+    // 축복 상점 (dc#151): 상점 층(보스 층 바로 전)에서 축복 하나 더 (OPT.shrine: false면 없음)
+    if (OPT.shrine !== false && !OPT.noBless && I.isShopFloor(f)) { const so = B.offer(`${rid}|${zone}|${f}|sh`, p.bl); if (so.length) { const id = pickBest(so, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } }
     let s = stats(p);
     st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * s.floorHeal / 100));
     const fm = floorMonsters(zone, f, r), L = itemLevel(zone, f), log = out.log;
@@ -205,7 +209,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
       st.killed = [];
       if (!fight(p, s, foes, st, r, zone)) { out.where[`${zone}${f}`] = (out.where[`${zone}${f}`] || 0) + 1; return f; }
       for (const m of st.killed) {
-        gainXp(p, Math.round(m.xp * (1 + s.xp / 100)));
+        gainXp(p, Math.round(m.xp * (1 + s.xp / 100) * XP_PICK));
         const it = I.rollDrop(`${rid}|${tag(zone)}${f}|k${kills++}`, L, m.kind, (zone === "normal" ? 1.5 : 1) * SW.drop);
         if (it) autoGear(p, it, log);
       }

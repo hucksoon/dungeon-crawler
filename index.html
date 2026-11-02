@@ -331,6 +331,9 @@
     body.tall-view #game3d { aspect-ratio: 3 / 4; }   /* 세로로 긴 화면 (2D 캔버스는 칸 수를 바꿔서) */
     /* 튜토리얼 안내 상자는 글자만 보이고 손가락은 그 아래 화면으로 (버튼만 눌림) */
     body.joy #tip { pointer-events: none; } body.joy #tip button { pointer-events: auto; }
+    /* 휴대폰 스틱 (dc#151): 누른 자리에 고리, 손가락 쪽으로 손잡이 */
+    #joy-stick { position: fixed; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.06); pointer-events: none; z-index: 40; }
+    #joy-stick i { position: absolute; left: 31px; top: 31px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 207, 92, 0.55); box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); }
   }
   #lobby-panel {
     width: 640px;
@@ -1783,8 +1786,9 @@
       autoTake(item, extra = {}) {
         if (all().some(x => x.id === item.id)) return { kind: "have" };
         const keys = RLItems.equipKeysFor(item);
-        const keep = (it) => ["legendary", "set", "unique"].includes(it.rarity) || it.ancient || it.lock || !!it.gems?.length;
-        // 바꿔 낀 옛 장비·필요 없는 새 아이템: 지킬 것은 가방, 나머지는 분해
+        // dc#151: 등급과 상관없이 쓰지 않는 장비는 모두 분해 (전에는 레전더리·세트·유니크·고대를 가방에 남김). 예전에 잠근 것만 가방에
+        const keep = (it) => !!it.lock;
+        // 바꿔 낀 옛 장비·필요 없는 새 아이템: 잠근 것은 가방, 나머지는 분해
         const dispose = (it, why) => {
           if (keep(it) && data.bag.length < BAG_SIZE) { data.bag.push(it); record("get", it, { ...extra, auto: why }); return { kind: "bag" }; }
           const k = RLItems.stoneKey(it), stones = RLItems.sellStones(it), gold = RLItems.sellGold(it);
@@ -2327,6 +2331,15 @@
 
   // ---- 스폰 ----
   const isShop = (x, y) => !!shop && shop.x === x && shop.y === y;
+  // 축복 상점 (dc#151): 새 규칙(광장 층)에서 축복이 켜져 있으면 층 상점은 장비 대신 축복 하나를 공짜로 (한 번 받으면 사라짐)
+  const shrineOn = () => OPEN_FLOORS && Bless.enabled();
+  function shrine() {
+    shop = null;
+    log(T("✦ 축복 상점: 축복 하나를 골라요."), null, SHOP_COLOR);
+    Sfx("waypoint");
+    Bless.onShrine();
+    saveLevel(); render();
+  }
   const PORTAL_COLOR = "#4fa3ff";  // 로비의 파란 포탈
 
   function randomFloor(exclude) {
@@ -2378,10 +2391,17 @@
     // 보스 층 바로 전 층(4, 9, 14…층) 계단 옆에 상점
     shop = null;
     if (!inGold() && !inAbyss() && RLItems.isShopFloor(depth)) {
-      const at = OPEN_FLOORS ? start : far;   // 넓은 지역: 시작 자리 옆 (계단이 아직 없어서)
-      const spots = DIRS.map(([dx, dy]) => ({ x: at.cx + dx, y: at.cy + dy })).filter(p => map[p.y]?.[p.x] === FLOOR && !(p.x === player.x && p.y === player.y));
-      shop = spots[rnd(spots.length)] || null;
-      if (shop && !quiet) log(OPEN_FLOORS ? T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 시작 자리 옆에서 골드로 장비를 갖추자.") : T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
+      if (shrineOn()) {   // 새 규칙 (dc#151): 축복 상점은 광장 아무 곳에 (시작 자리에서 6칸 넘게). 찾아가면 축복 하나
+        let spot = randomFloor([player]);
+        for (let t = 0; t < 40 && spot && dist(spot, player) <= 6; t++) spot = randomFloor([player]);
+        shop = spot;
+        if (shop && !quiet) log(T("이 층 어딘가에 축복 상점(&)이 있다. 찾아가면 축복 하나를 공짜로 고른다. 다음 층은 보스 층!"), null, SHOP_COLOR);
+      } else {
+        const at = OPEN_FLOORS ? start : far;   // 넓은 지역: 시작 자리 옆 (계단이 아직 없어서)
+        const spots = DIRS.map(([dx, dy]) => ({ x: at.cx + dx, y: at.cy + dy })).filter(p => map[p.y]?.[p.x] === FLOOR && !(p.x === player.x && p.y === player.y));
+        shop = spots[rnd(spots.length)] || null;
+        if (shop && !quiet) log(OPEN_FLOORS ? T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 시작 자리 옆에서 골드로 장비를 갖추자.") : T("이 층에는 상점(&)이 있다. 다음 층은 보스 층! 계단 옆에서 골드로 장비를 갖추자."), null, SHOP_COLOR);
+      }
     }
     // 웨이포인트: 시작 자리 바로 옆 (dc#97)
     wpSpot = null;
@@ -2579,7 +2599,7 @@
     pickup();
     if (wpSpot && wpSpot.x === nx && wpSpot.y === ny) touchWaypoint();
     if (grave && grave.x === nx && grave.y === ny) takeGrave();
-    if (isShop(nx, ny)) openShop();
+    if (isShop(nx, ny)) { if (shrineOn()) shrine(); else openShop(); }
     if (map[ny][nx] === STAIRS) {
       // 싸우다가 실수로 내려가지 않도록, 근처에 몬스터가 있으면 막음
       const near = enemies.filter(e => dist(e, player) <= RLMonsters.STAIRS_BLOCK_RADIUS).length;
@@ -3005,7 +3025,9 @@
     // 끝이 없는 구멍: 골드·장비 없이 경험치만 (몬스터 경험치에 이미 ×ABYSS.xpMul)
     const gold = inAbyss() ? 0 : Math.round(RLMonsters.rollGold(RLMonsters.GOLD.kill[e.kind], itemLevel(), Math.random) * (e.goldMul || 1) * (1 + s.gold / 100) * (inHell() ? HELL.gold.kill : nmMobs() ? NM.gold.kill : 1));
     player.gold += gold;
-    log(inAbyss() ? T("{0} 처치! (+{1} XP)", e.name, xp) : T("{0} 처치! (+{1} XP, +{2} 골드)", e.name, xp, gold), "good");
+    const orb = xpOrbOn();   // dc#151: 경험치는 바닥에 구슬로 떨어지고, 주워야 오름
+    if (orb) log(inAbyss() ? T("{0} 처치! (경험치 구슬 {1})", e.name, xp) : T("{0} 처치! (+{1} 골드, 경험치 구슬 {2})", e.name, gold, xp), "good");
+    else log(inAbyss() ? T("{0} 처치! (+{1} XP)", e.name, xp) : T("{0} 처치! (+{1} XP, +{2} 골드)", e.name, xp, gold), "good");
     if (inAbyss() && e.kind === "boss" && !e.mob) { if (!bossAlive()) log(OPEN_FLOORS ? T("계단을 지키던 네임드 보스를 모두 쓰러뜨렸다!") : T("계단을 지키던 네임드 보스를 모두 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR); }
     else if (e.kind === "boss" && !e.mob) log(OPEN_FLOORS ? T("보스를 쓰러뜨렸다!") : T("보스를 쓰러뜨렸다! 계단이 열렸다."), null, BOSS_COLOR);
     if (e.kind === "golden") log(T("{0}을(를) 잡았다! 보물이 쏟아진다!", e.name), null, RLMonsters.GOLDEN.color);
@@ -3014,7 +3036,7 @@
     const n0 = items.length;
     dropLoot(e);
     dropSound(items.slice(n0));
-    gainXp(xp);
+    if (orb) dropXp(e, xp); else gainXp(xp);
     Bless.onBoss(e);   // 보스: 유물 고르기 (dc#140)
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
     floorProgress(e);
@@ -3290,9 +3312,20 @@
 
   // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움 (dc#147: 2 → 1칸). 예전 던전은 밟은 칸만
   const PICK_R = 1;
+  // 경험치 구슬 (dc#151): 새 규칙(광장 층)에서 몬스터가 쓰러지면 그 자리에 초록 구슬. 자동 줍기 범위(PICK_R) 안으로 가면 경험치가 오름
+  //   같은 칸의 구슬은 하나로 합침. 줍지 않고 층을 떠나면 사라짐
+  const XP_COLOR = "#6dff9e";
+  const xpOrbOn = () => OPEN_FLOORS;
+  function dropXp(at, xp) {
+    if (xp <= 0) return;
+    const same = items.find(i => i.type === "xp" && i.x === at.x && i.y === at.y);
+    if (same) same.amount += xp; else items.push({ x: at.x, y: at.y, type: "xp", amount: xp });
+  }
   function pickup() {
     if (!player || gameOver) return;
+    let xpSum = 0;
     for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
+      if (it.type === "xp") { xpSum += it.amount; items = items.filter(x => x !== it); continue; }
       if (it.type === "gear") {
         if (!takeGear(it)) continue;
         Sfx("pickup");
@@ -3315,6 +3348,7 @@
       }
       items = items.filter(x => x !== it);
     }
+    if (xpSum) { showDamage(player, `+${xpSum} XP`, false, XP_COLOR); Sfx("pickup"); gainXp(xpSum); }
   }
 
   // 포션: 개수 무제한, 마시면 cooldown턴 동안 다시 못 마심 (마신 턴 포함). 시뮬레이션: 쿨타임 5~15턴은 쓰러질 확률이 거의 같음
@@ -3347,6 +3381,8 @@
   function descend() {
     Tips.step("stairs");
     Sfx("stairs");
+    const lost = items.filter(i => i.type === "xp");   // 줍지 않은 경험치 구슬은 사라짐 (dc#151)
+    if (lost.length) log(T("줍지 않은 경험치 구슬 {0}개(경험치 {1})는 두고 내려갔다.", lost.length, lost.reduce((a, i) => a + i.amount, 0)), null, "#9aa4b2");
     if (inNM() || inHell()) nmFloorReward();   // 구멍은 층 보상 골드 없음
     depth++;
     shopBought = [];
@@ -4991,6 +5027,12 @@
       queue().push({ r: 1, s: `${player.rid}|${player.zone || "normal"}|${depth}|r` });
       show();
     }
+    // 축복 상점 (dc#151): 축복 하나 (맨 앞에)
+    function onShrine() {
+      if (!zk() || !player) return;
+      queue().unshift({ r: 0, sh: 1, s: `${player.rid}|${player.zone || "normal"}|${depth}|sh` });
+      show();
+    }
     const offerOf = (entry) => RLBless.offer(`${entry.s}|${entry.n || 0}`, have(entry.r), !!entry.r, !!entry.el);
     // 다 모아서 고를 것이 없으면 넘김 (유물이 다 차면 축복으로)
     function head() {
@@ -5035,8 +5077,8 @@
       const entry = scene === "dungeon" && !gameOver ? head() : null;
       if (!entry) { close(); return; }
       const ids = offerOf(entry), relic = !!entry.r, left = queue().length;
-      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.el ? T("✦ 레벨 업! 첫 스킬 배우기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
-      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.el ? T("속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
+      document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.sh ? T("✦ 축복 상점") : entry.el ? T("✦ 레벨 업! 첫 스킬 배우기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
+      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.sh ? T("상점 주인이 축복 하나를 공짜로 줘요. 이 판 동안 써요.") : entry.el ? T("속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
       modalEl.querySelector(".modal").classList.toggle("relic", relic);
       document.getElementById("bless-cards").replaceChildren(...ids.map((id, i) => {
         const d = RLBless.defOf(id), n = have(relic)[id] || 0, tier = relic ? null : RLBless.TIERS[d.tier];
@@ -5094,7 +5136,7 @@
       return rows.length ? [...rows, ...(caps.length ? [T("오른 상한: {0}", caps.join(" · "))] : [])] : [T("아직 받은 축복이 없어요. 던전에서 새 층에 내려갈 때마다 하나씩 골라요.")];
     }
     barEl.addEventListener("click", () => showNotice(T("✦ 이 판의 축복·유물"), lines()));
-    return { enabled: () => !off(), start, reset, onFloor, onLevel, onBoss, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
+    return { enabled: () => !off(), start, reset, onFloor, onLevel, onBoss, onShrine, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
   })();
   window.RLBlessGame = { pending: () => Bless.pending(), offer: () => Bless.offerNow(), choose: (id) => Bless.choose(id), auto: () => Bless.autoRest(), totals: () => blessTotals() };   // 테스트용 (읽기·고르기)
 
@@ -5277,13 +5319,23 @@
     let start = null, swipe = null, hold = 0;
     const SWIPE = 24;
     const endHold = () => { clearTimeout(hold); clearInterval(hold); hold = 0; };
-    // 새 규칙 휴대폰 (dc#144): 내 캐릭터가 스틱 가운데. 누른 채 끌면 캐릭터에서 손가락 쪽으로 계속 걷고(붙은 몬스터는 그쪽 공격), 톡 누르면 회피
+    // 새 규칙 휴대폰: 누른 자리가 스틱 가운데 (dc#151, 전에는 내 캐릭터가 가운데 dc#144). 누른 채 끌면 끈 쪽(상하좌우 중 더 많이 간 쪽)으로
+    //   계속 걷고(붙은 몬스터는 그쪽 공격), 손가락을 가운데로 되돌리면 멈춤. 톡 누르면 회피. 누른 자리에 동그란 스틱 표시
     let joyT = null;
+    const JOY = { dead: 18, ring: 46 };
+    const joyEl = document.createElement("div");
+    joyEl.id = "joy-stick"; joyEl.hidden = true; joyEl.innerHTML = "<i></i>";
+    document.body.appendChild(joyEl);
+    function joyShow() {
+      if (!joyT) { joyEl.hidden = true; return; }
+      const dx = joyT.x - joyT.x0, dy = joyT.y - joyT.y0, l = Math.hypot(dx, dy) || 1, k = Math.min(1, JOY.ring / l);
+      joyEl.hidden = false; joyEl.style.left = `${joyT.x0}px`; joyEl.style.top = `${joyT.y0}px`;
+      joyEl.firstChild.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+    }
     function joyStep() {
       if (!joyT || scene !== "dungeon" || anyModalOpen() || gameOver) return;
-      const me = screenOf(player.x, player.y), r = canvas.getBoundingClientRect(), tile = r.width / VIEW_W * TILE * camera().z;
-      const dx = joyT.x - me.x, dy = joyT.y - me.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < tile * 0.6) return;   // 내 칸 위면 멈춤
+      const dx = joyT.x - joyT.x0, dy = joyT.y - joyT.y0;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < JOY.dead) return;   // 가운데 근처면 멈춤
       tryMove(...(Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)]));
       Tips.step("walk");
     }
@@ -5303,7 +5355,8 @@
       if (joyT && e.pointerId === joyT.id) {
         joyT.x = e.clientX; joyT.y = e.clientY;
         joyT.moved = Math.max(joyT.moved, Math.hypot(e.clientX - joyT.x0, e.clientY - joyT.y0));
-        if (joyT.moved >= 12 && !joyT.timer) { joyStep(); joyT.timer = setInterval(joyStep, 150); }
+        if (joyT.moved >= 12) joyShow();
+        if (joyT.moved >= JOY.dead && !joyT.timer) { joyStep(); joyT.timer = setInterval(joyStep, 150); }
         return;
       }
       if (!start || swipe) return;
@@ -5318,7 +5371,7 @@
     const up = (e) => {
       if (joyT && e.pointerId === joyT.id) {
         const tap = !joyT.timer && joyT.moved < 12 && performance.now() - joyT.t0 < 400;
-        clearInterval(joyT.timer); joyT = null;
+        clearInterval(joyT.timer); joyT = null; joyShow();
         if (tap && e.type === "pointerup") dodge();
         return;
       }
@@ -5950,7 +6003,8 @@
       for (const it of items) {
         const g = it.type === "gear" ? it.item : null;
         const glow = g ? (isUnique(g) ? RLItems.RARITIES.unique.color : isRainbow(g) ? rainbowColor(it.x + it.y) : g.rarity === "epic" || g.rarity === "rare" ? RLItems.RARITIES[g.rarity].color : null)
-          : it.type === "rune" ? rainbowColor(it.x + it.y) : it.type === "gem" ? RLItems.GEMS[it.gem]?.color : it.type === "treasure" ? "#ff6bd3" : null;
+          : it.type === "rune" ? rainbowColor(it.x + it.y) : it.type === "gem" ? RLItems.GEMS[it.gem]?.color : it.type === "treasure" ? "#ff6bd3" : it.type === "xp" ? XP_COLOR : null;
+        if (it.type === "xp") { bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.28, h: 0.28, tint: XP_COLOR, glow, lift: 0.18 + 0.05 * Math.sin(t / 260 + it.x) }); continue; }
         bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.42, h: 0.42, glow });
       }
       if (shop) bills.push({ key: "shop", sprite: "shop", x: shop.x, y: shop.y, w: 0.95, h: 0.95, glow: SHOP_COLOR });
@@ -6058,7 +6112,7 @@
       if (shop && seen[shop.y]?.[shop.x]) dot(shop.x, shop.y, SHOP_COLOR, K * 0.45);
       if (wpSpot && seen[wpSpot.y]?.[wpSpot.x]) dot(wpSpot.x, wpSpot.y, WP_COLOR, K * 0.45);
       if (grave && seen[grave.y]?.[grave.x]) dot(grave.x, grave.y, "#c8ccd8", K * 0.4);
-      for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : "#ff6bd3", K * 0.22);
+      for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : it.type === "xp" ? XP_COLOR : "#ff6bd3", K * 0.22);
       for (const e of enemies) if (e.hp > 0 && visible[e.y]?.[e.x]) { const d = disp.get(e); dot(d ? d.x : e.x, d ? d.y : e.y, e.named ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : "#ff4a3a", K * 0.34); }
       drawMarks(g, K, Math.max(9, K * (big ? 1.1 : phone ? 1.3 : 1.6)), phone ? { x0, y0, x1: x0 + cols, y1: y0 + rows } : null);
       // 나: 시야(옅은 부채꼴)와 보는 쪽 화살표
@@ -7174,9 +7228,22 @@
     if (it.type === "gem") return `gem_${it.gem}`;
     if (it.type === "rune") return "rune";
     if (it.type === "gold") return it.amount >= 50 ? "gold_l" : "gold_s";
+    if (it.type === "xp") return "gem_emerald";   // 3D 빌보드용 (2D는 drawXpOrb)
     const g = it.item;
     if (RLItems.isWeaponLike(g)) return `item_${g.type}`;
     return g.type === "shield" ? "item_shield" : `item_${g.slot}`;
+  }
+  // 경험치 구슬 (dc#151): 초록으로 빛나며 살짝 떠 있는 구슬. 경험치가 많을수록 조금 큼
+  function drawXpOrb(px, py, it) {
+    const t = performance.now(), bob = reduceMotion ? 0 : Math.sin(t / 260 + it.x + it.y) * 1.5, r = Math.min(TILE * 0.3, TILE * 0.16 + Math.log10(it.amount + 1) * 2);
+    const cx = px + TILE / 2, cy = py + TILE / 2 + bob;
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)"; ctx.beginPath(); ctx.ellipse(cx, py + TILE * 0.82, r * 0.8, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowColor = XP_COLOR; ctx.shadowBlur = 10;
+    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 1, cx, cy, r);
+    g.addColorStop(0, "#f2fff6"); g.addColorStop(0.45, XP_COLOR); g.addColorStop(1, "#1f8f4e");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
   // 그림 모드면 그림, 아니면 글자 (아이템·포탈처럼 빛을 두르는 것도 같은 ctx 설정을 그대로 씀)
   function drawArt(name, ch, px, py, color) {
@@ -7286,6 +7353,7 @@
     for (const it of items) {
       if (!visible[it.y]?.[it.x]) continue;  // 좌표가 이상한 것 하나 때문에 화면 전체가 멈추지 않게
       const px = it.x * TILE, py = it.y * TILE;
+      if (it.type === "xp") { drawXpOrb(px, py, it); continue; }   // 경험치 구슬 (dc#151)
       const name = itemArt(it);
       if (it.type === "treasure" || it.type === "potion") drawArt(name, "!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
       else if (it.type === "gear") {
@@ -9755,7 +9823,7 @@
     store.set(key, "1");
     showNotice(T("정식 v2: 축복과 자동 장비"), [
       T("장비는 이제 부위·등급·던전·강화로 정해지는 공격력·방어력·최대 HP 숫자만 줘요. 줍는 순간 자동으로 더 좋은 것을 끼고, 같은 부위·같은 던전·같은 등급을 또 얻으면 강화 +1 (확률 없이, +12까지), 나머지는 분해돼요."),
-      T("더 좋은 등급·던전 장비로 바뀔 때 강화 단계를 그대로 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 레전더리 이상은 분해하지 않고 가방에 남겨요 (거래소용)."),
+      T("더 좋은 등급·던전 장비로 바뀔 때 강화 단계를 그대로 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 끼지 않는 장비는 등급과 상관없이 모두 분해해요."),
       T("던전에서 새 층에 내려갈 때마다 축복 3개 중 1개, 보스를 쓰러뜨리면 상한을 올리는 유물 1개를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요. 던전을 완료하면 축복을 가진 채 다음 던전으로 이어갈 수 있어요."),
       T("세트·룬워드·보석·유니크 고유 효과는 이제 쓰이지 않아요. 가진 보석·룬은 저장본에 그대로 남아 있어요."),
       ...(c ? [T("가지고 있던 보석·룬 대신 강화석 {0}개와 악몽 강화석 {1}개를 받았어요.", c.stones.toLocaleString(), c.nmStones.toLocaleString())] : []),

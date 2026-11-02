@@ -145,7 +145,7 @@ try {
   await D.page.keyboard.press("Escape"); await sleep(100);
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k7", "legendary", "boots", 1));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k8", "set", "boots", 40));
-  check("a replaced legendary goes to the bag (not dismantled)", r.bag.length === 1);
+  check("a replaced legendary is dismantled too (dc#151: nothing unused goes to the bag)", r.bag.length === 0 && r.eq.boots?.rarity === "set");
   const logs = await D.page.locator("#log").innerText();
   check("log: duplicate / swap / dismantle lines", logs.includes("중복!") && logs.includes("분해:"));
   // 강화석으로 +4까지 (무기부터 한 번씩) — 수동 강화는 +5부터 막힘

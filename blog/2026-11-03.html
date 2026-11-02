@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>저주 구슬은 이제 한 칸만 노려요 — 던전 크롤러 개발 블로그</title>
-<meta name="description" content="20층부터 나오는 원거리 몬스터의 저주 구슬이 둘레 9칸 대신 내가 선 한 칸에만 떨어져요. 붉은 칸이 보이면 한 칸만 비키면 돼요.">
+<title>저주 구슬은 한 칸만, 경험치 구슬과 축복 상점 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="저주 구슬은 내가 선 한 칸만 노려요. 몬스터 경험치는 바닥에 구슬로 떨어져 주워야 오르고, 층 상점은 축복을 공짜로 주는 축복 상점이 됐어요. 휴대폰은 누른 자리가 스틱이에요.">
 <link rel="canonical" href="https://game.apacimtest.com/blog/2026-11-03.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="저주 구슬은 이제 한 칸만 노려요 — 던전 크롤러 개발 블로그">
-<meta property="og:description" content="20층부터 나오는 원거리 몬스터의 저주 구슬이 둘레 9칸 대신 내가 선 한 칸에만 떨어져요. 붉은 칸이 보이면 한 칸만 비키면 돼요.">
+<meta property="og:title" content="저주 구슬은 한 칸만, 경험치 구슬과 축복 상점 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="저주 구슬은 내가 선 한 칸만 노려요. 몬스터 경험치는 바닥에 구슬로 떨어져 주워야 오르고, 층 상점은 축복을 공짜로 주는 축복 상점이 됐어요. 휴대폰은 누른 자리가 스틱이에요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/2026-11-03.html">
 <meta property="og:image" content="https://game.apacimtest.com/blog/images/v11-ranged-one.gif">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>
@@ -71,18 +71,29 @@
 <main>
 <nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
 <article>
-<h1>저주 구슬은 이제 한 칸만 노려요</h1>
+<h1>저주 구슬은 한 칸만, 경험치 구슬과 축복 상점</h1>
 <p class="meta">2026년 11월 3일 (화) · 개발일기 · 업데이트 · 밸런스 · Claude Code</p>
 <p>어제 20층부터 멀리서 저주 구슬을 던지는 원거리 몬스터를 넣었어요. 던지기 전에 내 자리 둘레 3×3칸을 붉게 칠하고 두 턴을 기다려 줬어요.</p>
 <h2>9칸은 거의 못 피했어요</h2>
 <p>직접 해 보니 9칸은 너무 넓었어요. 가운데에서 빠져나가려면 두 턴 동안 두 칸을 걸어야 하는데, 광장에서는 몬스터들이 몰려와 길을 막고 있어요. 붉은 표시를 보고도 거의 다 맞았어요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>이제 한 칸만</h2>
 <p>그래서 저주 구슬은 <strong>조준한 순간 내가 서 있던 한 칸에만</strong> 떨어지게 바꿨어요. 붉은 표시도 그 한 칸뿐이고, 모서리에 남은 턴(2 → 1)이 보이는 건 같아요. 방향키로 <strong>한 칸만 비켜도</strong> 구슬이 빈 바닥에 떨어져요. 3D 화면도 바닥 한 칸이 붉게 물들고 1.5초쯤 여유가 있어요.</p>
 <figure><img src="images/v11-ranged-one.gif" alt="원거리 몬스터가 내 칸을 노리면 한 칸 비켜요" loading="lazy"><figcaption>원거리 몬스터가 내 칸을 노리면 한 칸 비켜요</figcaption></figure>
 <p>한 방의 세기는 그대로라서, 붉은 칸을 못 보고 서 있으면 여전히 아파요. 대신 보기만 하면 피할 수 있어요.</p>
 <p>시뮬레이션으로 보면 헬은 조금 쉬워지고 일반·나이트메어는 거의 그대로예요. 피하는 재미가 더 중요해서 이대로 지켜볼게요.</p>
+<h2>경험치는 주워야 올라요</h2>
+<p>이제 몬스터를 쓰러뜨리면 경험치가 바로 오르지 않아요. 쓰러진 자리에 <strong>초록색 경험치 구슬</strong>이 떨어지고, 한 칸 안으로 다가가면 저절로 주워져요. 붙어서 싸운 몬스터는 거의 바로 주워지지만, 마력탄이나 속성 스킬로 멀리서 잡은 몬스터는 걸어가서 주워야 해요. 싸움이 끝나고 광장을 한 바퀴 돌며 구슬을 줍는 재미가 생겼어요. 줍지 않고 계단을 내려가면 구슬은 사라지니 조심하세요.</p>
+<figure><img src="images/v12-xp-orb.gif" alt="멀리서 잡은 몬스터의 경험치 구슬은 다가가서 주워요" loading="lazy"><figcaption>멀리서 잡은 몬스터의 경험치 구슬은 다가가서 주워요</figcaption></figure>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
+<h2>상점은 축복 상점으로</h2>
+<p>보스 층 바로 전 층의 상점은 늘 시작 자리 바로 옆에 있었고, 장비는 자동으로 끼워지니 들를 일이 별로 없었어요. 그래서 이제 <strong>축복 상점</strong>이 돼요. 광장 어딘가에 숨어 있고, 찾아가 밟으면 <strong>축복 하나를 공짜로</strong> 골라요. 받고 나면 상점은 사라져요.</p>
+<figure><img src="images/v12-shrine.png" alt="축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요" loading="lazy"><figcaption>축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요</figcaption></figure>
+<h2>쓰지 않는 장비는 모두 분해</h2>
+<p>전에는 레전더리·세트·유니크 장비는 거래소에 팔 수 있게 가방에 남겼어요. 거래소가 쉬고 있으니 가방만 차서, 이제 <strong>끼지 않는 장비는 등급과 상관없이 모두 분해</strong>해서 강화석과 골드로 바꿔요.</p>
+<h2>휴대폰은 누른 자리가 스틱</h2>
+<p>휴대폰에서는 내 캐릭터가 스틱 가운데여서, 캐릭터가 화면 아래쪽에 있으면 손가락을 옮기기 불편했어요. 이제 <strong>화면 아무 곳이나 누른 자리가 스틱 가운데</strong>예요. 누른 자리에 동그란 고리가 나타나고, 거기서 위·아래·왼쪽·오른쪽으로 끌면 그쪽으로 계속 걸어요. 손가락을 가운데로 되돌리면 멈추고, 톡 누르면 회피예요.</p>
+<p>시뮬레이션으로 보면 축복 상점에서 받는 축복과 못 줍는 경험치가 서로 비슷해서 난이도는 그대로예요.</p>
 </article>
 <nav class="pager"><span><a href="2026-11-02.html">← 판은 언제나 1레벨부터, 속성 스킬 축복, 기둥 광장 던전, 회피</a></span><span></span></nav>
 <footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
