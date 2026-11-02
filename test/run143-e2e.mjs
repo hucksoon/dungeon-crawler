@@ -64,7 +64,7 @@ async function open(storage) {
   await sleep(200);
   return { ctx, page, errors };
 }
-const save = (run) => JSON.stringify({ v: 1, best: 3, run: { d: 1, hp: 200, mh: 200, a: 40, g: 0, l: 5, x: 0, xn: 100, rid: "r143", k: 0, pp: 0, ...run } });
+const save = (run) => JSON.stringify({ v: 1, best: 3, run: { d: 1, hp: 200, mh: 200, a: 40, g: 0, l: 5, x: 0, xn: 100, x4: 1, rid: "r143", k: 0, pp: 0, ...run } });   // x4: dc#152 뒤 저장본 (다시 ×4 하지 않음)
 const T = (page, fn, ...a) => page.evaluate(([f, a]) => window.__t[f](...a), [fn, a]);
 // 새 규칙 (rl_oldtown off), 축복 끔 (창이 막지 않게)
 const BASE = { rl_oldtown: "off", rl_bless: "off", rl_autogear: "1", rl_market: "paused", rl_device_id: "r143-dev" };

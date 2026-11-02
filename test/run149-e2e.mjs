@@ -1,4 +1,4 @@
-// dc#149: 원거리 몬스터 — 후반(일반 20층부터)에만, 떨어져서 저주 구슬. 던지기 전 2턴 동안 3×3 붉은 표시 → 벗어나면 안 맞음
+// dc#149: 원거리 몬스터 — 후반(일반 20층부터)에만, 떨어져서 저주 구슬. 던지기 전 2턴 동안 내 칸에 붉은 표시 → 한 칸만 비켜도 안 맞음 (dc#150: 3×3 → 한 칸)
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -45,7 +45,7 @@ const T = (page, fn, ...a) => page.evaluate(([f, a]) => window.__t[f](...a), [fn
 const BASE = { rl_oldtown: "off", rl_bless: "off", rl_autogear: "1", rl_market: "paused", rl_device_id: "r149-dev", rl_3d: "0", rl_tut: JSON.stringify(["intro"]), rl_tip_dodge: "1" };
 
 try {
-  check("ranged rule: from floor 20, ~20% (deep 25%), 2-turn warning (3D 3), 3x3, x2", M.RANGED.from === 20 && M.RANGED.windup === 2 && M.RANGED.windup3d === 3 && M.RANGED.radius === 1 && M.RANGED.mul === 2);
+  check("ranged rule: from floor 20, ~20% (deep 25%), 2-turn warning (3D 3), one tile, x2", M.RANGED.from === 20 && M.RANGED.windup === 2 && M.RANGED.windup3d === 3 && M.RANGED.radius === 0 && M.RANGED.mul === 2);
 
   // ---- 1. 초반엔 없음, 20층부터 섞여 나옴 ----
   const A = await open({ ...BASE, rl_save: save({ d: 5 }) });
@@ -68,8 +68,8 @@ try {
 
   // ---- 3. 표시가 뜬 뒤 방향키로 두 칸 벗어나면 안 맞음 ----
   await T(A.page, "one"); await T(A.page, "wait"); const t1 = await T(A.page, "st");
-  await T(A.page, "step", 0, -1); await T(A.page, "step", 0, -1); const t2 = await T(A.page, "st");
-  check("step out of the red area with arrow keys → the orb misses", t1.aim && !t2.aim && t2.hp === t1.hp && t2.py === t1.py - 2, JSON.stringify([t1, t2]));
+  await T(A.page, "step", 0, -1); const t15 = await T(A.page, "st"); await T(A.page, "wait"); const t2 = await T(A.page, "st");
+  check("one step off the red tile with an arrow key → the orb misses", t1.aim && t15.aim && !t2.aim && t2.hp === t1.hp && t2.py === t1.py - 1, JSON.stringify([t1, t15, t2]));
 
   // ---- 4. 너무 가까우면 물러남 ----
   await T(A.page, "one"); await T(A.page, "near"); const n0 = await T(A.page, "st");

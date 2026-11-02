@@ -57,7 +57,7 @@ async function open(storage) {
   await sleep(400);
   return { ctx, page, errors };
 }
-const save = (run = {}) => JSON.stringify({ v: 1, best: 3, run: { d: 1, hp: 300, mh: 300, a: 40, g: 0, l: 1, x: 0, xn: 6, rid: "r146", k: 0, pp: 0, ...run } });
+const save = (run = {}) => JSON.stringify({ v: 1, best: 3, run: { d: 1, hp: 300, mh: 300, a: 40, g: 0, l: 1, x: 0, xn: 24, x4: 1, rid: "r146", k: 0, pp: 0, ...run } });
 const T = (page, fn, ...a) => page.evaluate(([f, a]) => window.__t[f](...a), [fn, a]);
 const BASE = { rl_oldtown: "off", rl_bless: "off", rl_autogear: "1", rl_market: "paused", rl_device_id: "r146-dev", rl_3d: "0", rl_tut: JSON.stringify(["intro"]), rl_tip_dodge: "1" };
 
@@ -72,7 +72,7 @@ try {
   check(`floor 6: about twice the monsters (${a.n}, before ${4 + L}~${6 + 2 * L})`, a.n >= (4 + L) * 2 - 2, JSON.stringify(a));
   const foes = await T(A.page, "foes");
   check("each monster: half xp, drop ×0.5, gold ×0.5", foes.length > 0 && foes.every(f => f.dropMul === 0.5 && f.goldMul === 0.5 && f.xp >= 1), JSON.stringify(foes));
-  check("first level comes quickly: next level needs 6 xp in a new run", (await T(A.page, "fresh")) === 6);
+  check("new run: next level needs 24 xp (dc#152: 6 ×4)", (await T(A.page, "fresh")) === 24);
 
   // ---- 3. 기본 스킬 마력탄: 2칸 거리 몬스터를 때림 ----
   const h0 = await T(A.page, "two");
@@ -106,7 +106,7 @@ try {
   // ---- 4. 첫 레벨 업: 속성 스킬 셋 중에서 ----
   const B = await open({ ...BASE, rl_bless: "on", rl_save: save({ bz: { normal: 1 } }) });
   await sleep(200);
-  await T(B.page, "xp", 6); await sleep(200);
+  await T(B.page, "xp", 24); await sleep(200);
   const b = await T(B.page, "s");
   const cards = await B.page.locator("#bless-cards .bless-card b").allInnerTexts();
   check("first level up → pick a first skill: fireball / frost / lightning only", b.lv === 2 && b.modal && b.title.includes("첫 스킬") && cards.length === 3 && cards.every(c => ["화염구", "얼음 폭발", "연쇄 번개"].includes(c)), JSON.stringify([b, cards]));

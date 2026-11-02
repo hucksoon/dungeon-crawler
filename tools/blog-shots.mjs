@@ -696,7 +696,7 @@ const SCENES = [
     });
     const away = { "1,0": "ArrowLeft", "-1,0": "ArrowRight", "0,1": "ArrowUp", "0,-1": "ArrowDown" }[await o.page.evaluate(() => localStorage.getItem("blog_dir"))] || "ArrowLeft";
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1000], [away, 1900], [".", 2600], [away, 3500], [".", 4200]], 5000, { cols: 9, rows: 5, every: 70 }), delay: 7 }; }],
-  // dc#149: 원거리 몬스터 — 붉은 표시(3×3)와 남은 턴 → 방향키로 두 칸 벗어나면 저주 구슬이 빈 곳에 떨어짐
+  // dc#149: 원거리 몬스터 — 붉은 표시(그때 3×3)와 남은 턴 → 방향키로 두 칸 벗어나면 저주 구슬이 빈 곳에 떨어짐
   ["v10-ranged", "원거리 몬스터가 붉은 곳을 노리면 두 턴 안에 벗어나요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(25, "blog-v10ranged", { l: 20, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);
@@ -710,6 +710,60 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], ["ArrowUp", 1300], ["ArrowUp", 2200]], 3400, { cols: 9, rows: 7, every: 60 }), delay: 6 }; }],
+  // dc#150: 원거리 몬스터 (한 칸) — 내 칸에 붉은 표시와 남은 턴 → 방향키로 한 칸 비키면 저주 구슬이 빈 칸에 떨어짐
+  ["v11-ranged-one", "원거리 몬스터가 내 칸을 노리면 한 칸 비켜요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(25, "blog-v11ranged", { l: 20, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      // 오른쪽 4칸까지 + 위로 3칸이 트인 자리로 나를 옮김
+      const fit = (x, y) => [-1, 0, 1, 2, 3, 4].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y - 2) && ok(x + k, y - 3) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 4, y: L.py, hp: 99999, maxHp: 99999, ranged: true, rcd: 0, aim: null }];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1300], ["ArrowUp", 2200]], 3400, { cols: 9, rows: 7, every: 60 }), delay: 6 }; }],
+  // dc#151: 경험치 구슬 — 마력탄이 2칸 떨어진 몬스터를 잡으면 초록 구슬이 떨어지고, 한 칸 다가가면 주워서 +XP
+  ["v12-xp-orb", "멀리서 잡은 몬스터의 경험치 구슬은 다가가서 주워요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(3, "blog-v12orb", { l: 3, hp: 99999, xn: 1e9 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-1, 0, 1, 2, 3].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 2, y: L.py, hp: 1, maxHp: 30, atk: 0, ranged: false }, { ...base, kind: "normal", x: L.px + 9, y: L.py + 9, hp: 99999, maxHp: 99999, atk: 0, ranged: false }];
+      L.items = [];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 1900]], 3000, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
+  // dc#152: 경험치가 많은 정예를 잡으면 구슬 여러 개가 사방으로 튀고, 걸어 다니며 주움
+  ["v13-xp-burst", "경험치가 많은 몬스터는 구슬을 사방에 흩뿌려요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(30, "blog-v13burst", { l: 30, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-1, 0, 1, 2, 3, 4].every(k => [-2, -1, 0, 1, 2].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "elite", xp: 240, x: L.px + 2, y: L.py, hp: 1, maxHp: 300, atk: 0, ranged: false }, { ...base, kind: "normal", x: L.px + 12, y: L.py + 12, hp: 99999, maxHp: 99999, atk: 0, ranged: false }];
+      L.items = [];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 2000], ["ArrowUp", 2500], ["ArrowRight", 3000], ["ArrowDown", 3500], ["ArrowDown", 4000]], 4700, { cols: 9, rows: 7, every: 50 }), delay: 5 }; }],
+  // dc#151: 축복 상점 — 밟으면 축복 하나를 공짜로
+  ["v12-shrine", "축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(4, "blog-v12shrine", { l: 8, hp: 99999, xn: 1e9, bz: { normal: 4 } }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      if (!ok(L.px + 1, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (ok(x, y) && ok(x + 1, y)) { L.px = x; L.py = y; break; } }
+      L.shop = { x: L.px + 1, y: L.py };
+      L.enemies = L.enemies.filter(e => Math.abs(e.x - L.px) + Math.abs(e.y - L.py) > 6);
+    });
+    await o.page.keyboard.press("ArrowRight"); await sleep(900);
+    return { ...o, shot: "#bless-modal .modal" }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });
