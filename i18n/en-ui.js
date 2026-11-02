@@ -571,6 +571,7 @@
     "눈이 마주치면 쓰러뜨릴 때까지 포탈을 열 수 없고, 흡혈이 {0}로 줄어듦.": "Once it sees you, you can't open a portal until it dies, and Lifesteal drops to {0}.",
     "{0}턴마다 속성이 불 → 얼음 → 번개로 바뀌고, HP {1} 이하면 분노해 공격력 ×{2}.": "Every {0} turns its element changes Fire → Ice → Lightning; below {1} HP it becomes enraged, Attack ×{2}.",
     "{0}의 꼬리 휩쓸기를 피했다!": "Dodged {0}'s Tail Sweep!",
+    "✦ 남은 경험치 구슬 {0}개가 모두 날아와 경험치 +{1}!": "✦ All {0} remaining XP orbs fly to you: +{1} XP!",
     "{0} 처치! (경험치 구슬 {1})": "{0} defeated! (XP orb {1})",
     "{0} 처치! (+{1} 골드, 경험치 구슬 {2})": "{0} defeated! (+{1} gold, XP orb {2})",
     "줍지 않은 경험치 구슬 {0}개(경험치 {1})는 두고 내려갔다.": "Left {0} XP orbs ({1} XP) behind on the way down.",

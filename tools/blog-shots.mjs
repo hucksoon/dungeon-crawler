@@ -752,6 +752,21 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 2000], ["ArrowUp", 2500], ["ArrowRight", 3000], ["ArrowDown", 3500], ["ArrowDown", 4000]], 4700, { cols: 9, rows: 7, every: 50 }), delay: 5 }; }],
+  // dc#153: 마지막 몬스터를 쓰러뜨리면 계단이 열리며 맵에 남은 경험치 구슬이 모두 날아옴
+  ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-4, -3, -2, -1, 0, 1, 2, 3, 4].every(k => [-3, -2, -1, 0, 1, 2, 3].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 2, y: L.py, hp: 1, maxHp: 30, atk: 0, ranged: false }];
+      L.items = [[-3, -2], [-4, 1], [-2, 3], [3, -3], [4, 2], [1, 3], [-1, -3], [3, 1]].map(([dx, dy], k) => ({ x: L.px + dx, y: L.py + dy, type: "xp", amount: 20, k }));
+      if (L.fs) L.fs.open = false;
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900]], 2400, { cols: 11, rows: 9, every: 40 }), delay: 4 }; }],
   // dc#151: 축복 상점 — 밟으면 축복 하나를 공짜로
   ["v12-shrine", "축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(4, "blog-v12shrine", { l: 8, hp: 99999, xn: 1e9, bz: { normal: 4 } }), "rl_inv:g:DEV": inv([]) } });

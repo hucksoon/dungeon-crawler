@@ -16,7 +16,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const HOOK = `
   window.__t = {
     s: () => ({ scene, depth, zone: player.zone, gameOver, gold: player.gold, lv: player.plvl, hp: player.hp, wp: wpSpot, bl: { ...(player.bl || {}) } }),
-    st: () => { const S = stats(); return { fireball: S.fireball, fbRadius: S.fbRadius, fbEvery: S.fbEvery, nova: S.nova, novaRadius: S.novaRadius, chain: S.chain, chainStrikes: S.chainStrikes, chainMax: S.chainMax }; },
+    st: () => { const S = stats(); return { fireball: S.fireball, fbRadius: S.fbRadius, fbRange: S.fbRange, fbEvery: S.fbEvery, nova: S.nova, novaRadius: S.novaRadius, chain: S.chain, chainStrikes: S.chainStrikes, chainMax: S.chainMax }; },
     die: () => { player.hp = 0; death(); render(); },
     start: () => enterDungeon("start"),
     abyss: () => enterAbyss(),
@@ -52,13 +52,13 @@ try {
   // ---- 1. 규칙 (blessings.js · monsters.js · jump.js) ----
   check("element blessings: fire · ice · bolt, max Lv 10, tier elem", B.ELEM_MAX === 10 && B.ELEM_IDS.every(id => B.BLESSINGS[id]?.tier === "elem" && B.BLESSINGS[id].max === 10));
   const f1 = B.ELEM.fire(1), f4 = B.ELEM.fire(4), f5 = B.ELEM.fire(5), f8 = B.ELEM.fire(8), f10 = B.ELEM.fire(10), b1 = B.ELEM.bolt(1), b10 = B.ELEM.bolt(10);
-  check("levels grow to Lv 10: fire radius 1 → 2 (Lv 4) → 3 (Lv 8), every 3 → 2 at Lv 5; bolt strikes 2 → 11, shock from Lv 4", f1.radius === 1 && f4.radius === 2 && f8.radius === 3 && f1.every === 3 && f5.every === 2 && f10.pct > f8.pct && f8.pct > f5.pct && b1.strikes === 2 && b10.strikes === 11 && !b1.shock && !B.ELEM.bolt(3).shock && B.ELEM.bolt(4).shock);
+  check("levels grow to Lv 10 with area caps (dc#153): fire radius 1 until Lv 7, 2 from Lv 8 (never 3), every 3 → 2 at Lv 5; bolt strikes 2 → 6 max, shock from Lv 4", f1.radius === 1 && f4.radius === 1 && f8.radius === 2 && B.ELEM.fire(10).radius === 2 && B.ELEM.ice(7).radius === 1 && B.ELEM.ice(10).radius === 2 && f1.every === 3 && f5.every === 2 && f10.pct > f8.pct && f8.pct > f5.pct && b1.strikes === 2 && B.ELEM.bolt(5).strikes === 6 && b10.strikes === 6 && !b1.shock && !B.ELEM.bolt(3).shock && B.ELEM.bolt(4).shock);
   check("card shows damage from the current attack (item 6)", B.cardText("fire", 1, 100).includes("50") && B.cardText("fire", 1, 200).includes("100") && !B.cardText("fire", 1).includes("지금"), B.cardText("fire", 1, 100));
   check("card text shows the level", B.cardText("fire", 3).startsWith("Lv 3:") && B.cardText("bolt", 1).includes("2번") && !B.cardText("might", 4).startsWith("Lv"), B.cardText("fire", 3));
   check("cap: 20 element picks per run in total → can't master all three", B.ELEM_CAP === 20 && B.ELEM_CAP < 3 * 10 && B.offer("cap", { fire: 10, bolt: 10 }).every(id => !B.isElem(id)));
   let any = 0; for (let i = 0; i < 3000; i++) if (B.offer(`w${i}`, {}).some(B.isElem)) any++;
   check(`element offers are common but not guaranteed (${Math.round(any / 30)}% of floors)`, any / 3000 > 0.45 && any / 3000 < 0.65);
-  check("monsters: normal depth ramp 4.6 (dc#146), nightmare/hell v2 multipliers", M.NORMAL.ramp === 4.6 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 5.6) < 1e-9);
+  check("monsters: normal depth ramp 4.2 (dc#153), nightmare/hell v2 multipliers", M.NORMAL.ramp === 4.2 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 5.2) < 1e-9);
   const legacy = J.TOWN.doors.filter(d => d.legacy).map(d => d.id).sort().join();
   check("town: nightmare · hell · gold dungeon · waypoint doors are legacy (hidden)", legacy === "golddungeon,golddungeonNM,hell,nightmare,waypoint" && J.TOWN.buildings.filter(b => !b.legacy).map(b => b.id).join() === "market,gate", legacy);
 
@@ -96,7 +96,10 @@ try {
   const E = await open({ ...BASE, rl_save: save({ d: 3 }) });
   await E.page.evaluate(() => window.__t.bless({ fire: 4, bolt: 1, ice: 5 }));
   const es = await E.page.evaluate(() => window.__t.st());
-  check("stats: fire Lv 4 → fireball radius 2 · bolt Lv 1 → 2 strikes · ice Lv 5 → every 2, radius 2", es.fireball && es.fbRadius === 2 && es.fbEvery === 3 && es.chain && es.chainStrikes === 2 && !es.chainMax && es.nova && es.novaRadius === 2, JSON.stringify(es));
+  check("stats: fire Lv 4 → fireball radius 1 (dc#153) · bolt Lv 1 → 2 strikes · ice Lv 5 → radius 1", es.fireball && es.fbRadius === 1 && es.fbEvery === 3 && es.chain && es.chainStrikes === 2 && !es.chainMax && es.nova && es.novaRadius === 1, JSON.stringify(es));
+  await E.page.evaluate(() => window.__t.bless({ fire: 9, bolt: 9, ice: 8 }));
+  const e9 = await E.page.evaluate(() => window.__t.st());
+  check("Lv 6~10 now really apply in the game (was stuck at Lv 5): fire Lv 9 → radius 2, range 4 · bolt Lv 9 → 6 strikes · ice Lv 8 → radius 2", e9.fbRadius === 2 && e9.fbRange === 4 && e9.chainStrikes === 6 && e9.novaRadius === 2, JSON.stringify(e9));
   await E.page.evaluate(() => window.__t.bless({ fire: 1 }));
   const ok = await E.page.evaluate(() => window.__t.lone(2));
   for (let i = 0; i < 4; i++) { await E.page.evaluate(() => window.__t.turn()); await sleep(60); }

@@ -120,12 +120,15 @@ const tag = (zone) => (zone === "hell" ? "j" : zone === "nm" ? "n" : "e");
 // 속성 스킬 (dc#142): 게임과 같은 주기·피해. 몰려온 적은 서로 붙어 있다고 보고 폭발 3×3은 3마리, 5×5는 6마리까지
 //   피해 = 공격력 × mul × (1 + pct%) × (1 − 그 속성 저항) (방어력 무시), 치명타 가능. 화상은 공격력 10% × 5번을 한 번에, 얼음은 느려짐(2턴에 한 번 행동)
 const ELKEY = { fire: "fire", ice: "ice", bolt: "bolt" };
+// 누가 얼마나 잡았는지 (dc#153): 몬스터에게 들어간 피해(넘친 피해 빼고) 합
+const DMG = {}, DMGN = {};
+// 속성 스킬 범위에 걸리는 몬스터 수: 화염구 (2r+1)² 폭발에 3·6·9마리, 얼음 폭발은 무리 전부 (OPT.aoe: 배수, 몰려드는 광장에서 무리가 더 클 때)
 function castElem(s, foes, st, r, killed) {
   const res = (m, k) => Math.max(0, 1 - ((m.res?.[k] || 0) / 100));
-  const hit = (m, d, k) => { m.hp -= Math.round(d * res(m, k)); };
+  const hit = (m, d, k) => { const v = Math.round(d * res(m, k)); DMG[k] = (DMG[k] || 0) + Math.min(v, Math.max(0, m.hp)); DMGN[k] = (DMGN[k] || 0) + 1; m.hp -= v; };
   const roll = (e) => s.atk * e.mul * (1 + e.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
   // 기본 스킬 마력탄 (dc#146): 2턴마다 하나에게 공격력 60% (방어 무시)
-  if (!OPT.noStarter && foes.length) { st.scd = (st.scd || 0) - 1; if (st.scd <= 0) { st.scd = 2; const m = foes[foes.length > 1 ? 1 : 0]; m.hp -= Math.round(s.atk * 0.6 * (r() * 100 < s.crit ? 2 : 1)); if (m.hp <= 0) killed.push(foes.splice(foes.indexOf(m), 1)[0]); } }
+  if (!OPT.noStarter && foes.length) { st.scd = (st.scd || 0) - 1; if (st.scd <= 0) { st.scd = 2; const m = foes[foes.length > 1 ? 1 : 0]; const v = Math.round(s.atk * 0.6 * (r() * 100 < s.crit ? 2 : 1)); DMG.starter = (DMG.starter || 0) + Math.min(v, Math.max(0, m.hp)); m.hp -= v; if (m.hp <= 0) killed.push(foes.splice(foes.indexOf(m), 1)[0]); } }
   for (const k of B.ELEM_IDS) {
     const e = s.ef[k];
     if (!e) continue;
@@ -133,7 +136,7 @@ function castElem(s, foes, st, r, killed) {
     if (st.ecd[k] > 0 || !foes.length) continue;
     st.ecd[k] = e.every;
     const d = roll(e);
-    if (k === "fire") for (const m of foes.slice(0, e.radius >= 3 ? 9 : e.radius >= 2 ? 6 : 3)) hit(m, d + s.atk * 0.5, k);
+    if (k === "fire") for (const m of foes.slice(0, Math.round((e.radius >= 3 ? 9 : e.radius >= 2 ? 6 : 3) * (OPT.aoe || 1)))) hit(m, d + s.atk * 0.5, k);
     else if (k === "ice") for (const m of foes) { hit(m, d, k); if (!(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }
     else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
     for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
@@ -158,6 +161,7 @@ function fight(p, s, foes, st, r, zone) {
       if (!t.hitOnce && s.first) dmg = Math.round(dmg * (1 + s.first / 100));
       t.hitOnce = true;
       const taken = Math.min(dmg, t.hp);
+      DMG.melee = (DMG.melee || 0) + Math.max(0, taken);
       t.hp -= dmg;
       if (s.ls) st.hp = Math.min(s.maxHp, st.hp + Math.floor(taken * s.ls / 100));
       if (t.hp <= 0) { foes.shift(); st.killed.push(t); }
@@ -279,6 +283,7 @@ const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}
     report(`마을에서 새로 ${to} (따라잡기 ${OPT.catchup === 0 ? '없음' : '있음'})`, ds, `(판 ${ds.length})`);
   }
 }
+{ const tot = Object.values(DMG).reduce((a, b) => a + b, 0); console.log("몬스터에게 들어간 피해 비율:", Object.entries(DMG).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v / tot * 100)}%`).join(" · ")); }
 console.log("자동 장비:", out.log);
 console.log("한 층에서 분해로 모이는 강화석 (평균):", Object.entries(out.income).map(([k, v]) => `${k} ${Math.round(mean(v))}`).join(" · "));
 if (OPT.where) console.log("쓰러진 곳:", JSON.stringify(Object.entries(out.where).sort((a, b) => b[1] - a[1]).slice(0, 15)));
