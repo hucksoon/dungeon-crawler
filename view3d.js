@@ -363,11 +363,25 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
     }
   }
   let lastT = performance.now();
+  // 몬스터 저주 구슬 (dc#149): a → b로 곧게 날아가는 검붉은 구슬 (진홍 빛 + 검은 속). 내 스킬(불덩이·얼음·번개)과 다른 모양
+  function orb(a, b, color, ms) {
+    const glow = glowObj(); glow.material.color.set(color); glow.scale.set(0.55, 0.55, 1); glow.renderOrder = 5;
+    const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x12000a, transparent: true, depthWrite: false, fog: true })); core.scale.set(0.22, 0.22, 1); core.renderOrder = 6;
+    for (const s of [glow, core]) { scene.add(s); flashes.push({ s, t0: performance.now(), ms, move: { a, b } }); }
+  }
+  // 조준 표시 (dc#149): 몬스터가 노리는 칸들의 바닥을 붉게 (마지막 턴이면 더 진하게 깜빡임). list: [{ x, y, last }]
+  const markPool = [], markGeo = new THREE.PlaneGeometry(0.96, 0.96);
+  function syncMarks(list, color) {
+    while (markPool.length < list.length) { const m = new THREE.Mesh(markGeo, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.renderOrder = 4; scene.add(m); markPool.push(m); }
+    const t = performance.now();
+    markPool.forEach((m, i) => { const c = list[i]; m.visible = !!c; if (!c) return; m.material.color.set(color); m.position.set(c.x + 0.5, 0.025, c.y + 0.5); m.material.opacity = c.last ? 0.45 + 0.25 * Math.sin(t / 70) : 0.28; });
+  }
   function tickFlashes(now) {
     tickParts(now, Math.min(0.1, (now - lastT) / 1000)); lastT = now;
     for (let i = flashes.length - 1; i >= 0; i--) {
       const f = flashes[i], p = (now - f.t0) / f.ms;
       if (p >= 1) { scene.remove(f.s); f.s.material.dispose(); f.s.geometry?.dispose?.(); flashes.splice(i, 1); continue; }
+      if (f.move) { const { a, b } = f.move; f.s.position.set(a.x + 0.5 + (b.x - a.x) * p, 0.6 - 0.45 * p, a.y + 0.5 + (b.y - a.y) * p); continue; }
       if (f.line) f.s.material.opacity = 1 - p;
       else { const k = f.r * (0.6 + 1.6 * p); f.s.scale.set(k, k, 1); f.s.material.opacity = 1 - p; }
     }
@@ -493,6 +507,7 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
       torchLights.forEach((l, i) => { const t = near[i]; if (t && t.d < 64) { l.position.set(t.x + t.dx * -0.15, 0.85, t.y + t.dy * -0.15); l.intensity = 1.6 * t.f; } else l.intensity = 0; });
     } else torchLights.forEach(l => { l.intensity = 0; });
     syncBills(st.bills || [], st.x, st.y);
+    syncMarks(st.marks || [], st.markColor || "#ff2e4d");
     alignBars();
     tickFlashes(performance.now());
     if (st.hands) { setHand("r", st.hands.right); setHand("l", st.hands.left); poseHands({ ...st.hands, bob: st.bob, torch: st.torch, t: performance.now() }); }
@@ -514,7 +529,7 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
     renderer.dispose();
     canvas.remove();
   }
-  return { canvas, setLevel, frame, project, burst, bolt, sparks, dispose, renderer, get partCount() { return parts.length; },
+  return { canvas, setLevel, frame, project, burst, bolt, sparks, orb, dispose, renderer, get partCount() { return parts.length; },
     // 손에 든 모델 (시험용): 오른손·왼손 모델 이름, 다 불러왔는지
     // 벽 (시험용): 모듈을 불러왔는지, 이 층의 벽 면 수·모듈 종류 수·횃불 수
     get walls() {

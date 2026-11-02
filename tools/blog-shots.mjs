@@ -696,6 +696,20 @@ const SCENES = [
     });
     const away = { "1,0": "ArrowLeft", "-1,0": "ArrowRight", "0,1": "ArrowUp", "0,-1": "ArrowDown" }[await o.page.evaluate(() => localStorage.getItem("blog_dir"))] || "ArrowLeft";
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1000], [away, 1900], [".", 2600], [away, 3500], [".", 4200]], 5000, { cols: 9, rows: 5, every: 70 }), delay: 7 }; }],
+  // dc#149: 원거리 몬스터 — 붉은 표시(3×3)와 남은 턴 → 방향키로 두 칸 벗어나면 저주 구슬이 빈 곳에 떨어짐
+  ["v10-ranged", "원거리 몬스터가 붉은 곳을 노리면 두 턴 안에 벗어나요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(25, "blog-v10ranged", { l: 20, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      // 오른쪽 4칸까지 + 위로 3칸이 트인 자리로 나를 옮김
+      const fit = (x, y) => [-1, 0, 1, 2, 3, 4].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y - 2) && ok(x + k, y - 3) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 4, y: L.py, hp: 99999, maxHp: 99999, ranged: true, rcd: 0, aim: null }];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], ["ArrowUp", 1300], ["ArrowUp", 2200]], 3400, { cols: 9, rows: 7, every: 60 }), delay: 6 }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

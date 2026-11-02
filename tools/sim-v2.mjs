@@ -87,7 +87,8 @@ function autoEnhance(p) {
 function floorMonsters(zone, f, r) {
   const L = M.effLevel(f), deep = zone !== "normal";
   const count = (deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2)) * SW.count;
-  return { count: Math.round(count * KILL_SHARE), make: (kind) => swarmM(mk(kind)) };
+  const rOn = RG && (deep || f >= RG.from), rShare = deep ? RG?.deepShare : RG?.share;
+  return { count: Math.round(count * KILL_SHARE), make: (kind) => { const m = swarmM(mk(kind)); if (rOn && r() < rShare) { m.ranged = true; m.rcd = 1 + Math.floor(r() * RG.every); } return m; } };
   function mk(kind) {
     if (zone === "hell") return zm("hell", M.makeHell(M.pickNightmareType(r), kind, f));
     if (zone === "nm") return zm("nm", M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r)));
@@ -99,6 +100,9 @@ function eliteBaseOf(zone, f) { return M.eliteChance(zone !== "normal" ? M.NIGHT
 // 몬스터 무리 (dc#146): 몬스터 ×count, 한 마리당 경험치 ×xp · 드롭 ×drop (OPT.swarm: false면 예전)
 const SW = OPT.swarm === false ? { count: 1, xp: 1, drop: 1 } : { ...M.SWARM, ...(OPT.sw || {}) };
 const swarmM = (m) => ({ ...m, xp: Math.max(1, Math.round(m.xp * SW.xp)) });
+// 원거리 몬스터 (dc#149): 붙지 않고 every턴마다 저주 구슬 (공격력 ×mul). 표시를 보고 벗어나면 안 맞음 → 피할 확률 OPT.rdodge (기본 0.5,
+//   몰려오는 무리 사이라 다 피하지는 못한다고 봄). 멀리 있어 맨 나중에 잡고, 둘러싸임 방어의 마릿수에는 넣지 않음. OPT.ranged: false면 없음
+const RG = OPT.ranged === false ? null : { ...M.RANGED, ...(OPT.rg || {}) }, R_DODGE = OPT.rdodge ?? 0.5;
 // OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
 function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
@@ -137,6 +141,7 @@ function castElem(s, foes, st, r, killed) {
 function fight(p, s, foes, st, r, zone) {
   let turn = 0;
   st.ecd = st.ecd || {};
+  foes.sort((a, b) => (a.ranged ? 1 : 0) - (b.ranged ? 1 : 0));   // 원거리는 멀리 있어 맨 나중에
   while (foes.length) {
     turn++;
     if (st.cd > 0) st.cd--;
@@ -154,10 +159,19 @@ function fight(p, s, foes, st, r, zone) {
       if (s.ls) st.hp = Math.min(s.maxHp, st.hp + Math.floor(taken * s.ls / 100));
       if (t.hp <= 0) { foes.shift(); st.killed.push(t); }
     }
-    const crowd = M.crowdCut(foes.length);
+    const crowd = M.crowdCut(foes.filter(m => !m.ranged).length);
     for (const m of foes) {
       if (m.slowImm > 0) m.slowImm--;
       if (m.slow > 0) { m.slow--; if (turn % 2) continue; }   // 느려짐: 2턴에 한 번
+      if (m.ranged && foes.length > 1) {   // 다른 몬스터가 남아 있는 동안은 떨어져서 던짐 (혼자 남으면 붙어서 싸움)
+        if (--m.rcd > 0) continue;
+        m.rcd = RG.every + RG.windup;
+        if (r() < R_DODGE) continue;
+        let d = M.damageToPlayer(m.atk * RG.mul + Math.floor(r() * 2), s.def) * (1 - s.dr / 100);
+        if (zone !== "normal") d *= ELEM_MUL;
+        st.hp -= Math.max(1, Math.round(d));
+        continue;
+      }
       if (s.parry && r() * 100 < s.parry) continue;
       let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), s.def) * (1 - s.dr / 100) * (1 - crowd);
       if (zone !== "normal") d *= ELEM_MUL;
