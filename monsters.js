@@ -220,9 +220,9 @@
   //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
   const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
   // 원거리 몬스터 (dc#149): 일반 던전 from층부터 (나이트메어·헬은 처음부터) 몬스터 일부(share, 깊은 던전 deepShare)가
-  //   붙지 않고 keep~range칸 거리에서 every턴마다 "저주 구슬"을 던짐. 던지기 전 windup턴 동안 내 자리 둘레(radius칸, 3×3)에
+  //   붙지 않고 keep~range칸 거리에서 every턴마다 "저주 구슬"을 던짐. 던지기 전 windup턴 동안 내가 선 칸(radius 0 = 한 칸, dc#150: 3×3은 거의 못 피해서)에
   //   붉은 표시와 남은 턴 (3D는 한 턴이 0.5초라 windup3d턴 = 약 1.5초) → 그 사이 표시 밖으로 나가거나 회피(무적)면 빗나감. 맞으면 공격력 ×mul — 붙어서 매 턴 때리는 것보다 드물어서 한 방이 셈 (시뮬레이션: 절반 피하면 원거리 없을 때와 비슷). 내 속성 스킬과 다른 진홍색
-  const RANGED = { from: 20, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 1, mul: 2, color: "#ff2e4d" };
+  const RANGED = { from: 20, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
   const v2mul = (m, k) => { const hp = Math.round(m.hp * k.hp); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k.atk) }; };
   const normalMul = (n) => 1 + NORMAL.ramp * (Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1);
   // n: 일반 던전 층 (1~50). 강함은 effLevel(n) 레벨 × 깊이 배율

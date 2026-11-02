@@ -2889,7 +2889,7 @@
     if (d < RANGED.keep) return true;   // 물러난 다음 턴: 그 자리에서 숨 고르기 (다가오지도 않음)
     return seen && d <= RANGED.range;   // 던질 거리면 기다림, 아니면 다가옴
   }
-  // 저주 구슬이 조준한 칸(3×3)에 떨어짐. 표시 밖이거나 회피 중(무적)이면 빗나감
+  // 저주 구슬이 조준한 칸(dc#150부터 한 칸)에 떨어짐. 표시 밖이거나 회피 중(무적)이면 빗나감
   function curseDrop(e) {
     const a = e.aim; e.aim = null; e.rcd = RANGED.every;
     Fx.curse(e, a, RANGED.radius);
@@ -7324,7 +7324,7 @@
 
     Anim.drawDust();
 
-    // 원거리 몬스터의 조준 표시 (dc#149): 떨어질 칸(3×3)을 붉게 + 가운데 남은 턴 수 + 몬스터에서 점선
+    // 원거리 몬스터의 조준 표시 (dc#149): 떨어질 칸(dc#150부터 한 칸)을 붉게 + 가운데 남은 턴 수 + 몬스터에서 점선
     for (const e of enemies) {
       if (!e.aim) continue;
       const cells = aimCells(e.aim), last = e.aim.t <= 1;
