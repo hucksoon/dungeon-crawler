@@ -674,6 +674,13 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 200], [".", 700], [".", 1200], [".", 1700]], 2200, { cols: 7, rows: 5, every: 40 }), delay: 4 }; }],
+  // dc#147: 광장의 몬스터가 모두 나를 향해 몰려옴 (가만히 서 있어도)
+  ["v8-chase", "가만히 있어도 광장의 몬스터들이 모두 몰려와요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(3, "blog-v8chase", { l: 4, hp: 99999 }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => { L.seen = "1".repeat(L.map.length); L.enemies = L.enemies.map(e => ({ ...e, atk: 0 })); });
+    const keys = Array.from({ length: 9 }, (_, i) => [".", 200 + i * 330]);
+    return { ...o, frames: await recordMe(o.page, keys, 3400, { cols: 11, rows: 7, every: 60 }), delay: 6 }; }],
   // 마을 재배치 (dc#141): 던전 입구 → 가운데 웨이포인트 → 나이트메어 (시간 상점 없앰)
   ["town-dc141", "다시 놓은 마을 가운데: 던전 입구 오른쪽에 웨이포인트, 그 옆 나이트메어", async () => {
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-town141", {}, { wp: { n: [10, 20, 30], m: [10] } }), "rl_inv:g:DEV": inv(g40) } });

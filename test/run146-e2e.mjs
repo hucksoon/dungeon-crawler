@@ -25,6 +25,10 @@ const HOOK = `
     farHp: () => enemies[0]?.hp,
     wait: () => { Anim.newTurn(); endTurn(); },
     xp: (n) => gainXp(n),
+    // 몰려오기 (dc#147): 가장 먼 바닥(걸어서)에 몬스터 하나, 나에게서 걸어서 몇 칸인지
+    far: () => { enemies = []; const d = huntMap(); let best = null; for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (d[y][x] > (best ? d[best.y][best.x] : 0)) best = { x, y };
+      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), ...best }; e.atk = 0; enemies.push(e); return { d: d[best.y][best.x], seen: !!visible[best.y][best.x] }; },
+    farD: () => { const d = huntMap(), e = enemies[0]; return e ? d[e.y][e.x] : -1; },
     // 2칸 거리 빈 바닥에 골드 더미
     dropAt: (r, amount) => { enemies = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = player.x + dx, y = player.y + dy;
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || map[y]?.[x] !== FLOOR) continue; items.push({ x, y, type: "gold", amount }); return true; } return false; },
@@ -73,6 +77,15 @@ try {
   check("no page errors (swarm · starter)", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
 
+  // ---- 3b. 몰려오기: 안 보이는 먼 몬스터도 나를 향해 ----
+  const C = await open({ ...BASE, rl_save: save({ d: 8 }) });
+  const f0 = await T(C.page, "far");
+  for (let i = 0; i < 6; i++) await T(C.page, "wait");
+  const f1 = await T(C.page, "farD");
+  check(`far monster (${f0.d} steps away, out of sight) walks toward the player (now ${f1})`, !f0.seen && f0.d >= 8 && f1 <= f0.d - 5, JSON.stringify([f0, f1]));
+  check("no page errors (chase)", C.errors.length === 0, C.errors.join("; "));
+  await C.ctx.close();
+
   // ---- 4. 첫 레벨 업: 속성 스킬 셋 중에서 ----
   const B = await open({ ...BASE, rl_bless: "on", rl_save: save({ bz: { normal: 1 } }) });
   await sleep(200);
@@ -88,10 +101,10 @@ try {
   const D = await open({ ...BASE, rl_3d: "1", rl_save: save({ d: 2 }) });
   await sleep(1500);
   const d0 = await T(D.page, "s");
-  const put = await T(D.page, "dropAt", 2, 777);
+  const put = await T(D.page, "dropAt", 1, 777);
   await sleep(1500);   // 3D는 0.5초마다 한 턴
   const d1 = await T(D.page, "s");
-  check("3D: gold 2 tiles away is picked up by itself", d0.d3 && put && d1.gold - d0.gold >= 777, JSON.stringify([d0, d1, put]));
+  check("3D: gold 1 tile away is picked up by itself (dc#147: 2 → 1)", d0.d3 && put && d1.gold - d0.gold >= 777, JSON.stringify([d0, d1, put]));
   check("no page errors (3D pickup)", D.errors.length === 0, D.errors.join("; "));
   await D.ctx.close();
 } catch (e) {

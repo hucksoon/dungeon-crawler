@@ -3243,8 +3243,8 @@
     if (up) Bless.show();
   }
 
-  // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움. 예전 던전은 밟은 칸만
-  const PICK_R = 2;
+  // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움 (dc#147: 2 → 1칸). 예전 던전은 밟은 칸만
+  const PICK_R = 1;
   function pickup() {
     if (!player || gameOver) return;
     for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
@@ -4169,6 +4169,7 @@
       if (player.hp <= 0) { death(); if (gameOver) return; }
     }
     // 적 이동/공격
+    hunt = OPEN_FLOORS ? huntMap() : null;   // 넓은 광장: 모든 몬스터가 나를 향해 (dc#147)
     for (const e of [...enemies]) {
       if (e.hp <= 0 || !enemies.includes(e)) continue;
       if (e.named) namedTurn(e);
@@ -4183,7 +4184,7 @@
       if (dist(e, player) === 1) {
         attack(e, player);
         if (gameOver) return;
-      } else if (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE) {
+      } else if (hunt || (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE)) {
         moveToward(e);
       } else if (rnd(3) === 0) {
         // 가끔 배회
@@ -4262,7 +4263,24 @@
     if (best) stepEnemy(e, best[0], best[1]);
   }
 
+  // 몰려오기 (dc#147): 넓은 광장 층은 몬스터가 어디에 있든 나를 향해 옴. 턴마다 나에게서 걸어서 몇 칸인지(기둥·벽을 돌아서)를 한 번 재고
+  //   몬스터는 그 값이 줄어드는 칸으로 한 걸음 (막히면 같은 거리의 옆 칸으로 비켜 감)
+  let hunt = null;
+  function huntMap() {
+    const d = Array.from({ length: MAP_H }, () => new Int32Array(MAP_W).fill(-1)), q = [player.x, player.y];
+    d[player.y][player.x] = 0;
+    for (let i = 0; i < q.length; i += 2) {
+      const x = q[i], y = q[i + 1], v = d[y][x] + 1;
+      for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (map[ny]?.[nx] !== undefined && map[ny][nx] !== WALL && d[ny][nx] < 0) { d[ny][nx] = v; q.push(nx, ny); } }
+    }
+    return d;
+  }
   function moveToward(e) {
+    if (hunt && hunt[e.y]?.[e.x] > 0) {
+      const here = hunt[e.y][e.x];
+      const opts = DIRS.map(([dx, dy]) => ({ dx, dy, v: hunt[e.y + dy]?.[e.x + dx] ?? -1 })).filter(o => o.v >= 0 && o.v <= here && canStep(e, e.x + o.dx, e.y + o.dy)).sort((a, b) => a.v - b.v);
+      if (opts.length) { stepEnemy(e, opts[0].dx, opts[0].dy); return; }
+    }
     const dx = Math.sign(player.x - e.x);
     const dy = Math.sign(player.y - e.y);
     // 더 먼 축을 우선, 막히면 다른 축

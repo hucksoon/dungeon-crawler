@@ -108,10 +108,10 @@ try {
   // ---- 4. 주변 2칸 자동 줍기 ----
   await T(A.page, "floor", 2); await T(A.page, "clear");
   const g0 = (await T(A.page, "s")).gold;
-  const d2 = await T(A.page, "dropAt", 2, 1000), d3 = await T(A.page, "dropAt", 3, 50000);
+  const d2 = await T(A.page, "dropAt", 1, 1000), d3 = await T(A.page, "dropAt", 2, 50000);   // dc#147: 1칸
   await T(A.page, "turn"); await sleep(100);
   const g1 = (await T(A.page, "s")).gold;
-  check("gold 2 tiles away is picked up by itself, 3 tiles away is not", d2 && d3 && g1 - g0 >= 1000 && g1 - g0 < 50000, JSON.stringify({ d2, d3, g0, g1 }));
+  check("gold 1 tile away is picked up by itself, 2 tiles away is not (dc#147)", d2 && d3 && g1 - g0 >= 1000 && g1 - g0 < 50000, JSON.stringify({ d2, d3, g0, g1 }));
 
   // ---- 5. 지도 표시: 가 보지 않은 곳의 보물·보스·가장 좋은 장비·계단 ----
   await T(A.page, "floor", 6); await T(A.page, "clear");
