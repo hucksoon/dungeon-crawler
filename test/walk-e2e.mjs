@@ -75,6 +75,8 @@ try {
   check("click a monster: follows it, ends next to it and attacks", Math.abs(p.x - p.enemies[0].x) + Math.abs(p.y - p.enemies[0].y) === 1 && p.enemies[0].hp < 1e6, JSON.stringify({ x: p.x, y: p.y, m: [p.enemies[0].x, p.enemies[0].y], hp: p.enemies[0].hp }));
   await o.ctx.close();
   o = await open({ rl_save: save, rl_level: level([mob(9, 14)], { start: [4, 8] }), ["rl_inv:g:" + DEV]: inv });
+  // 몬스터가 가끔 배회(1/3)하다 시야 밖으로 가면 멈출 일이 없어 CI에서 가끔 실패 → 이 확인에서는 배회하지 않게 (rnd(3) ≠ 0)
+  await o.page.evaluate(() => { Math.random = () => 0.9; });
   await tap(o.page, 4, 13); await waitIdle(o.page);
   p = await pos(o.page);
   check("a monster coming into sight stops the walk before arriving", p.x === 4 && p.y > 8 && p.y < 13 && !(await o.page.evaluate(() => window.RLWalk.active())), JSON.stringify({ x: p.x, y: p.y }));

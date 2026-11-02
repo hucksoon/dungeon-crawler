@@ -2199,6 +2199,10 @@
   // 이 층에 놓일 몬스터 수 (대략): 넓이를 정할 때
   // 몬스터 무리 (dc#146): 넓은 광장 층은 몬스터 ×SWARM.count, 한 마리당 경험치·드롭·골드는 줄임 (끝이 없는 구멍 제외)
   const swarmOn = () => OPEN_FLOORS && !inAbyss();
+  // 원거리 몬스터 (dc#149): 새 규칙 광장 층에서만, 일반 RANGED.from층부터 · 나이트메어·헬은 처음부터 (골드 던전·구멍 제외)
+  const RANGED = RLMonsters.RANGED;
+  const rangedOn = () => OPEN_FLOORS && !inGold() && !inAbyss() && (nmMobs() || inHell() || depth >= RANGED.from);
+  const ranged = (m) => { if (rangedOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && Math.random() < (nmMobs() || inHell() ? RANGED.deepShare : RANGED.share)) { m.ranged = true; m.rcd = 1 + rnd(RANGED.every); } return m; };
   const swarm = (m) => { if (swarmOn() && m.kind !== "boss" && m.kind !== "golden") { const W = RLMonsters.SWARM; m.xp = Math.max(1, Math.round(m.xp * W.xp)); m.goldMul = (m.goldMul || 1) * W.gold; m.dropMul = W.drop; } return m; };
   const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
   // dc#145: 다니는 광장(aw×ah)은 처음 층에 작게 (1층 약 21×16) 시작해서 몬스터가 늘수록 커짐 (20층 약 40×30, 40층 약 69×52, 최대 94×70)
@@ -2428,7 +2432,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ x: spot.x, y: spot.y, ...swarm(m) });
+      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(m)) });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
@@ -2858,6 +2862,47 @@
     }
     return "";
   }
+  // 원거리 몬스터 한 턴 (dc#149). true면 이 몬스터의 턴은 끝 (false면 보통처럼 다가오거나 붙어서 때림)
+  //   조준 중: windup턴을 기다렸다가 조준한 칸에 저주 구슬. 붙어 있으면 근접(공격 예고 규칙 그대로)
+  //   준비되면(rcd 0) 보이는 range칸 안의 나를 조준 · keep칸보다 가까우면 한 걸음 물러남 · range칸 안이면 그 자리에서 기다림
+  const aimCells = (a) => { const out = []; for (let dy = -RANGED.radius; dy <= RANGED.radius; dy++) for (let dx = -RANGED.radius; dx <= RANGED.radius; dx++) { const x = a.x + dx, y = a.y + dy; if (map[y]?.[x] !== undefined && map[y][x] !== WALL) out.push({ x, y }); } return out; };
+  function rangedTurn(e) {
+    if (e.aim) { if (--e.aim.t > 0) return true; curseDrop(e); return true; }
+    if (e.rcd > 0) e.rcd--;
+    if (dist(e, player) === 1) return false;
+    const d = near8(e, player), seen = !!visible[e.y]?.[e.x];
+    if (e.rcd <= 0 && seen && d <= RANGED.range) {
+      const wait = View3D.active() ? RANGED.windup3d : RANGED.windup;
+      e.aim = { x: player.x, y: player.y, t: wait }; e.ready = false;
+      showDamage(e, "!", true, RANGED.color);
+      Sfx("aim");
+      log(T("{0}이(가) 저주 구슬을 겨눈다! 붉은 곳에서 {1}턴 안에 벗어나세요.", e.name, wait), null, RANGED.color);
+      return true;
+    }
+    const backed = e.backed; e.backed = false;
+    if (d < RANGED.keep && hunt && !backed) {   // 너무 가까우면 나에게서 더 먼 칸으로 (칸 거리 먼저, 같으면 걸어서 더 먼 쪽). 두 턴에 한 번만 → 쫓아가면 잡힘
+      const here = d * 1000 + (hunt[e.y]?.[e.x] ?? 0);
+      const opts = DIRS.map(([dx, dy]) => ({ dx, dy, v: near8({ x: e.x + dx, y: e.y + dy }, player) * 1000 + (hunt[e.y + dy]?.[e.x + dx] ?? -1) }))
+        .filter(o => o.v > here && canStep(e, e.x + o.dx, e.y + o.dy)).sort((a, b) => b.v - a.v);
+      if (opts.length) { stepEnemy(e, opts[0].dx, opts[0].dy); e.backed = true; return true; }
+    }
+    if (d < RANGED.keep) return true;   // 물러난 다음 턴: 그 자리에서 숨 고르기 (다가오지도 않음)
+    return seen && d <= RANGED.range;   // 던질 거리면 기다림, 아니면 다가옴
+  }
+  // 저주 구슬이 조준한 칸(3×3)에 떨어짐. 표시 밖이거나 회피 중(무적)이면 빗나감
+  function curseDrop(e) {
+    const a = e.aim; e.aim = null; e.rcd = RANGED.every;
+    Fx.curse(e, a, RANGED.radius);
+    Sfx("curse");
+    if (near8(player, a) > RANGED.radius || invuln()) { if (visible[e.y]?.[e.x] || near8(player, a) <= RANGED.radius + 2) log(T("{0}의 저주 구슬을 피했다!", e.name), "good"); return; }
+    const s = stats();
+    const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * RANGED.mul + rnd(2), s.def) * (1 - s.dmgReduce / 100)));
+    const took = hurtPlayer(dmg);
+    showDamage(player, dmg, false, RANGED.color);
+    Anim.hit(player, null, Fx.CURSE_FLY);
+    log(T("{0}의 저주 구슬에 맞아 {1} 피해를 입음.{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
+    if (player.hp <= 0) death();
+  }
   // 이무기: 꼬리 휩쓸기 (radius칸 안, 방패로 못 막음). 맞으면 true
   function namedSweep(e) {
     const W = e.sweep, s = stats();
@@ -3011,7 +3056,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ ...at, ...swarm(m) });
+      enemies.push({ ...at, ...ranged(swarm(m)) });
     }
     seen[spot.y][spot.x] = true;
     Sfx("bossKill");
@@ -3243,8 +3288,8 @@
     if (up) Bless.show();
   }
 
-  // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움. 예전 던전은 밟은 칸만
-  const PICK_R = 2;
+  // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움 (dc#147: 2 → 1칸). 예전 던전은 밟은 칸만
+  const PICK_R = 1;
   function pickup() {
     if (!player || gameOver) return;
     for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
@@ -4169,11 +4214,13 @@
       if (player.hp <= 0) { death(); if (gameOver) return; }
     }
     // 적 이동/공격
+    hunt = OPEN_FLOORS ? huntMap() : null;   // 넓은 광장: 모든 몬스터가 나를 향해 (dc#147)
     for (const e of [...enemies]) {
       if (e.hp <= 0 || !enemies.includes(e)) continue;
       if (e.named) namedTurn(e);
       if (slowedNow(e)) continue;
       if (e.kind === "golden") { goldenTurn(e); continue; }
+      if (e.ranged && rangedTurn(e)) { if (gameOver) return; continue; }   // 원거리 몬스터 (dc#149)
       // 이무기: every턴마다 보통 공격 대신 꼬리 휩쓸기 (가까이 있을 때)
       if (sweepNow(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2) {
         namedSweep(e);
@@ -4181,9 +4228,13 @@
         continue;
       }
       if (dist(e, player) === 1) {
+        // 공격 예고 (dc#148, 새 규칙): 막 붙은 턴에는 "!"로 준비만 → 다음 턴에도 붙어 있으면 때림 (그 뒤로는 매 턴).
+        //   그 사이 방향키로 물러나면 피할 수 있음. 떨어지면 준비가 풀림
+        if (NEW_CTRL && !e.ready) { e.ready = true; showDamage(e, "!", true, "#ff9f43"); continue; }
         attack(e, player);
         if (gameOver) return;
-      } else if (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE) {
+      } else if (hunt || (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE)) {
+        e.ready = false;
         moveToward(e);
       } else if (rnd(3) === 0) {
         // 가끔 배회
@@ -4262,7 +4313,24 @@
     if (best) stepEnemy(e, best[0], best[1]);
   }
 
+  // 몰려오기 (dc#147): 넓은 광장 층은 몬스터가 어디에 있든 나를 향해 옴. 턴마다 나에게서 걸어서 몇 칸인지(기둥·벽을 돌아서)를 한 번 재고
+  //   몬스터는 그 값이 줄어드는 칸으로 한 걸음 (막히면 같은 거리의 옆 칸으로 비켜 감)
+  let hunt = null;
+  function huntMap() {
+    const d = Array.from({ length: MAP_H }, () => new Int32Array(MAP_W).fill(-1)), q = [player.x, player.y];
+    d[player.y][player.x] = 0;
+    for (let i = 0; i < q.length; i += 2) {
+      const x = q[i], y = q[i + 1], v = d[y][x] + 1;
+      for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (map[ny]?.[nx] !== undefined && map[ny][nx] !== WALL && d[ny][nx] < 0) { d[ny][nx] = v; q.push(nx, ny); } }
+    }
+    return d;
+  }
   function moveToward(e) {
+    if (hunt && hunt[e.y]?.[e.x] > 0) {
+      const here = hunt[e.y][e.x];
+      const opts = DIRS.map(([dx, dy]) => ({ dx, dy, v: hunt[e.y + dy]?.[e.x + dx] ?? -1 })).filter(o => o.v >= 0 && o.v <= here && canStep(e, e.x + o.dx, e.y + o.dy)).sort((a, b) => a.v - b.v);
+      if (opts.length) { stepEnemy(e, opts[0].dx, opts[0].dy); return; }
+    }
     const dx = Math.sign(player.x - e.x);
     const dy = Math.sign(player.y - e.y);
     // 더 먼 축을 우선, 막히면 다른 축
@@ -5514,7 +5582,7 @@
     const now = () => performance.now();
     const C = (p) => ({ x: p.x * TILE + TILE / 2, y: p.y * TILE + TILE / 2 });   // 칸 가운데 (그리는 좌표)
     const rand = (k) => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };   // 같은 k면 같은 값 (깜빡임용)
-    const FB_FLY = 170, CHAIN_STEP = 70;
+    const FB_FLY = 170, CHAIN_STEP = 70, CURSE_FLY = 240;
     // a → b 지그재그 번개 점들. seed가 바뀌면 모양이 바뀜 (깜빡임)
     const jag = (a, b, seed, amp) => {
       const pts = [a], n = 6, dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
@@ -5613,9 +5681,36 @@
         }
         return true;
       },
+      // 몬스터 저주 구슬 (dc#149): 내 스킬과 다르게 — 곧게 날아가는 검붉은 구슬(검은 속 + 진홍 테두리, 검은 연기 꼬리),
+      //   떨어지면 조준한 칸들에서 검붉은 가시가 솟고 진홍 테두리가 퍼짐
+      curse(f, t) {
+        const a = C(f.from), b = C(f.to), fly = Math.min(1, t / CURSE_FLY), end = CURSE_FLY + 360;
+        if (t >= end) return false;
+        if (fly < 1) {
+          const x = a.x + (b.x - a.x) * fly, y = a.y + (b.y - a.y) * fly;
+          for (let i = 1; i <= 5; i++) { const q = Math.max(0, fly - i * 0.06); ctx.globalAlpha = 0.45 - i * 0.07; ctx.fillStyle = "#1a0006"; ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * q, a.y + (b.y - a.y) * q, 4.5 - i * 0.5, 0, Math.PI * 2); ctx.fill(); }
+          ctx.globalAlpha = 1; ctx.shadowColor = RANGED.color; ctx.shadowBlur = 10;
+          ctx.fillStyle = RANGED.color; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = "#16000a"; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+          return true;
+        }
+        const k = (t - CURSE_FLY) / 360;
+        ctx.globalAlpha = Math.max(0, 1 - k);
+        for (const c of f.cells) {
+          const cx = c.x * TILE + TILE / 2, cy = c.y * TILE + TILE / 2;
+          ctx.fillStyle = "rgba(60, 0, 14, 0.55)"; ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
+          ctx.fillStyle = RANGED.color;
+          for (let s = 0; s < 3; s++) { const sx = cx + (rand(f.seed + c.x * 7 + c.y * 13 + s) - 0.5) * TILE * 0.7, h = TILE * (0.25 + 0.35 * rand(f.seed + s + c.y)) * Math.min(1, k * 4);
+            ctx.beginPath(); ctx.moveTo(sx - 3, cy + TILE * 0.3); ctx.lineTo(sx, cy + TILE * 0.3 - h); ctx.lineTo(sx + 3, cy + TILE * 0.3); ctx.closePath(); ctx.fill(); }
+        }
+        ctx.strokeStyle = RANGED.color; ctx.lineWidth = 3; ctx.shadowColor = RANGED.color; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(b.x, b.y, TILE * (0.6 + f.r * 1.1 * k), 0, Math.PI * 2); ctx.stroke();
+        return true;
+      },
     };
     return {
-      FB_FLY, CHAIN_STEP,
+      FB_FLY, CHAIN_STEP, CURSE_FLY,
+      curse(from, to, r) { const cells = aimCells(to); fx3d?.("curse", from, to, cells); list.push({ kind: "curse", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, cells, t0: now(), seed: Math.random() * 100 }); },
       fireball(from, to, r) { fx3d?.("fireball", from, to); list.push({ kind: "fireball", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, t0: now(), seed: Math.random() * 100 }); },
       nova(at, r) { fx3d?.("nova", at); list.push({ kind: "nova", at: { x: at.x, y: at.y }, r, t0: now(), seed: Math.random() * 6 }); },
       chain(pts, thin = false) { fx3d?.("chain", pts); list.push({ kind: "chain", pts: pts.map(p => ({ x: p.x, y: p.y })), thin, t0: now() + (thin ? 60 : 0) }); },
@@ -5663,7 +5758,7 @@
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=5"), sheetReady()]).then(([m, sheet]) => {
+      loading ||= Promise.all([import("./view3d.js?v=6"), sheetReady()]).then(([m, sheet]) => {
         // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
         view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
@@ -5864,7 +5959,8 @@
       const bob = bobT ? Math.sin(bobT * 9) * 0.025 : 0;
       const flick = reduceMotion ? 1 : 0.9 + 0.07 * Math.sin(t / 90) + 0.05 * Math.sin(t / 37 + 1.3);
       const hs = handState(now);
-      view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills, hands: hs });
+      const marks = []; for (const e of enemies) if (e.aim) for (const c of aimCells(e.aim)) marks.push({ x: c.x, y: c.y, last: e.aim.t <= 1 });   // 원거리 몬스터 조준 표시 (dc#149)
+      view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills, hands: hs, marks, markColor: RANGED.color });
       drawHands(now, bob, hs);
       drawMap();
     }
@@ -5988,7 +6084,7 @@
     }
     // 스킬 이펙트 (Fx와 같은 때): 파이어볼 터짐 · 프로스트 노바 · 체인 라이트닝
     const ELEM_PART = { fire: "flame", ice: "shard", bolt: "spark" };
-    function fx(kind, a, b) {
+    function fx(kind, a, b, cells) {
       if (!active()) return;
       const now = performance.now();
       if (kind === "block") { blockT = now; return; }
@@ -6004,6 +6100,10 @@
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
       else if (kind === "nova") view.burst(a.x, a.y, EL.colors.ice, 3.2, 520, 0.3);
       else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, EL.colors.bolt), i * Fx.CHAIN_STEP));
+      else if (kind === "curse") {   // 몬스터 저주 구슬 (dc#149): 검붉은 구슬이 날아와 조준한 칸들에서 검붉은 조각이 튐
+        view.orb(a, b, RANGED.color, Fx.CURSE_FLY);
+        setTimeout(() => { view.burst(b.x, b.y, RANGED.color, 2.2, 480, 0.15); for (const c of cells || []) view.sparks(c.x, c.y, "#7a0018", "shard", 3); }, Fx.CURSE_FLY);
+      }
     }
     // ---- 조작: 키보드 (keydown·keyup 둘 다 여기로) ----
     function key(e, down) {
@@ -7224,6 +7324,27 @@
 
     Anim.drawDust();
 
+    // 원거리 몬스터의 조준 표시 (dc#149): 떨어질 칸(3×3)을 붉게 + 가운데 남은 턴 수 + 몬스터에서 점선
+    for (const e of enemies) {
+      if (!e.aim) continue;
+      const cells = aimCells(e.aim), last = e.aim.t <= 1;
+      ctx.save();
+      ctx.fillStyle = last ? "rgba(255, 46, 77, 0.38)" : "rgba(255, 46, 77, 0.2)";
+      for (const c of cells) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
+      ctx.strokeStyle = RANGED.color; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      const r = RANGED.radius;
+      ctx.strokeRect((e.aim.x - r) * TILE + 1, (e.aim.y - r) * TILE + 1, (2 * r + 1) * TILE - 2, (2 * r + 1) * TILE - 2);
+      if (visible[e.y]?.[e.x]) { ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(e.x * TILE + TILE / 2, e.y * TILE + TILE / 2); ctx.lineTo(e.aim.x * TILE + TILE / 2, e.aim.y * TILE + TILE / 2); ctx.stroke(); ctx.globalAlpha = 1; }
+      ctx.setLineDash([]);
+      // 남은 턴: 표시 오른쪽 위 모서리에 진홍 동그라미 (가운데는 내 캐릭터에 가려짐)
+      const bx = (e.aim.x + r + 1) * TILE - 2, by = (e.aim.y - r) * TILE + 2;
+      ctx.fillStyle = RANGED.color; ctx.beginPath(); ctx.arc(bx, by, TILE * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+      ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.fillText(String(e.aim.t), bx, by + 1);
+      ctx.restore();
+    }
+
     // 적
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
@@ -7256,6 +7377,13 @@
       if (!pic) posed(o.rot, px, py, () => drawGlyph(e.ch, px, py, o.flash > 0.3 ? "#ff5a5a" : e.color));
       ctx.restore();
       if (o.spark) drawSpark(px, py, o.spark);
+      // 원거리 몬스터 (dc#149): 왼쪽 위에 진홍 다이아몬드
+      if (e.ranged) { ctx.fillStyle = RANGED.color; ctx.beginPath(); ctx.moveTo(px + 5, py + 1); ctx.lineTo(px + 9, py + 5); ctx.lineTo(px + 5, py + 9); ctx.lineTo(px + 1, py + 5); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke(); }
+      // 공격 준비 중 (dc#148): 머리 위에 주황 "!" — 다음 턴에 때림, 물러나면 피함
+      if (e.ready && NEW_CTRL) {
+        ctx.save(); ctx.font = `bold ${Math.round(TILE * 0.7)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("!", px + TILE / 2, py + 2); ctx.fillStyle = "#ff9f43"; ctx.fillText("!", px + TILE / 2, py + 2); ctx.restore();
+      }
       // 속성 몬스터: 오른쪽 위에 속성 색 점
       if (e.el) {
         ctx.fillStyle = EL.colors[e.el];

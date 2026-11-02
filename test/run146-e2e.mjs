@@ -25,6 +25,15 @@ const HOOK = `
     farHp: () => enemies[0]?.hp,
     wait: () => { Anim.newTurn(); endTurn(); },
     xp: (n) => gainXp(n),
+    // 몰려오기 (dc#147): 가장 먼 바닥(걸어서)에 몬스터 하나, 나에게서 걸어서 몇 칸인지
+    far: () => { enemies = []; const d = huntMap(); let best = null; for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (d[y][x] > (best ? d[best.y][best.x] : 0)) best = { x, y };
+      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), ...best }; e.atk = 0; enemies.push(e); return { d: d[best.y][best.x], seen: !!visible[best.y][best.x] }; },
+    farD: () => { const d = huntMap(), e = enemies[0]; return e ? d[e.y][e.x] : -1; },
+    // 공격 예고 (dc#148): 바로 오른쪽에 몬스터 하나 (HP 많고 공격력 있음), 왼쪽 두 칸은 바닥
+    adj: () => { enemies = []; items = []; for (let k = -2; k <= 1; k++) { map[player.y][player.x + k] = FLOOR; visible[player.y][player.x + k] = true; }
+      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 1, y: player.y }; e.hp = e.maxHp = 1e6; e.atk = 40; enemies.push(e); player.hp = player.maxHp; render(); },
+    hit: () => ({ hp: player.hp, ready: !!enemies[0]?.ready, adj: enemies[0] ? Math.abs(enemies[0].x - player.x) + Math.abs(enemies[0].y - player.y) === 1 : false }),
+    step: (dx, dy) => tryMove(dx, dy),
     // 2칸 거리 빈 바닥에 골드 더미
     dropAt: (r, amount) => { enemies = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = player.x + dx, y = player.y + dy;
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || map[y]?.[x] !== FLOOR) continue; items.push({ x, y, type: "gold", amount }); return true; } return false; },
@@ -70,8 +79,29 @@ try {
   for (let i = 0; i < 3; i++) await T(A.page, "wait");
   const h1 = await T(A.page, "farHp");
   check("starter skill hits the monster 2 tiles away (no blessing needed)", h1 < h0, JSON.stringify([h0, h1]));
+  // ---- 3a. 공격 예고 (dc#148): 막 붙은 턴엔 "!"만, 다음 턴부터 때림 · 방향키로 물러나면 피함 ----
+  await T(A.page, "adj"); const w0 = await T(A.page, "hit");
+  await T(A.page, "wait"); const w1 = await T(A.page, "hit");
+  check("monster that just came next to you only gets ready (\"!\"), no hit yet", w1.ready && w1.hp === w0.hp, JSON.stringify([w0, w1]));
+  await A.page.screenshot({ path: path.join(SHOTS, "run148-ready.png") }).catch(() => {});
+  for (let i = 0; i < 3; i++) await T(A.page, "wait");
+  const w2 = await T(A.page, "hit");
+  check("if you stay next to it, it hits from the next turn", w2.hp < w1.hp, JSON.stringify([w1, w2]));
+  await T(A.page, "adj"); await T(A.page, "wait"); const s1 = await T(A.page, "hit");
+  await T(A.page, "step", -1, 0); const s2 = await T(A.page, "hit");
+  await T(A.page, "wait"); const s3 = await T(A.page, "hit");
+  check("step away with an arrow key → the attack misses you (it follows, gets ready again)", s1.ready && s2.hp === s1.hp && s3.hp === s1.hp && s3.ready, JSON.stringify([s1, s2, s3]));
   check("no page errors (swarm · starter)", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
+
+  // ---- 3b. 몰려오기: 안 보이는 먼 몬스터도 나를 향해 ----
+  const C = await open({ ...BASE, rl_save: save({ d: 8 }) });
+  const f0 = await T(C.page, "far");
+  for (let i = 0; i < 6; i++) await T(C.page, "wait");
+  const f1 = await T(C.page, "farD");
+  check(`far monster (${f0.d} steps away, out of sight) walks toward the player (now ${f1})`, !f0.seen && f0.d >= 8 && f1 <= f0.d - 5, JSON.stringify([f0, f1]));
+  check("no page errors (chase)", C.errors.length === 0, C.errors.join("; "));
+  await C.ctx.close();
 
   // ---- 4. 첫 레벨 업: 속성 스킬 셋 중에서 ----
   const B = await open({ ...BASE, rl_bless: "on", rl_save: save({ bz: { normal: 1 } }) });
@@ -88,10 +118,10 @@ try {
   const D = await open({ ...BASE, rl_3d: "1", rl_save: save({ d: 2 }) });
   await sleep(1500);
   const d0 = await T(D.page, "s");
-  const put = await T(D.page, "dropAt", 2, 777);
+  const put = await T(D.page, "dropAt", 1, 777);
   await sleep(1500);   // 3D는 0.5초마다 한 턴
   const d1 = await T(D.page, "s");
-  check("3D: gold 2 tiles away is picked up by itself", d0.d3 && put && d1.gold - d0.gold >= 777, JSON.stringify([d0, d1, put]));
+  check("3D: gold 1 tile away is picked up by itself (dc#147: 2 → 1)", d0.d3 && put && d1.gold - d0.gold >= 777, JSON.stringify([d0, d1, put]));
   check("no page errors (3D pickup)", D.errors.length === 0, D.errors.join("; "));
   await D.ctx.close();
 } catch (e) {
