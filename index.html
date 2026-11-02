@@ -4182,9 +4182,13 @@
         continue;
       }
       if (dist(e, player) === 1) {
+        // 공격 예고 (dc#148, 새 규칙): 막 붙은 턴에는 "!"로 준비만 → 다음 턴에도 붙어 있으면 때림 (그 뒤로는 매 턴).
+        //   그 사이 방향키로 물러나면 피할 수 있음. 떨어지면 준비가 풀림
+        if (NEW_CTRL && !e.ready) { e.ready = true; showDamage(e, "!", true, "#ff9f43"); continue; }
         attack(e, player);
         if (gameOver) return;
       } else if (hunt || (visible[e.y]?.[e.x] && dist(e, player) <= CHASE_RANGE)) {
+        e.ready = false;
         moveToward(e);
       } else if (rnd(3) === 0) {
         // 가끔 배회
@@ -7274,6 +7278,11 @@
       if (!pic) posed(o.rot, px, py, () => drawGlyph(e.ch, px, py, o.flash > 0.3 ? "#ff5a5a" : e.color));
       ctx.restore();
       if (o.spark) drawSpark(px, py, o.spark);
+      // 공격 준비 중 (dc#148): 머리 위에 주황 "!" — 다음 턴에 때림, 물러나면 피함
+      if (e.ready && NEW_CTRL) {
+        ctx.save(); ctx.font = `bold ${Math.round(TILE * 0.7)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("!", px + TILE / 2, py + 2); ctx.fillStyle = "#ff9f43"; ctx.fillText("!", px + TILE / 2, py + 2); ctx.restore();
+      }
       // 속성 몬스터: 오른쪽 위에 속성 색 점
       if (e.el) {
         ctx.fillStyle = EL.colors[e.el];
