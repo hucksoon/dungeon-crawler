@@ -738,6 +738,20 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 1900]], 3000, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
+  // dc#152: 경험치가 많은 정예를 잡으면 구슬 여러 개가 사방으로 튀고, 걸어 다니며 주움
+  ["v13-xp-burst", "경험치가 많은 몬스터는 구슬을 사방에 흩뿌려요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(30, "blog-v13burst", { l: 30, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-1, 0, 1, 2, 3, 4].every(k => [-2, -1, 0, 1, 2].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "elite", xp: 240, x: L.px + 2, y: L.py, hp: 1, maxHp: 300, atk: 0, ranged: false }, { ...base, kind: "normal", x: L.px + 12, y: L.py + 12, hp: 99999, maxHp: 99999, atk: 0, ranged: false }];
+      L.items = [];
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 2000], ["ArrowUp", 2500], ["ArrowRight", 3000], ["ArrowDown", 3500], ["ArrowDown", 4000]], 4700, { cols: 9, rows: 7, every: 50 }), delay: 5 }; }],
   // dc#151: 축복 상점 — 밟으면 축복 하나를 공짜로
   ["v12-shrine", "축복 상점: 찾아가 밟으면 축복 하나를 공짜로 골라요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_save: save(4, "blog-v12shrine", { l: 8, hp: 99999, xn: 1e9, bz: { normal: 4 } }), "rl_inv:g:DEV": inv([]) } });

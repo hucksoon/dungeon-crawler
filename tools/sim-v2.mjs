@@ -26,11 +26,12 @@ const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fire", "bolt", "ice"]), "
 const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall"];
 
 function newPlayer(level = 1) {
-  const p = { lvl: 1, xp: 0, xpNext: OPT.xpFirst ?? 6, maxHp: 20, atk: 3, eq: {}, stones: { stones: 0, nmStones: 0, hellStones: 0 }, bl: {}, rl: {} };
+  const p = { lvl: 1, xp: 0, xpNext: (OPT.xpFirst ?? 6) * (OPT.xpNeed ?? 4), maxHp: 20, atk: 3, eq: {}, stones: { stones: 0, nmStones: 0, hellStones: 0 }, bl: {}, rl: {} };
   while (p.lvl < level) levelUp(p);
   return p;
 }
 // 레벨 (dc#143): 다음 레벨까지 ×XP_GROW (게임과 같게 1.3), 레벨이 오를 때마다 축복 하나 (p.lvBless가 있으면)
+//   dc#152: 레벨마다 필요한 경험치 ×OPT.xpNeed (기본 4, 게임 XP_NEED와 같게. 1이면 예전)
 const XP_GROW = OPT.xpGrow ?? 1.3;
 // 경험치 구슬 (dc#151): 주워야 오름 → 줍는 몫 OPT.xpPick (기본 0.9, 멀리서 스킬로 잡은 것 일부는 못 주움)
 const XP_PICK = OPT.xpPick ?? 0.9;

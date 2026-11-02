@@ -1,4 +1,5 @@
 // dc#151: 경험치 구슬 (몬스터가 쓰러지면 바닥에, 주워야 경험치) · 축복 상점 (층 아무 곳, 축복 하나 공짜)
+// dc#152: 경험치가 많으면 구슬 여러 개가 사방으로 · 레벨마다 필요한 경험치 ×4 (예전 판은 한 번 ×4)
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,6 +19,9 @@ const HOOK = `
       const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 3, y: player.y, hp: 0 }; enemies.push(e); killEnemy(e); render(); },
     st: () => ({ xp: player.xp, lv: player.plvl, x: player.x, y: player.y, orbs: items.filter(i => i.type === "xp").map(i => ({ x: i.x, y: i.y, n: i.amount })), shop, modal: !document.getElementById("bless-modal").hidden, title: document.getElementById("bless-title").textContent, pend: Bless.pending() }),
     step: (dx, dy) => tryMove(dx, dy),
+    big: (xp) => { items = []; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = player.x + 4 + dx, y = player.y + dy; if (map[y]?.[x] !== undefined) { map[y][x] = FLOOR; visible[y][x] = true; } } dropXp({ x: player.x + 4, y: player.y }, xp); render();
+      const o = items.filter(i => i.type === "xp"); return { n: o.length, sum: o.reduce((a, i) => a + i.amount, 0), tiles: new Set(o.map(i => i.x + "," + i.y)).size, far: Math.max(...o.map(i => Math.max(Math.abs(i.x - player.x - 4), Math.abs(i.y - player.y)))) }; },
+    need: () => ({ xn: player.xpNext, fresh: FRESH.xpNext }),
     toShop: () => { const s = shop; player.x = s.x - 1; player.y = s.y; map[s.y][s.x - 1] = FLOOR; enemies = []; render(); return s; },
   };
   // ---- 시작 ----`;
@@ -54,8 +58,22 @@ try {
   check("one step closer (2 tiles away): still not picked up", x2.xp === x0.xp && x2.orbs.length === 1, JSON.stringify(x2));
   await T(A.page, "step", 1, 0); const x3 = await T(A.page, "st");
   check("walk next to the orb → it is picked up and XP goes up", x3.orbs.length === 0 && x3.xp === x0.xp + x1.orbs[0].n, JSON.stringify([x1.orbs, x3]));
+  // dc#152: 경험치가 많을수록 여러 개로 나뉘어 사방으로
+  const g1 = await T(A.page, "big", 3), g2 = await T(A.page, "big", 48), g3 = await T(A.page, "big", 240);
+  check(`orbs split by XP: 3 → ${g1.n}, 48 → ${g2.n}, 240 → ${g3.n} (sum kept)`, g1.n === 1 && g2.n >= 3 && g3.n >= 7 && g1.sum === 3 && g2.sum === 48 && g3.sum === 240, JSON.stringify([g1, g2, g3]));
+  check("many orbs spread over several tiles around (up to 2 tiles away)", g3.tiles >= 5 && g3.far <= 2 && g2.far <= 1, JSON.stringify([g2, g3]));
+  await sleep(120); await A.page.screenshot({ path: path.join(SHOTS, "run152-spread.png") }).catch(() => {});
   check("no page errors (XP orbs)", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
+
+  // ---- 1b. 레벨 경험치 ×4: 새 판 24, 예전 판(x4 없음)은 불러올 때 한 번 ×4 ----
+  const C = await open({ ...BASE, rl_save: JSON.stringify({ v: 1, best: 3, run: { d: 2, hp: 300, mh: 300, a: 40, g: 0, l: 3, x: 5, xn: 13, rid: "r152", k: 0, pp: 0 } }) });
+  const n1 = await T(C.page, "need");
+  check("level XP ×4: a new run needs 24 for Lv 2; an older save's next level ×4 once (13 → 52)", n1.fresh === 24 && n1.xn === 52, JSON.stringify(n1));
+  await C.page.reload(); await C.page.waitForFunction(() => window.__t); await sleep(300);
+  const n2 = await T(C.page, "need");
+  check("reloading does not multiply again", n2.xn === 52, JSON.stringify(n2));
+  await C.ctx.close();
 
   // ---- 2. 축복 상점: 시작 자리 옆이 아니라 광장 아무 곳, 밟으면 축복 하나 ----
   const B = await open({ ...BASE, rl_bless: "on", rl_save: save({ d: 3, bz: { normal: 9 } }) });

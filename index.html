@@ -3313,13 +3313,32 @@
   // 넓은 지역(dc#143): 주변 PICK_R칸(대각선 포함) 안의 아이템은 저절로 주움 (dc#147: 2 → 1칸). 예전 던전은 밟은 칸만
   const PICK_R = 1;
   // 경험치 구슬 (dc#151): 새 규칙(광장 층)에서 몬스터가 쓰러지면 그 자리에 초록 구슬. 자동 줍기 범위(PICK_R) 안으로 가면 경험치가 오름
-  //   같은 칸의 구슬은 하나로 합침. 줍지 않고 층을 떠나면 사라짐
+  //   줍지 않고 층을 떠나면 사라짐
+  //   dc#152: 경험치가 많을수록 구슬이 여러 개로 나뉘어 사방으로 튐 (개수 = √(경험치 / unit), 1~max개).
+  //   1~3층 몬스터는 1개, 10층 약 3개, 50층 약 4개, 정예·보스는 더 많이. 4개까지는 둘레 1칸, 더 많으면 2칸까지
   const XP_COLOR = "#6dff9e";
+  const XP_ORB = { unit: 4, max: 8, fly: 320 };
   const xpOrbOn = () => OPEN_FLOORS;
+  const xpOrbCount = (xp) => Math.max(1, Math.min(XP_ORB.max, Math.round(Math.sqrt(xp / XP_ORB.unit))));
   function dropXp(at, xp) {
     if (xp <= 0) return;
-    const same = items.find(i => i.type === "xp" && i.x === at.x && i.y === at.y);
-    if (same) same.amount += xp; else items.push({ x: at.x, y: at.y, type: "xp", amount: xp });
+    const n = Math.min(xpOrbCount(xp), xp), r = n > 4 ? 2 : 1;
+    const spots = [];
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = at.x + dx, y = at.y + dy; if ((dx || dy) && map[y]?.[x] !== undefined && map[y][x] !== WALL && map[y][x] !== STAIRS) spots.push({ x, y }); }
+    for (let i = spots.length - 1; i > 0; i--) { const j = rnd(i + 1); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) {
+      const to = n === 1 ? at : spots[i % Math.max(1, spots.length)] || at;
+      const amount = Math.floor(xp / n) + (i < xp % n ? 1 : 0);
+      items.push({ x: to.x, y: to.y, type: "xp", amount, fx: at.x, fy: at.y, t0, k: i });
+    }
+  }
+  // 튀어 나가는 중이면 (죽은 자리 → 떨어질 칸) 사이의 자리와 높이 (0~1)
+  function xpOrbPos(it) {
+    const k = it.t0 ? Math.min(1, (performance.now() - it.t0) / XP_ORB.fly) : 1;
+    if (k >= 1 || it.fx == null) return { x: it.x, y: it.y, h: 0 };
+    const e = 1 - (1 - k) * (1 - k);
+    return { x: it.fx + (it.x - it.fx) * e, y: it.fy + (it.y - it.fy) * e, h: Math.sin(k * Math.PI) };
   }
   function pickup() {
     if (!player || gameOver) return;
@@ -3551,7 +3570,7 @@
   // 층 구조(지형, 몬스터, 바닥 아이템)는 크기 때문에 이 브라우저에만 따로 저장 (LEVEL_KEY)
   const runFields = () => ({
     d: depth, hp: player.hp, mh: player.maxHp, a: player.atk, g: player.gold,
-    pc: player.potCd || 0, jc: player.jumpCd || 0, l: player.plvl, x: player.xp, xn: player.xpNext,
+    pc: player.potCd || 0, jc: player.jumpCd || 0, l: player.plvl, x: player.xp, xn: player.xpNext, x4: XP_NEED > 1 ? 1 : undefined,
     rid: player.rid, k: player.kills, pp: player.potionPicks, sb: shopBought, sr: shopRerolls,
     rv: player.revived ? 1 : 0,
     ...(player.ud ? { ud: player.ud } : {}),
@@ -3764,7 +3783,7 @@
       gold: r.g,
       potCd: Math.max(0, Math.min(POTION.cooldown, r.pc | 0)),
       jumpCd: Math.max(0, Math.min(JUMP.cooldown, r.jc | 0)),
-      plvl: r.l, xp: r.x, xpNext: r.xn,
+      plvl: r.l, xp: r.x, xpNext: r.x4 || XP_NEED === 1 ? r.xn : r.xn * XP_NEED,   // dc#152 전 판은 다음 레벨까지 ×4로 한 번 바꿈
       rid: r.rid || newRunId(), kills: r.k || 0, potionPicks: r.pp || 0,
       revived: !!r.rv,
       ud: typeof r.ud === "string" ? r.ud : null,   // 천하무적 불사를 쓴 층
@@ -4807,7 +4826,7 @@
   function lobbyLoop(t) {
     requestAnimationFrame(lobbyLoop);
     // 던전의 짧은 움직임(걷기·공격 등, 0.1~0.4초)은 매 프레임 부드럽게
-    if (scene === "dungeon" && !document.hidden && (Anim.busy() || Fx.busy())) { lobbyFrame = t; render(); return; }
+    if (scene === "dungeon" && !document.hidden && (Anim.busy() || Fx.busy() || items.some(i => i.t0 && t - i.t0 < XP_ORB.fly + 50))) { lobbyFrame = t; render(); return; }
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
@@ -6004,7 +6023,7 @@
         const g = it.type === "gear" ? it.item : null;
         const glow = g ? (isUnique(g) ? RLItems.RARITIES.unique.color : isRainbow(g) ? rainbowColor(it.x + it.y) : g.rarity === "epic" || g.rarity === "rare" ? RLItems.RARITIES[g.rarity].color : null)
           : it.type === "rune" ? rainbowColor(it.x + it.y) : it.type === "gem" ? RLItems.GEMS[it.gem]?.color : it.type === "treasure" ? "#ff6bd3" : it.type === "xp" ? XP_COLOR : null;
-        if (it.type === "xp") { bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.28, h: 0.28, tint: XP_COLOR, glow, lift: 0.18 + 0.05 * Math.sin(t / 260 + it.x) }); continue; }
+        if (it.type === "xp") { const p = xpOrbPos(it); bills.push({ key: it, sprite: itemArt(it), x: p.x + ((it.k || 0) % 3 - 1) * 0.12, y: p.y + (Math.floor((it.k || 0) / 3) % 3 - 1) * 0.12, w: 0.24, h: 0.24, tint: XP_COLOR, glow, lift: 0.18 + p.h * 0.5 + 0.05 * Math.sin(t / 260 + it.x + (it.k || 0)) }); continue; }
         bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.42, h: 0.42, glow });
       }
       if (shop) bills.push({ key: "shop", sprite: "shop", x: shop.x, y: shop.y, w: 0.95, h: 0.95, glow: SHOP_COLOR });
@@ -7235,8 +7254,11 @@
   }
   // 경험치 구슬 (dc#151): 초록으로 빛나며 살짝 떠 있는 구슬. 경험치가 많을수록 조금 큼
   function drawXpOrb(px, py, it) {
-    const t = performance.now(), bob = reduceMotion ? 0 : Math.sin(t / 260 + it.x + it.y) * 1.5, r = Math.min(TILE * 0.3, TILE * 0.16 + Math.log10(it.amount + 1) * 2);
-    const cx = px + TILE / 2, cy = py + TILE / 2 + bob;
+    const t = performance.now(), p = xpOrbPos(it), r = Math.min(TILE * 0.26, TILE * 0.14 + Math.log10(it.amount + 1) * 1.6);
+    const jx = ((it.k || 0) % 3 - 1) * 3, jy = (Math.floor((it.k || 0) / 3) % 3 - 1) * 2;   // 같은 칸에 여럿이면 조금씩 비켜서
+    const bob = reduceMotion ? 0 : Math.sin(t / 260 + it.x + it.y + (it.k || 0)) * 1.5;
+    px = p.x * TILE + jx; py = p.y * TILE + jy;
+    const cx = px + TILE / 2, cy = py + TILE / 2 + bob - p.h * TILE * 0.5;
     ctx.save();
     ctx.fillStyle = "rgba(0, 0, 0, 0.35)"; ctx.beginPath(); ctx.ellipse(cx, py + TILE * 0.82, r * 0.8, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.shadowColor = XP_COLOR; ctx.shadowBlur = 10;
@@ -7579,7 +7601,9 @@
   // ---- 초기화 ----
   // keep: 이어 가는 레벨 (쓰러진 뒤 새로 시작, dc#95). 없으면 Lv 1부터
   // 새 판 (dc#142): 언제나 레벨 1·골드 0 (장비는 인벤토리라 그대로). 쓰러진 뒤 새로 시작할 때도, 마을에서 1층 문으로 새로 들어갈 때도
-  const FRESH = { plvl: 1, xp: 0, xpNext: OLD_TOWN ? 10 : 6, maxHp: 20, atk: 3, gold: 0 };   // dc#146: 첫 레벨 업을 금방 (몬스터 두셋)
+  // dc#146: 첫 레벨 업을 금방 (몬스터 두셋) → dc#152: 레벨이 너무 빨리 올라 레벨마다 필요한 경험치 ×XP_NEED (6 → 24, 그 뒤로 ×1.3씩)
+  const XP_NEED = OLD_TOWN ? 1 : 4;
+  const FRESH = { plvl: 1, xp: 0, xpNext: OLD_TOWN ? 10 : 6 * XP_NEED, maxHp: 20, atk: 3, gold: 0 };
   function newGame() {
     depth = 1;
     gameOver = false;
