@@ -44,10 +44,13 @@
   //   피해 +12%씩, Lv 10 마스터는 +30% 더 (+138%) · 화염구·연쇄 번개 거리 Lv 7부터 4칸
   const ELEM_CAP = 20;
   const grow = (lv) => 12 * (lv - 1) + (lv >= ELEM_MAX ? 30 : 0);
+  // dc#153: 범위 상한 — 몰려오는 광장에서 너무 넓게 쓸어서. 화염구·얼음 폭발은 Lv 7까지 1칸(3×3), Lv 8부터 2칸(5×5)이 끝
+  //   (예전 Lv 4 2칸 · Lv 8 3칸 7×7), 연쇄 번개는 6번까지 (예전 1 + Lv, Lv 10 11번)
+  const ELEM_AREA = { radius2: 8, maxRadius: 2, maxStrikes: 6 };
   const ELEM = {
-    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= 8 ? 3 : lv >= 4 ? 2 : 1, mul: 0.5, pct: grow(lv) }),
-    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= 8 ? 3 : lv >= 4 ? 2 : 1, mul: 0.4, pct: grow(lv) }),
-    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: 1 + lv, mul: 0.25, pct: grow(lv), shock: lv >= 4 }),
+    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.5, pct: grow(lv) }),
+    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.4, pct: grow(lv) }),
+    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: Math.min(ELEM_AREA.maxStrikes, 1 + lv), mul: 0.25, pct: grow(lv), shock: lv >= 4 }),
   };
   const ELEM_IDS = ["fire", "ice", "bolt"];
   const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
@@ -161,7 +164,7 @@
     const t = fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1);
     return isElem(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_MAX, ELEM_CAP, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ELEM_MAX, ELEM_CAP, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

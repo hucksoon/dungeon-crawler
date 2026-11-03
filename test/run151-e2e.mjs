@@ -16,11 +16,20 @@ const HOOK = `
     floor: (d) => { depth = d; newLevel(generateDungeon()); render(); return { shop, px: player.x, py: player.y }; },
     // 3칸 떨어진 몬스터 하나를 바로 쓰러뜨림 (스킬로 잡은 것처럼)
     killFar: () => { enemies = []; items = []; for (let dx = -1; dx <= 4; dx++) { const x = player.x + dx, y = player.y; if (map[y]?.[x] !== undefined) { map[y][x] = FLOOR; visible[y][x] = true; } }
-      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 3, y: player.y, hp: 0 }; enemies.push(e); killEnemy(e); render(); },
+      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 3, y: player.y, hp: 0 }; enemies.push(e);
+      const keep = randomFloor([player, e]); if (keep) enemies.push({ ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), ...keep, hp: 1e6, maxHp: 1e6, atk: 0 });   // 층이 끝나지 않게 (dc#153: 마지막 몬스터면 구슬을 바로 먹음)
+      killEnemy(e); render(); },
     st: () => ({ xp: player.xp, lv: player.plvl, x: player.x, y: player.y, orbs: items.filter(i => i.type === "xp").map(i => ({ x: i.x, y: i.y, n: i.amount })), shop, modal: !document.getElementById("bless-modal").hidden, title: document.getElementById("bless-title").textContent, pend: Bless.pending() }),
     step: (dx, dy) => tryMove(dx, dy),
     big: (xp) => { items = []; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = player.x + 4 + dx, y = player.y + dy; if (map[y]?.[x] !== undefined) { map[y][x] = FLOOR; visible[y][x] = true; } } dropXp({ x: player.x + 4, y: player.y }, xp); render();
       const o = items.filter(i => i.type === "xp"); return { n: o.length, sum: o.reduce((a, i) => a + i.amount, 0), tiles: new Set(o.map(i => i.x + "," + i.y)).size, far: Math.max(...o.map(i => Math.max(Math.abs(i.x - player.x - 4), Math.abs(i.y - player.y)))) }; },
+    // 마지막 몬스터: 멀리 경험치 구슬 몇 개를 깔아 두고, 하나 남은 몬스터를 쓰러뜨림 → 계단이 열리며 구슬을 모두 먹음 (장비는 그대로)
+    lastKill: () => { enemies = []; items = []; floorSt.open = false; floorSt.boss = false; const far = { x: player.x + 3, y: player.y };
+      for (let dx = -1; dx <= 6; dx++) { const x = player.x + dx; if (map[player.y]?.[x] !== undefined) map[player.y][x] = FLOOR; }
+      dropXp({ x: player.x + 5, y: player.y }, 40); items.push({ x: player.x + 6, y: player.y, type: "gold", amount: 5 });
+      const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), ...far, hp: 0 }; enemies.push(e);
+      const xp0 = player.xp, lv0 = player.plvl; killEnemy(e); render();
+      return { gained: player.xp - xp0, lv: player.plvl - lv0, orbs: items.filter(i => i.type === "xp").length, gold: items.filter(i => i.type === "gold").length, open: floorSt.open, xn: player.xpNext }; },
     need: () => ({ xn: player.xpNext, fresh: FRESH.xpNext }),
     toShop: () => { const s = shop; player.x = s.x - 1; player.y = s.y; map[s.y][s.x - 1] = FLOOR; enemies = []; render(); return s; },
   };
@@ -73,6 +82,9 @@ try {
   await C.page.reload(); await C.page.waitForFunction(() => window.__t); await sleep(300);
   const n2 = await T(C.page, "need");
   check("reloading does not multiply again", n2.xn === 52, JSON.stringify(n2));
+  // ---- 1c. 마지막 몬스터 → 계단과 함께 남은 경험치 구슬을 모두 먹음 (dc#153) ----
+  const lk = await T(C.page, "lastKill");
+  check("last monster down → stairs open and every XP orb on the map is collected at once (gold stays)", lk.open && lk.orbs === 0 && (lk.gained > 40 || lk.lv > 0) && lk.gold === 1, JSON.stringify(lk));
   await C.ctx.close();
 
   // ---- 2. 축복 상점: 시작 자리 옆이 아니라 광장 아무 곳, 밟으면 축복 하나 ----
