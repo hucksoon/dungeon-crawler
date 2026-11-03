@@ -14,7 +14,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const HOOK = `
   window.__t = {
     // 넓은 빈 마당 (몬스터·아이템 없음, 내 둘레 9×9 바닥)
-    yard: (d = 8) => { depth = d; enemies = []; items = []; shots = []; floorSt.sc = 999; shop = null;
+    yard: (d = 8) => { depth = d; enemies = []; items = []; shots = []; floorSt.sc = 999; floorSt.sg = 0; shop = null;
       for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = player.x + dx, y = player.y + dy; if (map[y]?.[x] !== undefined) { map[y][x] = FLOOR; visible[y][x] = true; seen[y][x] = true; } }
       enemies.push({ ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 4, y: player.y + 4, hp: 1e6, maxHp: 1e6, atk: 0, ranged: false });   // 층이 끝나지 않게 멀리 하나
       player.jumpCd = 0; player.potCd = 0; render(); return { x: player.x, y: player.y }; },

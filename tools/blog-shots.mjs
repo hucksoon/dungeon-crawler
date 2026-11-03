@@ -190,6 +190,24 @@ const recordMe = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => pa
   const grab = () => { cut.getContext("2d").drawImage(c, sx, sy, W, H, 0, 0, W, H); out.push(cut.toDataURL()); if (performance.now() - t0 < ms) setTimeout(grab, every); else done(out); };
   grab();
 }), [keys, ms, cols * 64, rows * 64, every]);
+// 시계를 멈추고 step ms씩 돌리며 한 장씩 (dc#159): 탄이 많아 그리기가 느려도 장면이 고르게 담김 (delay = step / 10)
+async function recordClock(page, keys, ms, { cols = 7, rows = 5, step = 80 } = {}) {
+  await page.clock.install(); await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+  await page.evaluate(([W, H]) => {
+    const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
+    const L = JSON.parse(localStorage.getItem("rl_level")), me = window.RLWalk.screenOf(L.px, L.py), r = c.getBoundingClientRect();
+    const px = (me.x - r.left) / r.width * c.width, py = (me.y - r.top) / r.height * c.height;
+    const sx = Math.max(0, Math.min(c.width - W, px - W / 2)), sy = Math.max(0, Math.min(c.height - H, py - H / 2));
+    window.__grab = () => { cut.getContext("2d").drawImage(c, sx, sy, W, H, 0, 0, W, H); return cut.toDataURL(); };
+  }, [cols * 64, rows * 64]);
+  const out = [], todo = [...keys];
+  for (let t = 0; t <= ms; t += step) {
+    while (todo.length && todo[0][1] <= t) { const [key] = todo.shift(), up = key[0] === "-", k = key.length > 1 && (key[0] === "+" || up) ? key.slice(1) : key;
+      await page.evaluate(([up, k]) => window.dispatchEvent(new KeyboardEvent(up ? "keyup" : "keydown", { key: k, bubbles: true })), [up, k]); }
+    await page.clock.runFor(step); out.push(await page.evaluate(() => window.__grab()));
+  }
+  return out;
+}
 
 // ---- 장면: 이름, 설명(그림 아래 글), 찍기 ----
 const g40 = gear(40), g90 = gear(90, "golden", "blognm"), g150 = gear(150, "golden", "bloghell");
@@ -816,6 +834,22 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [["+ArrowDown", 1300], ["-ArrowDown", 1650], ["+ArrowLeft", 2300], ["-ArrowLeft", 2600]], 4200, { cols: 7, rows: 5, every: 40 }), delay: 45 }; }],   // 탄이 많으면 한 장에 0.4~0.5초 → 실제 빠르기로
+  // dc#159: 정예·원거리가 한꺼번에 쏘지 않고 차례로 (3턴 간격) — 하나씩 보고 비킴
+  ["v18-gap", "정예 셋과 원거리 몬스터가 차례로 쏘아요, 하나씩 보고 비켜요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_live: "off", rl_save: save(8, "blog-v18gap", { l: 12, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-4, -3, -2, -1, 0, 1, 2, 3, 4].every(k => [-3, -2, -1, 0, 1, 2, 3].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const m = (dx, dy, o) => ({ ...base, x: L.px + dx, y: L.py + dy, hp: 99999, maxHp: 99999, atk: 1, ranged: false, ready: false, smash: null, slow: 99, ...o });
+      L.enemies = [m(4, -1, { kind: "elite", scd: 1 }), m(-4, -2, { kind: "elite", scd: 1 }), m(1, 3, { kind: "elite", scd: 1 }), m(-3, 3, { kind: "normal", ranged: true, rcd: 0 }), m(12, 12, { kind: "normal", slow: 0 })];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999 };
+      localStorage.setItem("rl_live", "1");   // 턴제로 꾸민 뒤 다시 불러올 때 실시간 (v17과 같은 까닭)
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordClock(o.page, [["+ArrowUp", 900], ["-ArrowUp", 1200], ["+ArrowRight", 2100], ["-ArrowRight", 2400], ["+ArrowDown", 3400], ["-ArrowDown", 3700]], 5200, { cols: 9, rows: 7, step: 80 }), delay: 8 }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

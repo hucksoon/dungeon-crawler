@@ -2221,7 +2221,8 @@
   const swarmOn = () => OPEN_FLOORS && !inAbyss();
   // 원거리 몬스터 (dc#149): 새 규칙 광장 층에서만, 일반 RANGED.from층부터 · 나이트메어·헬은 처음부터 (골드 던전·구멍 제외)
   const RANGED = RLMonsters.RANGED;
-  const rangedOn = () => OPEN_FLOORS && !inGold() && !inAbyss() && (nmMobs() || inHell() || depth >= RANGED.from);
+  //   실시간(2D·3D 켜 둠)이면 RANGED.liveFrom층부터 (dc#159)
+  const rangedOn = () => OPEN_FLOORS && !inGold() && !inAbyss() && (nmMobs() || inHell() || depth >= (View3D.on || LIVE?.on() ? RANGED.liveFrom : RANGED.from));
   // 강타·회복 구슬·버티기 (dc#155): 새 규칙 광장 층에서만 (규칙·수치는 monsters.js SMASH · RESCUE)
   const SMASH = RLMonsters.SMASH, RESCUE = RLMonsters.RESCUE, SHOTS = RLMonsters.SHOTS;
   let shots = [];   // 날아가는 탄환 (dc#158): { x, y (칸, 가운데 기준), vx, vy (칸/초), life, atk, color, from }
@@ -2914,12 +2915,14 @@
     if (dist(e, player) === 1) return false;
     const d = near8(e, player), seen = !!visible[e.y]?.[e.x];
     if (e.rcd <= 0 && seen && d <= RANGED.range && shotsOn()) {   // 실시간 (dc#158): 칸에 떨어지는 구슬 대신 진짜로 날아가는 구슬
-      e.charge = { kind: "ranged", pat: "one", t: SHOTS.ranged.windup }; e.rcd = SHOTS.ranged.every + SHOTS.ranged.windup; e.ready = false;
-      showDamage(e, "!", true, RANGED.color);
-      Sfx("aim");
-      return true;
-    }
-    if (e.rcd <= 0 && seen && d <= RANGED.range) {
+      if (!(floorSt.sg > 0)) {   // 다른 몬스터가 막 모으기 시작했으면 기다림 (dc#159 SHOTS.gap)
+        e.charge = { kind: "ranged", pat: "one", t: SHOTS.ranged.windup }; e.rcd = SHOTS.ranged.every + SHOTS.ranged.windup; e.ready = false;
+        floorSt.sg = SHOTS.gap;
+        showDamage(e, "!", true, RANGED.color);
+        Sfx("aim");
+        return true;
+      }
+    } else if (e.rcd <= 0 && seen && d <= RANGED.range) {
       const wait = realtime() ? RANGED.windup3d : RANGED.windup;
       e.aim = { x: player.x, y: player.y, t: wait }; e.ready = false;
       showDamage(e, "!", true, RANGED.color);
@@ -2998,7 +3001,8 @@
     const S = SHOTS[kind];
     e.scd = (Number.isInteger(e.scd) ? e.scd : 1 + rnd(S.every)) - 1;
     if (e.scd > 0) return false;
-    e.scd = S.every;
+    if (kind !== "boss" && floorSt.sg > 0) { e.scd = 0; return false; }   // 한 층에서 gap턴에 한 마리만 새로 모음 (dc#159), 준비된 채로 기다림
+    e.scd = S.every; floorSt.sg = SHOTS.gap;
     const pat = kind === "boss" ? (e.pat = e.pat === "fan" ? "ring" : "fan") : "fan3";
     e.charge = { kind, pat, t: S.windup }; e.ready = false;
     showDamage(e, "‼", true, S.color);
@@ -3014,7 +3018,8 @@
     const fan = (n, sp) => Array.from({ length: n }, (_, i) => base + (i - (n - 1) / 2) * sp);
     const [angs, mul] = c.pat === "ring" ? [Array.from({ length: S.ring.n }, (_, i) => base + i * 2 * Math.PI / S.ring.n), S.ring.mul]
       : c.pat === "fan" ? [fan(S.fan.n, S.fan.spread), S.fan.mul] : c.pat === "fan3" ? [fan(S.n, S.spread), S.mul] : [[base], S.mul];
-    const atk = foeAtk(e) * mul, t0 = performance.now();
+    const deep = nmMobs() || inHell() || inAbyss() ? 1 : RLMonsters.shotDeepMul(depth);   // 일반 던전 깊은 층은 한 발이 더 아픔 (dc#159)
+    const atk = foeAtk(e) * mul * deep, t0 = performance.now();
     for (const a of angs) shots.push({ x: ox + Math.cos(a) * 0.45, y: oy + Math.sin(a) * 0.45, vx: Math.cos(a) * SHOTS.speed, vy: Math.sin(a) * SHOTS.speed, life: SHOTS.life, atk, color: S.color, from: e.name, t0 });
     Sfx("shoot");
   }
@@ -4458,6 +4463,7 @@
     // 적 이동/공격
     hunt = OPEN_FLOORS ? huntMap() : null;   // 넓은 광장: 모든 몬스터가 나를 향해 (dc#147)
     if (shots.length && !shotsOn()) shots = [];
+    if (floorSt.sg > 0) floorSt.sg--;   // 탄 모으기 간격 (dc#159)
     for (const e of [...enemies]) {
       if (e.hp <= 0 || !enemies.includes(e)) continue;
       if (e.named) namedTurn(e);
