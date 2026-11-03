@@ -16,12 +16,18 @@ FILTER=${1:-}
 SHARD=${SHARD:-}; RETRY=${RETRY:-0}
 SK=${SHARD%/*}; SN=${SHARD#*/}; [ -z "$SHARD" ] && SK=1 && SN=1
 RUN="$T/results/$(date +%Y%m%d-%H%M%S)"; mkdir -p "$RUN/shots"
-SUM="$RUN/summary.txt"
+SUM="$RUN/summary.txt"; : > "$SUM"   # 걸러서 하나도 안 돌아도 요약은 있음
 row() { echo "$1" | tee -a "$SUM"; }
+
+# 당분간 쓰지 않는 기능의 테스트는 건너뜀 (파일은 남겨 둠, 다시 쓸 때 여기서 빼면 됨)
+#   tower-e2e · tower-test: 점프 던전 (옆에서 보는 사냥 맵, dc#82~). 실시간 탄환 피하기를 먼저 하기로 해서 쉼 (dc#156)
+#   SKIP="" bash test/run.sh tower 로 따로 돌릴 수 있음
+SKIP=${SKIP-"tower-e2e tower-test"}
 
 idx=0
 for f in "$T"/*-e2e.mjs "$T"/*-test.mjs "$T"/parity.mjs; do
   n=$(basename "$f" .mjs)
+  [[ " $SKIP " == *" $n "* ]] && continue   # 건너뛰는 테스트 (조각 나누기 전에 빼서 조각 크기가 고르게)
   [ -n "$FILTER" ] && [[ "$n" != *"$FILTER"* ]] && continue
   idx=$((idx + 1)); [ $(( (idx - 1) % SN )) -ne $((SK - 1)) ] && continue   # 다른 조각의 테스트
   arg="$RUN/shots"

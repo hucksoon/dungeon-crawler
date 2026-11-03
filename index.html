@@ -267,7 +267,8 @@
   @keyframes warn3d { from { opacity: 0.45; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #warn3d { animation: none; } }
   @keyframes hurt3d { from { opacity: 1; } to { opacity: 0; } }
-  #view3d-btn.on { border-color: var(--accent); color: var(--accent); }
+  #view3d-btn.on, #live-btn.on { border-color: var(--accent); color: var(--accent); }
+  body.live .turn-only, body:not(.live) .live-only { display: none !important; }   /* 실시간 2D (dc#157) 도움말 */
   /* 3D 지도 (dc#110): 작게는 왼쪽 아래, 크게는 화면 가운데에 반투명으로 겹침 */
   #map3d { display: none; position: absolute; pointer-events: none; border-radius: 6px; }
   body.view-3d:not(.in-lobby):not(.in-tower) #map3d.small { display: block; right: 8px; top: 8px; border: 1px solid rgba(214, 200, 150, 0.35); }
@@ -749,6 +750,7 @@
     <button id="dex-btn" type="button" data-t>도감 (B)</button>
     <button id="map-btn" class="dungeon-only" type="button"></button>
     <button id="view3d-btn" type="button"></button>
+    <button id="live-btn" type="button" class="joy-only" aria-pressed="false"></button>
     <a id="shop-btn" class="btn" href="shop.html" data-t>상점</a>
     <a id="rank-btn" class="btn" href="ranking.html" data-t>랭킹</a>
     <button id="sound-btn" type="button" aria-label="소리 설정" data-t-aria>🔊</button>
@@ -794,10 +796,12 @@
     <ul id="lobby-list"></ul>
   </div>
   <div id="log"></div>
-  <p class="hint"><span class="keys-only joy-only" data-t>이동: 방향키 / WASD (붙은 몬스터 쪽으로 누르면 가장 가까운 몬스터를 공격) &nbsp;·&nbsp; 회피: Space (움직이던 쪽으로 3칸, 그동안 무적) &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <p class="hint"><span class="keys-only joy-only live-only" data-t>실시간: 방향키 / WASD를 누르고 있으면 계속 걸어요 (대각선도) &nbsp;·&nbsp; 붙은 몬스터는 저절로 공격 &nbsp;·&nbsp; 회피: Space &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 턴제로: T &nbsp;·&nbsp; 포탈(로비로): P<br></span>
+  <span class="keys-only joy-only turn-only" data-t>이동: 방향키 / WASD (붙은 몬스터 쪽으로 누르면 가장 가까운 몬스터를 공격) &nbsp;·&nbsp; 회피: Space (움직이던 쪽으로 3칸, 그동안 무적) &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="keys-only joy-only" data-t>3D 화면: V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 가까운 몬스터에게 저절로 &nbsp;·&nbsp; 회피: Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
   <span class="touch-only hint3d-joy joy-only" data-t>3D 화면: 화면을 누른 채 끌면 스틱 (위·아래 앞뒤, 좌우 돌기) · 가까운 몬스터는 저절로 공격 · 화면을 톡 누르면 회피<br></span>
-  <span class="touch-only hint2d-joy joy-only" data-t>화면을 누른 채 끌면 내 캐릭터에서 손가락 쪽으로 걸어요 (붙은 몬스터는 공격). 화면을 톡 누르면 회피.<br></span>
+  <span class="touch-only hint2d-joy joy-only live-only" data-t>실시간: 화면을 누른 채 끌면 끈 쪽으로 계속 걸어요 (대각선도). 붙은 몬스터는 저절로 공격. 다른 손가락으로 톡 누르면 회피.<br></span>
+  <span class="touch-only hint2d-joy joy-only turn-only" data-t>화면을 누른 채 끌면 내 캐릭터에서 손가락 쪽으로 걸어요 (붙은 몬스터는 공격). 화면을 톡 누르면 회피.<br></span>
   <span class="keys-only old-only" data-t>이동: 방향키 / WASD &nbsp;·&nbsp; 제자리 대기: . (마침표) &nbsp;·&nbsp; 포션: Q (10턴마다) &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 칸 클릭: 자동 이동 &nbsp;·&nbsp; 점프: Space + 방향 &nbsp;·&nbsp; 포탈(로비로): P<br></span>
   <span class="keys-only old-only" data-t>3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br></span>
   <span class="touch-only hint-3d old-only" data-t>3D 화면: ▲▼ 앞뒤 · ◀▶ 돌기 · 화면을 끌어 둘러보기 · 공격 버튼(또는 화면을 톡)으로 공격<br></span>
@@ -2689,6 +2693,7 @@
     if (gameOver || scene !== "dungeon" || !player || Bless.isOpen()) return false;
     if (player.jumpCd > 0) { log(T("회피는 {0}턴 뒤에 다시 할 수 있다.", player.jumpCd), "bad"); return false; }
     if (View3D.active()) return View3D.dodge();
+    if (LIVE?.active()) return LIVE.dodge();   // 실시간 2D (dc#157)
     if (dx == null) ({ dx, dy } = faceDir());
     Walk.stop();
     const free = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H && map[y][x] !== WALL;
@@ -2907,7 +2912,7 @@
     if (dist(e, player) === 1) return false;
     const d = near8(e, player), seen = !!visible[e.y]?.[e.x];
     if (e.rcd <= 0 && seen && d <= RANGED.range) {
-      const wait = View3D.active() ? RANGED.windup3d : RANGED.windup;
+      const wait = realtime() ? RANGED.windup3d : RANGED.windup;
       e.aim = { x: player.x, y: player.y, t: wait }; e.ready = false;
       showDamage(e, "!", true, RANGED.color);
       Sfx("aim");
@@ -2950,7 +2955,7 @@
     if (floorSt.sc > 0) return;
     floorSt.sc = SMASH.every;
     const e = c.sort((a, b) => smashRank(b) - smashRank(a))[0];
-    const wait = View3D.active() ? SMASH.windup3d : SMASH.windup;
+    const wait = realtime() ? SMASH.windup3d : SMASH.windup;
     e.smash = { x: player.x, y: player.y, t: wait }; e.ready = false;
     showDamage(e, "‼", true, SMASH.color);
     Sfx("windup");
@@ -3474,7 +3479,7 @@
     heal(amount);
     Sfx("potion");
     log(T("포션 사용. HP +{0}", player.hp - before), "good");
-    endTurn();
+    if (LIVE?.active()) { render(); updateStats(); saveGame(); } else endTurn();   // 실시간 2D: 시간은 저절로 흐름 (dc#157)
   }
 
   // 나이트메어 층 돌파 보상: 그 층 나이트메어 레전더리 상점 가격 × NM.gold.floor (5골드 단위)
@@ -5480,6 +5485,7 @@
         return;
       }
       stop(); endHold();
+      if (LIVE?.active()) return;   // 실시간 2D (dc#157): 마우스 밀기·칸 누르기 걷기는 없음 (키보드로)
       start = { x: e.clientX, y: e.clientY, t: performance.now() }; swipe = null;
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     });
@@ -5489,6 +5495,11 @@
         joyT.x = e.clientX; joyT.y = e.clientY;
         joyT.moved = Math.max(joyT.moved, Math.hypot(e.clientX - joyT.x0, e.clientY - joyT.y0));
         if (joyT.moved >= 12) joyShow();
+        if (LIVE?.active()) {   // 실시간 2D (dc#157): 끈 쪽 그대로(대각선도), 고리까지 끌면 최고 속도. 가운데 근처면 멈춤
+          const dx = joyT.x - joyT.x0, dy = joyT.y - joyT.y0, l = Math.hypot(dx, dy);
+          if (l < JOY.dead) LIVE.stick(0, 0); else { const k = Math.min(1, (l - JOY.dead) / (JOY.ring - JOY.dead) + 0.35) / l; LIVE.stick(dx * k, dy * k); }
+          return;
+        }
         if (joyT.moved >= JOY.dead && !joyT.timer) { joyStep(); joyT.timer = setInterval(joyStep, 150); }
         return;
       }
@@ -5510,7 +5521,7 @@
       }
       if (joyT && e.pointerId === joyT.id) {
         const tap = !joyT.timer && joyT.moved < 12 && performance.now() - joyT.t0 < 400;
-        clearInterval(joyT.timer); joyT = null; joyShow();
+        clearInterval(joyT.timer); joyT = null; joyShow(); LIVE?.stick(0, 0);
         if (tap && e.type === "pointerup") dodge();
         return;
       }
@@ -5635,11 +5646,12 @@
       },
       // 그릴 때 더할 위치(그리는 좌표)와 효과. 칸이 바뀌었으면 여기서 걷기를 시작함
       of(who) {
-        if (reduceMotion || !who) return ZERO;
+        if (reduceMotion || !who) { if (who && who === player && LIVE?.active()) { const lo = LIVE.offset(); return { ...ZERO, x: lo.x, y: lo.y, walkX: lo.x, walkY: lo.y }; } return ZERO; }
         const t = now(), prev = last.get(who);
+        const liveMe = who === player && LIVE?.active();   // 실시간 2D (dc#157): 내 캐릭터는 걷기 미끄러짐 대신 실제 자리
         if (!prev || prev.x !== who.x || prev.y !== who.y) {
           last.set(who, { x: who.x, y: who.y });
-          if (prev && Math.abs(prev.x - who.x) <= 1 && Math.abs(prev.y - who.y) <= 1) {
+          if (prev && !liveMe && Math.abs(prev.x - who.x) <= 1 && Math.abs(prev.y - who.y) <= 1) {
             const side = -(stride.get(who) || -1);   // 걸음마다 왼발·오른발 번갈아
             stride.set(who, side);
             add(who, "walk", 150, { dx: prev.x - who.x, dy: prev.y - who.y, side });
@@ -5684,6 +5696,7 @@
             if ((Math.floor(t / 280) + phase.get(who)) % 4 >= 2) o.y -= 0.8;
           }
         }
+        if (liveMe) { const lo = LIVE.offset(); o.walkX += lo.x; o.walkY += lo.y; }
         o.x += o.walkX; o.y += o.walkY;
         return o;
       },
@@ -6411,6 +6424,158 @@
   })();
   view3dPop = View3D.popAt;
   fx3d = View3D.fx;
+
+  // ---- 실시간 2D (dc#157, 새 규칙): 칸에 묶이지 않고 부드럽게 걷고, 시간이 흘러 TURN초마다 한 턴 (몬스터·스킬·쿨타임은 지금 규칙 그대로)
+  //   붙은 몬스터는 저절로 때림(TURN초마다 한 번), 회피는 움직이는 쪽으로 미끄러지듯. 3D 화면의 실시간 조작(View3D)과 같은 방식
+  //   켜고 끄기: 위의 버튼 또는 T (기기에 저장, rl_live). 회귀 테스트는 끔(ko-default.cjs) → 칸 단위 턴제 그대로
+  var LIVE = null;
+  LIVE = (() => {
+    const KEY = "rl_live", TURN = 0.4, SPEED = 3.0, R = 0.3, REACH = 1.6;
+    let on = store.get(KEY) !== "off";
+    let pos = null, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, dash = null, moved = false;
+    let dir = { x: 1, y: 0 };   // 마지막으로 움직인 쪽 (멈춰서 회피하면 이쪽)
+    const held = { u: 0, d: 0, l: 0, r: 0 }, stick = { x: 0, y: 0 };
+    const btn = document.getElementById("live-btn");
+    const active = () => on && NEW_CTRL && scene === "dungeon" && !!player && !View3D.active();
+    const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
+    function label() {
+      if (!btn) return;
+      btn.textContent = on ? T("⏱ 실시간") : T("⏸ 턴제");
+      btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", String(on));
+      btn.title = on ? T("시간이 흘러요: 부드럽게 걷고 몬스터는 저절로 때려요. 누르면(또는 T) 턴제로") : T("한 칸 움직일 때마다 한 턴. 누르면(또는 T) 실시간으로");
+      document.body.classList.toggle("live", on && NEW_CTRL);
+    }
+    function toggle() {
+      on = !on; store.set(KEY, on ? "1" : "off"); label(); release();
+      if (scene === "dungeon" && player) { snap(); log(on ? T("⏱ 실시간: 방향키를 누르고 있으면 계속 걷고, 붙은 몬스터는 저절로 때려요. 시간이 흐르니 몬스터도 계속 움직여요!") : T("⏸ 턴제: 한 칸 움직일 때마다 몬스터도 한 번 움직여요."), "info"); }
+      render(); updateStats();
+    }
+    function snap() { if (!player) return; pos = { x: player.x + 0.5, y: player.y + 0.5 }; tile = { x: player.x, y: player.y }; dash = null; }
+    const wallAt = (x, y) => { const tx = Math.floor(x), ty = Math.floor(y); return tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || map[ty][tx] === WALL; };
+    const foeOn = (tx, ty) => enemies.some(e => e.hp > 0 && e.x === tx && e.y === ty);
+    // 몸(반지름 R)이 벽에 걸리거나, 몬스터가 있는 다른 칸으로 들어가면 막힘 (회피 중에는 몬스터 사이를 빠져나감)
+    function blocked(x, y) {
+      if (wallAt(x - R, y - R) || wallAt(x + R, y - R) || wallAt(x - R, y + R) || wallAt(x + R, y + R)) return true;
+      if (dash) return false;
+      const tx = Math.floor(x), ty = Math.floor(y);
+      return (tx !== tile.x || ty !== tile.y) && foeOn(tx, ty);
+    }
+    // (vx, vy)만큼 걸음. 몬스터가 없는 다른 칸에 들어서면 원래 규칙의 "도착"(줍기·상점·계단…)
+    function slide(vx, vy) {
+      let hit = false;
+      if (!blocked(pos.x + vx, pos.y)) pos.x += vx; else hit = true;
+      if (!blocked(pos.x, pos.y + vy)) pos.y += vy; else hit = true;
+      const tx = Math.floor(pos.x), ty = Math.floor(pos.y);
+      if (tx === tile.x && ty === tile.y) return hit;
+      if (foeOn(tx, ty)) return hit;   // 회피로 몬스터 칸을 지나는 중: 내 칸은 그대로
+      tile = { x: tx, y: ty };
+      player.face = Math.abs(dir.x) >= Math.abs(dir.y) ? { dx: Math.sign(dir.x) || 1, dy: 0 } : { dx: 0, dy: Math.sign(dir.y) };
+      Sfx("step", stepFoot ^= 1, "dungeon");
+      const ended = arrive(tx, ty);
+      if (!ended && scene === "dungeon" && !gameOver) { computeFOV(); noteSeen(); updateStats(); }
+      return hit;
+    }
+    function want() {
+      let x = held.r - held.l + stick.x, y = held.d - held.u + stick.y;
+      const l = Math.hypot(x, y);
+      if (l > 1) { x /= l; y /= l; }
+      return { x, y, l: Math.min(1, l) };
+    }
+    function move(dt) {
+      if (dash) {
+        const d = Math.min(dash.left, DODGE.range / (DODGE.ms / 1000) * dt), x0 = pos.x, y0 = pos.y;
+        dash.left -= d;
+        slide(dash.dx * d, dash.dy * d);
+        if (dash.left <= 1e-6 || Math.hypot(pos.x - x0, pos.y - y0) < d * 0.2) {   // 다 갔거나 벽에 막힘
+          dash = null;
+          if (Math.floor(pos.x) !== tile.x || Math.floor(pos.y) !== tile.y) pos = { x: tile.x + 0.5, y: tile.y + 0.5 };   // 몬스터 칸에서 멈췄으면 마지막 빈 칸으로
+        }
+        return;
+      }
+      const w = want();
+      if (w.l < 0.05) return;
+      dir = { x: w.x, y: w.y };
+      if (!moved) { moved = true; Tips.step("walk"); }
+      const sp = SPEED * (player.slow > 0 ? 0.55 : 1) * dt;
+      slide(w.x * sp, w.y * sp);
+      // 칸 가운데 쪽으로 살짝 당겨서 통로·기둥 모서리에 덜 걸리게 (움직이지 않는 축만)
+      const k = Math.min(1, dt * 6);
+      if (Math.abs(w.y) < 0.2 && !blocked(pos.x, Math.floor(pos.y) + 0.5)) pos.y += (Math.floor(pos.y) + 0.5 - pos.y) * k;
+      if (Math.abs(w.x) < 0.2 && !blocked(Math.floor(pos.x) + 0.5, pos.y)) pos.x += (Math.floor(pos.x) + 0.5 - pos.x) * k;
+    }
+    // 회피 (dc#144 → 실시간): 움직이는 쪽(멈춰 있으면 마지막으로 움직인 쪽)으로 DODGE.range칸을 DODGE.ms 동안. 그동안 무적
+    function dodge() {
+      if (!active() || paused() || dash) return false;
+      if (player.jumpCd > 0) { log(T("회피는 {0}턴 뒤에 다시 할 수 있다.", player.jumpCd), "bad"); return false; }
+      const w = want(), v = w.l > 0.1 ? w : dir, l = Math.hypot(v.x, v.y) || 1;
+      dash = { dx: v.x / l, dy: v.y / l, left: DODGE.range };
+      player.jumpCd = DODGE.cooldown;
+      player.invUntil = performance.now() + DODGE.ms + 150;
+      Sfx("roll");
+      showDamage(player, T("회피!"), false, "#8fd3ff");
+      Tips.step("dodge");
+      return true;
+    }
+    // 때릴 몬스터: 붙어 있는(대각선 포함) 몬스터 중 몸에서 가장 가까운 것
+    function target() {
+      let best = null, bd = 1e9;
+      for (const e of enemies) {
+        if (e.hp <= 0 || near8(e, player) > 1) continue;
+        const d = Math.hypot(e.x + 0.5 - pos.x, e.y + 0.5 - pos.y);
+        if (d <= REACH && d < bd) { bd = d; best = e; }
+      }
+      return best;
+    }
+    function swing() {
+      const now = performance.now();
+      if (now < atkReady) return;
+      const e = target();
+      if (!e) return;
+      atkReady = now + TURN * 1000;
+      Anim.newTurn();
+      attack(player, e);
+      if (scene === "dungeon" && !gameOver) { computeFOV(); updateStats(); }
+    }
+    function loop(t) {
+      requestAnimationFrame(loop);
+      if (!active()) { last = 0; return; }
+      const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
+      last = t;
+      if (levelRef !== map || !pos) { snap(); levelRef = map; }
+      else if (player.x !== tile.x || player.y !== tile.y) snap();   // 층이 바뀜·되살아남·순간이동
+      if (!paused()) {
+        move(dt);
+        if (!dash && !gameOver) swing();
+        acc += dt;
+        while (acc >= TURN && active() && !paused()) { acc -= TURN; Anim.newTurn(); endTurn(); }
+      } else acc = 0;
+      if (active()) render();
+    }
+    requestAnimationFrame(loop);
+    // 키: 누르고 있는 동안 걸음 (↑↓←→·WASD), Space·J 회피. 다른 키(I·Q·P…)는 원래대로
+    function key(e, down) {
+      const k = keyName(e), v = down ? 1 : 0;
+      switch (k) {
+        case "arrowup": case "w": held.u = v; return true;
+        case "arrowdown": case "s": held.d = v; return true;
+        case "arrowleft": case "a": held.l = v; return true;
+        case "arrowright": case "d": held.r = v; return true;
+        case " ": case "j": if (down && !e.repeat) dodge(); return true;
+        case ".": return true;   // 실시간에는 제자리 대기가 없음
+      }
+      return false;
+    }
+    function release() { held.u = held.d = held.l = held.r = 0; stick.x = stick.y = 0; }
+    // 휴대폰 스틱 (Walk의 누른 자리 스틱): 끈 만큼(-1~1) 그쪽으로
+    function setStick(x, y) { stick.x = x; stick.y = y; }
+    // 그릴 때: 내 캐릭터가 칸 가운데에서 얼마나 떨어져 있는지 (그리는 좌표)
+    const offset = () => (pos && tile && active() ? { x: (pos.x - 0.5 - tile.x) * TILE, y: (pos.y - 0.5 - tile.y) * TILE } : { x: 0, y: 0 });
+    btn?.addEventListener("click", () => { toggle(); btn.blur(); });
+    label();
+    return { active, toggle, key, release, stick: setStick, dodge, offset, on: () => on, TURN, pos: () => pos && { ...pos }, dashing: () => !!dash };
+  })();
+  // 실시간(3D·실시간 2D)이면 예고 턴을 조금 길게 (한 턴이 0.4~0.5초)
+  const realtime = () => View3D.active() || !!LIVE?.active();
   window.RLView3D = View3D;   // 시험용
 
   // ---- 점프 던전 (dc#82~83, 시험판): 옆에서 보는 실시간 사냥 맵. 물리·맵·몬스터 움직임은 jump.js (RLJump) ----
@@ -10270,8 +10435,8 @@
 
   // ---- 입력 ----
   // 점프 던전: 키를 떼면 멈춤 (창이 가려지면 모두 뗀 것으로)
-  window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); else if (scene === "lobby") Town.key(e, false); else if (View3D.active()) View3D.key(e, false); });
-  window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); else if (scene === "lobby") Town.release(); View3D.release(); });
+  window.addEventListener("keyup", (e) => { if (scene === "jump") Tower.key(e, false); else if (scene === "lobby") Town.key(e, false); else if (View3D.active()) View3D.key(e, false); else LIVE?.key(e, false); });
+  window.addEventListener("blur", () => { if (scene === "jump") Tower.release(); else if (scene === "lobby") Town.release(); View3D.release(); LIVE?.release(); });
   window.addEventListener("keydown", (e) => {
     if (Ads.isOpen() || portalAd) return;  // 광고를 보는 중
     if (!askModal.hidden) {
@@ -10328,7 +10493,8 @@
     }
     if (!modal.hidden || e.target instanceof HTMLInputElement) return;
     if (scene === "jump") { if (Tower.key(e, true)) e.preventDefault(); return; }   // 점프 던전: 누르고 있는 동안 움직임
-    if (View3D.active() && View3D.key(e, true)) { e.preventDefault(); return; }   // 3D 화면 (dc#109): 걷기·돌기·공격 (나머지 I·Q·P 등은 아래로)
+    if (View3D.active() && View3D.key(e, true)) { e.preventDefault(); return; }   // 3D 화면 (dc#109)
+    if (LIVE?.active() && LIVE.key(e, true)) { e.preventDefault(); Walk.stop(); return; }   // 실시간 2D (dc#157): 누르고 있는 동안 걸음: 걷기·돌기·공격 (나머지 I·Q·P 등은 아래로)
     if (scene === "lobby" && Town.key(e, true)) { e.preventDefault(); return; }   // 마을: ← → 걷기 · Space 점프 · ↑ 들어가기 (나머지 I·B 등은 아래로)
     const k = keyName(e);
     let handled = true;
@@ -10342,6 +10508,7 @@
       case "b":                    openDex(); break;
       case "m":                    if (scene === "dungeon") toggleMap(); else handled = false; break;
       case "v":                    View3D.toggle(); break;   // 3D 화면 켜고 끄기 (dc#109)
+      case "t":                    if (NEW_CTRL) LIVE.toggle(); else handled = false; break;   // 실시간·턴제 (dc#157)
       case "arrowup": case "w":    tryMove(0, -1); break;
       case "arrowdown": case "s":  tryMove(0, 1); break;
       case "arrowleft": case "a":  tryMove(-1, 0); break;

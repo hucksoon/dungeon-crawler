@@ -97,7 +97,8 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.addInitScript(([seed, dev, scene, N, lang, auth]) => { if (sessionStorage.getItem("seeded")) return; sessionStorage.setItem("seeded", 1); sessionStorage.setItem("rl_scene", scene);
     localStorage.setItem("rl_device_id", dev); for (const k of N) localStorage.setItem(`${k}:g:${dev}`, "1");
     localStorage.setItem("rl_game_lang", lang); localStorage.setItem("rl_lang", lang); if (auth) localStorage.setItem("rl_auth", auth);
-    if (!("rl_3d" in seed)) localStorage.setItem("rl_3d", "0");   // 3D가 기본이 된 뒤(dc#111)에도 예전 장면은 2D로 (3D 장면은 seed에 rl_3d "1")
+    if (!("rl_3d" in seed)) localStorage.setItem("rl_3d", "0");
+    if (!("rl_live" in seed)) localStorage.setItem("rl_live", "off");   // 실시간 2D(dc#157) 전 장면은 턴제로 (실시간 장면은 seed에 rl_live "1")   // 3D가 기본이 된 뒤(dc#111)에도 예전 장면은 2D로 (3D 장면은 seed에 rl_3d "1")
     // 정식 v2(dc#140) 전 장면은 축복 창·안내 창·자동 장비 없이 (v2 장면은 seed에 넣음)
     for (const [k, v] of [["rl_bless", "off"], ["rl_v2notice", "off"], ["rl_autogear", "0"], ["rl_market", "open"]]) if (!(k in seed)) localStorage.setItem(k, v);
     for (const [k, v] of Object.entries(seed)) localStorage.setItem(k.replace("DEV", dev), v); }, [seed, dev, scene, NOTICES, lang, auth]);
@@ -168,7 +169,8 @@ const press = async (page, keys, gap = 60) => { for (const k of keys) { await pa
 // 플레이어 위치는 가까이 보기 시점(16×12칸, 지도 끝에서 멈춤, 한 칸 = 캔버스 64px)으로 계산
 const record = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page.evaluate(([keys, ms, W, H, every]) => new Promise(done => {
   const out = [], t0 = performance.now();
-  for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
+  // "+키" 누르기 시작 · "-키" 떼기 (실시간 2D에서 누르고 있는 동안 걸음, dc#157) · 그 밖은 한 번 누름
+  for (const [key, at] of keys) setTimeout(() => { const up = key[0] === "-", k = key.length > 1 && (key[0] === "+" || up) ? key.slice(1) : key; window.dispatchEvent(new KeyboardEvent(up ? "keyup" : "keydown", { key: k, bubbles: true })); }, at);
   const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
   const L = JSON.parse(localStorage.getItem("rl_level")), cx = Math.max(0, Math.min(16, L.px + 0.5 - 8)), cy = Math.max(0, Math.min(12, L.py + 0.5 - 6));
   const sx = Math.max(0, Math.min(1024 - W, (L.px - cx + 0.5) * 64 - W / 2)), sy = Math.max(0, Math.min(768 - H, (L.py - cy + 0.5) * 64 - H / 2));
@@ -179,7 +181,8 @@ const record = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page
 // 넓은 지역(dc#143)처럼 지도 크기가 달라도: 지금 내 캐릭터가 있는 화면 자리를 가운데로 잘라 찍음 (keys: [키, ms])
 const recordMe = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => page.evaluate(([keys, ms, W, H, every]) => new Promise(done => {
   const out = [], t0 = performance.now();
-  for (const [key, at] of keys) setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })), at);
+  // "+키" 누르기 시작 · "-키" 떼기 (실시간 2D에서 누르고 있는 동안 걸음, dc#157) · 그 밖은 한 번 누름
+  for (const [key, at] of keys) setTimeout(() => { const up = key[0] === "-", k = key.length > 1 && (key[0] === "+" || up) ? key.slice(1) : key; window.dispatchEvent(new KeyboardEvent(up ? "keyup" : "keydown", { key: k, bubbles: true })); }, at);
   const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
   const L = JSON.parse(localStorage.getItem("rl_level")), me = window.RLWalk.screenOf(L.px, L.py), r = c.getBoundingClientRect();
   const px = (me.x - r.left) / r.width * c.width, py = (me.y - r.top) / r.height * c.height;
@@ -781,6 +784,21 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1100], [".", 1900], ["ArrowLeft", 3300]], 4300, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
+  // dc#157: 실시간 2D — 누르고 있는 동안 부드럽게 걷고(대각선도), 몬스터가 다가오고, 붙으면 저절로 때림, Space로 미끄러지듯 회피
+  ["v16-live", "실시간: 누르고 있는 동안 걷고, 붙은 몬스터는 저절로 때려요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_live: "1", rl_save: save(8, "blog-v16live", { l: 14, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-3, -2, -1, 0, 1, 2, 3].every(k => [-3, -2, -1, 0, 1, 2, 3].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const m = (dx, dy, hp) => ({ ...base, kind: "normal", x: L.px + dx, y: L.py + dy, hp, maxHp: hp, atk: 1, ranged: false, ready: false, smash: null });
+      L.enemies = [m(3, -2, 400), m(3, 2, 400), m(-3, 3, 400), { ...m(12, 12, 99999) }];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999 };
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [["+ArrowRight", 200], ["+ArrowUp", 600], ["-ArrowRight", 900], ["-ArrowUp", 1150], ["+ArrowLeft", 2600], [" ", 2750], ["-ArrowLeft", 3200], ["+ArrowDown", 3600], ["-ArrowDown", 4000]], 5200, { cols: 7, rows: 5, every: 60 }), delay: 33 }; }],   // 실시간은 그릴 것이 많아 한 장에 0.3초 남짓 → 실제 빠르기로
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);
