@@ -5597,7 +5597,7 @@
         if (joyT.moved >= 12) joyShow();
         if (LIVE?.active()) {   // 실시간 2D (dc#157): 끈 쪽 그대로(대각선도), 고리까지 끌면 최고 속도. 가운데 근처면 멈춤
           const dx = joyT.x - joyT.x0, dy = joyT.y - joyT.y0, l = Math.hypot(dx, dy);
-          if (l < JOY.dead) LIVE.stick(0, 0); else { const k = Math.min(1, (l - JOY.dead) / (JOY.ring - JOY.dead) + 0.35) / l; LIVE.stick(dx * k, dy * k); }
+          if (l < JOY.dead) LIVE.stick(0, 0); else { const k = Math.min(1, 0.7 + 0.3 * (l - JOY.dead) / (JOY.ring - JOY.dead)) / l; LIVE.stick(dx * k, dy * k); }   // dc#161: 조금만 끌어도 70% (예전 35%), 고리까지 끌면 100%
           return;
         }
         if (joyT.moved >= JOY.dead && !joyT.timer) { joyStep(); joyT.timer = setInterval(joyStep, 150); }
@@ -5785,7 +5785,7 @@
             o.rot += (f.dx ? -Math.sign(f.dx) : 1) * Math.PI * 2 * ease(p);   // 한 바퀴 구름
             o.y -= arc * TILE * 0.1;
           }
-          else if (f.kind === "lunge") { o.x += f.dx * TILE * 0.38 * arc; o.y += f.dy * TILE * 0.38 * arc; }
+          else if (f.kind === "lunge") { const L = liveMe ? 0.15 : 0.38; o.x += f.dx * TILE * L * arc; o.y += f.dy * TILE * L * arc; }   // 실시간 내 캐릭터는 걸으면서 때리니 짧게 (dc#161)
           else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
           else if (f.kind === "dodge") { o.x += f.dx * TILE * 0.42 * arc; o.y += f.dy * TILE * 0.42 * arc; o.alpha = Math.min(o.alpha, 1 - 0.45 * arc); }
           else if (f.kind === "block") { o.x -= f.dx * TILE * 0.1 * arc; o.y -= f.dy * TILE * 0.1 * arc; o.spark = { dx: f.dx, dy: f.dy, a: p < 0.4 ? 1 : (1 - p) / 0.6 }; }
@@ -5803,7 +5803,8 @@
           // 실시간 걷기 (dc#160): 걸음마다 통통 뛰고 좌우로 살짝 기우뚱, 걷는 쪽을 봄 (예전: 그림이 그대로 미끄러짐)
           const g = LIVE.gait();
           o.flip = g.face;
-          if (g.moving && !busy) { const ph = g.walked * Math.PI / 0.45; o.y -= Math.abs(Math.sin(ph)) * TILE * 0.14; o.rot += Math.sin(ph) * 0.13 + g.face * 0.07; }   // 걷는 쪽으로 몸을 살짝 숙임
+          //   dc#161: 더 낮고 느긋하게 (한 걸음 0.45 → 0.7칸, 높이 0.14 → 0.07칸, 기우뚱 0.13 → 0.05), 멈추거나 걷기 시작할 때 서서히
+          if (g.amp > 0.01) { const ph = g.walked * Math.PI / 0.7; o.y -= Math.abs(Math.sin(ph)) * TILE * 0.07 * g.amp; o.rot += (Math.sin(ph) * 0.05 + g.face * 0.04) * g.amp; }   // 걷는 쪽으로 몸을 살짝 숙임
         }
         o.x += o.walkX; o.y += o.walkY;
         return o;
@@ -6552,11 +6553,11 @@
   //   켜고 끄기: 위의 버튼 또는 T (기기에 저장, rl_live). 회귀 테스트는 끔(ko-default.cjs) → 칸 단위 턴제 그대로
   var LIVE = null;
   LIVE = (() => {
-    const KEY = "rl_live", TURN = 0.4, SPEED = 3.0, R = 0.3, REACH = 1.6;
+    const KEY = "rl_live", TURN = 0.4, SPEED = 3.5, R = 0.3, REACH = 1.6;   // dc#161: 걷기 3.0 → 3.5칸/초
     let on = store.get(KEY) !== "off";
     let pos = null, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, dash = null, moved = false;
     let dir = { x: 1, y: 0 };   // 마지막으로 움직인 쪽 (멈춰서 회피하면 이쪽)
-    let walked = 0, walkAt = -1e9, face = 1, puffAt = 0;   // 걸음 (dc#160): 걸은 거리(칸) · 마지막으로 움직인 때 · 보는 쪽(왼 -1 / 오른 1) · 다음 먼지
+    let walked = 0, walkAt = -1e9, face = 1, puffAt = 0, amp = 0;   // 걸음 (dc#160): 걸은 거리(칸) · 마지막으로 움직인 때 · 보는 쪽(왼 -1 / 오른 1) · 다음 먼지 · 걷는 모습 세기(0~1, dc#161: 서서히 켜지고 꺼짐)
     const held = { u: 0, d: 0, l: 0, r: 0 }, stick = { x: 0, y: 0 };
     const btn = document.getElementById("live-btn");
     const active = () => on && NEW_CTRL && scene === "dungeon" && !!player && !View3D.active();
@@ -6620,17 +6621,20 @@
       dir = { x: w.x, y: w.y };
       if (!moved) { moved = true; Tips.step("walk"); }
       const sp = SPEED * (player.slow > 0 ? 0.55 : 1) * dt, bx = pos.x, by = pos.y;
-      slide(w.x * sp, w.y * sp);
+      const hit = slide(w.x * sp, w.y * sp);
       const went = Math.hypot(pos.x - bx, pos.y - by);
       if (went > 1e-4) {   // 실제로 움직였을 때만 걷는 모습 (벽에 막혀 제자리면 멈춘 모습)
         walked += went; walkAt = performance.now();
         if (Math.abs(w.x) > 0.2) face = w.x < 0 ? -1 : 1;
         if (walked >= puffAt) { puffAt = walked + 0.55; Anim.puff(pos.x - 0.5, pos.y - 0.5, w.x); }
       }
-      // 칸 가운데 쪽으로 살짝 당겨서 통로·기둥 모서리에 덜 걸리게 (움직이지 않는 축만)
-      const k = Math.min(1, dt * 6);
-      if (Math.abs(w.y) < 0.2 && !blocked(pos.x, Math.floor(pos.y) + 0.5)) pos.y += (Math.floor(pos.y) + 0.5 - pos.y) * k;
-      if (Math.abs(w.x) < 0.2 && !blocked(Math.floor(pos.x) + 0.5, pos.y)) pos.x += (Math.floor(pos.x) + 0.5 - pos.x) * k;
+      // 모서리 비켜 가기 (dc#161): 벽 모서리에 걸렸을 때만, 칸 가운데로 가면 지나갈 수 있으면 그쪽으로 살짝 밀어 줌
+      //   예전(dc#157)은 한 방향으로만 걸으면 늘 칸 가운데 줄로 당겨서, 옆으로 비켜 선 자리가 되돌아가 버림 (탄을 피하기 어려움)
+      if (hit) {
+        const ax = Math.abs(w.x) >= Math.abs(w.y), sx = Math.sign(w.x), sy = Math.sign(w.y);
+        if (ax && blocked(pos.x + sx * sp, pos.y)) { const c = Math.floor(pos.y) + 0.5, ny = pos.y + Math.max(-sp, Math.min(sp, c - pos.y)); if (Math.abs(c - pos.y) > 1e-3 && !blocked(pos.x + sx * sp, c) && !blocked(pos.x, ny)) pos.y = ny; }
+        if (!ax && blocked(pos.x, pos.y + sy * sp)) { const c = Math.floor(pos.x) + 0.5, nx = pos.x + Math.max(-sp, Math.min(sp, c - pos.x)); if (Math.abs(c - pos.x) > 1e-3 && !blocked(c, pos.y + sy * sp) && !blocked(nx, pos.y)) pos.x = nx; }
+      }
     }
     // 회피 (dc#144 → 실시간): 움직이는 쪽(멈춰 있으면 마지막으로 움직인 쪽)으로 DODGE.range칸을 DODGE.ms 동안. 그동안 무적
     function dodge() {
@@ -6675,6 +6679,7 @@
       else if (player.x !== tile.x || player.y !== tile.y) snap();   // 층이 바뀜·되살아남·순간이동
       if (!paused()) {
         move(dt);
+        amp += ((performance.now() - walkAt < 120 ? 1 : 0) - amp) * Math.min(1, dt * 10);   // 걷는 모습은 0.1초쯤에 걸쳐 켜지고 꺼짐
         updateShots(dt);   // 실시간 탄환 (dc#158)
         if (!dash && !gameOver) swing();
         acc += dt;
@@ -6704,8 +6709,8 @@
     btn?.addEventListener("click", () => { toggle(); btn.blur(); });
     label();
     // 걷는 모습 (dc#160): walked = 걸은 거리(칸), moving = 방금까지 움직였는지, face = 보는 쪽
-    const gait = () => ({ walked, moving: performance.now() - walkAt < 120, face });
-    return { active, toggle, key, release, stick: setStick, dodge, offset, gait, on: () => on, TURN, pos: () => pos && { ...pos }, dashing: () => !!dash };
+    const gait = () => ({ walked, moving: performance.now() - walkAt < 120, face, amp });
+    return { active, toggle, key, release, stick: setStick, dodge, offset, gait, on: () => on, TURN, SPEED, pos: () => pos && { ...pos }, place: (x, y) => { pos = { x, y }; }, dashing: () => !!dash };   // place: 시험용 (칸 안 자리)
   })();
   // 실시간(3D·실시간 2D)이면 예고 턴을 조금 길게 (한 턴이 0.4~0.5초)
   const realtime = () => View3D.active() || !!LIVE?.active();

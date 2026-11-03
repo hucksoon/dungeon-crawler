@@ -865,6 +865,22 @@ const SCENES = [
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordClock(o.page, [["+ArrowLeft", 200], ["-ArrowLeft", 1100], ["+ArrowRight", 1300], ["-ArrowRight", 2700], ["+ArrowDown", 2800], ["-ArrowDown", 3300]], 4600, { cols: 8, rows: 6, step: 100 }), delay: 10 }; }],
+  ["v20-free", "오른쪽으로 걷다가 위아래로 살짝 비켜 서도 그 자리 그대로 계속 걸어요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_live: "off", rl_save: save(4, "blog-v20free", { l: 6, hp: 99999 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      // 넓은 바닥(가로 22칸)을 만들고 위아래 두 줄에 기둥을 3칸마다: 기둥 줄을 보면 비켜 선 자리가 그대로인지 보임
+      const m = L.map.split(""), x0 = Math.max(1, Math.min(L.w - 23, L.px - 3)), y0 = Math.max(5, Math.min(L.h - 6, L.py));
+      for (let y = y0 - 4; y <= y0 + 4; y++) for (let x = x0; x < x0 + 22; x++) m[y * L.w + x] = "1";
+      for (let x = x0 + 2; x < x0 + 22; x += 3) { m[(y0 - 2) * L.w + x] = "0"; m[(y0 + 2) * L.w + x] = "0"; }
+      L.map = m.join(""); L.px = x0 + 1; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: 1, y: 1, hp: 50, maxHp: 50, slow: 99 }];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999 };
+      localStorage.setItem("rl_live", "1");
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return x >= x0 - 1 && x <= x0 + 22 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordClock(o.page, [["+ArrowRight", 200], ["+ArrowUp", 700], ["-ArrowUp", 850], ["+ArrowDown", 1800], ["-ArrowDown", 2100], ["+ArrowUp", 3000], ["-ArrowUp", 3150], ["-ArrowRight", 4000]], 4800, { cols: 8, rows: 6, step: 100 }), delay: 10 }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);
