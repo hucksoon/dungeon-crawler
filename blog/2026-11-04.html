@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시 — 던전 크롤러 개발 블로그</title>
+<meta name="description" content="부활하면 이제 쓰러진 그 자리에서 HP 가득 찬 채로 이어서 해요. 잡은 몬스터·축복·유물·능력치는 모두 그대로예요. 캐시 5개나 광고로 한 판에 한 번, 부활한 판의 랭킹 기록에는 부활 표시가 붙어요.">
+<link rel="canonical" href="https://game.apacimtest.com/blog/2026-11-04.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시 — 던전 크롤러 개발 블로그">
+<meta property="og:description" content="부활하면 이제 쓰러진 그 자리에서 HP 가득 찬 채로 이어서 해요. 잡은 몬스터·축복·유물·능력치는 모두 그대로예요. 캐시 5개나 광고로 한 판에 한 번, 부활한 판의 랭킹 기록에는 부활 표시가 붙어요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/2026-11-04.html">
+<meta property="og:image" content="https://game.apacimtest.com/blog/images/v21-revive.gif">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="rail rail-l"><div class="rail-ad"></div></aside>
+<main>
+<nav class="nav"><a href="./">← 글 목록</a><a href="https://game.apacimtest.com/">게임 하기</a></nav>
+<article>
+<h1>부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시</h1>
+<p class="meta">2026년 11월 4일 (수) · 개발일기 · 업데이트 · 부활 · 랭킹 · Claude Code</p>
+<p>깊은 층까지 가는 게 랭킹이라, 아깝게 쓰러졌을 때 한 번 더 기회가 있어야 해요. 그런데 지금까지 부활은 쓰러진 층을 <strong>처음부터</strong> 다시 시작했어요. 몬스터도 모두 새로 나와서, 거의 다 잡아 둔 층이면 손해였어요. 값도 캐시 10개였고, 광고 부활은 하루에 한 번뿐이었어요.</p>
+<h2>쓰러진 자리에서 이어서</h2>
+<p>이제 부활하면 <strong>쓰러진 그 자리</strong>에서 HP 가득 찬 채로 이어서 해요. 이 층에서 잡은 몬스터는 그대로 없고, 축복·유물·레벨·능력치·골드도 모두 그대로예요.</p>
+<p>바로 다시 쓰러지지 않게 잠깐 무적이 되고, 붙어 있던 몬스터는 몇 칸 밖으로 밀려나요. 날아오던 탄과 강타 예고도 사라져요.</p>
+<figure><img src="images/v21-revive.gif" alt="몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요" loading="lazy"><figcaption>몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요</figcaption></figure>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
+<h2>캐시 5개 또는 광고</h2>
+<p>부활 값은 캐시 10개에서 <strong>5개</strong>로 내렸어요. 광고를 보고 부활하는 건 <strong>하루 횟수 제한이 없어졌어요.</strong> 대신 지금처럼 <strong>한 판에 한 번</strong>만 쓸 수 있어요. 쓰러진 채로 창을 닫았다가 다시 와도, 그 층 그대로 부활할 수 있어요.</p>
+<figure><img src="images/v21-revive-death.png" alt="쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활" loading="lazy"><figcaption>쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활</figcaption></figure>
+<h2>랭킹에 부활 표시</h2>
+<p>부활을 쓴 판에서 세운 층 기록에는 랭킹에 초록색 <strong>♻ 부활</strong> 표시가 붙어요. 부활 없이 더 깊이 내려가 기록을 새로 세우면 표시는 사라져요. 누가 부활 없이 내려갔는지 랭킹에서 바로 보여요.</p>
+<figure><img src="images/v21-rank.png" alt="랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시" loading="lazy"><figcaption>랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</figcaption></figure>
+</article>
+<nav class="pager"><span><a href="2026-11-03.html">← 저주 구슬은 한 칸만, 경험치 구슬과 축복 상점, 강타와 버티기</a></span><span></span></nav>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+<aside class="rail rail-r"><div class="rail-ad"></div></aside>
+</div>
+<script>if (window.matchMedia && matchMedia("(min-width: 1140px)").matches) document.querySelectorAll(".rail-ad").forEach(function (d) {
+  d.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276"></ins>';
+  (adsbygoogle = window.adsbygoogle || []).push({});
+});</script>
+</body>
+</html>

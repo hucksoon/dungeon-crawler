@@ -36,7 +36,7 @@ function rankingRows() {
   // 예시 화면: 실제 사람처럼 보이지 않게 모두 게스트 번호로
   const names = ["게스트 #3fa2c1", "게스트 #a81d05", "게스트 #9b07de", "게스트 #c4e690", "게스트 #51c8a0", "게스트 #7f2b3e", "게스트 #e2d417", "게스트 #07ab9c"];
   return names.map((name, i) => { const it = I.generate(`blogrank|${i}`, "golden", 70 - i * 6);
-    return { rank: i + 1, id: `b${i}`.padEnd(16, "0"), name, guest: name.startsWith("게스트"), stage: 51 - i * 5, bought: false, itemBought: false, item: { rarity: it.rarity, enh: 10 - i, lvl: it.lvl, name: I.itemName(it), ref: null } }; });
+    return { rank: i + 1, id: `b${i}`.padEnd(16, "0"), name, guest: name.startsWith("게스트"), stage: 51 - i * 5, bought: false, itemBought: false, revived: i === 1 || i === 4, item: { rarity: it.rarity, enh: 10 - i, lvl: it.lvl, name: I.itemName(it), ref: null } }; });
 }
 // 블로그용 무료 선물: 헬 30층까지 간 사람 (구미호의 유니크 + 지옥의 세트 2개, 서버 bonus_make와 같은 시드 모양)
 function giftOffers() {
@@ -75,8 +75,9 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
     //   evPatch: 장면마다 바꿔 보기 (예: 첫날 오전 10시 전, dc#136)
     if (route === "event_status") return json(r, evPatch({ day: "2026-11-02", login: true, price: 6, sku: "event_coin", skins: ["pumpkin_head", "reaper_scythe"], balance: 4, earned: 16, claimed: false,
       event: { id: "halloween-2026", theme: "halloween", start: "2026-10-31", end: "2026-11-13", exchangeUntil: "2026-11-20", open: true, today: 1, skins: ["pumpkin_head", "reaper_scythe"] } }));
-    if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1, fee: 3, bonus: 8 }, adMinSeconds: 1 });
+    if (route === "entry_status") return json(r, { day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 1000, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1000, fee: 3, bonus: 8 }, adMinSeconds: 1 });
     if (route === "ad_start") return json(r, { ticket: "0".repeat(16), minSeconds: 1, left: 7 });
+    if (route === "revive_ad") return json(r, { ok: true, day: "2026-10-28", free: 5, used: 0, left: 5, unlimited: false, ads: { entry: 30, revive: 999, fee: 3, bonus: 8 }, adCaps: { entry: 30, revive: 1000, fee: 3, bonus: 8 }, adMinSeconds: 1 });
     if (route === "bonus_open") return json(r, { hours: 3, ready: false, nextAt: null, tier: "hell", cash: { chance: 0.1, min: 1, max: 3 }, pending: { id: "b10950b10950b109", tier: "hell", offers: giftOffers(), createdAt: Date.now() } });
     if (route === "box_order") return json(r, { ready: true, revoked: false, mail: 10, items: Array.from({ length: 10 }, (_, i) => { const it = I.generate(`box|o77001234|${i}`, "box", 40); return { seed: it.seed, src: "box", lvl: it.lvl, v: 4, r: it.r, enh: 0, id: it.id }; }) });
     return json(r, {}); });
@@ -191,15 +192,17 @@ const recordMe = (page, keys, ms, { cols = 7, rows = 5, every = 40 } = {}) => pa
   grab();
 }), [keys, ms, cols * 64, rows * 64, every]);
 // 시계를 멈추고 step ms씩 돌리며 한 장씩 (dc#159): 탄이 많아 그리기가 느려도 장면이 고르게 담김 (delay = step / 10)
-async function recordClock(page, keys, ms, { cols = 7, rows = 5, step = 80 } = {}) {
-  await page.clock.install(); await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 100);   // 조금 뒤 (바로 지금이면 "과거로 못 감" 오류가 날 때가 있음)
-  await page.evaluate(([W, H]) => {
+// 게임 캔버스에서 내 캐릭터 둘레 W×H만 잘라 찍는 window.__grab (저장된 층의 내 자리 기준)
+const setGrab = (page, cols, rows) => page.evaluate(([W, H]) => {
     const c = document.getElementById("game"), cut = document.createElement("canvas"); cut.width = W; cut.height = H;
     const L = JSON.parse(localStorage.getItem("rl_level")), me = window.RLWalk.screenOf(L.px, L.py), r = c.getBoundingClientRect();
     const px = (me.x - r.left) / r.width * c.width, py = (me.y - r.top) / r.height * c.height;
     const sx = Math.max(0, Math.min(c.width - W, px - W / 2)), sy = Math.max(0, Math.min(c.height - H, py - H / 2));
     window.__grab = () => { cut.getContext("2d").drawImage(c, sx, sy, W, H, 0, 0, W, H); return cut.toDataURL(); };
   }, [cols * 64, rows * 64]);
+async function recordClock(page, keys, ms, { cols = 7, rows = 5, step = 80 } = {}) {
+  await page.clock.install(); await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 100);   // 조금 뒤 (바로 지금이면 "과거로 못 감" 오류가 날 때가 있음)
+  await setGrab(page, cols, rows);
   const out = [], todo = [...keys];
   for (let t = 0; t <= ms; t += step) {
     while (todo.length && todo[0][1] <= t) { const [key] = todo.shift(), up = key[0] === "-", k = key.length > 1 && (key[0] === "+" || up) ? key.slice(1) : key;
@@ -207,6 +210,23 @@ async function recordClock(page, keys, ms, { cols = 7, rows = 5, step = 80 } = {
     await page.clock.runFor(step); out.push(await page.evaluate(() => window.__grab()));
   }
   return out;
+}
+
+// 부활 장면 (dc#162): 넓은 바닥 가운데에서 센 몬스터 넷에게 둘러싸임 (이 층 버티기는 이미 씀), 조금 떨어진 몬스터 셋
+async function reviveYard() {
+  const o = await open({ api: true, dsf: 1.4, seed: { rl_live: "off", rl_save: save(12, "blog-v21rev", { l: 12, hp: 40, mh: 400 }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } });
+  await o.page.keyboard.press("."); await sleep(300);
+  await editLevel(o.page, (L) => {
+    const m = L.map.split(""), x0 = Math.max(5, Math.min(L.w - 6, L.px)), y0 = Math.max(4, Math.min(L.h - 5, L.py));
+    for (let y = y0 - 3; y <= y0 + 3; y++) for (let x = x0 - 5; x <= x0 + 5; x++) m[y * L.w + x] = "1";
+    L.map = m.join(""); L.px = x0; L.py = y0;
+    const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+    const mk = (dx, dy, o = {}) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 9999, maxHp: 9999, ranged: false, ready: false, smash: null, slow: 0, ...o });
+    L.enemies = [mk(1, 0, { atk: 999 }), mk(-1, 0, { atk: 999 }), mk(0, 1, { atk: 999 }), mk(0, -1, { atk: 999 }), mk(4, 2, { atk: 1, slow: 99 }), mk(-4, -2, { atk: 1, slow: 99 }), mk(3, -3, { atk: 1, slow: 99 })];
+    L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+    L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 6 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
+  });
+  return o;
 }
 
 // ---- 장면: 이름, 설명(그림 아래 글), 찍기 ----
@@ -881,6 +901,25 @@ const SCENES = [
       L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return x >= x0 - 1 && x <= x0 + 22 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordClock(o.page, [["+ArrowRight", 200], ["+ArrowUp", 700], ["-ArrowUp", 850], ["+ArrowDown", 1800], ["-ArrowDown", 2100], ["+ArrowUp", 3000], ["-ArrowUp", 3150], ["-ArrowRight", 4000]], 4800, { cols: 8, rows: 6, step: 100 }), delay: 10 }; }],
+  ["v21-rank", "랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시", async () => open({ file: "ranking.html", api: true, dsf: 1.4, viewport: { width: 1000, height: 640 } })],
+  ["v21-revive-death", "쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활", async () => {
+    const o = await reviveYard();
+    await o.page.keyboard.press("."); await sleep(700);   // 둘러싼 몬스터에게 맞아 쓰러짐
+    await o.page.locator("#revive-ad-btn").waitFor({ timeout: 5000 }).catch(() => {});
+    return o; }],
+  ["v21-revive", "몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요", async () => {
+    const o = await reviveYard();
+    await setGrab(o.page, 9, 7);
+    const frames = [], grab = async (n = 1, ms = 90) => { for (let i = 0; i < n; i++) { frames.push(await o.page.evaluate(() => window.__grab())); await sleep(ms); } };
+    await grab(10);
+    await o.page.keyboard.press("."); await grab(12);   // 맞아 쓰러짐
+    await o.page.locator("#revive-ad-btn").click();
+    await o.page.locator("#ad-modal").waitFor({ state: "visible" });
+    await o.page.waitForFunction(() => !document.getElementById("ad-claim").disabled, null, { timeout: 6000 });
+    await o.page.locator("#ad-claim").click();
+    await o.page.waitForFunction(() => document.getElementById("death-modal").hidden, null, { timeout: 6000 });
+    await grab(22);   // 그 자리에서 부활, "부활!", 몬스터는 밀려남
+    return { ...o, frames, delay: 12 }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

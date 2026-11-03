@@ -1991,6 +1991,7 @@
         ...(hellBest ? { hell: hellCleared ? HELL.clearStage : hellBest } : {}),  // 헬 랭킹 (따로)
         ...(hellCleared && abyssBest ? { abyss: abyssCleared ? ABYSS.clearStage : abyssBest } : {}),  // 끝이 없는 구멍 랭킹 (맨 위)
         plvl: player?.plvl || 1,
+        ...(player?.revived ? { rv: 1 } : {}),   // 이번 판에 부활함 (dc#162): 이 판에서 세운 층 기록에 "부활" 표시
         item: item && { ...ref(item), rarity: item.rarity, name: RLItems.itemName(item) },
         gear: Object.values(Inv.equipped()).filter(Boolean).map(ref),
       };
@@ -2033,7 +2034,7 @@
       if (timer || signature(payload()) === sent) return;
       timer = setTimeout(submit, 3000);
     }
-    return { schedule };
+    return { schedule, payload };   // payload: 시험용 (보낼 내용)
   })();
 
   // 상점에서 연 상자의 장비: 보관함 → 가방 (가방이 차면 자리가 날 때까지 보관함에서 기다림)
@@ -2688,7 +2689,7 @@
   //   한 턴을 쓰고 쿨타임 DODGE.cooldown턴 (점프 쿨타임 칸을 같이 씀). 예전 회귀 테스트(rl_oldtown)는 예전 점프 그대로
   const DODGE = { range: 3, cooldown: 4, ms: 260 };
   const NEW_CTRL = !OLD_TOWN;
-  const invuln = () => !!player && ((player.inv || 0) > 0 || player.gd === turn || performance.now() < (player.invUntil || 0));   // gd: 버티기 한 턴 (dc#155)
+  const invuln = () => !!player && ((player.inv || 0) > 0 || player.gd === turn || performance.now() < (player.invUntil || 0) || (player.rvT || 0) > turn);   // rvT: 부활하고 몇 턴 무적 (dc#162)   // gd: 버티기 한 턴 (dc#155)
   const faceDir = () => player?.face || { dx: 1, dy: 0 };
   function dodge(dx, dy) {
     if (gameOver || scene !== "dungeon" || !player || Bless.isOpen()) return false;
@@ -3768,7 +3769,7 @@
     gameOver = true;
     markLastSpot();
     player.deathAt = { x: player.x, y: player.y };   // 새로 시작하면 여기에 묘비 (dc#97)
-    log(T("당신은 {0}에서 쓰러졌다. {1}R을 눌러 로비에서 새로 시작.", floorName(), player.revived ? "" : T("부활하거나 ")), "bad");
+    log(T("당신은 {0}에서 쓰러졌다. {1}R을 눌러 로비에서 새로 시작.", floorName(), canRevive() ? T("부활하거나 ") : ""), "bad");
     saveGame(true);
     openDeath();
   }
@@ -3815,14 +3816,14 @@
       ...(wpCount() ? { wp: { n: waypoints.normal, m: waypoints.nm, h: waypoints.hell } } : {}),
       ...(tomb ? { tb: tomb } : {}),
       run: gameOver ? null : runFields(),
-      dead: gameOver && !player.revived ? runFields() : null,
+      dead: gameOver && canRevive() ? runFields() : null,
     };
   }
 
   // ---- 층 상태: 상점·랭킹에 다녀오거나 새로고침해도 같은 층이 그대로 이어지게 ----
   const LEVEL_KEY = "rl_level";
   function saveLevel() {
-    if (gameOver || !map) { store.del(LEVEL_KEY); return; }
+    if (!map || (gameOver && !canRevive())) { store.del(LEVEL_KEY); return; }   // 부활할 수 있는 동안은 쓰러진 층을 남겨 둠 (그 자리에서 부활, dc#162)
     store.set(LEVEL_KEY, JSON.stringify({
       rid: player.rid, d: depth, z: player.zone, turn, w: MAP_W, h: MAP_H, fs: floorSt,   // 지도 크기·층 진행 (dc#143)
       map: map.map(r => r.join("")).join(""),
@@ -3972,7 +3973,7 @@
 
   // 쓰러진 상태로 다시 열었을 때: 그 판을 불러와 쓰러진 화면을 보여줌 (부활하거나 새로 시작)
   function resumeDead(r) {
-    resumeRun(r, { restore: false });
+    resumeRun(r, { restore: true, quiet: true });   // 쓰러진 층 그대로 (그 자리에서 부활, dc#162). 남아 있지 않으면 새로 만듦
     gameOver = true;
     player.hp = 0;
     updateStats();
@@ -3982,7 +3983,7 @@
     openDeath();
   }
 
-  function resumeRun(r, { restore = true } = {}) {
+  function resumeRun(r, { restore = true, quiet = false } = {}) {
     depth = r.z === "gold" ? r.d : Math.min(RLMonsters.MAX_FLOOR, r.d);  // 최대 층이 생기기 전에 더 내려간 판은 최대 층에서 (골드 던전은 75층 난이도 그대로)
     gameOver = false;
     player = {
@@ -4011,7 +4012,7 @@
     shopRerolls = r.sr || 0;
     player.hp = Math.min(player.hp, stats().maxHp);
     logEl.innerHTML = "";
-    const say = (msg) => { if (scene === "dungeon") log(msg, "info"); };
+    const say = (msg) => { if (scene === "dungeon" && !quiet) log(msg, "info"); };
     if (restore && restoreLevel()) {
       say(T("{0}에서 이어서 시작한다. (떠났던 그 자리)", floorName()));
     } else {
@@ -10330,9 +10331,12 @@
   document.getElementById("portal-btn").addEventListener("click", (e) => { e.currentTarget.blur(); portal(); });
 
   // ---- 부활 ----
-  // 쓰러지면 캐시로 부활권을 사서 바로 사용 → 그 층을 처음부터(몬스터도 새로) HP 가득 찬 채로 다시 시작. 한 판에 한 번
+  // 쓰러지면 캐시로 부활권을 사서 바로 사용, 또는 광고를 보고 → 쓰러진 자리에서 HP 가득 찬 채로 이어서 (dc#162, 예전: 그 층을 처음부터)
+  //   축복·유물·레벨·능력치·골드·이 층에서 잡은 몬스터는 모두 그대로. 잠깐 무적, 가까운 몬스터는 밀려나고 날아오던 탄·예고는 사라짐
+  //   한 판에 한 번 (운영자 기기는 몇 번이든 무료). 부활한 판에서 세운 층 기록은 랭킹에 "부활" 표시 (서버가 장비 기록에 같이 남김)
   // 부활권을 샀는데 사용(소모)에 실패하면 Xsolla 인벤토리에 남고, 다음에 쓰러졌을 때 캐시 없이 쓸 수 있음
-  const REVIVE = { sku: "revive", cash: "cash", price: 10 };  // 가격은 카탈로그에서 읽음 (이건 못 읽었을 때 기본값)
+  const REVIVE = { sku: "revive", cash: "cash", price: 5 };  // 가격은 카탈로그에서 읽음 (이건 못 읽었을 때 기본값). dc#162: 10 → 5캐시
+  function canRevive() { return !!player && (!player.revived || isStaff()); }   // 한 판에 한 번, 운영자는 몇 번이든
   const STORE_API = `https://store.xsolla.com/api/v2/project/${XSOLLA.publisherProjectId}`;
   const deathModal = document.getElementById("death-modal");
   const deathMsg = document.getElementById("death-msg");
@@ -10477,6 +10481,7 @@
     ]);
   }
 
+  const reviveNote = () => T("쓰러진 자리에서 HP 가득 찬 채로 이어서 해요. 축복·유물·레벨·능력치·골드, 이 층에서 잡은 몬스터도 그대로예요. 한 판에 한 번, 이 판의 랭킹 기록에는 ♻ 부활 표시가 붙어요.");
   async function openDeath() {
     deathModal.hidden = false;
     const tombG = Math.floor(player.gold * TOMB.rate);
@@ -10487,9 +10492,11 @@
     ].filter(Boolean).join(" ");
     setDeathMsg("");
     const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-    // 운영자 기기: 되살아나 쓰러진 층으로 바로 (테스트용)
+    // 운영자 기기: 그 자리에서 바로 무료 부활 (몇 번이든, dc#162), 또는 쓰러진 층을 새로 만들어 들어감 (테스트용)
     if (isStaff()) {
-      deathRevive.replaceChildren(el("button", { type: "button", className: "primary staff-revive", textContent: T("운영자: 쓰러진 층으로 바로 (골드·레벨 그대로)"), onclick: () => enterStaffDoor() }));
+      deathRevive.replaceChildren(
+        el("button", { type: "button", className: "primary staff-free", id: "revive-staff-btn", textContent: T("운영자: 그 자리에서 무료 부활"), onclick: () => doRevive("staff") }),
+        el("button", { type: "button", className: "staff-revive", textContent: T("운영자: 쓰러진 층으로 바로 (골드·레벨 그대로)"), onclick: () => enterStaffDoor() }));
       return;
     }
     if (player.revived) {
@@ -10501,7 +10508,7 @@
     if (PORTAL) {
       deathRevive.replaceChildren(
         el("button", { type: "button", className: "primary ad-revive", id: "revive-ad-btn", textContent: T("광고 보고 부활"), onclick: reviveByPortalAd }),
-        el("p", { className: "note", textContent: T("이 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 몬스터도 새로 나와요. 한 판에 한 번만 쓸 수 있어요.") }));
+        el("p", { className: "note", textContent: reviveNote() }));
       return;
     }
     // 광고로 부활 (하루 1회, 계정 없이도): 서버에서 오늘 남은 횟수를 받으면 채움. 서버가 느리거나 없어도 나머지는 바로 보임
@@ -10509,14 +10516,15 @@
     Ads.loadStatus().then(st => {
       if (deathModal.hidden || !gameOver || player.revived || !st) return;
       const left = st.ads?.revive ?? 0;
-      adSlot.replaceChildren(left > 0
-        ? el("button", { type: "button", className: "ad-revive", id: "revive-ad-btn", textContent: T("광고 보고 부활 (오늘 {0}회 남음)", left), onclick: reviveByAd })
-        : el("p", { className: "note", textContent: T("광고 부활은 오늘 다 썼어요. (하루 1회)") }));
+      adSlot.replaceChildren(left > 0   // dc#162: 하루 상한 없음 (서버 ads.php). 한 판에 한 번은 그대로
+        ? el("button", { type: "button", className: "ad-revive", id: "revive-ad-btn", textContent: T("광고 보고 부활"), onclick: reviveByAd })
+        : el("p", { className: "note", textContent: T("지금은 광고로 부활할 수 없어요. 캐시로 부활해 주세요.") }));
     });
     const adButton = () => adSlot;
     if (!Account.configured() || !Account.loggedIn()) {
       deathRevive.replaceChildren(
         adButton(),
+        el("p", { className: "note", textContent: reviveNote() }),
         el("p", { className: "note", textContent: T("계정을 연결하면 캐시 {0}개로도 부활할 수 있어요.", revivePrice) }),
         el("button", { type: "button", textContent: T("계정 연결"), onclick: () => { closeDeath(); openLogin(); } }));
       return;
@@ -10536,7 +10544,7 @@
     const btn = el("button", { type: "button", className: "primary", id: "revive-btn", disabled: short, onclick: () => revive(owned > 0) },
       owned ? T("부활권 사용 (보유 {0}개)", owned) : short ? T("캐시 부족 (필요 ◆ {0})", revivePrice) : T("캐시 {0}개로 부활", revivePrice));
     const parts = [btn, adButton(),
-      el("p", { className: "note" }, T("이 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 몬스터도 새로 나와요. 한 판에 한 번만 쓸 수 있어요."))];
+      el("p", { className: "note" }, reviveNote())];
     if (balance != null) parts.push(el("p", { className: "note" }, T("보유 캐시 "), el("span", { className: "cash", textContent: `◆ ${balance}` })));
     if (short) parts.push(el("a", { className: "btn", href: "shop.html", textContent: T("상점에서 캐시 충전하기 (충전 후 돌아오면 부활할 수 있어요)") }));
     deathRevive.replaceChildren(...parts);
@@ -10546,7 +10554,7 @@
   const sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
   let reviving = false;
   async function revive(owned) {
-    if (reviving || !gameOver || player.revived) return;
+    if (reviving || !gameOver || !canRevive()) return;
     reviving = true;
     const btn = document.getElementById("revive-btn");
     if (btn) btn.disabled = true;
@@ -10560,7 +10568,7 @@
         catch (e) { lastErr = e; await sleepMs(800 * (i + 1)); }
       }
       if (lastErr) throw Object.assign(new Error(T("부활권은 샀지만 사용하지 못했어요. 부활권은 계정에 남아 있으니 다시 눌러 주세요.")), { keep: true });
-      doRevive();
+      doRevive("cash");
     } catch (e) {
       const text = e.code === 5006 ? T("캐시가 부족해요. 상점에서 충전한 뒤 돌아오면 부활할 수 있어요.") : e.message;
       setDeathMsg(text, "bad");
@@ -10573,14 +10581,13 @@
 
   // 광고를 보고 부활 (하루 1회): 광고 → 서버 확인 → 부활
   async function reviveByAd() {
-    if (reviving || !gameOver || player.revived) return;
+    if (reviving || !gameOver || !canRevive()) return;
     reviving = true;
     setDeathMsg(T("광고를 불러오는 중…"));
     try {
       const ticket = await Ads.watch("revive", T("부활"));
       Ads.setStatus(await marketCall("revive_ad", { body: { adTicket: ticket } }));
-      doRevive();
-      log(T("광고를 보고 부활했다."), "good");
+      doRevive("ad");
     } catch (e) {
       setDeathMsg(e.message, "bad");
     } finally {
@@ -10589,29 +10596,66 @@
   }
 
   async function reviveByPortalAd() {
-    if (reviving || !gameOver || player.revived) return;
+    if (reviving || !gameOver || !canRevive()) return;
     reviving = true;
     setDeathMsg(T("광고를 불러오는 중…"));
     try {
-      if (await portalAdBreak(true)) { doRevive(); log(T("광고를 보고 부활했다."), "good"); }
+      if (await portalAdBreak(true)) doRevive("ad");
       else setDeathMsg(T("광고를 끝까지 보지 않았거나 지금은 광고를 불러올 수 없어요."), "bad");
     } finally {
       reviving = false;
     }
   }
 
-  function doRevive() {
+  // 부활 (dc#162): 쓰러진 자리에서 이어서. 층이 남아 있지 않으면(예전 저장·다른 기기) 그 층을 새로 만들어 시작
+  const REVIVE_SAFE = { turns: 3, ms: 2000, push: 2, to: 4 };   // 무적 3턴 + 2초, 2칸 안의 몬스터는 4칸 넘게 밀어냄
+  function doRevive(by = "cash") {
+    if (!player || !gameOver) return;
     gameOver = false;
     player.revived = true;
     player.hp = stats().maxHp;
+    player.potCd = 0; player.jumpCd = 0;
+    clearStatus(player);
+    player.deathAt = null;
     closeDeath();
     if (scene !== "dungeon") setScene("dungeon");  // 로비 입구에서 부활한 경우
-    log(T("부활했다! {0}층을 처음부터 다시 시작한다. (이번 판 부활 사용)", depth), "good");
-    const rooms = generateDungeon();
-    newLevel(rooms);
+    const here = map && onFloor(player);
+    if (here) {
+      reviveClear();
+      log(by === "staff" ? T("운영자: 쓰러진 자리에서 부활했다. HP가 가득 찼다.") : by === "ad" ? T("광고를 보고 쓰러진 자리에서 부활했다! HP가 가득 찼고 잠깐 무적이다. (이번 판 부활 사용)") : T("부활했다! 쓰러진 자리에서 HP 가득 찬 채로 이어서 한다. 잠깐 무적이다. (이번 판 부활 사용)"), "good");
+    } else {
+      log(T("부활했다! {0}층을 처음부터 다시 시작한다. (이번 판 부활 사용)", depth), "good");
+      newLevel(generateDungeon());
+    }
+    player.rvT = turn + REVIVE_SAFE.turns;
+    player.invUntil = performance.now() + REVIVE_SAFE.ms;
+    showDamage(player, T("부활!"), true, "#8fffb0");
+    if (here) { computeFOV(); noteSeen(); }
     render();
     updateStats();
     saveGame(true);
+  }
+  // 부활한 자리를 안전하게: 날아오던 탄·예고를 지우고, 가까운 몬스터는 걸어서 REVIVE_SAFE.to칸 넘게 떨어진 빈 바닥으로
+  function reviveClear() {
+    shots = [];
+    for (const e of enemies) { e.smash = null; e.aim = null; e.charge = null; if (e.ready) e.ready = false; }
+    const D = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(-1)), q = [[player.x, player.y]];
+    D[player.y][player.x] = 0;
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H || D[ny][nx] >= 0 || map[ny][nx] === WALL) continue;
+        D[ny][nx] = D[y][x] + 1; q.push([nx, ny]);
+      }
+    }
+    const taken = (x, y) => enemies.some(o => o.hp > 0 && o.x === x && o.y === y) || (x === player.x && y === player.y);
+    const free = q.map(([x, y]) => ({ x, y, d: D[y][x] })).filter(c => c.d > REVIVE_SAFE.to && map[c.y][c.x] !== STAIRS);
+    for (const e of enemies) {
+      if (e.hp <= 0 || near8(e, player) > REVIVE_SAFE.push) continue;
+      const spot = free.find(c => !taken(c.x, c.y));   // 가장 가까운 것부터 (q는 거리 순)
+      if (spot) { e.x = spot.x; e.y = spot.y; }
+    }
   }
 
   // 쓰러진 화면의 "로비에서 새로 시작": 골드·레벨은 처음으로 (dc#142, 예전 dc#95는 경험치 10%만 잃음). 1층은 입구 왼쪽 문으로

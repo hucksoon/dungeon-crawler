@@ -4,7 +4,7 @@
 //   GET  api.php?r=entry_status          오늘 무료 입장·광고 보상이 몇 번 남았는지
 //   POST api.php?r=entry       { adTicket? }      1층 문으로 새로 시작할 때. 하루 무료 FREE_ENTRIES회, 그 뒤엔 광고 티켓 필요
 //   POST api.php?r=ad_start    { kind }           광고를 보기 전에 티켓 받기 (kind: entry | revive | fee | bonus). 하루 상한 확인
-//   POST api.php?r=revive_ad   { adTicket }       광고 보고 부활 (하루 AD_CAPS['revive']회)
+//   POST api.php?r=revive_ad   { adTicket }       광고 보고 부활 (dc#162: 하루 상한 사실상 없음. 한 판에 한 번은 게임이 지킴)
 //   거래소 수수료 면제는 market_buy { id, adTicket }
 //
 // 광고를 끝까지 봤다는 신호는 브라우저에서 와서 서버가 확인할 수 없음. 그래서
@@ -14,7 +14,7 @@
 // 하루는 한국 시간 자정에 바뀜. 개발자 계정은 입장 횟수 제한이 없음 (광고 상한은 같음)
 
 const FREE_ENTRIES = 5;
-const AD_CAPS = ['entry' => 30, 'revive' => 1, 'fee' => 3, 'bonus' => 8];   // bonus: 무료 선물 (bonus.php, 3시간마다)
+const AD_CAPS = ['entry' => 30, 'revive' => 1000, 'fee' => 3, 'bonus' => 8];   // bonus: 무료 선물 (bonus.php, 3시간마다). revive: dc#162 사실상 제한 없음 (예전 1)
 const AD_TICKET_TTL_MS = 30 * 60 * 1000;
 
 function ads_tables(PDO $pdo): void {
