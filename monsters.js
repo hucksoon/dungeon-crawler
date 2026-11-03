@@ -244,6 +244,18 @@
   //   회복 구슬: HP가 below 아래일 때 몬스터를 쓰러뜨리면 chance(정예·보스 big) 확률로 빨간 구슬. 주우면 최대 HP × heal
   //   버티기: 층마다 한 번, 쓰러질 피해를 받으면 HP 1로 남고 그 턴의 남은 피해는 막음 + 회피·포션 바로 준비
   const RESCUE = { below: 0.5, chance: 0.3, big: 1, heal: 0.15, color: "#ff4d6d" };
+  // 실시간 탄환 (dc#158, 실시간 2D·3D에서만. 턴제는 지금처럼 칸 표시): 화면을 실제로 날아가는 구슬. 몸(반지름 0.3칸)에 닿으면 맞고, 벽에 닿으면 사라짐
+  //   쏘기 전 windup턴 동안 몬스터가 모아 쏘는 표시(빛나는 고리 + 겨누는 선) → 쏘는 순간 내 자리를 향해. 옆으로 비키거나 회피(무적)면 안 맞음
+  //   speed: 초당 칸 (내 걸음 3칸보다 빠르지만 3~5칸 떨어져 있으면 0.6~1초 걸림), r: 구슬 반지름(칸), life: 초, range: 이 칸 안에서 보일 때만 쏨
+  //   ranged: 원거리 몬스터 (칸에 떨어지는 저주 구슬 대신) 하나를 곧게 · every턴마다
+  //   elite: from층부터 정예가 가끔 세 갈래 (부채꼴 spread 라디안) · boss: 보스·네임드가 부채꼴(fan)과 둘레 전체(ring)를 번갈아
+  //   mul: 몬스터 공격력 × (방어력으로 줄어듦, 받는 피해 감소 적용)
+  const SHOTS = {
+    speed: 5, r: 0.22, life: 3, range: 7,
+    ranged: { every: 4, windup: 2, mul: 2, color: "#ff2e4d" },
+    elite: { from: 3, every: 7, windup: 2, n: 3, spread: 0.3, mul: 0.8, color: "#ffcf5c" },
+    boss: { every: 5, windup: 2, fan: { n: 5, spread: 0.26, mul: 0.8 }, ring: { n: 12, mul: 0.6 }, color: "#c77dff" },
+  };
   const v2mul = (m, k) => { const hp = Math.round(m.hp * k.hp); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k.atk) }; };
   const normalMul = (n, c = NORMAL.curve, ease = 0) => 1 + NORMAL.ramp * Math.pow((Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1), c) * (ease ? Math.min(1, (Math.max(1, n) - 1) / ease) : 1);
   const normalAtkMul = (n) => normalMul(n, NORMAL.atkCurve, NORMAL.atkEase);
@@ -513,7 +525,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, SHOTS, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

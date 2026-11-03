@@ -16,7 +16,7 @@ const HOOK = `
     // 원거리 몬스터 하나: 나에게서 오른쪽 4칸 (가는 길은 바닥), HP 많음
     one: () => { enemies = []; items = []; for (let dx = -4; dx <= 5; dx++) for (let dy = -2; dy <= 2; dy++) { const x = player.x + dx, y = player.y + dy; if (map[y]?.[x] !== undefined) { map[y][x] = FLOOR; visible[y][x] = true; } }
       const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(30, Math.random), "normal", 20), x: player.x + 4, y: player.y, ranged: true, rcd: 0 }; e.hp = e.maxHp = 1e6; e.atk = 60; enemies.push(e); player.hp = player.maxHp; render(); },
-    st: () => { const e = enemies[0]; return { hp: player.hp, px: player.x, py: player.y, ex: e?.x, ey: e?.y, aim: e?.aim ? { ...e.aim } : null, rcd: e?.rcd }; },
+    st: () => { const e = enemies[0]; return { hp: player.hp, px: player.x, py: player.y, ex: e?.x, ey: e?.y, aim: e?.aim ? { ...e.aim } : null, charge: e?.charge ? { ...e.charge } : null, shots: shots.length, rcd: e?.rcd }; },
     wait: () => { Anim.newTurn(); endTurn(); },
     step: (dx, dy) => tryMove(dx, dy),
     near: () => { const e = enemies[0]; e.x = player.x + 2; e.y = player.y; e.aim = null; e.rcd = 3; },
@@ -90,8 +90,9 @@ try {
   const D = await open({ ...BASE, rl_3d: "1", rl_save: save({ d: 25 }) });
   await sleep(1500);
   await T(D.page, "one");
-  let a3 = null; for (let i = 0; i < 40 && !a3?.aim; i++) { await sleep(50); a3 = await T(D.page, "st"); }
-  check("3D: aims with 3 turns to get out (about 1.5 s)", a3?.aim?.t === M.RANGED.windup3d, JSON.stringify(a3));
+  // 3D는 실시간이라 (dc#158) 칸 표시 대신 진짜로 날아가는 구슬: 2턴 모았다가 내 쪽으로 쏨
+  let a3 = null; for (let i = 0; i < 40 && !a3?.charge; i++) { await sleep(50); a3 = await T(D.page, "st"); }
+  check("3D (real time, dc#158): charges a real orb for 2 turns instead of a tile mark", a3?.charge?.t === M.SHOTS.ranged.windup && !a3.aim, JSON.stringify(a3));
   await sleep(150); await D.page.screenshot({ path: path.join(SHOTS, "run149-3d.png") }).catch(() => {});
   await sleep(2200);
   const d3 = await T(D.page, "st");

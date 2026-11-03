@@ -123,6 +123,8 @@
     // 강타 (dc#155): windup = 무겁게 차오르는 낮은 으르렁 (점점 올라감), smash = 바닥을 내려찍는 쿵 + 돌 부서지는 소리
     windup() { tone("sawtooth", 70, 140, 0.45, 0.16, 0, sfxBus, { lp: 500 }); tone("square", 55, 110, 0.45, 0.06, 0.05, sfxBus, { lp: 400 }); },
     smash() { tone("sine", 120, 32, 0.45, 0.42); noise("lowpass", 1100, 70, 0.35, 0.4); noise("bandpass", 2400, 900, 0.14, 0.14, 0.03, sfxBus, 1.2); },
+    // 실시간 탄환 (dc#158): 쏠 때 짧게 내려가는 '퓻'
+    shoot() { tone("square", jit(880), 330, 0.09, 0.07, 0, sfxBus, { lp: 2600 }); noise("bandpass", 2200, 900, 0.06, 0.08); },
     // 버티기 (dc#155): 심장 박동 두 번 + 높게 울리는 종
     guard() { tone("sine", 70, 45, 0.16, 0.4); tone("sine", 70, 45, 0.16, 0.34, 0.22); tone("triangle", 880, 880, 0.6, 0.12, 0.05); tone("triangle", 1320, 1320, 0.5, 0.08, 0.1); },
     // 회복 구슬 줍기 (dc#155): 부드럽게 올라가는 두 음
@@ -206,7 +208,7 @@
     enhance() { tone("square", 400, 400, 0.05, 0.1, 0, sfxBus, { lp: 2000 }); noise("highpass", 2000, 2000, 0.05, 0.15); tone("triangle", 1500, 2400, 0.25, 0.1, 0.05); },
   };
   // 같은 소리를 다시 낼 수 있는 최소 간격 (초). 여러 마리를 한 번에 때려도 귀가 아프지 않게
-  const GAP = { step: 0.07, land: 0.08, jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1, roll: 0.12, aim: 0.25, curse: 0.12, windup: 0.3, smash: 0.12, guard: 0.5, healOrb: 0.08 };
+  const GAP = { step: 0.07, land: 0.08, jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1, roll: 0.12, aim: 0.25, curse: 0.12, windup: 0.3, smash: 0.12, guard: 0.5, healOrb: 0.08, shoot: 0.06 };
 
   function play(name, ...args) {
     recent.push(name); if (recent.length > 60) recent.shift();

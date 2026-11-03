@@ -118,6 +118,9 @@ const SM = OPT.smash === false ? null : { ...M.SMASH, ...(OPT.sm || {}), pct: { 
 const RS = OPT.rescue === false ? null : { ...M.RESCUE, ...(OPT.rs || {}) }, GUARD = !!RS && OPT.guard !== false;
 // 아슬아슬 (dc#155): 층을 살아서 넘겼는데 그 층에서 HP가 최대의 CLOSE 아래로 내려간 적이 있으면 "아슬아슬한 층"
 const CLOSE = OPT.close ?? 0.3;
+// 실시간 탄환 (dc#158, 실시간 2D·3D): 정예(from층부터, 깊은 던전은 처음부터)·보스가 every턴마다 windup턴 모았다가 쏨 (모으는 동안 근접 공격 없음)
+//   한 번 쏠 때 한 발 맞을 확률 1 − OPT.pdodge (기본 0.7: 보고 비키면 피함). OPT.shots: false면 없음 (턴제와 같음)
+const SH = OPT.shots === false ? null : M.SHOTS, P_DODGE = OPT.pdodge ?? 0.7;
 // OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
 function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
@@ -209,6 +212,15 @@ function fight(p, s, foes, st, r, zone, f) {
       if (m.slowImm > 0) m.slowImm--;
       if (m.slow > 0) { m.slow--; if (turn % 2) continue; }   // 느려짐: 2턴에 한 번
       if (st.smash?.m === m) continue;
+      // 실시간 탄환: 게임에서는 2칸 넘게 떨어져 다가오는 동안 쏘고 붙으면 근접 → 여기서는 근접 공격에 더해 every턴마다 한 번 (맞을 확률 1 − P_DODGE)
+      const shK = SH && (m.kind === "boss" ? "boss" : m.kind === "elite" && (zone !== "normal" || f >= SH.elite.from) ? "elite" : null);
+      if (shK) {
+        if (m.shc == null) m.shc = 1 + Math.floor(r() * SH[shK].every);
+        if (--m.shc <= 0) {
+          m.shc = SH[shK].every;
+          if (r() >= P_DODGE) { const mul = shK === "boss" ? SH.boss.fan.mul : SH.elite.mul; let d = M.damageToPlayer(m.atk * mul + Math.floor(r() * 2), s.def) * (1 - s.dr / 100); if (zone !== "normal") d *= ELEM_MUL; if (hurt(d)) break; }
+        }
+      }
       if (m.ranged && foes.length > 1) {   // 다른 몬스터가 남아 있는 동안은 떨어져서 던짐 (혼자 남으면 붙어서 싸움)
         if (--m.rcd > 0) continue;
         m.rcd = RG.every + RG.windup;

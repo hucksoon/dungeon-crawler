@@ -786,8 +786,8 @@ const SCENES = [
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1100], [".", 1900], ["ArrowLeft", 3300]], 4300, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
   // dc#157: 실시간 2D — 누르고 있는 동안 부드럽게 걷고(대각선도), 몬스터가 다가오고, 붙으면 저절로 때림, Space로 미끄러지듯 회피
   ["v16-live", "실시간: 누르고 있는 동안 걷고, 붙은 몬스터는 저절로 때려요", async () => {
-    const o = await open({ dsf: 1.4, seed: { rl_live: "1", rl_save: save(8, "blog-v16live", { l: 14, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
-    await sleep(300);
+    const o = await open({ dsf: 1.4, seed: { rl_live: "off", rl_save: save(8, "blog-v16live", { l: 14, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
     await editLevel(o.page, (L) => {
       const ok = (x, y) => L.map[y * L.w + x] === "1";
       const fit = (x, y) => [-3, -2, -1, 0, 1, 2, 3].every(k => [-3, -2, -1, 0, 1, 2, 3].every(j => ok(x + k, y + j)));
@@ -796,9 +796,26 @@ const SCENES = [
       const m = (dx, dy, hp) => ({ ...base, kind: "normal", x: L.px + dx, y: L.py + dy, hp, maxHp: hp, atk: 1, ranged: false, ready: false, smash: null });
       L.enemies = [m(3, -2, 400), m(3, 2, 400), m(-3, 3, 400), { ...m(12, 12, 99999) }];
       L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999 };
+      localStorage.setItem("rl_live", "1");   // 턴제로 꾸민 뒤 다시 불러올 때 실시간 (실시간은 계속 저장해서 꾸민 층을 덮어씀)
       L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [["+ArrowRight", 200], ["+ArrowUp", 600], ["-ArrowRight", 900], ["-ArrowUp", 1150], ["+ArrowLeft", 2600], [" ", 2750], ["-ArrowLeft", 3200], ["+ArrowDown", 3600], ["-ArrowDown", 4000]], 5200, { cols: 7, rows: 5, every: 60 }), delay: 33 }; }],   // 실시간은 그릴 것이 많아 한 장에 0.3초 남짓 → 실제 빠르기로
+  // dc#158: 실시간 탄환 — 보스가 둘레 12발, 정예가 세 갈래를 모았다가 쏨 → 옆으로 비켜 틈으로
+  ["v17-shots", "실시간 탄환: 보스의 둘레 탄과 정예의 세 갈래를 보고 피해요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_live: "off", rl_save: save(10, "blog-v17shots", { l: 16, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-4, -3, -2, -1, 0, 1, 2, 3, 4].every(k => [-3, -2, -1, 0, 1, 2, 3].every(j => ok(x + k, y + j)));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const m = (dx, dy, o) => ({ ...base, x: L.px + dx, y: L.py + dy, hp: 99999, maxHp: 99999, atk: 1, ranged: false, ready: false, smash: null, ...o });
+      L.enemies = [m(3, 0, { kind: "boss", scd: 1, pat: "fan" }), m(-4, -2, { kind: "elite", scd: 3 }), m(12, 12, { kind: "normal" })];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999 };
+      localStorage.setItem("rl_live", "1");   // 턴제로 꾸민 뒤 다시 불러올 때 실시간 (실시간은 계속 저장해서 꾸민 층을 덮어씀)
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [["+ArrowDown", 1300], ["-ArrowDown", 1650], ["+ArrowLeft", 2300], ["-ArrowLeft", 2600]], 4200, { cols: 7, rows: 5, every: 40 }), delay: 45 }; }],   // 탄이 많으면 한 장에 0.4~0.5초 → 실제 빠르기로
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);
