@@ -1362,5 +1362,8 @@
     "한 칸 움직일 때마다 한 턴. 누르면(또는 T) 실시간으로": "One turn per tile you move. Click (or T) for real time",
     "⏱ 실시간: 방향키를 누르고 있으면 계속 걷고, 붙은 몬스터는 저절로 때려요. 시간이 흐르니 몬스터도 계속 움직여요!": "⏱ Real time: hold the arrow keys to keep walking; adjacent monsters are hit automatically. Time flows, so monsters keep moving too!",
     "⏸ 턴제: 한 칸 움직일 때마다 몬스터도 한 번 움직여요.": "⏸ Turn-based: monsters move once each time you move a tile.",
+    "{0}의 탄에 맞아 {1} 피해를 입음.{2}": "{0}'s shot hits you for {1}.{2}",
+    "{0}이(가) 둘레로 탄을 퍼뜨리려 한다! 틈으로 비키거나 회피!": "{0} is about to fire a ring of shots! Slip through a gap or dodge!",
+    "{0}이(가) 부채꼴로 탄을 쏘려 한다! 옆으로 비키세요!": "{0} is about to fire a fan of shots! Step aside!",
   } });
 })(typeof self !== "undefined" ? self : this);
