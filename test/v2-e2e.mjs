@@ -185,7 +185,7 @@ try {
   await sleep(500);
   const sf = await st(F.page);
   check("continued into nightmare 1 with the same blessings", sf.zone === "nm" && sf.depth === 1 && sf.bl.might === 3 && sf.rl.hawk === 1 && sf.scene === "dungeon", JSON.stringify(sf));
-  check("nightmare floor 1: a new blessing pick", sf.pq >= 1);
+  check("nightmare floor 1: no blessing on floor 1 of any dungeon (dc#163)", sf.pq === 0, String(sf.pq));
   check("F: no page errors", F.errors.length === 0, F.errors.join("; "));
   await F.ctx.close();
 } catch (e) {

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[네이버 옮기기] 부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시</title>
-<meta name="description" content="부활하면 이제 쓰러진 그 자리에서 HP 가득 찬 채로 이어서 해요. 잡은 몬스터·축복·유물·능력치는 모두 그대로예요. 캐시 5개나 광고로 한 판에 한 번, 부활한 판의 랭킹 기록에는 부활 표시가 붙어요.">
+<title>[네이버 옮기기] 부활은 그 자리에서, 각성 스킬과 새 축복, 몬스터 공격 속성, 가까운 계단</title>
+<meta name="description" content="부활하면 쓰러진 그 자리에서 이어서 해요. 속성 스킬이 Lv 10이 되면 각성 스킬이 열리고, 흡혈귀의 이빨·완벽한 물약·속성 저항 유물이 생겼어요. 10층부터 몬스터 공격에 속성이 붙고, 넓은 층에서는 계단이 화면 안 가까운 곳에 나와요.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-04.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -12,8 +12,8 @@
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
 <meta property="og:type" content="article">
-<meta property="og:title" content="[네이버 옮기기] 부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시">
-<meta property="og:description" content="부활하면 이제 쓰러진 그 자리에서 HP 가득 찬 채로 이어서 해요. 잡은 몬스터·축복·유물·능력치는 모두 그대로예요. 캐시 5개나 광고로 한 판에 한 번, 부활한 판의 랭킹 기록에는 부활 표시가 붙어요.">
+<meta property="og:title" content="[네이버 옮기기] 부활은 그 자리에서, 각성 스킬과 새 축복, 몬스터 공격 속성, 가까운 계단">
+<meta property="og:description" content="부활하면 쓰러진 그 자리에서 이어서 해요. 속성 스킬이 Lv 10이 되면 각성 스킬이 열리고, 흡혈귀의 이빨·완벽한 물약·속성 저항 유물이 생겼어요. 10층부터 몬스터 공격에 속성이 붙고, 넓은 층에서는 계단이 화면 안 가까운 곳에 나와요.">
 <meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-04.html">
 
 <style>
@@ -78,12 +78,12 @@
 <body>
 <main>
 <nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-04.html">블로그 글 보기</a></nav>
-<h1 id="title-text">부활은 쓰러진 자리에서 이어서, 5캐시, 랭킹에 부활 표시</h1>
-<p class="meta">2026년 11월 4일 (수) · 태그: 개발일기, 업데이트, 부활, 랭킹, Claude Code</p>
+<h1 id="title-text">부활은 그 자리에서, 각성 스킬과 새 축복, 몬스터 공격 속성, 가까운 계단</h1>
+<p class="meta">2026년 11월 4일 (수) · 태그: 개발일기, 업데이트, 부활, 랭킹, 축복, 밸런스, Claude Code</p>
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 3장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v21-revive.gif" download="2026-11-04-1-v21-revive.gif">1. 몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요</a> · <a href="../images/v21-revive-death.png" download="2026-11-04-2-v21-revive-death.png">2. 쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활</a> · <a href="../images/v21-rank.png" download="2026-11-04-3-v21-rank.png">3. 랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</a></p>
+<p class="steps">이미지 8장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v21-revive.gif" download="2026-11-04-1-v21-revive.gif">1. 몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요</a> · <a href="../images/v21-revive-death.png" download="2026-11-04-2-v21-revive-death.png">2. 쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활</a> · <a href="../images/v21-rank.png" download="2026-11-04-3-v21-rank.png">3. 랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</a> · <a href="../images/v22-awake.gif" download="2026-11-04-4-v22-awake.gif">4. 불의 장화로 지나간 자리에 불이 붙고, 전자기장이 주변 몬스터를 한꺼번에 깎아요</a> · <a href="../images/v22-bless.png" download="2026-11-04-5-v22-bless.png">5. 속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로</a> · <a href="../images/v22-relic.png" download="2026-11-04-6-v22-relic.png">6. 보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)</a> · <a href="../images/v22-nelem.png" download="2026-11-04-7-v22-nelem.png">7. 10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해</a> · <a href="../images/v22-stairs.png" download="2026-11-04-8-v22-stairs.png">8. 넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요</a></p>
 <div id="paper">
 <p>깊은 층까지 가는 게 랭킹이라, 아깝게 쓰러졌을 때 한 번 더 기회가 있어야 해요. 그런데 지금까지 부활은 쓰러진 층을 <strong>처음부터</strong> 다시 시작했어요. 몬스터도 모두 새로 나와서, 거의 다 잡아 둔 층이면 손해였어요. 값도 캐시 10개였고, 광고 부활은 하루에 한 번뿐이었어요.</p>
 <p><br></p>
@@ -106,6 +106,58 @@
 <p><br></p>
 <p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v21-rank.png" alt="랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시" style="max-width:100%;height:auto;"></p>
 <p style="text-align:center;"><span style="font-size:13px;color:#888888;">랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">35층에 오면 거의 다 만렙이었어요</span></b></p>
+<p>레벨이 오를 때마다 축복을 하나씩 골랐더니, 35층쯤이면 속성 스킬은 Lv 10이고 공격력·HP·방어력 축복도 거의 끝까지 올라 있었어요. 더 고를 게 없으니 축복 고르는 재미도 줄었어요.</p>
+<p><br></p>
+<p>그래서 축복은 이제 <strong>2레벨마다</strong> 하나씩 골라요. 던전에 처음 들어갈 때(1층) 받던 축복도 없앴어요. 대신 끝까지 올린 다음에 고를 것을 새로 만들었어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">각성 스킬</span></b></p>
+<p>속성 스킬이 <strong>Lv 10</strong>이 되면, 그 속성의 <strong>각성 스킬</strong>이 축복 후보로 나와요. 각성 스킬도 Lv 10까지 올라가요.</p>
+<p><br></p>
+<p>• 👢 <strong>각성 불의 장화</strong>: 내가 지나간 칸에 잠깐 불이 붙어요. 그 위를 밟은 몬스터는 턴마다 불 피해를 입어요</p>
+<p>• 🧊 <strong>각성 얼음 보호막</strong>: 방어력이 올라요 (Lv 10이면 +50%)</p>
+<p>• 🧲 <strong>각성 전자기장</strong>: 몇 턴마다 둘레 몬스터의 <strong>최대 HP를 %로</strong> 깎아요. 다른 스킬보다 자주 터지지는 않지만, 레벨이 오르면 범위가 1칸에서 4칸까지 넓어져요. 보스는 절반만 깎여요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v22-awake.gif" alt="불의 장화로 지나간 자리에 불이 붙고, 전자기장이 주변 몬스터를 한꺼번에 깎아요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">불의 장화로 지나간 자리에 불이 붙고, 전자기장이 주변 몬스터를 한꺼번에 깎아요</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">새 축복과 유물</span></b></p>
+<p>• 🩸 <strong>흡혈귀의 이빨</strong>: 흡혈 +2% (최대 5번)</p>
+<p>• ⚗ <strong>완벽한 물약</strong>: 물약 장인을 끝까지 올리면 나와요. 한 번 고르면 포션 회복량 +50%, 두 번 고르면 포션 하나로 HP가 가득 차요</p>
+<p>• 넓은 눈·숨 고르기·황금 손은 뺐어요</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v22-bless.png" alt="속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로</span></p>
+<p><br></p>
+<p>보스를 쓰러뜨리면 고르는 유물에는 <strong>속성 저항</strong> 넷이 생겼어요. 🔥 불꽃 비늘 · ❄ 서리 깃털 · ⚡ 피뢰침 · 🧪 해독 약초. 아래 몬스터 공격 속성을 덜 받게 해 줘요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v22-relic.png" alt="보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">몬스터 공격에도 속성이 붙어요</span></b></p>
+<p>일반 던전 <strong>10층부터</strong> 몬스터 일부의 공격에 속성이 붙어요. 깊이 내려갈수록 많아져요. 몬스터 옆의 작은 색 점으로 알 수 있어요.</p>
+<p><br></p>
+<p>• 🔥 <strong>불</strong>: 맞으면 화상, 몇 턴 동안 조금씩 피해</p>
+<p>• 🧪 <strong>독</strong>: 화상과 비슷하게 턴마다 피해</p>
+<p>• ❄ <strong>얼음</strong>: 잠깐 방어력이 깎여요</p>
+<p>• ⚡ <strong>번개</strong>: 회피를 한 턴 늦게 쓸 수 있어요</p>
+<p><br></p>
+<p>화상과 독은 <strong>맞은 피해</strong>를 기준으로 계산해서, 방어력이 높으면 같이 작아져요. 버티기로 HP 1이 남으면 화상과 독도 풀려요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v22-nelem.png" alt="10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">계단은 화면 안 가까운 곳에</span></b></p>
+<p>20층이 넘으면 층이 아주 넓은데, 마지막 몬스터를 잡으면 계단이 너무 먼 곳에 생겼어요. 이제는 <strong>지금 보이는 화면 안</strong>에서, 바로 옆은 아니고 몇 칸 걸어가야 하는 곳에 계단이 나와요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v22-stairs.png" alt="넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">나이트메어와 헬도 맞췄어요</span></b></p>
+<p>축복 2레벨마다, 몬스터 공격 속성까지 넣고 1층부터 한 판을 시뮬레이션으로 많이 돌려 봤어요. 일반 던전 50층까지 가는 비율은 예전과 비슷한 약 60%예요.</p>
+<p><br></p>
+<p>그런데 나이트메어와 헬은 오히려 너무 쉬워졌어요. 약한 축복 셋이 빠지니 고르는 축복이 모두 쓸모 있는 것이 되어서예요. 그래서 나이트메어와 헬 몬스터를 조금 세게 했어요. 이어서 들어가면 나이트메어 약 84%, 헬 약 52%가 끝까지 가요 (예전 83%, 40%).</p>
 <p><br></p>
 <p><br></p>
 <p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-04.html">https://game.apacimtest.com/blog/2026-11-04.html</a></p>

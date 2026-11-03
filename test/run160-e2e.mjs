@@ -1,4 +1,4 @@
-// dc#160: 실시간에서 걷는 모습(통통·기우뚱·걷는 쪽을 봄·먼지)과 베기, 계단은 멀리 + 화면 가장자리 화살표, 길잡이 축복 뺌,
+// dc#160: 실시간에서 걷는 모습(통통·기우뚱·걷는 쪽을 봄·먼지)과 베기, 계단은 멀리(dc#163부터 화면 안) + 화면 가장자리 화살표, 길잡이 축복 뺌,
 //   속성 축복은 단계가 오를수록 덜 나옴, 실시간 원거리 몬스터는 2층부터 층마다 늘어남
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -79,11 +79,10 @@ try {
   await T(A.page, "mon", 1, 0);
   let slash = false; for (let i = 0; i < 30 && !slash; i++) { await sleep(40); slash = (await T(A.page, "gait")).kinds.includes("slash"); }
   check("next to a monster: auto attack draws a slash", slash);
-  // ---- 4. 계단: 멀리, 화살표 ----
+  // ---- 4. 계단: dc#163부터는 화면 안, 너무 가깝지 않게 (dc#160은 멀리 → 바꿈. 자세한 확인은 run163) ----
   const st = await T(A.page, "clear");
-  check(`stairs appear far away (walk ${st.d} of max ${st.max}), not next to the last kill`, st.open && st.st && st.d >= Math.min(8, st.max) && st.d >= Math.round(st.max * 0.6) && st.near > 1, JSON.stringify(st));
-  check("log says the stairs are far, follow the arrow", /멀리/.test(st.log), st.log);
-  check("stairs off screen → edge arrow points to them", st.d < 14 || await T(A.page, "arrow"), JSON.stringify(st));
+  check(`stairs appear on screen, not next to the last kill (walk ${st.d})`, st.open && st.st && st.d >= 5 && st.near > 1 && !(await T(A.page, "arrow")), JSON.stringify(st));
+  check("log says the stairs appeared nearby", /가까운 곳/.test(st.log), st.log);
   // ---- 5. 원거리 몬스터 비율 ----
   const f1 = await T(A.page, "share", 1), f2 = await T(A.page, "share", 2), f40 = await T(A.page, "share", 40);
   check(`real time: ranged share floor 1 ${f1.toFixed(2)}, floor 2 ${f2.toFixed(2)}, floor 40 ${f40.toFixed(2)}`, f1 === 0 && Math.abs(f2 - M.rangedLiveShare(2)) < 0.04 && Math.abs(f40 - M.rangedLiveShare(40)) < 0.05 && f40 > f2 * 2);
