@@ -374,7 +374,7 @@ export function createView(host, { sheet, S, before = null, bloom = true }) {
   function syncMarks(list, color) {
     while (markPool.length < list.length) { const m = new THREE.Mesh(markGeo, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.renderOrder = 4; scene.add(m); markPool.push(m); }
     const t = performance.now();
-    markPool.forEach((m, i) => { const c = list[i]; m.visible = !!c; if (!c) return; m.material.color.set(color); m.position.set(c.x + 0.5, 0.025, c.y + 0.5); m.material.opacity = c.last ? 0.45 + 0.25 * Math.sin(t / 70) : 0.28; });
+    markPool.forEach((m, i) => { const c = list[i]; m.visible = !!c; if (!c) return; m.material.color.set(c.color || color); m.position.set(c.x + 0.5, 0.025, c.y + 0.5); m.material.opacity = c.last ? 0.45 + 0.25 * Math.sin(t / 70) : 0.28; });
   }
   function tickFlashes(now) {
     tickParts(now, Math.min(0.1, (now - lastT) / 1000)); lastT = now;

@@ -30,7 +30,8 @@ const HOOK = `
       const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), ...best }; e.atk = 0; enemies.push(e); return { d: d[best.y][best.x], seen: !!visible[best.y][best.x] }; },
     farD: () => { const d = huntMap(), e = enemies[0]; return e ? d[e.y][e.x] : -1; },
     // 공격 예고 (dc#148): 바로 오른쪽에 몬스터 하나 (HP 많고 공격력 있음), 왼쪽 두 칸은 바닥
-    adj: () => { enemies = []; items = []; for (let k = -2; k <= 1; k++) { map[player.y][player.x + k] = FLOOR; visible[player.y][player.x + k] = true; }
+    // 강타(dc#155) 박자는 멀리 (floorSt.sc): 공격 예고만 봄
+    adj: () => { enemies = []; items = []; floorSt.sc = 999; for (let k = -2; k <= 1; k++) { map[player.y][player.x + k] = FLOOR; visible[player.y][player.x + k] = true; }
       const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + 1, y: player.y }; e.hp = e.maxHp = 1e6; e.atk = 40; enemies.push(e); player.hp = player.maxHp; render(); },
     hit: () => ({ hp: player.hp, ready: !!enemies[0]?.ready, adj: enemies[0] ? Math.abs(enemies[0].x - player.x) + Math.abs(enemies[0].y - player.y) === 1 : false }),
     step: (dx, dy) => tryMove(dx, dy),

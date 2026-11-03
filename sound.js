@@ -120,6 +120,13 @@
     // 원거리 몬스터 (dc#149): aim = 조준할 때 낮게 두 번 울리는 경고음, curse = 구슬이 떨어져 터지는 둔탁한 소리 (내 스킬 소리와 다르게)
     aim() { tone("sawtooth", 220, 210, 0.12, 0.07, 0, sfxBus, { lp: 700 }); tone("sawtooth", 220, 200, 0.12, 0.07, 0.16, sfxBus, { lp: 700 }); },
     curse() { tone("sine", 95, 38, 0.38, 0.32); noise("lowpass", 700, 90, 0.3, 0.3); tone("sawtooth", 320, 120, 0.18, 0.06, 0, sfxBus, { lp: 900 }); },
+    // 강타 (dc#155): windup = 무겁게 차오르는 낮은 으르렁 (점점 올라감), smash = 바닥을 내려찍는 쿵 + 돌 부서지는 소리
+    windup() { tone("sawtooth", 70, 140, 0.45, 0.16, 0, sfxBus, { lp: 500 }); tone("square", 55, 110, 0.45, 0.06, 0.05, sfxBus, { lp: 400 }); },
+    smash() { tone("sine", 120, 32, 0.45, 0.42); noise("lowpass", 1100, 70, 0.35, 0.4); noise("bandpass", 2400, 900, 0.14, 0.14, 0.03, sfxBus, 1.2); },
+    // 버티기 (dc#155): 심장 박동 두 번 + 높게 울리는 종
+    guard() { tone("sine", 70, 45, 0.16, 0.4); tone("sine", 70, 45, 0.16, 0.34, 0.22); tone("triangle", 880, 880, 0.6, 0.12, 0.05); tone("triangle", 1320, 1320, 0.5, 0.08, 0.1); },
+    // 회복 구슬 줍기 (dc#155): 부드럽게 올라가는 두 음
+    healOrb() { tone("sine", 660, 990, 0.18, 0.16); tone("sine", 990, 1320, 0.2, 0.12, 0.08); },
     roll() { noise("bandpass", 300, 2600, 0.16, 0.26, 0, sfxBus, 1.6); noise("bandpass", 2600, 500, 0.12, 0.16, 0.12, sfxBus, 1.8); tone("triangle", 180, 90, 0.06, 0.14, 0.22, sfxBus, { lp: 1200 }); },
     // 처치: 내려가는 '뿅'
     kill() { tone("triangle", jit(520), 110, 0.2, 0.2); tone("square", 260, 70, 0.12, 0.06, 0.02, sfxBus, { lp: 1200 }); },
@@ -199,7 +206,7 @@
     enhance() { tone("square", 400, 400, 0.05, 0.1, 0, sfxBus, { lp: 2000 }); noise("highpass", 2000, 2000, 0.05, 0.15); tone("triangle", 1500, 2400, 0.25, 0.1, 0.05); },
   };
   // 같은 소리를 다시 낼 수 있는 최소 간격 (초). 여러 마리를 한 번에 때려도 귀가 아프지 않게
-  const GAP = { step: 0.07, land: 0.08, jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1, roll: 0.12, aim: 0.25, curse: 0.12 };
+  const GAP = { step: 0.07, land: 0.08, jump: 0.08, jump2: 0.08, hit: 0.05, crit: 0.06, kill: 0.06, fire: 0.12, ice: 0.12, bolt: 0.09, gold: 0.08, pickup: 0.06, hurt: 0.08, swing: 0.05, blast: 0.1, roll: 0.12, aim: 0.25, curse: 0.12, windup: 0.3, smash: 0.12, guard: 0.5, healOrb: 0.08 };
 
   function play(name, ...args) {
     recent.push(name); if (recent.length > 60) recent.shift();

@@ -105,6 +105,11 @@
   #tip .tip-note { opacity: 0.8; font-size: 11px; }
   /* HP가 적을 때 (30% 이하): 위쪽 HP 숫자 빨갛게, 포션 버튼 깜빡임 */
   #hp.low { color: #ff5a4a; }
+  /* 버티기 (dc#155): 화면 가장자리가 붉게 두 번 번쩍 */
+  #guard-flash { position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: 0; background: radial-gradient(ellipse at center, rgba(255, 77, 109, 0) 35%, rgba(255, 40, 70, 0.7) 100%); }
+  #guard-flash.on { animation: guardFlash 0.9s ease-out; }
+  @keyframes guardFlash { 0% { opacity: 0; } 12% { opacity: 1; } 35% { opacity: 0.35; } 50% { opacity: 0.9; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { #guard-flash.on { animation: guardFlashCalm 0.9s ease-out; } @keyframes guardFlashCalm { 0% { opacity: 0.7; } 100% { opacity: 0; } } }
   #tp-potion.urgent { border-color: #ff5a4a; color: #ff9a8a; animation: urgent 0.8s ease-in-out infinite alternate; }
   @keyframes urgent { to { background: #4a1612; } }
   @media (prefers-reduced-motion: reduce) { #tp-potion.urgent { animation: none; background: #4a1612; } }
@@ -255,6 +260,12 @@
   #aim3d { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(255, 235, 200, 0.7); pointer-events: none; }
   #hurt3d { --hurt: #c8140a; position: absolute; inset: 0; pointer-events: none; border-radius: 8px; background: radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--hurt) 60%, transparent) 100%); opacity: 0; }
   #hurt3d.on { animation: hurt3d 420ms ease-out; }
+  /* 3D에서 내 칸이 강타·저주 구슬 표시 안이면 (바닥 표시는 발밑이라 안 보여서, dc#155) 가장자리가 그 색으로 깜빡 + 위에 남은 턴 */
+  #warn3d { --warn: #ff8c1a; position: absolute; inset: 0; pointer-events: none; border-radius: 8px; display: none; background: radial-gradient(ellipse at center, transparent 50%, color-mix(in srgb, var(--warn) 70%, transparent) 100%); animation: warn3d 0.5s ease-in-out infinite alternate; }
+  #warn3d.on { display: block; } #warn3d.last { animation-duration: 0.18s; }
+  #warn3d span { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); font: bold 15px sans-serif; color: #fff; background: color-mix(in srgb, var(--warn) 85%, #000); border: 2px solid #000; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
+  @keyframes warn3d { from { opacity: 0.45; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #warn3d { animation: none; } }
   @keyframes hurt3d { from { opacity: 1; } to { opacity: 0; } }
   #view3d-btn.on { border-color: var(--accent); color: var(--accent); }
   /* 3D 지도 (dc#110): 작게는 왼쪽 아래, 크게는 화면 가운데에 반투명으로 겹침 */
@@ -756,7 +767,7 @@
     <span id="status" hidden></span>
   </div>
   <div id="bless-bar" role="button" tabindex="0" aria-label="이 판의 축복·유물" data-t-aria hidden></div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div><div id="guard-flash" aria-hidden="true"></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
@@ -2207,6 +2218,9 @@
   // 원거리 몬스터 (dc#149): 새 규칙 광장 층에서만, 일반 RANGED.from층부터 · 나이트메어·헬은 처음부터 (골드 던전·구멍 제외)
   const RANGED = RLMonsters.RANGED;
   const rangedOn = () => OPEN_FLOORS && !inGold() && !inAbyss() && (nmMobs() || inHell() || depth >= RANGED.from);
+  // 강타·회복 구슬·버티기 (dc#155): 새 규칙 광장 층에서만 (규칙·수치는 monsters.js SMASH · RESCUE)
+  const SMASH = RLMonsters.SMASH, RESCUE = RLMonsters.RESCUE;
+  const rescueOn = () => OPEN_FLOORS && scene === "dungeon";
   const ranged = (m) => { if (rangedOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && Math.random() < (nmMobs() || inHell() ? RANGED.deepShare : RANGED.share)) { m.ranged = true; m.rcd = 1 + rnd(RANGED.every); } return m; };
   const swarm = (m) => { if (swarmOn() && m.kind !== "boss" && m.kind !== "golden") { const W = RLMonsters.SWARM; m.xp = Math.max(1, Math.round(m.xp * W.xp)); m.goldMul = (m.goldMul || 1) * W.gold; m.dropMul = W.drop; } return m; };
   const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
@@ -2386,7 +2400,7 @@
       const d = dist(r, start);
       if (d > best) { best = d; far = r; }
     }
-    floorSt = { boss: false, open: !OPEN_FLOORS };
+    floorSt = { boss: false, open: !OPEN_FLOORS, sc: SMASH.start };   // sc: 강타까지 남은 턴 (dc#155)
     if (!OPEN_FLOORS) map[far.cy][far.cx] = STAIRS;
 
     // 보스 층 바로 전 층(4, 9, 14…층) 계단 옆에 상점
@@ -2669,7 +2683,7 @@
   //   한 턴을 쓰고 쿨타임 DODGE.cooldown턴 (점프 쿨타임 칸을 같이 씀). 예전 회귀 테스트(rl_oldtown)는 예전 점프 그대로
   const DODGE = { range: 3, cooldown: 4, ms: 260 };
   const NEW_CTRL = !OLD_TOWN;
-  const invuln = () => !!player && ((player.inv || 0) > 0 || performance.now() < (player.invUntil || 0));
+  const invuln = () => !!player && ((player.inv || 0) > 0 || player.gd === turn || performance.now() < (player.invUntil || 0));   // gd: 버티기 한 턴 (dc#155)
   const faceDir = () => player?.face || { dx: 1, dy: 0 };
   function dodge(dx, dy) {
     if (gameOver || scene !== "dungeon" || !player || Bless.isOpen()) return false;
@@ -2779,7 +2793,7 @@
       }
       // 받는 피해 감소(시험의 세트 5세트·보석)와 둘러싸임 방어는 방어력으로 줄어든 뒤에 (최소 1)
       const crowd = RLMonsters.crowdCut(adjacentFoes());
-      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd)));
+      const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(attacker) + rnd(2), s.def) * (1 - s.dmgReduce / 100) * (1 - crowd) * (OPEN_FLOORS ? SMASH.hitMul : 1)));   // 새 규칙: 보통 공격은 덜 아프게 (dc#155, 대신 강타)
       const took = hurtPlayer(dmg);
       Anim.hit(target, attacker, at);
       Sfx("hurt");
@@ -2924,6 +2938,39 @@
     log(T("{0}의 저주 구슬에 맞아 {1} 피해를 입음.{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
     if (player.hp <= 0) death();
   }
+  // 강타 (dc#155): 붙은 근접 몬스터가 있는 턴만 floorSt.sc를 줄여 0이 되면 그중 하나(보스·네임드 > 정예 > 보통)가 내가 선 칸을 노림 (e.smash)
+  //   노리는 동안(windup턴, 3D windup3d턴)은 움직이지도 때리지도 않고 → 그 칸에 내려침. 그 전에 쓰러뜨리거나 한 칸만 옮기거나 회피하면 0
+  //   맞으면 최대 HP × smashPct (받는 피해 감소만 적용, 방패로 못 막음). 원거리·황금 고블린·이무기(꼬리 휩쓸기)는 하지 않음
+  const smashRank = (e) => (e.kind === "boss" || e.named ? 2 : e.kind === "elite" ? 1 : 0);
+  function smashPace() {
+    if (!rescueOn() || gameOver || enemies.some(e => e.smash)) return;
+    const c = enemies.filter(e => e.hp > 0 && dist(e, player) === 1 && e.kind !== "golden" && !e.ranged && !e.sweep);
+    if (!c.length) return;
+    floorSt.sc = (Number.isInteger(floorSt.sc) ? floorSt.sc : SMASH.start) - 1;
+    if (floorSt.sc > 0) return;
+    floorSt.sc = SMASH.every;
+    const e = c.sort((a, b) => smashRank(b) - smashRank(a))[0];
+    const wait = View3D.active() ? SMASH.windup3d : SMASH.windup;
+    e.smash = { x: player.x, y: player.y, t: wait }; e.ready = false;
+    showDamage(e, "‼", true, SMASH.color);
+    Sfx("windup");
+    log(T("{0}이(가) 크게 내려칠 준비를 한다! 주황 칸에서 {1}턴 안에 벗어나세요.", e.name, wait), null, SMASH.color);
+  }
+  function smashTurn(e) {
+    if (--e.smash.t > 0) return;
+    const a = e.smash; e.smash = null;
+    Anim.attack(e, a);
+    Fx.smash(a);
+    Sfx("smash");
+    if (player.x !== a.x || player.y !== a.y || invuln()) { log(T("{0}의 강타를 피했다!", e.name), "good"); return; }
+    const s = stats(), deep = nmMobs() || inHell() || inAbyss();
+    const dmg = Math.max(1, Math.round(s.maxHp * RLMonsters.smashPct(smashRank(e) === 2 ? "boss" : e.kind, depth, deep) * (1 - s.dmgReduce / 100)));
+    const took = hurtPlayer(dmg);
+    showDamage(player, dmg, true, SMASH.color);
+    Anim.hit(player, e);
+    log(T("{0}의 강타에 맞아 {1} 피해를 입음!{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
+    if (player.hp <= 0) death();
+  }
   // 이무기: 꼬리 휩쓸기 (radius칸 안, 방패로 못 막음). 맞으면 true
   function namedSweep(e) {
     const W = e.sweep, s = stats();
@@ -3038,6 +3085,7 @@
     dropLoot(e);
     dropSound(items.slice(n0));
     if (orb) dropXp(e, xp); else gainXp(xp);
+    dropHeal(e);   // HP가 낮으면 회복 구슬 (dc#155)
     Bless.onBoss(e);   // 보스: 유물 고르기 (dc#140)
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
     floorProgress(e);
@@ -3366,11 +3414,20 @@
     const e = 1 - (1 - k) * (1 - k);
     return { x: it.fx + (it.x - it.fx) * e, y: it.fy + (it.y - it.fy) * e, h: Math.sin(k * Math.PI) };
   }
+  // 회복 구슬 (dc#155): 새 규칙에서 HP가 RESCUE.below 아래일 때 몬스터를 쓰러뜨리면 RESCUE.chance (정예·보스·네임드 RESCUE.big) 확률로
+  //   쓰러진 자리에 빨간 구슬. 주우면 최대 HP × RESCUE.heal. 층을 떠나면 사라짐 → 낮은 HP로 몬스터 사이에 주우러 갈지 고르게
+  function dropHeal(e) {
+    if (!rescueOn() || !player || player.hp >= stats().maxHp * RESCUE.below) return;
+    if (Math.random() >= (e.kind === "elite" || e.kind === "boss" || e.named ? RESCUE.big : RESCUE.chance)) return;
+    items.push({ x: e.x, y: e.y, type: "heal", t0: performance.now() });
+    showDamage(e, "♥", true, RESCUE.color);
+  }
   function pickup() {
     if (!player || gameOver) return;
-    let xpSum = 0;
+    let xpSum = 0, heals = 0;
     for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
       if (it.type === "xp") { xpSum += it.amount; items = items.filter(x => x !== it); continue; }
+      if (it.type === "heal") { heals++; items = items.filter(x => x !== it); continue; }
       if (it.type === "gear") {
         if (!takeGear(it)) continue;
         Sfx("pickup");
@@ -3394,6 +3451,13 @@
       items = items.filter(x => x !== it);
     }
     if (xpSum) { showDamage(player, `+${xpSum} XP`, false, XP_COLOR); Sfx("pickup"); gainXp(xpSum); }
+    if (heals) {
+      const before = player.hp;
+      heal(Math.round(stats().maxHp * RESCUE.heal) * heals);
+      showDamage(player, `+${player.hp - before}`, false, null, "heal");
+      Sfx("healOrb");
+      log(T("회복 구슬을 주웠다! HP +{0}", player.hp - before), "good");
+    }
   }
 
   // 포션: 개수 무제한, 마시면 cooldown턴 동안 다시 못 마심 (마신 턴 포함). 시뮬레이션: 쿨타임 5~15턴은 쓰러질 확률이 거의 같음
@@ -3565,6 +3629,11 @@
 
   // 천하무적 불사: 쓰러질 피해를 받으면 HP 1로 버팀 (층마다 1번, 이 판의 이 층)
   const floorKey = () => `${player.rid}|${player.zone || "normal"}|${depth}`;
+  function guardFlash() {
+    const el = document.getElementById("guard-flash");
+    if (!el) return;
+    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  }
   function death() {
     // 염라의 관복: 쓰러질 때마다 확률로 HP 1로 버팀
     const ls = stats().uq.lastStand;
@@ -3579,6 +3648,19 @@
       player.hp = 1;
       showDamage(player, T("불사"), true, "#ffd27f");
       log(T("✦ 천하무적: 쓰러질 피해를 버텨냈다! HP 1 (이 층에서는 한 번만)"), "rainbow");
+      return;
+    }
+    // 버티기 (dc#155, 새 규칙): 층마다 한 번 HP 1로 남고, 이 턴의 남은 피해는 막음 + 회피·포션 바로 준비. 화면이 붉게 번쩍
+    if (rescueOn() && !floorSt.ls) {
+      floorSt.ls = 1;
+      player.hp = 1;
+      player.gd = turn;
+      if (View3D.active()) player.invUntil = performance.now() + 700;   // 3D(실시간): 잠깐 무적 (2D는 이 턴만)
+      player.jumpCd = 0; player.potCd = 0;
+      showDamage(player, T("버팀!"), true, RESCUE.color);
+      guardFlash(); Fx.guard(player);
+      Sfx("guard");
+      log(T("✦ 버티기! 쓰러질 피해를 버텨 HP 1. 회피와 포션이 바로 준비됐어요. (이 층에서 한 번)"), null, RESCUE.color);
       return;
     }
     Sfx("death");
@@ -3659,7 +3741,7 @@
     const lw = Number.isInteger(L?.w) && L.w >= 12 && L.w <= 200 ? L.w : MAP_MIN_W, lh = Number.isInteger(L?.h) && L.h >= 9 && L.h <= 200 ? L.h : MAP_MIN_H;   // 예전 저장은 32×24
     if (!L || L.rid !== player.rid || L.d !== depth || (L.z || "normal") !== (player.zone || "normal") || L.map?.length !== lw * lh || L.seen?.length !== lw * lh) return false;
     MAP_W = lw; MAP_H = lh;
-    floorSt = { boss: !!L.fs?.boss, open: L.fs ? !!L.fs.open : true, ...(L.fs?.bx != null ? { bx: L.fs.bx, by: L.fs.by } : {}) };   // 예전 저장(fs 없음)은 계단이 이미 있음
+    floorSt = { boss: !!L.fs?.boss, open: L.fs ? !!L.fs.open : true, ...(L.fs?.bx != null ? { bx: L.fs.bx, by: L.fs.by } : {}), sc: Number.isInteger(L.fs?.sc) ? L.fs.sc : SMASH.start, ...(L.fs?.ls ? { ls: 1 } : {}) };   // 강타 박자·버티기 사용 (dc#155)   // 예전 저장(fs 없음)은 계단이 이미 있음
     const grid = (str, f) => Array.from({ length: MAP_H }, (_, y) => Array.from({ length: MAP_W }, (_, x) => f(str[y * MAP_W + x])));
     map = grid(L.map, Number);
     seen = grid(L.seen, c => c === "1");
@@ -4235,6 +4317,7 @@
     if (player.iron > 0) out.push(T("🐉 쇠비늘 방어력 +{0}%", player.iron));
     if (player.reap > 0) out.push(T("💀 영혼 수확 공격력 +{0}%", player.reap));
     if (s.rw.undying) out.push(player.ud === floorKey() ? T("✦ 불사 사용함") : T("✦ 불사 준비됨"));
+    if (rescueOn() && floorSt.ls) out.push(T("♥ 버티기 사용함 (다음 층에서 다시)"));   // 준비된 상태는 기본이라 안 보임 (휴대폰에서 상태 줄이 늘 생겨 화면이 밀려서)
     one(s.nova, "❄", T("얼음 폭발"), player.novaCd);
     one(s.chain, "⚡", T("연쇄 번개"), player.chainCd);
     return out;
@@ -4301,6 +4384,7 @@
       if (e.named) namedTurn(e);
       if (slowedNow(e)) continue;
       if (e.kind === "golden") { goldenTurn(e); continue; }
+      if (e.smash) { smashTurn(e); if (gameOver) return; continue; }   // 강타 예고 중 (dc#155)
       if (e.ranged && rangedTurn(e)) { if (gameOver) return; continue; }   // 원거리 몬스터 (dc#149)
       // 이무기: every턴마다 보통 공격 대신 꼬리 휩쓸기 (가까이 있을 때)
       if (sweepNow(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2) {
@@ -4323,6 +4407,7 @@
         stepEnemy(e, dx, dy);
       }
     }
+    smashPace();
     for (const u of [player, ...enemies]) statusTurn(u);
     const sw = enemies.find(e => sweepSoon(e) && visible[e.y]?.[e.x] && near8(e, player) <= e.sweep.radius + 2);   // 여러 마리여도 한 줄
     if (sw) for (const e of [sw])
@@ -5702,6 +5787,31 @@
       ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
     };
     const draws = {
+      // 버티기 (dc#155): 내 둘레로 빨간 고리 세 겹이 퍼지고 가운데 하트, 0.9초
+      guard(f, t) {
+        const k = t / 900;
+        if (k >= 1) return false;
+        const c = C(f.at);
+        ctx.strokeStyle = RESCUE.color; ctx.shadowColor = RESCUE.color; ctx.shadowBlur = 14;
+        for (let i = 0; i < 3; i++) { const q = k * 1.4 - i * 0.2; if (q <= 0 || q >= 1) continue; ctx.globalAlpha = 1 - q; ctx.lineWidth = 4 - i; ctx.beginPath(); ctx.arc(c.x, c.y, TILE * (0.35 + 1.1 * q), 0, Math.PI * 2); ctx.stroke(); }
+        ctx.globalAlpha = Math.max(0, 1 - k * 1.2); ctx.fillStyle = RESCUE.color; ctx.font = `bold ${Math.round(TILE * 0.6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("♥", c.x, c.y - TILE * (0.7 + 0.3 * k));
+        return true;
+      },
+      // 강타 (dc#155): 칸에 주황 충격파 고리 두 겹 + 튀는 돌 조각, 0.42초
+      smash(f, t) {
+        const k = t / 420;
+        if (k >= 1) return false;
+        const c = C(f.at);
+        ctx.globalAlpha = Math.max(0, 1 - k);
+        ctx.fillStyle = "rgba(255, 140, 26, 0.35)"; ctx.fillRect(f.at.x * TILE, f.at.y * TILE, TILE, TILE);
+        ctx.strokeStyle = SMASH.color; ctx.shadowColor = SMASH.color; ctx.shadowBlur = 10;
+        ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x, c.y, TILE * (0.3 + 0.9 * k), 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, TILE * (0.15 + 0.5 * k), 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.fillStyle = "#8a5a2b";
+        for (let i = 0; i < 6; i++) { const a = rand(f.seed + i) * Math.PI * 2, r = TILE * (0.2 + 0.7 * k) * (0.6 + 0.4 * rand(f.seed + i + 9)); ctx.fillRect(c.x + Math.cos(a) * r - 2, c.y + Math.sin(a) * r - 2 - Math.sin(k * Math.PI) * 6, 4, 4); }
+        return true;
+      },
       fireball(f, t) {
         const a = C(f.from), b = C(f.to), fly = t / FB_FLY;
         if (fly < 1) {   // 날아감: 불덩이와 꼬리
@@ -5817,6 +5927,8 @@
     };
     return {
       FB_FLY, CHAIN_STEP, CURSE_FLY,
+      guard(at) { list.push({ kind: "guard", at: { x: at.x, y: at.y }, t0: now() }); },
+      smash(at) { fx3d?.("smash", at); list.push({ kind: "smash", at: { x: at.x, y: at.y }, t0: now(), seed: Math.random() * 100 }); },
       curse(from, to, r) { const cells = aimCells(to); fx3d?.("curse", from, to, cells); list.push({ kind: "curse", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, cells, t0: now(), seed: Math.random() * 100 }); },
       fireball(from, to, r) { fx3d?.("fireball", from, to); list.push({ kind: "fireball", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, t0: now(), seed: Math.random() * 100 }); },
       nova(at, r) { fx3d?.("nova", at); list.push({ kind: "nova", at: { x: at.x, y: at.y }, r, t0: now(), seed: Math.random() * 6 }); },
@@ -5847,7 +5959,7 @@
     // dc#111부터 3D가 기본 (2D로 바꾼 사람만 "0"). 포털 빌드는 2D (three.js를 넣지 않음)
     let on = !PORTAL && store.get(KEY) !== "0", view = null, loading = null;
     let pos = { x: 0.5, y: 0.5 }, yaw = 0, pitch = 0, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, bobT = 0, hpSeen = 0, swingT = -1e9;
-    let swingLT = -1e9, blockT = -1e9, dodgeT = -1e9, elemCache = { t: -1e9, el: null }, hurtEl = null;   // 왼손 휘두름 · 방패 막기 · 피하기 · 무기 속성 색
+    let swingLT = -1e9, blockT = -1e9, dodgeT = -1e9, shakeT = -1e9, elemCache = { t: -1e9, el: null }, hurtEl = null;   // 왼손 휘두름 · 방패 막기 · 피하기 · 무기 속성 색
     const held = { f: 0, b: 0, l: 0, r: 0, tl: 0, tr: 0, atk: false };
     const joy = { id: null, x0: 0, y0: 0, dx: 0, dy: 0 }, look = { id: null, x: 0, y: 0, moved: 0, t0: 0 };
     const disp = new WeakMap();   // 몬스터를 그리는 자리 (칸을 옮기면 그 사이를 부드럽게)
@@ -5855,17 +5967,17 @@
     const stage = document.getElementById("stage"), btn = document.getElementById("view3d-btn");
     // 손: 오른손 무기, 왼손 보조 무기·방패 (dc#111)
     const hand = el("div", { id: "hand3d", className: "hand3d", hidden: true }), handL = el("div", { id: "hand3d-l", className: "hand3d", hidden: true });
-    const hurt = el("div", { id: "hurt3d" }), aim = el("div", { id: "aim3d" });
+    const hurt = el("div", { id: "hurt3d" }), aim = el("div", { id: "aim3d" }), warn = el("div", { id: "warn3d" }, el("span"));
     // 겹쳐 보는 지도 (dc#110): 작게(왼쪽 아래) → 크게(화면 전체에 반투명) → 끄기. Tab · 휴대폰 지도 버튼. 기기에 저장 (rl_3dmap)
     const mapCv = el("canvas", { id: "map3d" }), MAP_MODES = ["small", "big", "off"];
     let mapMode = MAP_MODES.includes(store.get("rl_3dmap")) ? store.get("rl_3dmap") : "small";
-    stage.append(handL, hand, hurt, aim, mapCv);
+    stage.append(handL, hand, hurt, warn, aim, mapCv);
     const label = () => { btn.textContent = on ? T("2D 화면 (V)") : T("3D 화면 (V)"); btn.classList.toggle("on", on); };
     const active = () => on && !!view && scene === "dungeon";
     const paused = () => gameOver || document.hidden || Ads.isOpen() || portalAd || !!document.querySelector(".overlay:not([hidden])");
     const sheetReady = () => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = RLSprites.src; });
     function load() {
-      loading ||= Promise.all([import("./view3d.js?v=6"), sheetReady()]).then(([m, sheet]) => {
+      loading ||= Promise.all([import("./view3d.js?v=7"), sheetReady()]).then(([m, sheet]) => {
         // 빛 번짐(블룸)은 무거워서 휴대폰(터치 화면)에서는 끔
         view = m.createView(stage, { sheet, S: RLSprites, before: document.getElementById("popups"), bloom: !matchMedia("(pointer: coarse)").matches });
         bindPointer(view.canvas);
@@ -6058,16 +6170,22 @@
         const g = it.type === "gear" ? it.item : null;
         const glow = g ? (isUnique(g) ? RLItems.RARITIES.unique.color : isRainbow(g) ? rainbowColor(it.x + it.y) : g.rarity === "epic" || g.rarity === "rare" ? RLItems.RARITIES[g.rarity].color : null)
           : it.type === "rune" ? rainbowColor(it.x + it.y) : it.type === "gem" ? RLItems.GEMS[it.gem]?.color : it.type === "treasure" ? "#ff6bd3" : it.type === "xp" ? XP_COLOR : null;
+        if (it.type === "heal") { bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.32, h: 0.32, tint: RESCUE.color, glow: RESCUE.color, lift: 0.22 + 0.05 * Math.sin(t / 200 + it.x) }); continue; }   // 회복 구슬 (dc#155)
         if (it.type === "xp") { const p = xpOrbPos(it); bills.push({ key: it, sprite: itemArt(it), x: p.x + ((it.k || 0) % 3 - 1) * 0.12, y: p.y + (Math.floor((it.k || 0) / 3) % 3 - 1) * 0.12, w: 0.24, h: 0.24, tint: XP_COLOR, glow, lift: 0.18 + p.h * 0.5 + 0.05 * Math.sin(t / 260 + it.x + (it.k || 0)) }); continue; }
         bills.push({ key: it, sprite: itemArt(it), x: it.x, y: it.y, w: 0.42, h: 0.42, glow });
       }
       if (shop) bills.push({ key: "shop", sprite: "shop", x: shop.x, y: shop.y, w: 0.95, h: 0.95, glow: SHOP_COLOR });
       if (wpSpot) bills.push({ key: "wp", sprite: "portal", x: wpSpot.x, y: wpSpot.y, w: 0.8, h: 0.8, tint: waypoints[wpZone()]?.includes(depth) ? WP_COLOR : "#8a96b0", glow: WP_COLOR });
       if (grave) bills.push({ key: "grave", sprite: "item_treasure", x: grave.x, y: grave.y, w: 0.5, h: 0.5, tint: "#9aa0b0", glow: "#c8ccd8" });
-      const bob = bobT ? Math.sin(bobT * 9) * 0.025 : 0;
+      const sk = reduceMotion ? 1 : (now - shakeT) / 320, bob = (bobT ? Math.sin(bobT * 9) * 0.025 : 0) + (sk < 1 ? Math.sin(now / 16) * 0.05 * (1 - sk) : 0);   // 강타에 화면 흔들림 (dc#155)
       const flick = reduceMotion ? 1 : 0.9 + 0.07 * Math.sin(t / 90) + 0.05 * Math.sin(t / 37 + 1.3);
       const hs = handState(now);
       const marks = []; for (const e of enemies) if (e.aim) for (const c of aimCells(e.aim)) marks.push({ x: c.x, y: c.y, last: e.aim.t <= 1 });   // 원거리 몬스터 조준 표시 (dc#149)
+      for (const e of enemies) if (e.smash) marks.push({ x: e.smash.x, y: e.smash.y, last: e.smash.t <= 1, color: SMASH.color, t: e.smash.t });   // 강타 예고 (dc#155)
+      // 내 칸이 표시 안이면 화면 가장자리 경고 (dc#155): 강타 주황 · 저주 구슬 진홍, 남은 턴
+      const here = enemies.map(e => e.smash && e.smash.x === player.x && e.smash.y === player.y ? { c: SMASH.color, t: e.smash.t, k: T("강타") } : e.aim && near8(e.aim, player) <= RANGED.radius ? { c: RANGED.color, t: e.aim.t, k: T("저주 구슬") } : null).filter(Boolean).sort((a, b) => a.t - b.t)[0];
+      warn.classList.toggle("on", !!here); warn.classList.toggle("last", !!here && here.t <= 1);
+      if (here) { warn.style.setProperty("--warn", here.c); warn.firstChild.textContent = T("⚠ {0}! {1}턴 안에 옮기세요", here.k, here.t); }
       view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills, hands: hs, marks, markColor: RANGED.color });
       drawHands(now, bob, hs);
       drawMap();
@@ -6166,7 +6284,7 @@
       if (shop && seen[shop.y]?.[shop.x]) dot(shop.x, shop.y, SHOP_COLOR, K * 0.45);
       if (wpSpot && seen[wpSpot.y]?.[wpSpot.x]) dot(wpSpot.x, wpSpot.y, WP_COLOR, K * 0.45);
       if (grave && seen[grave.y]?.[grave.x]) dot(grave.x, grave.y, "#c8ccd8", K * 0.4);
-      for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : it.type === "xp" ? XP_COLOR : "#ff6bd3", K * 0.22);
+      for (const it of items) if (visible[it.y]?.[it.x]) dot(it.x, it.y, it.type === "gear" ? RLItems.RARITIES[it.item.rarity]?.color || "#fff" : it.type === "gold" ? "#ffcf5c" : it.type === "xp" ? XP_COLOR : it.type === "heal" ? RESCUE.color : "#ff6bd3", K * 0.22);
       for (const e of enemies) if (e.hp > 0 && visible[e.y]?.[e.x]) { const d = disp.get(e); dot(d ? d.x : e.x, d ? d.y : e.y, e.named ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : "#ff4a3a", K * 0.34); }
       drawMarks(g, K, Math.max(9, K * (big ? 1.1 : phone ? 1.3 : 1.6)), phone ? { x0, y0, x1: x0 + cols, y1: y0 + rows } : null);
       // 나: 시야(옅은 부채꼴)와 보는 쪽 화살표
@@ -6208,6 +6326,7 @@
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
       else if (kind === "nova") view.burst(a.x, a.y, EL.colors.ice, 3.2, 520, 0.3);
       else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, EL.colors.bolt), i * Fx.CHAIN_STEP));
+      else if (kind === "smash") { view.burst(a.x, a.y, SMASH.color, 2.0, 420, 0.1); view.sparks(a.x, a.y, "#8a5a2b", "shard", 10); shakeT = now; }   // 강타 (dc#155): 주황 번쩍 + 돌 조각 + 화면 흔들림
       else if (kind === "curse") {   // 몬스터 저주 구슬 (dc#149): 검붉은 구슬이 날아와 조준한 칸들에서 검붉은 조각이 튐
         view.orb(a, b, RANGED.color, Fx.CURSE_FLY);
         setTimeout(() => { view.burst(b.x, b.y, RANGED.color, 2.2, 480, 0.15); for (const c of cells || []) view.sparks(c.x, c.y, "#7a0018", "shard", 3); }, Fx.CURSE_FLY);
@@ -7293,6 +7412,7 @@
     if (it.type === "gem") return `gem_${it.gem}`;
     if (it.type === "rune") return "rune";
     if (it.type === "gold") return it.amount >= 50 ? "gold_l" : "gold_s";
+    if (it.type === "heal") return "item_potion";   // 회복 구슬 3D 빌보드 (dc#155)
     if (it.type === "xp") return "gem_emerald";   // 3D 빌보드용 (2D는 drawXpOrb)
     const g = it.item;
     if (RLItems.isWeaponLike(g)) return `item_${g.type}`;
@@ -7311,6 +7431,21 @@
     const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 1, cx, cy, r);
     g.addColorStop(0, "#f2fff6"); g.addColorStop(0.45, XP_COLOR); g.addColorStop(1, "#1f8f4e");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // 회복 구슬 (dc#155): 빨간 빛 구슬 + 가운데 흰 십자, 두근거리듯 커졌다 작아짐 (경험치 구슬보다 크게)
+  function drawHealOrb(px, py, it) {
+    const t = performance.now(), beat = reduceMotion ? 0 : Math.max(0, Math.sin(t / 180 + it.x)) ** 6;
+    const r = TILE * (0.24 + 0.04 * beat), cx = px + TILE / 2, cy = py + TILE / 2 + (reduceMotion ? 0 : Math.sin(t / 300 + it.y) * 1.5);
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)"; ctx.beginPath(); ctx.ellipse(cx, py + TILE * 0.84, r * 0.8, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowColor = RESCUE.color; ctx.shadowBlur = 12 + 8 * beat;
+    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 1, cx, cy, r);
+    g.addColorStop(0, "#fff0f3"); g.addColorStop(0.45, RESCUE.color); g.addColorStop(1, "#8f1630");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = "#fff";
+    const w = r * 0.28, h = r * 1.1;
+    ctx.fillRect(cx - w / 2, cy - h / 2, w, h); ctx.fillRect(cx - h / 2, cy - w / 2, h, w);
     ctx.restore();
   }
   // 그림 모드면 그림, 아니면 글자 (아이템·포탈처럼 빛을 두르는 것도 같은 ctx 설정을 그대로 씀)
@@ -7422,6 +7557,7 @@
       if (!visible[it.y]?.[it.x]) continue;  // 좌표가 이상한 것 하나 때문에 화면 전체가 멈추지 않게
       const px = it.x * TILE, py = it.y * TILE;
       if (it.type === "xp") { drawXpOrb(px, py, it); continue; }   // 경험치 구슬 (dc#151)
+      if (it.type === "heal") { drawHealOrb(px, py, it); continue; }   // 회복 구슬 (dc#155)
       const name = itemArt(it);
       if (it.type === "treasure" || it.type === "potion") drawArt(name, "!", px, py, "#ff6bd3");  // 보물 (레어 이상 장비)
       else if (it.type === "gear") {
@@ -7481,6 +7617,27 @@
       ctx.fillStyle = "#fff"; ctx.fillText(String(e.aim.t), bx, by + 1);
       ctx.restore();
     }
+    // 강타 예고 (dc#155): 내려칠 칸을 주황으로 깜빡 + 굵은 테두리 + 오른쪽 위에 남은 턴 (원거리 저주 구슬의 진홍 점선과 다르게 실선)
+    for (const e of enemies) {
+      if (!e.smash) continue;
+      const a = e.smash, last = a.t <= 1, pulse = 0.5 + 0.5 * Math.sin(performance.now() / (last ? 70 : 140));
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 140, 26, ${(last ? 0.32 : 0.18) + 0.14 * pulse})`;
+      ctx.fillRect(a.x * TILE, a.y * TILE, TILE, TILE);
+      ctx.strokeStyle = SMASH.color; ctx.lineWidth = 3;
+      ctx.strokeRect(a.x * TILE + 1.5, a.y * TILE + 1.5, TILE - 3, TILE - 3);
+      // 금 간 바닥 (가운데에서 네 갈래)
+      const cx = a.x * TILE + TILE / 2, cy = a.y * TILE + TILE / 2;
+      ctx.lineWidth = 1.5; ctx.globalAlpha = 0.7; ctx.beginPath();
+      for (const [dx, dy] of [[-0.38, -0.3], [0.36, -0.22], [-0.3, 0.36], [0.32, 0.34]]) { ctx.moveTo(cx, cy); ctx.lineTo(cx + dx * TILE * 0.5, cy + dy * TILE * 0.55); ctx.lineTo(cx + dx * TILE, cy + dy * TILE); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      const bx = (a.x + 1) * TILE - 2, by = a.y * TILE + 2;
+      ctx.fillStyle = SMASH.color; ctx.beginPath(); ctx.arc(bx, by, TILE * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+      ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.fillText(String(a.t), bx, by + 1);
+      ctx.restore();
+    }
 
     // 적
     for (const e of enemies) {
@@ -7517,9 +7674,10 @@
       // 원거리 몬스터 (dc#149): 왼쪽 위에 진홍 다이아몬드
       if (e.ranged) { ctx.fillStyle = RANGED.color; ctx.beginPath(); ctx.moveTo(px + 5, py + 1); ctx.lineTo(px + 9, py + 5); ctx.lineTo(px + 5, py + 9); ctx.lineTo(px + 1, py + 5); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke(); }
       // 공격 준비 중 (dc#148): 머리 위에 주황 "!" — 다음 턴에 때림, 물러나면 피함
-      if (e.ready && NEW_CTRL) {
+      if ((e.ready || e.smash) && NEW_CTRL) {   // 강타 예고 중이면 진한 주황 "‼" (dc#155)
+        const mk = e.smash ? "‼" : "!";
         ctx.save(); ctx.font = `bold ${Math.round(TILE * 0.7)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("!", px + TILE / 2, py + 2); ctx.fillStyle = "#ff9f43"; ctx.fillText("!", px + TILE / 2, py + 2); ctx.restore();
+        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(mk, px + TILE / 2, py + 2); ctx.fillStyle = e.smash ? SMASH.color : "#ff9f43"; ctx.fillText(mk, px + TILE / 2, py + 2); ctx.restore();
       }
       // 속성 몬스터: 오른쪽 위에 속성 색 점
       if (e.el) {
