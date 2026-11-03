@@ -1321,6 +1321,8 @@
     "몬스터를 모두 잡자 {0}이(가) 부하 {1}마리와 함께 나타났다! 쓰러뜨리면 계단이 열린다.": "With every monster down, {0} appears with {1} minions! Defeat it to open the stairs.",
     "보스!": "Boss!",
     "▼ 마지막 적을 쓰러뜨리자 아래층으로 내려가는 계단이 나타났다!": "▼ The last enemy falls, and stairs down to the next floor appear!",
+    "▼ 마지막 적을 쓰러뜨리자 멀리 아래층으로 내려가는 계단이 나타났다! 화살표를 따라가요.": "▼ The last enemy falls, and stairs down appear far away! Follow the arrow.",
+    "계단이 열렸다!": "Stairs open!",
     "계단": "Stairs",
     "✦ 레벨 업! Lv {0} 축복 고르기": "✦ Level up! Lv {0} — pick a blessing",
     "레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.": "You leveled up! Pick one more blessing for this run.",

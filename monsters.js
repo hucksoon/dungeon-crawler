@@ -233,7 +233,15 @@
   //   붙지 않고 keep~range칸 거리에서 every턴마다 "저주 구슬"을 던짐. 던지기 전 windup턴 동안 내가 선 칸(radius 0 = 한 칸, dc#150: 3×3은 거의 못 피해서)에
   //   붉은 표시와 남은 턴 (3D는 한 턴이 0.5초라 windup3d턴 = 약 1.5초) → 그 사이 표시 밖으로 나가거나 회피(무적)면 빗나감. 맞으면 공격력 ×mul — 붙어서 매 턴 때리는 것보다 드물어서 한 방이 셈 (시뮬레이션: 절반 피하면 원거리 없을 때와 비슷). 내 속성 스킬과 다른 진홍색
   //   liveFrom (dc#159): 실시간(2D·3D)이면 이 층부터 — 날아오는 한 발을 보고 비키는 연습을 앞쪽 층부터 (턴제는 from층 그대로)
-  const RANGED = { from: 20, liveFrom: 6, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
+  //   liveShare (dc#160): 실시간 일반 던전은 liveFrom(2)층부터 비율이 층마다 늘어남 (2층 lo → 50층 hi). 원거리 한 발은 맞아도 잘 안 죽어서 수로 압박
+  const RANGED = { from: 20, liveFrom: 2, share: 0.2, deepShare: 0.25, liveShare: { lo: 0.1, hi: 0.4, to: 50 }, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
+  // 실시간 더 세게 (dc#160): 실시간 일반 던전 몬스터(보스·황금 고블린 빼고) HP·공격력 × (탄 피해도 공격력에서 나오니 같이 셈)
+  //   봇으로 재 보니 잘함·보통 모두 50층까지 깸 → 실시간은 피할 수 있는 만큼 더 세게. 턴제·나이트메어·헬·구멍은 그대로
+  //   ease: 1층은 ×1에서 ease층까지 차츰 (1층부터 세면 레벨 1·HP 16으로 1~2층에서 쓰러짐)
+  const LIVE_HARD = { hp: 1.35, atk: 1.25, ease: 8 };
+  const liveHardMul = (n) => { const k = Math.max(0, Math.min(1, (n - 1) / (LIVE_HARD.ease - 1))); return { hp: 1 + (LIVE_HARD.hp - 1) * k, atk: 1 + (LIVE_HARD.atk - 1) * k }; };
+  // 실시간 일반 던전 n층의 원거리 몬스터 비율 (2층 10% → 26층 25% → 50층 40%)
+  const rangedLiveShare = (n) => { const L = RANGED.liveShare, k = Math.max(0, Math.min(1, (n - RANGED.liveFrom) / (L.to - RANGED.liveFrom))); return L.lo + (L.hi - L.lo) * k; };
   // 강타 (dc#155, 새 규칙): 긴장감은 "조금씩 꾸준히 깎이는 체력"보다 "가끔 오는 크지만 피할 수 있는 한 방"에서 나옴.
   //   붙어 있는 근접 몬스터(원거리·황금 고블린·이무기 빼고)가 every턴(붙어 있는 턴만 셈, 층 처음은 start턴)마다 한 마리씩
   //   내가 선 칸을 노려 windup턴(3D windup3d턴) 동안 주황 표시 → 그 칸에 그대로 있으면 최대 HP × pct (받는 피해 감소만 적용, 방패로 못 막음)
@@ -530,7 +538,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

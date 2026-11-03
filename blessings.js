@@ -26,7 +26,7 @@
     breath: { icon: "🌬", name: "숨 고르기", tier: "rare", max: 3, fx: { floorHeal: 10 } },
     quick: { icon: "⏱", name: "빠른 손", tier: "rare", max: 4, fx: { potCd: 1 } },
     trove: { icon: "🗝", name: "보물 냄새", tier: "rare", max: 2, fx: { treasure: 1 } },
-    guide: { icon: "🧭", name: "길잡이", tier: "legend", max: 1, fx: { guide: 1 } },
+    // guide(길잡이, 층 지도가 모두 보임)는 dc#160에서 뺌: 계단이 멀리 생기고 지도에 바로 보여서 의미가 없음. 예전 저장의 guide는 그냥 무시
     eye: { icon: "👁", name: "넓은 눈", tier: "legend", max: 2, fx: { sight: 1 } },
     hero: { icon: "✨", name: "영웅의 기운", tier: "legend", max: 3, fx: { atkPct: 6, defPct: 6, hpPct: 6 } },
     // 속성 스킬 (dc#142): 처음 고르면 스킬이 생기고, 또 고르면 단계(Lv)가 올라 피해·범위·횟수가 커짐 (ELEM). 최대 Lv 10 = 마스터 (dc#143, 예전 Lv 5)
@@ -43,6 +43,10 @@
   //   주기 3  3  3  3  2  2  2  2  2  2   (화염구·얼음 폭발 범위: Lv 4부터 2칸, Lv 8부터 3칸 · 연쇄 번개: 1+Lv번, Lv 4부터 감전)
   //   피해 +12%씩, Lv 10 마스터는 +30% 더 (+138%) · 화염구·연쇄 번개 거리 Lv 7부터 4칸
   const ELEM_CAP = 20;
+  // dc#160: 단계가 오를수록 그 속성 축복이 후보에 덜 나옴 (무게 × ELEM_SLOW^지금 단계, Lv 9면 약 13%)
+  //   한 속성만 고르는 사람: 30층에 Lv 7쯤, 50층까지 마스터는 10명 중 4명. 다시 뽑기를 고를 때마다 한 번씩 쓰면 35층쯤 마스터
+  //   (예전: 한 속성만 고르면 20층쯤, 다시 뽑기를 한 번씩 쓰면 10층쯤 Lv 10)
+  const ELEM_SLOW = 0.8;
   const grow = (lv) => 12 * (lv - 1) + (lv >= ELEM_MAX ? 30 : 0);
   // dc#153: 범위 상한 — 몰려오는 광장에서 너무 넓게 쓸어서. 화염구·얼음 폭발은 Lv 7까지 1칸(3×3), Lv 8부터 2칸(5×5)이 끝
   //   (예전 Lv 4 2칸 · Lv 8 3칸 7×7), 연쇄 번개는 6번까지 (예전 1 + Lv, Lv 10 11번)
@@ -90,7 +94,6 @@
     floorHeal: (v) => tx("bfx.floorHeal", (n) => `새 층에 들어가면 HP ${n}% 회복`, v),
     potCd: (v) => tx("bfx.potCd", (n) => `포션 대기 −${n}턴`, v),
     treasure: (v) => tx("bfx.treasure", (n) => `층마다 보물 자리 +${n}`, v),
-    guide: () => tx("bfx.guide", "층에 들어가면 계단이 지도에 보임"),
     sight: (v) => tx("bfx.sight", (n) => `시야 +${n}칸`, v),
     crit: (v) => tx("bfx.crit", (n) => `치명타 확률 +${n}%`, v),
     critCap: (v) => tx("bfx.critCap", (n) => `치명타 상한 +${n}%p`, v),
@@ -139,7 +142,7 @@
       let i;
       if (relic) i = Math.floor(r() * pool.length);
       else {
-        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier).length);
+        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier).length * (isElem(id) ? ELEM_SLOW ** (have[id] || 0) : 1));
         let x = r() * w.reduce((a, b) => a + b, 0);
         i = 0;
         while ((x -= w[i]) > 0 && i < w.length - 1) i++;
@@ -164,7 +167,7 @@
     const t = fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1);
     return isElem(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ELEM_MAX, ELEM_CAP, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ELEM_MAX, ELEM_CAP, ELEM_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

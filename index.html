@@ -2151,7 +2151,7 @@
       parry: Math.min(cap.parry, g.parry + (b.parry || 0)),   // 몬스터 공격을 막을 확률 (상한 40%, 유물 성벽 조각)
       // 축복 (dc#140): 첫 공격 +% · 보스 HP −% · 포션 회복 +% · 포션 대기 −턴 · 새 층 회복 % · 정예 +% · 보물 자리 +N · 계단 보기 · 시야 +N
       first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, floorHeal: b.floorHeal || 0,
-      elite: b.elite || 0, treasure: b.treasure || 0, guide: !!b.guide, sight: b.sight || 0,
+      elite: b.elite || 0, treasure: b.treasure || 0, sight: b.sight || 0,
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
@@ -2227,7 +2227,9 @@
   const SMASH = RLMonsters.SMASH, RESCUE = RLMonsters.RESCUE, SHOTS = RLMonsters.SHOTS;
   let shots = [];   // 날아가는 탄환 (dc#158): { x, y (칸, 가운데 기준), vx, vy (칸/초), life, atk, color, from }
   const rescueOn = () => OPEN_FLOORS && scene === "dungeon";
-  const ranged = (m) => { if (rangedOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && Math.random() < (nmMobs() || inHell() ? RANGED.deepShare : RANGED.share)) { m.ranged = true; m.rcd = 1 + rnd(RANGED.every); } return m; };
+  const ranged = (m) => { if (rangedOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && Math.random() < (nmMobs() || inHell() ? RANGED.deepShare : (View3D.on || LIVE?.on()) && !inAbyss() ? RLMonsters.rangedLiveShare(depth) : RANGED.share)) { m.ranged = true; m.rcd = 1 + rnd(RANGED.every); } return m; };
+  // 실시간 일반 던전은 더 세게 (dc#160, RLMonsters.LIVE_HARD): 몬스터가 생길 때 HP·공격력에 곱함
+  const liveHard = (m) => { if ((View3D.on || LIVE?.on()) && OPEN_FLOORS && !nmMobs() && !inHell() && !inAbyss() && !inGold() && m.kind !== "boss" && m.kind !== "golden" && !m.named) { const H = RLMonsters.liveHardMul(depth); m.hp = m.maxHp = Math.round(m.maxHp * H.hp); m.atk = Math.round(m.atk * H.atk); } return m; };
   const swarm = (m) => { if (swarmOn() && m.kind !== "boss" && m.kind !== "golden") { const W = RLMonsters.SWARM; m.xp = Math.max(1, Math.round(m.xp * W.xp)); m.goldMul = (m.goldMul || 1) * W.gold; m.dropMul = W.drop; } return m; };
   const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
   // dc#145: 다니는 광장(aw×ah)은 처음 층에 작게 (1층 약 21×16) 시작해서 몬스터가 늘수록 커짐 (20층 약 40×30, 40층 약 69×52, 최대 94×70)
@@ -2474,7 +2476,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(m)) });
+      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(liveHard(m))) });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
@@ -2504,10 +2506,6 @@
       if (spot) items.push({ x: spot.x, y: spot.y, type: "gold", amount: RLMonsters.rollGold(piles.amount, itemLevel(), Math.random) * (inHell() ? HELL.gold.pile : nmMobs() ? NM.gold.pile : 1) });
     }
 
-    if (stats().guide) {   // 길잡이: 예전에는 계단 위치, 넓은 지역(dc#143)은 지도 전체
-      if (OPEN_FLOORS) { for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (map[y][x] !== WALL) seen[y][x] = true; if (!quiet) log(T("🧭 길잡이: 이 층의 지도가 모두 보인다."), null, RLBless.TIERS.legend.color); }
-      else { seen[far.cy][far.cx] = true; if (!quiet) log(T("🧭 길잡이: 계단 위치가 지도에 보인다."), null, RLBless.TIERS.legend.color); }
-    }
     computeFOV();
     noteSeen();
     if (OPEN_FLOORS && !foesLeft().length) { if (inGold() || RLMonsters.isBossFloor(depth)) spawnBoss(); else revealStairs({ x: far.cx, y: far.cy }); }   // 몬스터가 없는 층
@@ -3210,7 +3208,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ ...at, ...ranged(swarm(m)) });
+      enemies.push({ ...at, ...ranged(swarm(liveHard(m))) });
     }
     seen[spot.y][spot.x] = true;
     Sfx("bossKill");
@@ -3218,16 +3216,36 @@
     else log(T("몬스터를 모두 잡자 {0}이(가) 부하 {1}마리와 함께 나타났다! 쓰러뜨리면 계단이 열린다.", boss.name, n), null, BOSS_COLOR);
     showDamage(enemies.find(e => e.kind === "boss") || player, T("보스!"), true, BOSS_COLOR);
   }
-  // 계단: 마지막으로 쓰러진 몬스터 자리 (벽·상점이면 가장 가까운 바닥)
+  // 계단 (dc#160): 걸어서 먼 곳에 (예전: 마지막으로 쓰러진 몬스터 자리라 바로 옆 → 그냥 밟고 내려가 버림)
+  //   내 자리에서 걸어가는 거리(벽을 돌아서)가 가장 먼 곳의 STAIRS_FAR.share 이상인 바닥 중 아무 곳, 적어도 STAIRS_FAR.min칸
+  //   화면 밖이면 화면 가장자리에 계단 쪽 화살표 (drawStairsArrow)
+  const STAIRS_FAR = { share: 0.6, min: 8 };
+  function farStairsSpot() {
+    const D = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(-1)), q = [[player.x, player.y]];
+    D[player.y][player.x] = 0;
+    let max = 0;
+    for (let i = 0; i < q.length; i++) {
+      const [x, y] = q[i];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H || D[ny][nx] >= 0 || map[ny][nx] === WALL) continue;
+        D[ny][nx] = D[y][x] + 1; max = Math.max(max, D[ny][nx]); q.push([nx, ny]);
+      }
+    }
+    const want = Math.max(Math.min(STAIRS_FAR.min, max), Math.round(max * STAIRS_FAR.share)), pool = [];
+    for (const [x, y] of q) if (D[y][x] >= want && map[y][x] === FLOOR && !isShop(x, y) && !items.some(i => i.x === x && i.y === y) && !enemies.some(e => e.hp > 0 && e.x === x && e.y === y)) pool.push({ x, y });
+    return pool.length ? pool[rnd(pool.length)] : null;
+  }
   function revealStairs(at) {
-    let p = at && map[at.y]?.[at.x] === FLOOR && !isShop(at.x, at.y) ? { x: at.x, y: at.y } : nearestFloor(at || player);
+    let p = OPEN_FLOORS && !inAbyss() ? farStairsSpot() : null;
+    if (!p) p = at && map[at.y]?.[at.x] === FLOOR && !isShop(at.x, at.y) ? { x: at.x, y: at.y } : nearestFloor(at || player);
     if (!p) return;
-    floorSt.open = true;
+    floorSt.open = true; floorSt.stairs = { x: p.x, y: p.y };
     map = map.map(r => r.slice());   // 3D 화면이 지도를 다시 그리게 새 배열로
     map[p.y][p.x] = STAIRS;
     seen[p.y][p.x] = true;
-    log(T("▼ 마지막 적을 쓰러뜨리자 아래층으로 내려가는 계단이 나타났다!"), null, "#ffcf5c");
-    showDamage(p, T("계단"), true, "#ffcf5c");
+    log(T("▼ 마지막 적을 쓰러뜨리자 멀리 아래층으로 내려가는 계단이 나타났다! 화살표를 따라가요."), null, "#ffcf5c");
+    showDamage(player, T("계단이 열렸다!"), true, "#ffcf5c");
     Sfx("waypoint");
     vacuumXp();
   }
@@ -5205,7 +5223,7 @@
     const queue = () => (player.pq ||= []);
     const rrN = () => (player.rr?.k === floorKey() ? player.rr.n : 0);
     // 자동으로 고를 때 순서 (tools/sim-v2.mjs와 같음)
-    const PRI = ["hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin", "grail", "heart", "hawk", "wall"];
+    const PRI = ["hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "study", "coin", "grail", "heart", "hawk", "wall"];
     const pickBest = (ids) => [...ids].sort((a, b) => PRI.indexOf(a) - PRI.indexOf(b))[0];
     function reset() { player.bl = {}; player.rl = {}; player.bz = {}; player.pq = []; player.rr = null; }
     // 새 판 시작: keep이면 지금 축복을 그대로 (던전 완료 후 이어가기). 중간 층·다음 던전부터 새로 시작하면 건너뛴 층의 절반만큼 축복, 1/10만큼 유물을 먼저 고름
@@ -5722,6 +5740,8 @@
         add(who, "dash", DODGE.ms, { dx: fx0 - nx, dy: fy0 - ny });
         if (Sprites.on) for (let k = 0; k < 3; k++) dust.push({ x: fx0 + (nx - fx0) * k / 3, y: fy0 + (ny - fy0) * k / 3, dx: nx - fx0, side: k % 2 ? 1 : -1, t0: t + k * 60, dur: 300 });
       },
+      // 실시간 걸음 먼지 (dc#160): 발밑에 작은 구름 (x·y = 칸 좌표, 소수 가능)
+      puff(x, y, dx) { if (!reduceMotion && Sprites.on) dust.push({ x, y, dx: Math.sign(dx), side: 1, t0: now(), dur: 280 }); },
       die(e, at = 80) {
         if (reduceMotion) return;
         dying.push({ name: `mon_${e.id}`, ch: e.ch, color: e.color, x: e.x, y: e.y, t0: now() + at, dur: 380 });
@@ -5778,7 +5798,13 @@
             if ((Math.floor(t / 280) + phase.get(who)) % 4 >= 2) o.y -= 0.8;
           }
         }
-        if (liveMe) { const lo = LIVE.offset(); o.walkX += lo.x; o.walkY += lo.y; }
+        if (liveMe) {
+          const lo = LIVE.offset(); o.walkX += lo.x; o.walkY += lo.y;
+          // 실시간 걷기 (dc#160): 걸음마다 통통 뛰고 좌우로 살짝 기우뚱, 걷는 쪽을 봄 (예전: 그림이 그대로 미끄러짐)
+          const g = LIVE.gait();
+          o.flip = g.face;
+          if (g.moving && !busy) { const ph = g.walked * Math.PI / 0.45; o.y -= Math.abs(Math.sin(ph)) * TILE * 0.14; o.rot += Math.sin(ph) * 0.13 + g.face * 0.07; }   // 걷는 쪽으로 몸을 살짝 숙임
+        }
         o.x += o.walkX; o.y += o.walkY;
         return o;
       },
@@ -5865,7 +5891,7 @@
   // 파이어볼: 플레이어 손에서 불덩이가 날아가 터짐(불꽃 원 + 불티) · 프로스트 노바: 얼음 고리가 퍼지며 얼음 조각·눈송이
   // 체인 라이트닝: 지그재그 번개가 한 마리씩 차례로 튕김 (깜빡이며), 무기 번개 줄은 가는 번개
   const Fx = (() => {
-    let list = [];
+    let list = [], side = 1;   // side: 베기 방향을 번갈아
     const now = () => performance.now();
     const C = (p) => ({ x: p.x * TILE + TILE / 2, y: p.y * TILE + TILE / 2 });   // 칸 가운데 (그리는 좌표)
     const rand = (k) => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };   // 같은 k면 같은 값 (깜빡임용)
@@ -5882,6 +5908,16 @@
       ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
     };
     const draws = {
+      // 베기 (dc#160, 실시간): 내 앞쪽으로 흰 초승달이 휙 (0.18초). at = 내 가운데(칸 좌표, 소수), a = 때리는 쪽 각도
+      slash(f, t) {
+        const k = t / 180;
+        if (k >= 1) return false;
+        const cx = f.at.x * TILE, cy = f.at.y * TILE, R = TILE * 0.78, a0 = f.a - 1.1 * f.side, a1 = a0 + 2.2 * f.side * Math.min(1, k * 1.6);
+        ctx.globalAlpha = 1 - k * k;
+        ctx.strokeStyle = "#fff6d8"; ctx.shadowColor = "#fff2b0"; ctx.shadowBlur = 6; ctx.lineCap = "round";
+        for (const [r, w] of [[R, 3], [R * 0.84, 1.6]]) { ctx.lineWidth = w; ctx.beginPath(); ctx.arc(cx, cy, r, Math.min(a0, a1), Math.max(a0, a1)); ctx.stroke(); }
+        return true;
+      },
       // 버티기 (dc#155): 내 둘레로 빨간 고리 세 겹이 퍼지고 가운데 하트, 0.9초
       guard(f, t) {
         const k = t / 900;
@@ -6023,6 +6059,7 @@
     return {
       FB_FLY, CHAIN_STEP, CURSE_FLY,
       guard(at) { list.push({ kind: "guard", at: { x: at.x, y: at.y }, t0: now() }); },
+      slash(at, to) { if (reduceMotion) return; side = -side; list.push({ kind: "slash", at: { x: at.x, y: at.y }, a: Math.atan2(to.y - at.y, to.x - at.x), side, t0: now() }); },
       smash(at) { fx3d?.("smash", at); list.push({ kind: "smash", at: { x: at.x, y: at.y }, t0: now(), seed: Math.random() * 100 }); },
       curse(from, to, r) { const cells = aimCells(to); fx3d?.("curse", from, to, cells); list.push({ kind: "curse", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, cells, t0: now(), seed: Math.random() * 100 }); },
       fireball(from, to, r) { fx3d?.("fireball", from, to); list.push({ kind: "fireball", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, t0: now(), seed: Math.random() * 100 }); },
@@ -6038,7 +6075,8 @@
           return alive;
         });
       },
-      busy: () => list.length > 0,
+      busy: () => list.some(f => f.kind !== "slash"),   // 베기는 기다리지 않음
+      kinds: () => list.map(f => f.kind),   // 시험용: 지금 그리는 효과들
     };
   })();
 
@@ -6518,6 +6556,7 @@
     let on = store.get(KEY) !== "off";
     let pos = null, tile = null, levelRef = null, last = 0, acc = 0, atkReady = 0, dash = null, moved = false;
     let dir = { x: 1, y: 0 };   // 마지막으로 움직인 쪽 (멈춰서 회피하면 이쪽)
+    let walked = 0, walkAt = -1e9, face = 1, puffAt = 0;   // 걸음 (dc#160): 걸은 거리(칸) · 마지막으로 움직인 때 · 보는 쪽(왼 -1 / 오른 1) · 다음 먼지
     const held = { u: 0, d: 0, l: 0, r: 0 }, stick = { x: 0, y: 0 };
     const btn = document.getElementById("live-btn");
     const active = () => on && NEW_CTRL && scene === "dungeon" && !!player && !View3D.active();
@@ -6580,8 +6619,14 @@
       if (w.l < 0.05) return;
       dir = { x: w.x, y: w.y };
       if (!moved) { moved = true; Tips.step("walk"); }
-      const sp = SPEED * (player.slow > 0 ? 0.55 : 1) * dt;
+      const sp = SPEED * (player.slow > 0 ? 0.55 : 1) * dt, bx = pos.x, by = pos.y;
       slide(w.x * sp, w.y * sp);
+      const went = Math.hypot(pos.x - bx, pos.y - by);
+      if (went > 1e-4) {   // 실제로 움직였을 때만 걷는 모습 (벽에 막혀 제자리면 멈춘 모습)
+        walked += went; walkAt = performance.now();
+        if (Math.abs(w.x) > 0.2) face = w.x < 0 ? -1 : 1;
+        if (walked >= puffAt) { puffAt = walked + 0.55; Anim.puff(pos.x - 0.5, pos.y - 0.5, w.x); }
+      }
       // 칸 가운데 쪽으로 살짝 당겨서 통로·기둥 모서리에 덜 걸리게 (움직이지 않는 축만)
       const k = Math.min(1, dt * 6);
       if (Math.abs(w.y) < 0.2 && !blocked(pos.x, Math.floor(pos.y) + 0.5)) pos.y += (Math.floor(pos.y) + 0.5 - pos.y) * k;
@@ -6617,6 +6662,7 @@
       if (!e) return;
       atkReady = now + TURN * 1000;
       Anim.newTurn();
+      Fx.slash(pos, { x: e.x + 0.5, y: e.y + 0.5 });   // 베는 모습 (dc#160)
       attack(player, e);
       if (scene === "dungeon" && !gameOver) { computeFOV(); updateStats(); }
     }
@@ -6657,7 +6703,9 @@
     const offset = () => (pos && tile && active() ? { x: (pos.x - 0.5 - tile.x) * TILE, y: (pos.y - 0.5 - tile.y) * TILE } : { x: 0, y: 0 });
     btn?.addEventListener("click", () => { toggle(); btn.blur(); });
     label();
-    return { active, toggle, key, release, stick: setStick, dodge, offset, on: () => on, TURN, pos: () => pos && { ...pos }, dashing: () => !!dash };
+    // 걷는 모습 (dc#160): walked = 걸은 거리(칸), moving = 방금까지 움직였는지, face = 보는 쪽
+    const gait = () => ({ walked, moving: performance.now() - walkAt < 120, face });
+    return { active, toggle, key, release, stick: setStick, dodge, offset, gait, on: () => on, TURN, pos: () => pos && { ...pos }, dashing: () => !!dash };
   })();
   // 실시간(3D·실시간 2D)이면 예고 턴을 조금 길게 (한 턴이 0.4~0.5초)
   const realtime = () => View3D.active() || !!LIVE?.active();
@@ -7983,6 +8031,7 @@
     drawStatus(player, ppx, ppy);
     ctx.save();
     ctx.globalAlpha = po.alpha;
+    if (po.flip < 0) { ctx.translate(ppx + TILE / 2, 0); ctx.scale(-1, 1); ctx.translate(-(ppx + TILE / 2), 0); }   // 왼쪽으로 걸으면 왼쪽을 봄 (dc#160)
     posed(po.rot, ppx, ppy, () => {
       drawHero(ppx, ppy, po.flash > 0.3 ? "#ff5a5a" : "#ffffff");
       if (Sprites.on) drawFlash(Doll.canvas(), ppx, ppy, po.flash);
@@ -8007,10 +8056,37 @@
       for (const c of f.cells) if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H && map[c.y][c.x] !== WALL) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
     }
     Walk.draw();
+    if (!fullMap) drawStairsArrow(cam);
     if (fullMap) drawMarks(ctx, TILE, Math.max(TILE, 14 / cam.z), null, true);
     if (overlayMap && !fullMap) drawOverlay();
   }
 
+  // 계단 화살표 (dc#160): 계단이 화면 밖이면 화면 가장자리에서 계단 쪽을 가리킴 (지도 좌표로 그림)
+  function drawStairsArrow(cam) {
+    if (floorSt.open && floorSt.stairs == null) {   // 다시 불러온 층: 지도에서 계단을 한 번 찾아 둠
+      floorSt.stairs = false;
+      for (let y = 0; y < MAP_H && !floorSt.stairs; y++) for (let x = 0; x < MAP_W; x++) if (map[y][x] === STAIRS) { floorSt.stairs = { x, y }; break; }
+    }
+    const st = floorSt.open && floorSt.stairs;
+    if (!st || map[st.y]?.[st.x] !== STAIRS || gameOver) return false;
+    const w = VIEW_W / cam.z, h = VIEW_H / cam.z, sx = (st.x + 0.5) * TILE, sy = (st.y + 0.5) * TILE;
+    if (sx > cam.x && sx < cam.x + w && sy > cam.y && sy < cam.y + h) return false;   // 보이면 계단 그림이 있으니
+    const me = mePos(), mx = me.x * TILE, my = me.y * TILE, dx = sx - mx, dy = sy - my;
+    const pad = 16 / cam.z, x0 = cam.x + pad, x1 = cam.x + w - pad, y0 = cam.y + pad, y1 = cam.y + h - pad;
+    let t = 1e9;   // 내 자리에서 계단 쪽으로 가다 화면 가장자리(안쪽 pad)에 닿는 곳
+    if (dx > 0) t = Math.min(t, (x1 - mx) / dx); if (dx < 0) t = Math.min(t, (x0 - mx) / dx);
+    if (dy > 0) t = Math.min(t, (y1 - my) / dy); if (dy < 0) t = Math.min(t, (y0 - my) / dy);
+    if (!(t > 0 && t < 1e8)) return false;
+    const ax = mx + dx * t, ay = my + dy * t, a = Math.atan2(dy, dx), u = 9 / cam.z;
+    const pulse = reduceMotion ? 1 : 0.75 + 0.25 * Math.sin(performance.now() / 180);
+    ctx.save(); ctx.translate(ax, ay);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.beginPath(); ctx.arc(0, 0, u * 1.25, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(a); ctx.globalAlpha = pulse;
+    ctx.beginPath(); ctx.moveTo(u, 0); ctx.lineTo(-u * 0.6, -u * 0.75); ctx.lineTo(-u * 0.25, 0); ctx.lineTo(-u * 0.6, u * 0.75); ctx.closePath();
+    ctx.fillStyle = "#ffcf5c"; ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 1 / cam.z; ctx.stroke();
+    ctx.restore();
+    return true;
+  }
   // 느려짐은 칸을 파랗게, 화상은 아래쪽에 주황 줄
   function drawStatus(u, px, py) {
     if (u.slow > 0) {
