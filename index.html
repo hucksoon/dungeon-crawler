@@ -5366,7 +5366,7 @@
     const endHold = () => { clearTimeout(hold); clearInterval(hold); hold = 0; };
     // 새 규칙 휴대폰: 누른 자리가 스틱 가운데 (dc#151, 전에는 내 캐릭터가 가운데 dc#144). 누른 채 끌면 끈 쪽(상하좌우 중 더 많이 간 쪽)으로
     //   계속 걷고(붙은 몬스터는 그쪽 공격), 손가락을 가운데로 되돌리면 멈춤. 톡 누르면 회피. 누른 자리에 동그란 스틱 표시
-    let joyT = null;
+    let joyT = null, tap2 = null;   // tap2: 걷는 동안 누른 두 번째 손가락 (dc#154)
     const JOY = { dead: 18, ring: 46 };
     const joyEl = document.createElement("div");
     joyEl.id = "joy-stick"; joyEl.hidden = true; joyEl.innerHTML = "<i></i>";
@@ -5387,6 +5387,8 @@
     canvas.addEventListener("pointerdown", (e) => {
       if (scene !== "dungeon" || anyModalOpen() || (e.pointerType === "mouse" && e.button !== 0)) return;
       if (NEW_CTRL && e.pointerType !== "mouse") {
+        // dc#154: 한 손가락으로 걷는 중에 다른 손가락으로 톡 = 회피 (걷던 손가락은 그대로). 예전엔 두 번째 손가락이 스틱을 빼앗아 걸음이 멈춤
+        if (joyT && joyT.id !== e.pointerId) { tap2 = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0 }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; }
         stop(); endHold(); clearInterval(joyT?.timer);
         joyT = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0, timer: 0 };
         try { canvas.setPointerCapture(e.pointerId); } catch {}
@@ -5397,6 +5399,7 @@
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     });
     canvas.addEventListener("pointermove", (e) => {
+      if (tap2 && e.pointerId === tap2.id) { tap2.moved = Math.max(tap2.moved, Math.hypot(e.clientX - tap2.x0, e.clientY - tap2.y0)); return; }
       if (joyT && e.pointerId === joyT.id) {
         joyT.x = e.clientX; joyT.y = e.clientY;
         joyT.moved = Math.max(joyT.moved, Math.hypot(e.clientX - joyT.x0, e.clientY - joyT.y0));
@@ -5414,6 +5417,12 @@
       hold = setTimeout(() => { hold = setInterval(once, 130); }, 300);
     });
     const up = (e) => {
+      if (tap2 && e.pointerId === tap2.id) {
+        const tap = tap2.moved < 12 && performance.now() - tap2.t0 < 400;
+        tap2 = null;
+        if (tap && e.type === "pointerup") dodge();   // 걷던 손가락(joyT)은 그대로 → 회피 뒤에도 계속 걸음
+        return;
+      }
       if (joyT && e.pointerId === joyT.id) {
         const tap = !joyT.timer && joyT.moved < 12 && performance.now() - joyT.t0 < 400;
         clearInterval(joyT.timer); joyT = null; joyShow();
@@ -6224,6 +6233,7 @@
     // 휴대폰 방향 버튼 (dc#114): ▲ 앞 · ▼ 뒤 · ◀ ▶ 돌기
     function hold(dir, on) { const v = on ? 1 : 0; if (dir === "up") held.f = v; else if (dir === "down") held.b = v; else if (dir === "left") held.tl = v; else if (dir === "right") held.tr = v; }
     // ---- 조작: 마우스 (클릭하면 마우스로 둘러보기, Esc로 풀림) · 터치 (왼쪽 절반 이동 스틱, 오른쪽 끌어서 둘러보기·톡 공격) ----
+    let joy2 = null;   // 3D: 걷는 동안 누른 두 번째 손가락 (dc#154)
     function bindPointer(cv) {
       cv.addEventListener("contextmenu", (e) => e.preventDefault());
       cv.addEventListener("pointerdown", (e) => {
@@ -6236,18 +6246,24 @@
         }
         e.preventDefault();
         // 새 규칙 휴대폰 (dc#144): 누른 자리가 스틱 가운데 (위·아래 앞뒤, 좌우 돌기), 톡 누르면 회피
-        if (NEW_CTRL) { if (joy.id == null) Object.assign(joy, { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: 0, t0: performance.now() }); cv.setPointerCapture?.(e.pointerId); return; }
+        if (NEW_CTRL) {
+          if (joy.id == null) Object.assign(joy, { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: 0, t0: performance.now() });
+          else if (joy.id !== e.pointerId) joy2 = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0 };   // dc#154: 걷는 중 두 번째 손가락 톡 = 회피
+          try { cv.setPointerCapture?.(e.pointerId); } catch {} return;
+        }
         // 휴대폰 (dc#114): 이동은 방향 버튼, 화면은 어디를 끌든 둘러보기 · 톡 누르면 공격
         if (look.id == null) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; look.moved = 0; look.t0 = performance.now(); }
         cv.setPointerCapture?.(e.pointerId);
       });
       cv.addEventListener("pointermove", (e) => {
+        if (joy2 && e.pointerId === joy2.id) { joy2.moved = Math.max(joy2.moved, Math.hypot(e.clientX - joy2.x0, e.clientY - joy2.y0)); return; }
         if (e.pointerId === joy.id) { const R0 = 46, ddx = e.clientX - joy.x0, ddy = e.clientY - joy.y0; joy.moved = Math.max(joy.moved || 0, Math.hypot(ddx, ddy)); const dz = (v) => (Math.abs(v) < 8 ? 0 : v);   // 손 떨림은 무시
           joy.dx = Math.max(-1, Math.min(1, dz(ddx) / R0)); joy.dy = Math.max(-1, Math.min(1, dz(ddy) / R0)); }
         else if (e.pointerId === look.id) { const dx = e.clientX - look.x, dy = e.clientY - look.y; look.x = e.clientX; look.y = e.clientY; look.moved += Math.abs(dx) + Math.abs(dy); turnBy(dx * 2.2, dy * 2.2); }
       });
       const up = (e) => {
         if (e.pointerType === "mouse") { held.atk = false; return; }
+        if (joy2 && e.pointerId === joy2.id) { const tap = joy2.moved < 12 && performance.now() - joy2.t0 < 400; joy2 = null; if (tap && e.type === "pointerup") window.RLDodge(); return; }
         if (e.pointerId === joy.id) { const tap = NEW_CTRL && (joy.moved || 0) < 12 && performance.now() - (joy.t0 || 0) < 400; joy.id = null; joy.dx = joy.dy = 0; if (tap && e.type === "pointerup") window.RLDodge(); }
         if (e.pointerId === look.id) { if (look.moved < 12 && performance.now() - look.t0 < 300) swing(); look.id = null; }
       };
@@ -7220,18 +7236,22 @@
       held.left = dx < -tile * 0.5; held.right = dx > tile * 0.5;
       if (!touch.entered && dy < -tile * 1.5 && Math.abs(dy) > Math.abs(dx)) { touch.entered = true; held.left = held.right = false; enterDoor(); }
     }
+    let touch2 = null;   // 마을: 걷는 동안 누른 두 번째 손가락 톡 = 회피 (dc#154)
     canvas.addEventListener("pointerdown", (e) => {
       if (!NEW_CTRL || scene !== "lobby" || e.pointerType === "mouse" || !ok() || blocked()) return;
       e.preventDefault();
+      if (touch.id != null && touch.id !== e.pointerId) { touch2 = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0 }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; }
       Object.assign(touch, { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0, entered: false });
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     });
     canvas.addEventListener("pointermove", (e) => {
+      if (touch2 && e.pointerId === touch2.id) { touch2.moved = Math.max(touch2.moved, Math.hypot(e.clientX - touch2.x0, e.clientY - touch2.y0)); return; }
       if (e.pointerId !== touch.id || scene !== "lobby") return;
       touch.moved = Math.max(touch.moved, Math.hypot(e.clientX - touch.x0, e.clientY - touch.y0));
       if (touch.moved >= 12) touchDir(e);
     });
     const touchUp = (e) => {
+      if (touch2 && e.pointerId === touch2.id) { const tap = touch2.moved < 12 && performance.now() - touch2.t0 < 400; touch2 = null; if (tap && e.type === "pointerup" && scene === "lobby") startDash(); return; }
       if (e.pointerId !== touch.id) return;
       const tap = touch.moved < 12 && performance.now() - touch.t0 < 400;
       touch.id = null; held.left = held.right = false;

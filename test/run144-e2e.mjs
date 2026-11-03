@@ -20,12 +20,17 @@ const HOOK = `
     // 몬스터 하나를 (dx, dy) 자리에 (HP 많음, 공격력 0)
     foe: (dx, dy, atk = 0) => { const e = { ...RLMonsters.makeNormal(RLMonsters.pickType(2, Math.random), "normal", 2), x: player.x + dx, y: player.y + dy }; e.hp = e.maxHp = 1e6; e.atk = atk; map[e.y][e.x] = FLOOR; enemies.push(e); visible[e.y][e.x] = true; render(); return e.hp; },
     foeHp: () => enemies[0]?.hp,
+    face3dLong: () => { const d = window.__t.face3d(); if (d) for (let k = 1; k <= 9; k++) { const x = player.x + d.dx * k, y = player.y + d.dy * k; if (map[y]?.[x] !== undefined && x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1) map[y][x] = FLOOR; } return d; },   // 3D: 앞쪽 길을 길게 (회피 뒤에도 걸을 수 있게)
     face3d: () => { const d = window.__t.clearFace(); if (d) View3D.look(Math.atan2(d.dx, -d.dy)); return d; },
     // 회피 중 무적: 같은 몬스터 공격을 무적일 때·아닐 때
     inv: () => { const e = enemies[0]; e.atk = 50; const s = stats(); const h0 = player.hp; player.inv = 1; attack(e, player); const a = h0 - player.hp; player.inv = 0; player.hp = s.maxHp; const h1 = player.hp; attack(e, player); const b = h1 - player.hp; player.hp = s.maxHp; return { inv: a, normal: b }; },
     sounds: () => window.RLSound?.recent?.() || [],
     hp: () => { player.hp = stats().maxHp; },
     screen: () => { const p = Walk.screenOf(player.x, player.y); return p; },
+    // 넓게 걸을 자리 (dc#154): 왼쪽 끝 가까이로 옮기고 오른쪽으로 바닥을 길게
+    lane: () => { enemies = []; items = []; const y = Math.max(4, Math.min(MAP_H - 5, player.y)); for (let yy = y - 3; yy <= y + 3; yy++) for (let x = 1; x < MAP_W - 1; x++) { map[yy][x] = FLOOR; visible[yy][x] = seen[yy][x] = true; }
+      player.x = 2; player.y = y; player.jumpCd = 0; render(); return { x: player.x, y: player.y, w: MAP_W }; },
+    laneMid: () => { const r = window.__t.lane(); player.x = Math.min(10, MAP_W - 8); render(); return { x: player.x, y: player.y }; },
     townScreen: () => { const r = canvas.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: { l: r.left, t: r.top, w: r.width, h: r.height } }; },
     map3d: () => { const c = document.getElementById("map3d"), v = document.getElementById("game3d"); return { w: c.clientWidth, cw: v.clientWidth, cls: c.className }; },
     log: () => document.getElementById("log").innerText,
@@ -61,6 +66,23 @@ async function open(storage, { phone = false, scene = "dungeon" } = {}) {
       for (let i = 1; i <= 6; i++) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x0 + (x1 - x0) * i / 6, y: y0 + (y1 - y0) * i / 6 }] }); await sleep(16); }
       await sleep(holdMs);
       await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    },
+    // 한 손가락(A)으로 끌어 걷는 중에 다른 손가락(B)으로 톡 (dc#154). probe(): 톡 직전·직후·끝에 상태 읽기
+    //   CDP 터치는 두 손가락 중 하나만 떼는 것을 잘 못 해서(먼저 누른 손가락이 떼어짐) 포인터 이벤트를 직접 만들어 보냄
+    walkTap: async (x0, y0, x1, y1, before, [bx, by], after, probe) => {
+      const fire = (type, id, x, y) => page.evaluate(([type, id, x, y]) => { const el = document.elementFromPoint(x, y);
+        el.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", clientX: x, clientY: y, bubbles: true, cancelable: true, isPrimary: id === 101 })); }, [type, id, x, y]);
+      await fire("pointerdown", 101, x0, y0);
+      for (let i = 1; i <= 6; i++) { await fire("pointermove", 101, x0 + (x1 - x0) * i / 6, y0 + (y1 - y0) * i / 6); await sleep(16); }
+      await sleep(before);
+      const s0 = await probe();
+      await fire("pointerdown", 102, bx, by); await sleep(60); await fire("pointerup", 102, bx, by);
+      await sleep(250);
+      const s1 = await probe();
+      for (let k = 0; k < after / 100; k++) { await fire("pointermove", 101, x1, y1); await sleep(100); }
+      const s2 = await probe();
+      await fire("pointerup", 101, x1, y1);
+      return [s0, s1, s2];
     },
   };
   return { ctx, page, errors, touch };
@@ -144,16 +166,21 @@ try {
   await P.touch.tap(me.x + 30, me.y + 30); await sleep(500);
   let q = await T(P.page, "s");
   check("phone 2D: tap the screen → dodge 3 tiles", pdir && q.x === p.x + pdir.dx * 3 && q.y === p.y + pdir.dy * 3, JSON.stringify([pdir, p, q]));
-  // 누른 자리가 스틱 가운데 (dc#151): 캐릭터 반대쪽에서 눌러도, 누른 자리에서 끈 쪽으로 걸음
-  const wdir = await T(P.page, "clearFace");
-  p = await T(P.page, "s");
-  const m2 = await T(P.page, "screen");
-  const sx = m2.x - wdir.dx * 110 + wdir.dy * 40, sy = m2.y - wdir.dy * 110 + wdir.dx * 40;   // 캐릭터에서 반대쪽으로 떨어진 곳
-  await P.touch.drag(sx, sy, sx + wdir.dx * 70, sy + wdir.dy * 70, 420);
+  // 누른 자리가 스틱 가운데 (dc#151): 캐릭터 왼쪽 먼 곳을 눌러 오른쪽으로 끌어도(손가락은 여전히 캐릭터 왼쪽) 오른쪽으로 걸음
+  p = await T(P.page, "laneMid"); await sleep(150);
+  const m2 = await T(P.page, "screen"), gb = await P.page.locator("#game").boundingBox();
+  const sx = Math.max(gb.x + 20, m2.x - 150), sy = Math.min(gb.y + gb.height - 30, m2.y + 60);
+  await P.touch.drag(sx, sy, sx + 70, sy, 420);
   await sleep(200);
   q = await T(P.page, "s");
-  const steps = (q.x - p.x) * wdir.dx + (q.y - p.y) * wdir.dy;
-  check(`phone 2D: press anywhere and drag → walks the way you dragged, from where you pressed (${steps} steps)`, steps >= 2, JSON.stringify([wdir, p, q]));
+  const steps = q.x - p.x;
+  check(`phone 2D: press anywhere and drag → walks the way you dragged, from where you pressed (${steps} steps right, finger still left of the player)`, steps >= 2 && q.y === p.y && sx + 70 < m2.x, JSON.stringify([p, q, sx, m2.x]));
+  // 걷는 중 다른 손가락으로 톡 → 회피하고 계속 걸음 (dc#154, 예전엔 걸음이 멈춤)
+  await T(P.page, "lane"); await sleep(150);
+  const ln = await T(P.page, "screen");
+  const cv = await P.page.locator("#game").boundingBox();
+  const wt = await P.touch.walkTap(cv.x + 60, cv.y + cv.height * 0.75, cv.x + 130, cv.y + cv.height * 0.75, 350, [cv.x + cv.width - 50, cv.y + cv.height * 0.85], 700, () => T(P.page, "s"));
+  check(`phone 2D: walking with one finger, tap with another → dodge and keep walking (x ${wt.map(s => s.x).join(" → ")})`, wt[1].cd > 0 && wt[1].x - wt[0].x >= 3 && wt[2].x > wt[1].x && wt[1].y === wt[0].y, JSON.stringify(wt));
   check("no page errors (phone 2D)", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 
@@ -175,6 +202,12 @@ try {
     await Q.touch.tap(box.x + box.width / 2, box.y + box.height / 2); await sleep(1200);
     const s3 = (await T(Q.page, "s")).pos;
     check("phone 3D: tap = dodge (dash)", Math.hypot(s3.x - s2.x, s3.y - s2.y) > 1 && (await T(Q.page, "sounds")).includes("roll"), JSON.stringify([s2, s3]));
+    await sleep(2200);
+    await T(Q.page, "face3dLong"); await sleep(100);
+    const w3 = await Q.touch.walkTap(box.x + box.width / 2, box.y + box.height * 0.7, box.x + box.width / 2, box.y + box.height * 0.7 - 80, 500, [box.x + box.width * 0.2, box.y + box.height * 0.92], 700, async () => ({ ...(await T(Q.page, "s")).pos, rolls: (await T(Q.page, "sounds")).filter(x => x === "roll").length }));
+    const mv = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+    // 앞이 3칸만 트여 있어 회피 뒤엔 곧 벽에 닿음 → 조금이라도 계속 밀고 나가면 걷는 중 (예전엔 두 번째 손가락이 무시되어 회피가 안 나갔음)
+    check("phone 3D: walking with one finger, tap with another → dodge and keep walking", w3[1].rolls > w3[0].rolls && mv(w3[0], w3[1]) > 1 && mv(w3[1], w3[2]) > 0.05, JSON.stringify(w3));
     const mp = await T(Q.page, "map3d");
     check(`phone 3D: small map is big (${mp.w}px of ${mp.cw}px)`, mp.cls === "small" && mp.w >= mp.cw * 0.4, JSON.stringify(mp));
     await Q.page.screenshot({ path: path.join(SHOTS, "run144-phone3d.png") }).catch(() => {});
@@ -195,6 +228,10 @@ try {
   await W.touch.tap(sc.x, sc.y); await sleep(1300);
   const tw2 = (await T(W.page, "s")).town;
   check("phone town: tap → dash 3 tiles", Math.abs(tw2.x - tw1.x) > 2.5, JSON.stringify([tw1, tw2]));
+  await sleep(1200);
+  const sc2 = await T(W.page, "townScreen");
+  const wtt = await W.touch.walkTap(sc2.x, sc2.y + 40, sc2.x + 120, sc2.y + 40, 400, [sc2.x - 60, sc2.y - 100], 600, async () => ({ ...(await T(W.page, "s")).town, dashing: await W.page.evaluate(() => window.Town?.dashing ?? null) }));
+  check(`phone town: walking with one finger, tap with another → dash and keep walking (x ${wtt.map(s => s.x.toFixed(1)).join(" → ")})`, wtt[1].x - wtt[0].x > 2 && wtt[2].x > wtt[1].x + 0.3, JSON.stringify(wtt));
   await W.page.screenshot({ path: path.join(SHOTS, "run144-town.png") }).catch(() => {});
   check("no page errors (phone town)", W.errors.length === 0, W.errors.join("; "));
   await W.ctx.close();
