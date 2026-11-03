@@ -1354,5 +1354,13 @@
     "강타": "Smash",
     "저주 구슬": "Curse Orb",
     "⚠ {0}! {1}턴 안에 옮기세요": "⚠ {0}! Move within {1} turns",
+    "실시간: 방향키 / WASD를 누르고 있으면 계속 걸어요 (대각선도) &nbsp;·&nbsp; 붙은 몬스터는 저절로 공격 &nbsp;·&nbsp; 회피: Space &nbsp;·&nbsp; 포션: Q &nbsp;·&nbsp; 인벤토리: I &nbsp;·&nbsp; 도감: B &nbsp;·&nbsp; 전체 지도: M &nbsp;·&nbsp; 지도 겹쳐 보기: Tab &nbsp;·&nbsp; 턴제로: T &nbsp;·&nbsp; 포탈(로비로): P<br>": "Real time: hold the arrow keys / WASD to keep walking (diagonals too) &nbsp;·&nbsp; adjacent monsters are hit automatically &nbsp;·&nbsp; Dodge: Space &nbsp;·&nbsp; Potion: Q &nbsp;·&nbsp; Inventory: I &nbsp;·&nbsp; Bestiary: B &nbsp;·&nbsp; Full map: M &nbsp;·&nbsp; Map overlay: Tab &nbsp;·&nbsp; Turn-based: T &nbsp;·&nbsp; Portal (to town): P<br>",
+    "실시간: 화면을 누른 채 끌면 끈 쪽으로 계속 걸어요 (대각선도). 붙은 몬스터는 저절로 공격. 다른 손가락으로 톡 누르면 회피.<br>": "Real time: press and drag to keep walking that way (diagonals too). Adjacent monsters are hit automatically. Tap with another finger to dodge.<br>",
+    "⏱ 실시간": "⏱ Real time",
+    "⏸ 턴제": "⏸ Turn-based",
+    "시간이 흘러요: 부드럽게 걷고 몬스터는 저절로 때려요. 누르면(또는 T) 턴제로": "Time flows: walk smoothly and hit monsters automatically. Click (or T) for turn-based",
+    "한 칸 움직일 때마다 한 턴. 누르면(또는 T) 실시간으로": "One turn per tile you move. Click (or T) for real time",
+    "⏱ 실시간: 방향키를 누르고 있으면 계속 걷고, 붙은 몬스터는 저절로 때려요. 시간이 흐르니 몬스터도 계속 움직여요!": "⏱ Real time: hold the arrow keys to keep walking; adjacent monsters are hit automatically. Time flows, so monsters keep moving too!",
+    "⏸ 턴제: 한 칸 움직일 때마다 몬스터도 한 번 움직여요.": "⏸ Turn-based: monsters move once each time you move a tile.",
   } });
 })(typeof self !== "undefined" ? self : this);
