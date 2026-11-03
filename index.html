@@ -2132,16 +2132,19 @@
   // 레벨로 오르는 기본 능력치(player) + 장비·세트 효과. TT: 다른 장비 조합의 합계 (장비 비교, dc#91)
   // 정식 v2 (dc#140): 장비 숫자(공격력·방어력·최대 HP) + 레벨 + 이 판의 축복·유물 (blessings.js). 다른 아이템 효과는 0
   const blessTotals = () => RLBless.totals({ ...(player?.bl || {}), ...(player?.rl || {}) });
+  const RES_RELIC = { fire: "resFire", ice: "resIce", bolt: "resBolt", poison: "resPoison" };
   function stats(TT = Inv.totals()) {
     const g = TT.stats, b = blessTotals(), cap = RLBless.capsOf(b);
     // dc#153: 예전엔 Lv 5에서 멈춰 Lv 6~10 효과가 안 들어감 (카드·시뮬레이션은 Lv 10까지)
     const elv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), ef = Object.fromEntries(["fire", "ice", "bolt"].map(k => [k, elv(k) ? RLBless.ELEM[k](elv(k)) : null]));
     const pct = (v, p) => Math.round(v * (1 + p / 100));
+    // 각성 스킬 (dc#163): 불의 장화·얼음 보호막·전자기장 단계 (RLBless.AWAKE)
+    const alv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), aw = { boots: alv("boots") ? RLBless.AWAKE.boots(alv("boots")) : null, shield: alv("shield") ? RLBless.AWAKE.shield(alv("shield")) : null, field: alv("field") ? RLBless.AWAKE.field(alv("field")) : null };
     const maxHp = pct(player.maxHp + g.hp, g.hpPct + (b.hpPct || 0) + levelPct());
     return {
       maxHp,
       atk: pct(player.atk + g.atk, g.atkPct + (b.atkPct || 0) + (player.reap || 0) + levelPct()),   // 사자의 낫: 처치할 때마다 +%
-      def: Math.round(pct(g.def, g.defPct + (b.defPct || 0) + (player.iron || 0)) * (1 - (player.shred || 0) / 100)),   // 쇠비늘 갑옷 +%, 불가사리에게 갉아먹힌 만큼 −%
+      def: Math.round(pct(g.def, g.defPct + (b.defPct || 0) + (player.iron || 0) + (aw.shield?.defPct || 0)) * (1 - Math.min(90, (player.shred || 0) + (player.ishredT > 0 ? player.ishred || 0 : 0)) / 100)),   // 쇠비늘 갑옷 +%, 각성 얼음 보호막 +% (dc#163), 불가사리에게 갉아먹힌 만큼·얼음 몬스터에게 깎인 만큼 −%
       crit: Math.min(cap.crit, g.crit + (b.crit || 0)),   // 상한 75% (유물 매의 눈으로 오름)
       critMul: 2 + g.critDmg / 100,   // 치명타 배율 (기본 2배)
       lifesteal: Math.min(cap.lifesteal, g.lifesteal + (b.lifesteal || 0)),  // 상한 20% (유물 핏빛 성배로 오름)
@@ -2151,8 +2154,10 @@
       killHeal: g.killHeal + Math.round(maxHp * g.killHealPct / 100),
       parry: Math.min(cap.parry, g.parry + (b.parry || 0)),   // 몬스터 공격을 막을 확률 (상한 40%, 유물 성벽 조각)
       // 축복 (dc#140): 첫 공격 +% · 보스 HP −% · 포션 회복 +% · 포션 대기 −턴 · 새 층 회복 % · 정예 +% · 보물 자리 +N · 계단 보기 · 시야 +N
-      first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, floorHeal: b.floorHeal || 0,
+      first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, perfect: b.perfect || 0,   // 완벽한 물약 (dc#163)
       elite: b.elite || 0, treasure: b.treasure || 0, sight: b.sight || 0,
+      aw,   // 각성 스킬 { boots, shield, field } (dc#163)
+      eres: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },   // 속성 저항 유물 (dc#163): 몬스터 공격 속성 효과를 덜 받음
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
       splash: !!g.splash,     // 광란 세트: 때린 적 주변 1칸의 적도 피해의 50%
@@ -2169,7 +2174,7 @@
       // 속성 (나이트메어 아이템): 피해는 공격력의 %, 저항은 속성마다 (그 속성 + 모든 속성) 최대 75%
       elem: { fire: g.fireDmg, ice: g.iceDmg, bolt: g.boltDmg },
       // 나이트메어 −40 · 헬 −70 (dc#54): 장비 저항 합에서 먼저 빼고 그 뒤 최대치 (RLMonsters.playerRes)
-      res: Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes, resCapOf(g, k), resZone())])),
+      res: Object.fromEntries(EL.list.map(k => [k, RLMonsters.playerRes(g[`${k}Res`] + g.allRes + (b[RES_RELIC[k]] || 0), resCapOf(g, k), resZone())])),   // 속성 저항 유물도 (dc#163)
       resRaw: Object.fromEntries(EL.list.map(k => [k, g[`${k}Res`] + g.allRes])),
       // 룬워드 특수 효과 (RLItems.RUNEWORDS special, 같은 종류는 가장 큰 것): undying·teleport·vuln·shield·skillLs·skillFast·fireball·whirl·blast·counter
       rw: TT.runewords.special,
@@ -2399,6 +2404,7 @@
 
   // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
   function newLevel(rooms, { quiet = false } = {}) {
+    fireTrail?.clear?.();   // 각성 불의 장화의 불은 층마다 (dc#163)
     const start = rooms[0];
     clearStatus(player);  // 화상·느려짐은 층을 옮기면 풀림
     player.x = start.cx; player.y = start.cy;
@@ -2477,7 +2483,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(liveHard(m))) });
+      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(liveHard(nelem(m)))) });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
@@ -2617,6 +2623,7 @@
   // 칸에 도착: 아이템 줍기, 상점, 계단. 계단으로 층이 끝나면 true (그러면 턴을 넘기지 않음)
   function arrive(nx, ny) {
     player.x = nx; player.y = ny;
+    trailMark(nx, ny);   // 각성 불의 장화 (dc#163): 지나간 칸에 불
     pickup();
     if (wpSpot && wpSpot.x === nx && wpSpot.y === ny) touchWaypoint();
     if (grave && grave.x === nx && grave.y === ny) takeGrave();
@@ -2822,7 +2829,40 @@
         log(T("{0}이(가) 갑옷을 갉아먹었다! 방어력 −{1}%", attacker.name, player.shred), null, RLMonsters.NAMED_COLOR);
       }
       if (attacker.el) monsterElement(attacker, s, dmg);
+      if (attacker.nel && player.hp > 0) nelemHit(attacker.nel, dmg);
     }
+  }
+
+  // ---- 일반 던전 몬스터의 공격 속성 (dc#163, 규칙은 monsters.js NORMAL_ELEM) ----
+  //   불: 화상 · 독: 턴마다 독 피해 · 얼음: 내 방어력 −% (몇 턴) · 번개: 회피 대기 +1턴. 속성 저항 유물만큼 덜 받음 (번개는 저항%의 확률로 막음)
+  const NEL = RLMonsters.NORMAL_ELEM;
+  const nelemOn = () => OPEN_FLOORS && !nmMobs() && !inHell() && !inAbyss() && !inGold();
+  const nelem = (m) => { if (nelemOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && !m.el && Math.random() < RLMonsters.normalElemShare(depth)) m.nel = NEL.list[rnd(NEL.list.length)]; return m; };
+  //   hit: 방금 맞은 피해 (방어력으로 줄어든 뒤). 화상·독은 그 피해의 mul% → 방어력이 높으면 도트도 작음
+  function nelemHit(el, hit) {
+    if (!el || !player || gameOver) return;
+    const s = stats(), res = (s.eres[el] || 0) / 100, c = NEL.colors[el];
+    if (el === "fire") {
+      const d = Math.max(1, Math.round(hit * NEL.burn.mul * (1 - res)));
+      burnOn(player, d);
+      log(T("🔥 불 공격! 화상 {0} × {1}번", d, EL.burn.ticks), null, c);
+    } else if (el === "poison") {
+      const d = Math.max(1, Math.round(hit * NEL.poison.mul * (1 - res)));
+      player.poison = { left: NEL.poison.ticks, dmg: Math.max(player.poison?.left > 0 ? player.poison.dmg : 0, d) };
+      log(T("🧪 독 공격! 턴마다 {0} 피해 ({1}턴)", d, NEL.poison.ticks), null, c);
+    } else if (el === "ice") {
+      const add = Math.round(NEL.ice.shred * (1 - res));
+      if (add <= 0) return;
+      player.ishred = Math.min(NEL.ice.max, (player.ishredT > 0 ? player.ishred || 0 : 0) + add);
+      player.ishredT = NEL.ice.turns;
+      log(T("❄ 얼음 공격! 방어력 −{0}% ({1}턴)", player.ishred, NEL.ice.turns), null, c);
+    } else if (el === "bolt") {
+      if (Math.random() < res || (player.boltAdd || 0) >= NEL.bolt.max) return;
+      player.boltAdd = (player.boltAdd || 0) + NEL.bolt.dodgeCd;
+      player.jumpCd = (player.jumpCd || 0) + NEL.bolt.dodgeCd;
+      log(T("⚡ 번개 공격! 회피 대기 +{0}턴", NEL.bolt.dodgeCd), null, c);
+    }
+    updateStats();
   }
 
   // ---- 속성 효과 (규칙은 monsters.js ELEMENTS) ----
@@ -2852,7 +2892,7 @@
     if (u.slow > 0) { if (--u.slow === 0) u.immune = EL.ice.immune; }
     else if (u.immune > 0) u.immune--;
   }
-  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; u.shred = 0; u.iron = 0; u.reap = 0; } }   // 층을 옮기면 풀림 (방어력 갉기·쇠비늘·영혼 수확도)
+  function clearStatus(u) { if (u) { u.burn = null; u.slow = 0; u.immune = 0; u.shred = 0; u.iron = 0; u.reap = 0; u.poison = null; u.ishred = 0; u.ishredT = 0; u.boltAdd = 0; } }   // 독·얼음 방어력 깎임·번개 회피 대기 (dc#163)   // 층을 옮기면 풀림 (방어력 갉기·쇠비늘·영혼 수확도)
   const UQ_FX = RLItems.UNIQUE_FX;
 
   // ---- 헬 네임드 보스 패턴 (수치는 monsters.js NAMED) ----
@@ -2952,6 +2992,7 @@
     Anim.hit(player, null, Fx.CURSE_FLY);
     log(T("{0}의 저주 구슬에 맞아 {1} 피해를 입음.{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
     if (player.hp <= 0) death();
+    else if (e.nel) nelemHit(e.nel, dmg);
   }
   // 강타 (dc#155): 붙은 근접 몬스터가 있는 턴만 floorSt.sc를 줄여 0이 되면 그중 하나(보스·네임드 > 정예 > 보통)가 내가 선 칸을 노림 (e.smash)
   //   노리는 동안(windup턴, 3D windup3d턴)은 움직이지도 때리지도 않고 → 그 칸에 내려침. 그 전에 쓰러뜨리거나 한 칸만 옮기거나 회피하면 0
@@ -2985,6 +3026,7 @@
     Anim.hit(player, e);
     log(T("{0}의 강타에 맞아 {1} 피해를 입음!{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
     if (player.hp <= 0) death();
+    else if (e.nel) nelemHit(e.nel, RLMonsters.damageToPlayer(foeAtk(e), s.def) * (1 - s.dmgReduce / 100));   // 강타는 큰 피해라 보통 공격 한 번 만큼으로 셈
   }
   // ---- 실시간 탄환 (dc#158): 실시간 2D·3D에서만 (턴제는 칸 표시 그대로). 규칙·수치는 monsters.js SHOTS ----
   const shotsOn = () => rescueOn() && realtime();
@@ -3019,7 +3061,7 @@
       : c.pat === "fan" ? [fan(S.fan.n, S.fan.spread), S.fan.mul] : c.pat === "fan3" ? [fan(S.n, S.spread), S.mul] : [[base], S.mul];
     const deep = nmMobs() || inHell() || inAbyss() ? 1 : RLMonsters.shotDeepMul(depth);   // 일반 던전 깊은 층은 한 발이 더 아픔 (dc#159)
     const atk = foeAtk(e) * mul * deep, t0 = performance.now();
-    for (const a of angs) shots.push({ x: ox + Math.cos(a) * 0.45, y: oy + Math.sin(a) * 0.45, vx: Math.cos(a) * SHOTS.speed, vy: Math.sin(a) * SHOTS.speed, life: SHOTS.life, atk, color: S.color, from: e.name, t0 });
+    for (const a of angs) shots.push({ x: ox + Math.cos(a) * 0.45, y: oy + Math.sin(a) * 0.45, vx: Math.cos(a) * SHOTS.speed, vy: Math.sin(a) * SHOTS.speed, life: SHOTS.life, atk, color: S.color, from: e.name, t0, ...(e.nel ? { nel: e.nel } : {}) });
     Sfx("shoot");
   }
   // 매 프레임 (실시간에서 멈춰 있지 않을 때): 날아감 · 벽에 닿으면 사라짐 · 몸에 닿으면 맞음 (회피 중이면 지나감)
@@ -3050,6 +3092,7 @@
     Sfx("hurt");
     fx3d?.("hurtEl", null);
     log(T("{0}의 탄에 맞아 {1} 피해를 입음.{2}", s.from, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
+    if (s.nel && player.hp > 0) nelemHit(s.nel, dmg);
     if (player.hp <= 0) death();
     updateStats();
   }
@@ -3209,7 +3252,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ ...at, ...ranged(swarm(liveHard(m))) });
+      enemies.push({ ...at, ...ranged(swarm(liveHard(nelem(m)))) });
     }
     seen[spot.y][spot.x] = true;
     Sfx("bossKill");
@@ -3217,35 +3260,39 @@
     else log(T("몬스터를 모두 잡자 {0}이(가) 부하 {1}마리와 함께 나타났다! 쓰러뜨리면 계단이 열린다.", boss.name, n), null, BOSS_COLOR);
     showDamage(enemies.find(e => e.kind === "boss") || player, T("보스!"), true, BOSS_COLOR);
   }
-  // 계단 (dc#160): 걸어서 먼 곳에 (예전: 마지막으로 쓰러진 몬스터 자리라 바로 옆 → 그냥 밟고 내려가 버림)
-  //   내 자리에서 걸어가는 거리(벽을 돌아서)가 가장 먼 곳의 STAIRS_FAR.share 이상인 바닥 중 아무 곳, 적어도 STAIRS_FAR.min칸
-  //   화면 밖이면 화면 가장자리에 계단 쪽 화살표 (drawStairsArrow)
-  const STAIRS_FAR = { share: 0.6, min: 8 };
-  function farStairsSpot() {
+  // 계단 (dc#163): 내 화면(시야) 안, 너무 가깝지 않은 곳에 (dc#160은 걸어서 가장 먼 곳 → 20층 넘어 넓은 광장에서는 너무 멀었음)
+  //   걸어서 STAIRS_NEAR.min칸 이상 떨어진 바닥 중: 1) 화면 안(가장자리 1칸 빼고)이면서 지금 보이는 칸 2) 화면 안 3) 그래도 없으면 min칸 넘는 가장 가까운 곳
+  //   예전(dc#143)처럼 쓰러진 몬스터 자리 = 바로 옆이라 그냥 밟고 내려가 버리는 일은 없게. 화면 밖이면 가장자리 화살표 (drawStairsArrow)
+  const STAIRS_NEAR = { min: 5, margin: 1 };
+  function nearStairsSpot() {
     const D = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(-1)), q = [[player.x, player.y]];
     D[player.y][player.x] = 0;
-    let max = 0;
     for (let i = 0; i < q.length; i++) {
       const [x, y] = q[i];
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H || D[ny][nx] >= 0 || map[ny][nx] === WALL) continue;
-        D[ny][nx] = D[y][x] + 1; max = Math.max(max, D[ny][nx]); q.push([nx, ny]);
+        D[ny][nx] = D[y][x] + 1; q.push([nx, ny]);
       }
     }
-    const want = Math.max(Math.min(STAIRS_FAR.min, max), Math.round(max * STAIRS_FAR.share)), pool = [];
-    for (const [x, y] of q) if (D[y][x] >= want && map[y][x] === FLOOR && !isShop(x, y) && !items.some(i => i.x === x && i.y === y) && !enemies.some(e => e.hp > 0 && e.x === x && e.y === y)) pool.push({ x, y });
-    return pool.length ? pool[rnd(pool.length)] : null;
+    const cam = camera(), m = STAIRS_NEAR.margin, x0 = cam.x / TILE + m, y0 = cam.y / TILE + m, x1 = cam.x / TILE + CAM_W - 1 - m, y1 = cam.y / TILE + CAM_H - 1 - m;
+    const onScreen = (x, y) => View3D.active() ? Math.max(Math.abs(x - player.x), Math.abs(y - player.y)) <= 6 : x >= x0 && x <= x1 && y >= y0 && y <= y1;   // 3D는 앞이 보이는 거리 안
+    const ok = q.filter(([x, y]) => D[y][x] >= STAIRS_NEAR.min && map[y][x] === FLOOR && !isShop(x, y) && !items.some(i => i.x === x && i.y === y) && !enemies.some(e => e.hp > 0 && e.x === x && e.y === y));
+    const seenNow = ok.filter(([x, y]) => onScreen(x, y) && visible[y]?.[x]), screen = ok.filter(([x, y]) => onScreen(x, y));
+    const pick = (list) => { const [x, y] = list[rnd(list.length)]; return { x, y }; };
+    if (seenNow.length) return pick(seenNow);
+    if (screen.length) return pick(screen);
+    return ok.length ? pick(ok.slice(0, Math.min(ok.length, 6))) : null;   // q는 가까운 순 → min칸 넘는 가장 가까운 몇 곳 중 하나
   }
   function revealStairs(at) {
-    let p = OPEN_FLOORS && !inAbyss() ? farStairsSpot() : null;
+    let p = OPEN_FLOORS && !inAbyss() ? nearStairsSpot() : null;
     if (!p) p = at && map[at.y]?.[at.x] === FLOOR && !isShop(at.x, at.y) ? { x: at.x, y: at.y } : nearestFloor(at || player);
     if (!p) return;
     floorSt.open = true; floorSt.stairs = { x: p.x, y: p.y };
     map = map.map(r => r.slice());   // 3D 화면이 지도를 다시 그리게 새 배열로
     map[p.y][p.x] = STAIRS;
     seen[p.y][p.x] = true;
-    log(T("▼ 마지막 적을 쓰러뜨리자 멀리 아래층으로 내려가는 계단이 나타났다! 화살표를 따라가요."), null, "#ffcf5c");
+    log(T("▼ 마지막 적을 쓰러뜨리자 가까운 곳에 아래층으로 내려가는 계단이 나타났다!"), null, "#ffcf5c");
     showDamage(player, T("계단이 열렸다!"), true, "#ffcf5c");
     Sfx("waypoint");
     vacuumXp();
@@ -3570,7 +3617,8 @@
     // 개수 제한 없이 10턴마다 한 번. 최대 HP의 30% (최소 8) 회복: 깊은 층에서도 쓸모 있게
     const s = stats();
     player.potCd = Math.max(1, POTION.cooldown - s.potCd);   // 축복 빠른 손: 대기 −N턴
-    const amount = Math.max(POTION.min, Math.round(s.maxHp * POTION.heal * (1 + s.potPct / 100)));   // 축복 물약 장인: 회복량 +%
+    // 축복 물약 장인: 회복량 +% · 완벽한 물약 (dc#163): 1단계 +50% 더, 2단계는 최대 HP를 다 채움
+    const amount = s.perfect >= 2 ? s.maxHp : Math.max(POTION.min, Math.round(s.maxHp * POTION.heal * (1 + (s.potPct + (s.perfect >= 1 ? 50 : 0)) / 100)));
     const before = player.hp;
     Tips.step("heal");
     heal(amount);
@@ -3759,6 +3807,7 @@
       player.gd = turn;
       if (View3D.active()) player.invUntil = performance.now() + 700;   // 3D(실시간): 잠깐 무적 (2D는 이 턴만)
       player.jumpCd = 0; player.potCd = 0;
+      player.burn = null; player.poison = null;   // 화상·독도 풀림 (dc#163: HP 1에서 다음 틱에 바로 쓰러지지 않게)
       showDamage(player, T("버팀!"), true, RESCUE.color);
       guardFlash(); Fx.guard(player);
       Sfx("guard");
@@ -3829,7 +3878,7 @@
       map: map.map(r => r.join("")).join(""),
       seen: seen.map(r => r.map(v => (v ? 1 : 0)).join("")).join(""),
       px: player.x, py: player.y, shop, wp: wpSpot, grave, enemies, items,
-      ps: { burn: player.burn || null, slow: player.slow || 0, immune: player.immune || 0 },  // 플레이어의 화상·느려짐
+      ps: { burn: player.burn || null, slow: player.slow || 0, immune: player.immune || 0, poison: player.poison?.left > 0 ? player.poison : null, ishred: player.ishredT > 0 ? [player.ishred, player.ishredT] : null },  // 플레이어의 화상·느려짐 · 독·방어력 깎임 (dc#163)
       lang: RLI18N.lang,   // 몬스터 이름의 언어 (다른 언어로 불러오면 이름을 다시 지음)
     }));
   }
@@ -3862,6 +3911,9 @@
       if (L.ps.burn && Number.isInteger(L.ps.burn.at) && L.ps.burn.left > 0 && L.ps.burn.dmg > 0) player.burn = { at: L.ps.burn.at, left: L.ps.burn.left, dmg: L.ps.burn.dmg };
       player.slow = Math.max(0, Math.min(EL.ice.turns, L.ps.slow | 0));
       player.immune = Math.max(0, Math.min(EL.ice.immune, L.ps.immune | 0));
+      const pz = L.ps.poison, ih = L.ps.ishred;
+      if (pz && pz.left > 0 && pz.dmg > 0) player.poison = { left: Math.min(NEL.poison.ticks, pz.left | 0), dmg: Math.round(pz.dmg) };
+      if (Array.isArray(ih) && ih[1] > 0) { player.ishred = Math.max(0, Math.min(NEL.ice.max, ih[0] | 0)); player.ishredT = Math.min(NEL.ice.turns, ih[1] | 0); }
     }
     if (!onFloor(player)) Object.assign(player, anyFreeFloor([]) || { x: 1, y: 1 });
     const relang = (L.lang || "ko") !== RLI18N.lang;
@@ -4401,6 +4453,39 @@
         log(T("⚡ 연쇄 번개! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
       }
     }
+    castAwake(s, alive);
+  }
+
+  // ---- 각성 스킬 (dc#163, 규칙은 blessings.js AWAKE): 속성 스킬을 Lv 10까지 찍으면 열림 ----
+  //   불의 장화: 내가 지나간 칸에 turns턴 동안 불 (fireTrail "x,y" → 꺼지는 턴), 그 칸에 있는 몬스터는 턴마다 공격력 × mul 불 피해
+  //   얼음 보호막: 방어력 +% (stats의 def에 더함) · 전자기장: every턴마다 주변 radius칸 몬스터의 최대 HP pct% (보스·네임드는 bossMul배)
+  var fireTrail = new Map();   // var: 층을 새로 만들 때(newLevel) 비움
+  function trailMark(x, y) { const a = player && stats().aw.boots; if (a && scene === "dungeon") fireTrail.set(`${x},${y}`, turn + a.turns); }
+  function castAwake(s, alive) {
+    const a = s.aw;
+    if (a.boots) {
+      trailMark(player.x, player.y);
+      for (const [k, until] of fireTrail) if (until <= turn) fireTrail.delete(k);
+      const d = Math.max(1, Math.round(s.atk * a.boots.mul));
+      for (const e of alive()) if (fireTrail.has(`${e.x},${e.y}`) && enemies.includes(e)) skillHit(e, d, false, EL.colors.fire, s, 40);
+    } else if (fireTrail.size) fireTrail.clear();
+    if (a.field && ready("fieldCd")) {
+      const hit = alive().filter(e => near8(e, player) <= a.field.radius);
+      if (hit.length) {
+        player.fieldCd = a.field.every;
+        const cells = [];
+        for (let dy = -a.field.radius; dy <= a.field.radius; dy++) for (let dx = -a.field.radius; dx <= a.field.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
+        flash(cells, "rgba(255, 225, 77, 0.22)");
+        Sfx("chain", Math.min(4, hit.length), 0.05);
+        let sum = 0;
+        for (const e of hit) {
+          const d = Math.max(1, Math.round((e.maxHp || e.hp) * a.field.pct / 100 * (e.kind === "boss" || e.named ? a.field.bossMul : 1)));
+          sum += d;
+          if (enemies.includes(e)) skillHit(e, d, false, EL.colors.bolt, s, 60);
+        }
+        log(T("🧲 전자기장! {0}칸 안 {1}마리의 최대 HP {2}%를 깎음 (합계 {3})", a.field.radius, hit.length, a.field.pct, sum), null, EL.colors.bolt);
+      }
+    }
   }
 
   // 화면 위 능력치 줄: 세트 스킬 쿨타임
@@ -4422,6 +4507,9 @@
     if (rescueOn() && floorSt.ls) out.push(T("♥ 버티기 사용함 (다음 층에서 다시)"));   // 준비된 상태는 기본이라 안 보임 (휴대폰에서 상태 줄이 늘 생겨 화면이 밀려서)
     one(s.nova, "❄", T("얼음 폭발"), player.novaCd);
     one(s.chain, "⚡", T("연쇄 번개"), player.chainCd);
+    one(!!s.aw.field, "🧲", T("전자기장"), player.fieldCd);
+    if (s.aw.shield) out.push(T("🧊 얼음 보호막 방어력 +{0}%", s.aw.shield.defPct));
+    if (s.aw.boots) out.push(T("👢 불의 장화"));
     return out;
   }
 
@@ -4479,6 +4567,17 @@
       log(T("화상으로 {0} 피해를 입음.", pb), "bad");
       if (player.hp <= 0) { death(); if (gameOver) return; }
     }
+    // 일반 던전 몬스터 속성 (dc#163): 독은 턴마다, 얼음 방어력 깎임은 남은 턴, 번개로 늘어난 회피 대기는 회피가 준비되면 다시 쌓일 수 있음
+    if (player.poison?.left > 0) {
+      const d = player.poison.dmg;
+      player.poison.left--;
+      hurtPlayer(d);
+      showDamage(player, d, false, NEL.colors.poison);
+      log(T("독으로 {0} 피해를 입음.", d), "bad");
+      if (player.hp <= 0) { death(); if (gameOver) return; }
+    }
+    if (player.ishredT > 0 && --player.ishredT <= 0) player.ishred = 0;
+    if (!(player.jumpCd > 0)) player.boltAdd = 0;
     // 적 이동/공격
     hunt = OPEN_FLOORS ? huntMap() : null;   // 넓은 광장: 모든 몬스터가 나를 향해 (dc#147)
     if (shots.length && !shotsOn()) shots = [];
@@ -5214,6 +5313,7 @@
   // ---- 축복·유물 (정식 v2, dc#140) ---- 규칙과 숫자는 blessings.js
   // 이 판(player)에 붙음: bl 축복 { id: 횟수 } · rl 유물 · bz 던전마다 축복을 받은 마지막 층 · pq 고를 차례 [{ r: 유물이면 1, s: 시드, n: 다시 뽑은 횟수 }]
   // · rr 이 층에서 다시 뽑은 횟수 { k: 층 키, n }. 포탈·부활해도 남고, 새 판(1층·웨이포인트·다른 던전으로 새로 들어가기, 쓰러진 뒤 새로 시작)이면 비움
+  const LV_BLESS_EVERY = 2;
   const Bless = (() => {
     const modalEl = document.getElementById("bless-modal");
     const BZ = { normal: "normal", nm: "nightmare", hell: "hell" };
@@ -5224,7 +5324,7 @@
     const queue = () => (player.pq ||= []);
     const rrN = () => (player.rr?.k === floorKey() ? player.rr.n : 0);
     // 자동으로 고를 때 순서 (tools/sim-v2.mjs와 같음)
-    const PRI = ["hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "study", "coin", "grail", "heart", "hawk", "wall"];
+    const PRI = ["hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "hunt", "trove", "study", "grail", "heart", "hawk", "wall", "resPoison", "resFire", "resIce", "resBolt"];
     const pickBest = (ids) => [...ids].sort((a, b) => PRI.indexOf(a) - PRI.indexOf(b))[0];
     function reset() { player.bl = {}; player.rl = {}; player.bz = {}; player.pq = []; player.rr = null; }
     // 새 판 시작: keep이면 지금 축복을 그대로 (던전 완료 후 이어가기). 중간 층·다음 던전부터 새로 시작하면 건너뛴 층의 절반만큼 축복, 1/10만큼 유물을 먼저 고름
@@ -5237,22 +5337,22 @@
       player.bz = { ...(player.bz || {}), [zone]: Math.max(0, from - 1) };
       if (skipped) log(T("✦ {0}층을 건너뛴 만큼 축복 {1}개와 유물 {2}개를 먼저 고른다.", skipped, Math.floor(skipped / 2), Math.floor(skipped / 10)), null, RLBless.TIERS.legend.color);
     }
-    // 새 층 (newLevel): 이 판에서 처음 온 층이면 축복 하나 + 숨 고르기 회복
+    // 새 층 (newLevel): 이 판에서 처음 온 층이면 축복 하나. dc#163: 1층(던전에 처음 들어갈 때)은 없음, 숨 고르기 뺌
     function onFloor() {
       if (!zk() || !player) return;
       const z = player.zone || "normal";
       player.bz ||= {};
       if (depth > (player.bz[z] || 0)) {
         player.bz[z] = depth;
-        queue().push({ r: 0, s: `${player.rid}|${z}|${depth}` });
-        const s = stats();
-        if (s.floorHeal && player.hp < s.maxHp) { const before = player.hp; heal(Math.round(s.maxHp * s.floorHeal / 100)); log(T("🌬 숨 고르기: HP +{0}", player.hp - before), "good"); }
+        if (depth > 1) queue().push({ r: 0, s: `${player.rid}|${z}|${depth}` });
       }
       show();
     }
     // 레벨 업 (dc#143): 축복 하나 더. 창은 gainXp 끝에서 한 번 (한꺼번에 여러 레벨이 올라도 차례로)
+    //   dc#163: 2레벨마다 (짝수 레벨: 2·4·6…). 매 레벨이면 50층까지 90번 넘게 골라 거의 모든 축복이 만렙이 됨 (tools/sim-v2.mjs)
     function onLevel() {
       if (!zk() || !player) return;
+      if (player.plvl % LV_BLESS_EVERY) return;
       // 새 규칙 첫 레벨 업 (dc#146): 속성 스킬을 아직 안 배웠으면 속성 스킬 셋 중에서 (바로 스킬을 배워 쉬워지게)
       const first = NEW_CTRL && player.plvl === 2 && !RLBless.elemUsed(player.bl);
       queue().push({ r: 0, lv: player.plvl, s: `${player.rid}|lv|${player.plvl}`, ...(first ? { el: 1 } : {}) });
@@ -7930,6 +8030,35 @@
     Anim.drawDust();
     drawXpSuck();   // 계단이 열릴 때 날아오는 경험치 구슬 (dc#153)
 
+    // 각성 불의 장화 (dc#163): 지나간 칸의 불 (남은 턴이 적을수록 옅게, 일렁임)
+    if (fireTrail.size) {
+      ctx.save();
+      const now = performance.now();
+      for (const [k, until] of fireTrail) {
+        const [x, y] = k.split(",").map(Number), left = until - turn;
+        if (left <= 0 || !visible[y]?.[x]) continue;
+        const flick = 0.75 + 0.25 * Math.sin(now / 90 + x * 1.7 + y), fade = Math.min(1, 0.45 + 0.2 * left);
+        const cx = x * TILE + TILE / 2, base = y * TILE + TILE * 0.86;
+        // 바닥이 달아오른 빛
+        ctx.globalCompositeOperation = "lighter";
+        const g = ctx.createRadialGradient(cx, base - TILE * 0.2, 2, cx, base - TILE * 0.2, TILE * 0.62);
+        g.addColorStop(0, `rgba(255, 140, 40, ${0.55 * fade * flick})`); g.addColorStop(1, "rgba(255, 60, 0, 0)");
+        ctx.fillStyle = g; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+        // 불꽃 세 갈래 (바깥 주황 → 안쪽 노랑), 칸마다 박자가 달라 일렁임
+        for (const [ox, hk, ph] of [[-0.2, 0.62, 0], [0.02, 0.9, 2.1], [0.22, 0.55, 4.2]]) {
+          const h = TILE * hk * fade * (0.8 + 0.2 * Math.sin(now / 70 + ph + x * 2.3 + y * 1.1)), fx = cx + ox * TILE, sway = Math.sin(now / 110 + ph + x) * TILE * 0.05;
+          for (const [w, hh, col] of [[0.16, 1, "255, 96, 24"], [0.09, 0.62, "255, 214, 90"]]) {
+            ctx.fillStyle = `rgba(${col}, ${0.85 * fade})`;
+            ctx.beginPath(); ctx.moveTo(fx - TILE * w, base);
+            ctx.quadraticCurveTo(fx - TILE * w * 0.9, base - h * hh * 0.55, fx + sway, base - h * hh);
+            ctx.quadraticCurveTo(fx + TILE * w * 0.9, base - h * hh * 0.55, fx + TILE * w, base);
+            ctx.closePath(); ctx.fill();
+          }
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
+      ctx.restore();
+    }
     // 원거리 몬스터의 조준 표시 (dc#149): 떨어질 칸(dc#150부터 한 칸)을 붉게 + 가운데 남은 턴 수 + 몬스터에서 점선
     for (const e of enemies) {
       if (!e.aim) continue;
@@ -8013,8 +8142,8 @@
         ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText(mk, px + TILE / 2, py + 2); ctx.fillStyle = e.smash ? SMASH.color : "#ff9f43"; ctx.fillText(mk, px + TILE / 2, py + 2); ctx.restore();
       }
       // 속성 몬스터: 오른쪽 위에 속성 색 점
-      if (e.el) {
-        ctx.fillStyle = EL.colors[e.el];
+      if (e.el || e.nel) {   // 일반 던전 몬스터 공격 속성 (dc#163)도 같은 자리에 (독은 초록)
+        ctx.fillStyle = e.el ? EL.colors[e.el] : NEL.colors[e.nel];
         ctx.fillRect(px + TILE - 6, py + 2, 4, 4);
       }
     }
@@ -8158,6 +8287,8 @@
     const st = [
       ...(skillHud()),
       ...(player.burn ? [T("🔥 화상 {0}회", player.burn.left)] : []),
+      ...(player.poison?.left > 0 ? [T("🧪 독 {0}턴", player.poison.left)] : []),
+      ...(player.ishredT > 0 ? [T("❄ 방어력 −{0}% {1}턴", player.ishred, player.ishredT)] : []),
       ...(player.slow > 0 ? [T("❄ 느려짐 {0}턴", player.slow)] : player.immune > 0 ? [T("❄ 면역 {0}턴", player.immune)] : []),
     ];
     const statusEl = document.getElementById("status");

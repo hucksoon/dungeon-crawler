@@ -17,23 +17,39 @@
     might: { icon: "⚔", name: "전사의 맹세", tier: "common", max: 10, fx: { atkPct: 4 } },
     vigor: { icon: "❤", name: "거인의 피", tier: "common", max: 10, fx: { hpPct: 5 } },
     stone: { icon: "🪨", name: "바위 피부", tier: "common", max: 10, fx: { defPct: 5 } },
-    coin: { icon: "💰", name: "황금 손", tier: "common", max: 10, fx: { gold: 10 } },
+    // coin(황금 손, 골드 +10%)·breath(숨 고르기)·eye(넓은 눈)은 dc#163에서 뺌. 예전 저장에 있어도 그냥 무시
     study: { icon: "📖", name: "배움", tier: "common", max: 10, fx: { xp: 10 } },
     brew: { icon: "🧪", name: "물약 장인", tier: "common", max: 5, fx: { potPct: 15 } },
+    // 완벽한 물약 (dc#163): 물약 장인을 다 찍으면(5) 후보에 나옴. 1단계 포션 회복량 +50%, 2단계(마지막)는 포션이 최대 HP 100%를 채움
+    perfect: { icon: "⚗", name: "완벽한 물약", tier: "rare", max: 2, req: { brew: 5 }, fx: { perfect: 1 } },
     first: { icon: "🎯", name: "첫 수", tier: "rare", max: 4, fx: { firstHit: 25 } },
     king: { icon: "👑", name: "왕 사냥", tier: "rare", max: 5, fx: { bossHp: 4 } },
     hunt: { icon: "⭐", name: "정예 사냥", tier: "rare", max: 3, fx: { elite: 20 } },
-    breath: { icon: "🌬", name: "숨 고르기", tier: "rare", max: 3, fx: { floorHeal: 10 } },
     quick: { icon: "⏱", name: "빠른 손", tier: "rare", max: 4, fx: { potCd: 1 } },
     trove: { icon: "🗝", name: "보물 냄새", tier: "rare", max: 2, fx: { treasure: 1 } },
+    // 흡혈 (dc#163): 때린 피해의 일부만큼 HP 회복. 상한(기본 20%)은 핏빛 성배 유물로 올림
+    vamp: { icon: "🩸", name: "흡혈귀의 이빨", tier: "rare", max: 5, fx: { lifesteal: 2 } },
     // guide(길잡이, 층 지도가 모두 보임)는 dc#160에서 뺌: 계단이 멀리 생기고 지도에 바로 보여서 의미가 없음. 예전 저장의 guide는 그냥 무시
-    eye: { icon: "👁", name: "넓은 눈", tier: "legend", max: 2, fx: { sight: 1 } },
     hero: { icon: "✨", name: "영웅의 기운", tier: "legend", max: 3, fx: { atkPct: 6, defPct: 6, hpPct: 6 } },
     // 속성 스킬 (dc#142): 처음 고르면 스킬이 생기고, 또 고르면 단계(Lv)가 올라 피해·범위·횟수가 커짐 (ELEM). 최대 Lv 10 = 마스터 (dc#143, 예전 Lv 5)
     fire: { icon: "🔥", name: "화염구", tier: "elem", max: ELEM_MAX, fx: { fireLv: 1 } },
     ice: { icon: "❄", name: "얼음 폭발", tier: "elem", max: ELEM_MAX, fx: { iceLv: 1 } },
     bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: ELEM_MAX, fx: { boltLv: 1 } },
+    // 각성 스킬 (dc#163): 속성 스킬을 Lv 10까지 찍으면 그 속성의 각성 스킬이 후보에 나옴 (원래 스킬은 Lv 10 그대로 계속). 각성도 Lv 10까지 (AWAKE)
+    fireAw: { icon: "👢", name: "각성 불의 장화", tier: "elem", max: ELEM_MAX, req: { fire: ELEM_MAX }, fx: { bootsLv: 1 } },
+    iceAw: { icon: "🧊", name: "각성 얼음 보호막", tier: "elem", max: ELEM_MAX, req: { ice: ELEM_MAX }, fx: { shieldLv: 1 } },
+    boltAw: { icon: "🧲", name: "각성 전자기장", tier: "elem", max: ELEM_MAX, req: { bolt: ELEM_MAX }, fx: { fieldLv: 1 } },
   };
+  // 각성 스킬 단계별 값 (dc#163)
+  //   불의 장화: 내가 지나간 칸에 불이 turns턴 붙음, 그 칸을 밟는(서 있는) 몬스터는 턴마다 공격력 × mul 불 피해 (방어 무시, 불 저항만큼 덜)
+  //   얼음 보호막: 방어력 +defPct%
+  //   전자기장: every턴마다 주변 radius칸 몬스터의 최대 HP × pct% 번개 피해 (보스·네임드는 bossMul배). 다른 스킬보다 주기가 김, 범위는 최대 4칸
+  const AWAKE = {
+    boots: (lv) => ({ turns: 3, mul: +(0.08 + 0.02 * lv).toFixed(2) }),
+    shield: (lv) => ({ defPct: 5 * lv }),
+    field: (lv) => ({ every: lv >= 9 ? 5 : lv >= 5 ? 6 : 7, radius: Math.min(4, 1 + Math.floor((lv - 1) / 3)), pct: 4 + lv, bossMul: 0.5 }),
+  };
+  const AWAKE_IDS = { fire: "fireAw", ice: "iceAw", bolt: "boltAw" };
   // 속성 스킬 단계별 값 (dc#143: Lv 10까지, 단계마다 조금씩 세짐). 한 판에 속성 축복은 모두 합쳐 ELEM_CAP번까지 → 세 속성을 모두 마스터(Lv 10)할 수는 없음 (최대 둘)
   //   피해는 언제나 내 공격력 × mul × (1 + pct%) (공격력이 오르면 같이 셈). 숫자는 시뮬레이션으로 (tools/sim-v2.mjs)
   //   fire: every턴마다 range칸 안 가장 가까운 적 중심 (2·radius+1)² 폭발 + 화상
@@ -64,6 +80,11 @@
     grail: { icon: "🍷", name: "핏빛 성배", max: 3, fx: { lifesteal: 2, lsCap: 2 } },
     wall: { icon: "🛡", name: "성벽 조각", max: 3, fx: { parry: 3, parryCap: 3 } },
     heart: { icon: "🫀", name: "강철 심장", max: 3, fx: { dmgReduce: 3, drCap: 3 } },
+    // 속성 저항 (dc#163): 몬스터 공격의 속성 효과(화상·방어력 깎임·회피 대기·독)를 그만큼 덜 받음
+    resFire: { icon: "🔥", name: "불꽃 비늘", max: 3, fx: { resFire: 15 } },
+    resIce: { icon: "❄", name: "서리 깃털", max: 3, fx: { resIce: 15 } },
+    resBolt: { icon: "⚡", name: "피뢰침", max: 3, fx: { resBolt: 15 } },
+    resPoison: { icon: "🧪", name: "해독 약초", max: 3, fx: { resPoison: 15 } },
   };
   const CAPS = { crit: 75, lifesteal: 20, parry: 40, dmgReduce: 30 };
   // 다시 뽑기: 1 강화석 = goldPerStone 골드 (한 층에서 모이는 양의 비율, 시뮬레이션). 같은 층에서 ×grow, 다음 층이면 처음 값
@@ -95,6 +116,14 @@
     potCd: (v) => tx("bfx.potCd", (n) => `포션 대기 −${n}턴`, v),
     treasure: (v) => tx("bfx.treasure", (n) => `층마다 보물 자리 +${n}`, v),
     sight: (v) => tx("bfx.sight", (n) => `시야 +${n}칸`, v),
+    perfect: (v) => v >= 2 ? tx("bfx.perfect2", "포션이 최대 HP를 100% 채움") : tx("bfx.perfect1", "포션 회복량 +50%"),
+    resFire: (v) => tx("bfx.resFire", (n) => `불 저항 +${n}% (화상)`, v),
+    resIce: (v) => tx("bfx.resIce", (n) => `얼음 저항 +${n}% (방어력 깎임)`, v),
+    resBolt: (v) => tx("bfx.resBolt", (n) => `번개 저항 +${n}% (회피 대기)`, v),
+    resPoison: (v) => tx("bfx.resPoison", (n) => `독 저항 +${n}% (독)`, v),
+    bootsLv: (v) => { const a = AWAKE.boots(v); return tx("bfx.bootsLv", (n, t, d) => `Lv ${n}: 지나간 칸에 ${t}턴 동안 불, 밟은 몬스터는 턴마다 공격력의 ${d}% 불 피해`, v, a.turns, Math.round(a.mul * 100)); },
+    shieldLv: (v) => { const a = AWAKE.shield(v); return tx("bfx.shieldLv", (n, d) => `Lv ${n}: 얼음 보호막으로 방어력 +${d}%`, v, a.defPct); },
+    fieldLv: (v) => { const a = AWAKE.field(v); return tx("bfx.fieldLv", (n, ev, r, p) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸 몬스터의 최대 HP ${p}%를 깎음 (보스는 절반)`, v, a.every, a.radius, a.pct); },
     crit: (v) => tx("bfx.crit", (n) => `치명타 확률 +${n}%`, v),
     critCap: (v) => tx("bfx.critCap", (n) => `치명타 상한 +${n}%p`, v),
     lifesteal: (v) => tx("bfx.lifesteal", (n) => `흡혈 +${n}%`, v),
@@ -135,14 +164,15 @@
   function offer(seed, have = {}, relic = false, elemOnly = false) {
     const r = rng(seed);
     const elemFull = !relic && elemUsed(have) >= ELEM_CAP;   // 속성 축복을 다 쓰면 더는 안 나옴
-    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)));
+    const reqOk = (id) => Object.entries(defOf(id).req || {}).every(([k, v]) => (have[k] || 0) >= v);   // 각성·완벽한 물약: 앞 단계를 다 찍어야 (dc#163)
+    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)) && reqOk(id));
     if (elemOnly && !relic && pool.some(isElem)) pool = pool.filter(isElem);
     const out = [];
     while (out.length < OFFER && pool.length) {
       let i;
       if (relic) i = Math.floor(r() * pool.length);
       else {
-        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier).length * (isElem(id) ? ELEM_SLOW ** (have[id] || 0) : 1));
+        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier && !b.req).length * (isElem(id) ? ELEM_SLOW ** (have[id] || 0) : 1));   // 나눌 때 각성·완벽한 물약(앞 단계가 필요)은 빼고 셈 (dc#163)
         let x = r() * w.reduce((a, b) => a + b, 0);
         i = 0;
         while ((x -= w[i]) > 0 && i < w.length - 1) i++;
@@ -158,16 +188,16 @@
     return { stones, gold: stones * REROLL.goldPerStone[z] };
   };
 
-  const isElem = (id) => ELEM_IDS.includes(id);
+  const isElem = (id) => ELEM_IDS.includes(id) || Object.values(AWAKE_IDS).includes(id);   // 각성 스킬도 단계가 오를수록 덜 나옴
   // 카드·기록에 쓰는 설명: 속성 스킬은 그 단계(lv)의 설명, 나머지는 한 번 고를 때 효과
   //   atk를 주면 속성 스킬은 지금 공격력으로 한 번에 주는 피해도 (dc#143)
   const elemDmg = (id, lv, atk) => { const e = ELEM[id](Math.max(1, Math.min(ELEM_MAX, lv))); return Math.max(1, Math.round(atk * e.mul * (1 + e.pct / 100))); };
   const cardText = (id, lv = 1, atk = 0) => {
     const d = defOf(id); if (!d) return id;
-    const t = fxText(d.fx, isElem(id) ? Math.max(1, lv) : 1);
-    return isElem(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
+    const t = fxText(d.fx, isElem(id) || id === "perfect" ? Math.max(1, lv) : 1);
+    return ELEM_IDS.includes(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ELEM_MAX, ELEM_CAP, ELEM_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, AWAKE, AWAKE_IDS, ELEM_MAX, ELEM_CAP, ELEM_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

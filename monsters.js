@@ -225,7 +225,9 @@
   //   dc#146: 위 변화로 나이트메어 96% · 헬 62% → 나이트메어 ×1.05, 헬 ×1.04
   //   dc#153: 같은 이유로 나이트메어 80% · 헬 30% → 둘 다 ×0.96 (300판 83% · 44%, ×0.93이면 94% · 60%)
   //   dc#155: 강타·회복 구슬·버티기로 나이트메어 100% · 헬 90%라 HP만 나이트메어 ×1.6 (×1.5 → 89%, ×1.8 → 74%), 헬 ×1.5 (×1.8 → 13%)
-  const V2 = { nightmare: { hp: 3.1, atk: 1.57 }, hell: { hp: 2.58, atk: 1.48 } };
+  //   dc#163: 넓은 눈·숨 고르기·황금 손을 빼서 고르는 축복이 모두 쓸모 있는 것이 되니 이어가기 나이트메어 99% · 헬 94% (옛 규칙 83% · 40%)
+  //     → 나이트메어 HP ×1.3·공격 ×1.12, 헬 HP ×1.2·공격 ×1.15 (×1.3·×1.15 / ×1.2·×1.15면 77% · 47%, ×1.2·×1.1이면 나이트메어 93%)
+  const V2 = { nightmare: { hp: 4.03, atk: 1.76 }, hell: { hp: 3.1, atk: 1.7 } };
   // 몬스터 무리 (dc#146, 넓은 광장): 한 층 몬스터 수 ×count, 대신 한 마리당 경험치 ×xp · 장비 드롭 확률 ×drop · 처치 골드 ×gold
   //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
   const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
@@ -239,6 +241,18 @@
   //   봇으로 재 보니 잘함·보통 모두 50층까지 깸 → 실시간은 피할 수 있는 만큼 더 세게. 턴제·나이트메어·헬·구멍은 그대로
   //   ease: 1층은 ×1에서 ease층까지 차츰 (1층부터 세면 레벨 1·HP 16으로 1~2층에서 쓰러짐)
   const LIVE_HARD = { hp: 1.35, atk: 1.25, ease: 8 };
+  // 일반 던전 몬스터의 공격 속성 (dc#163): from층부터 일부 몬스터의 공격에 속성이 붙음 (보스·황금 고블린 빼고). 비율은 from층 lo → to층 hi
+  //   불: 화상 (맞은 피해 × burn.mul을 burn.every턴마다 burn.ticks번) · 독: 비슷한 도트 (poison, 턴마다) · 얼음: 내 방어력 −shred% (turns턴, 최대 max%)
+  //   번개: 회피 대기 +1턴 (최대 max턴 더). 내 속성 저항(유물)% 만큼 덜 받음 (번개는 저항%의 확률로 막음)
+  //   화상·독은 맞은 피해(방어력으로 줄어든 뒤) 기준: 몬스터 공격력 기준이면 방어력을 무시해서 깊은 층에서는 도트가 맞은 피해보다 아팠음
+  const NORMAL_ELEM = {
+    //   시뮬레이션 (tools/sim-v2.mjs 200판): 속성 없음 64% → 이 값(약하게) 57~63%. 화상·독을 두 배로 해도 56%라 세기보다 있고 없고가 큼
+    from: 10, lo: 0.05, hi: 0.3, to: 50, list: ["fire", "ice", "bolt", "poison"],
+    burn: { ticks: 5, every: 2, mul: 0.15 }, poison: { ticks: 6, every: 1, mul: 0.1 },
+    ice: { shred: 10, turns: 4, max: 20 }, bolt: { dodgeCd: 1, max: 1 },
+    names: { fire: "불", ice: "얼음", bolt: "번개", poison: "독" }, colors: { fire: "#ff7a3d", ice: "#6fd3ff", bolt: "#ffe14d", poison: "#7ddc4a" },
+  };
+  const normalElemShare = (f) => (f < NORMAL_ELEM.from ? 0 : NORMAL_ELEM.lo + (NORMAL_ELEM.hi - NORMAL_ELEM.lo) * Math.min(1, (f - NORMAL_ELEM.from) / (NORMAL_ELEM.to - NORMAL_ELEM.from)));
   const liveHardMul = (n) => { const k = Math.max(0, Math.min(1, (n - 1) / (LIVE_HARD.ease - 1))); return { hp: 1 + (LIVE_HARD.hp - 1) * k, atk: 1 + (LIVE_HARD.atk - 1) * k }; };
   // 실시간 일반 던전 n층의 원거리 몬스터 비율 (2층 10% → 26층 25% → 50층 40%)
   const rangedLiveShare = (n) => { const L = RANGED.liveShare, k = Math.max(0, Math.min(1, (n - RANGED.liveFrom) / (L.to - RANGED.liveFrom))); return L.lo + (L.hi - L.lo) * k; };
@@ -538,7 +552,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

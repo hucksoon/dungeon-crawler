@@ -920,6 +920,51 @@ const SCENES = [
     await o.page.waitForFunction(() => document.getElementById("death-modal").hidden, null, { timeout: 6000 });
     await grab(22);   // 그 자리에서 부활, "부활!", 몬스터는 밀려남
     return { ...o, frames, delay: 12 }; }],
+  // dc#163: 축복 정리 · 각성 스킬 · 몬스터 공격 속성 · 가까운 계단
+  ["v22-bless", "속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(31, "blog-v22b904", { l: 30, bz: { normal: 30 }, bl: { fire: 10, ice: 4, might: 6, vigor: 5, stone: 3, brew: 5, vamp: 1 }, rl: { grail: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v22-relic", "보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(30, "blog-v22r9", { l: 30, bz: { normal: 30 }, pq: [{ r: 1, s: "blog-v22r9|normal|30|r" }], bl: { fire: 10, might: 6, vigor: 5 }, rl: { grail: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v22-awake", "각성 불의 장화(지나간 자리에 불) + 각성 전자기장(주변 몬스터의 최대 HP를 %로)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_live: "off", rl_save: save(30, "blog-v22aw", { l: 30, hp: 99999, mh: 99999, bz: { normal: 30 }, bl: { fire: 10, fireAw: 8, bolt: 10, boltAw: 10 } }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(2, Math.min(L.w - 15, L.px - 6)), y0 = Math.max(5, Math.min(L.h - 6, L.py));
+      for (let y = y0 - 4; y <= y0 + 4; y++) for (let x = x0; x < x0 + 13; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0 + 2; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 5000, maxHp: 5000, atk: 1, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(6, -3), mk(8, 3), mk(11, -2), mk(11, 2), mk(4, 3)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      localStorage.setItem("rl_live", "1");
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return x >= x0 - 1 && x <= x0 + 13 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordClock(o.page, [["+ArrowRight", 200], ["-ArrowRight", 1500], ["+ArrowLeft", 2600], ["-ArrowLeft", 3700]], 5600, { cols: 11, rows: 8, step: 100 }), delay: 10 }; }],
+  ["v22-nelem", "10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(30, "blog-v22ne", { l: 30, hp: 3000, mh: 3000, bz: { normal: 30 }, bl: { might: 5, vigor: 5 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(4, Math.min(L.w - 5, L.px)), y0 = Math.max(4, Math.min(L.h - 5, L.py));
+      for (let y = y0 - 3; y <= y0 + 3; y++) for (let x = x0 - 4; x <= x0 + 4; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy, nel) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 99999, maxHp: 99999, atk: 400, ranged: false, ready: false, smash: null, slow: 0, nel });
+      L.enemies = [mk(1, 0, "fire"), mk(-1, 0, "ice"), mk(0, 1, "bolt"), mk(0, -1, "poison")];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 5 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
+    });
+    await press(o.page, [".", "."], 250); await sleep(400);
+    return o; }],
+  ["v22-stairs", "넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(32, "blog-v22st", { l: 30, hp: 99999, mh: 99999, bz: { normal: 32 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    const key = await lastFoe(o.page);
+    await o.page.keyboard.press(key); await sleep(900);
+    return { ...o, shot: "#game" }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

@@ -26,8 +26,13 @@ const between = (r, a, b) => a + Math.floor(r() * (b - a + 1));
 const SLOTS9 = ["weapon", "offhand", "head", "chest", "arms", "pants", "boots", "neck", "ring1", "ring2"];
 const ENH_ORDER = SLOTS9;
 // 속성 스킬 축복 (dc#142)은 재미로 많이 고른다고 보고 앞쪽 (OPT.noElem: 고르지 않음)
-const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fire", "bolt", "ice"]), "hero", "might", "vigor", "stone", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
-const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall"];
+//   dc#163: 각성 스킬은 그 속성이 Lv 10이면 바로 고름 (각성 → 원래 속성 순), 흡혈·완벽한 물약도
+const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fireAw", "boltAw", "iceAw", "fire", "bolt", "ice"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
+const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall", "resPoison", "resFire", "resIce", "resBolt"];
+// 몬스터 공격 속성 (dc#163, monsters.js NORMAL_ELEM): 일반 던전 일부 몬스터 (OPT.nelem: false면 없음)
+const NE = OPT.nelem === false || !M.NORMAL_ELEM ? null : M.NORMAL_ELEM;
+if (NE && OPT.ne) for (const [k, v] of Object.entries(OPT.ne)) NE[k] = v && typeof v === "object" && !Array.isArray(v) ? { ...NE[k], ...v } : v;   // 값 바꿔 보기
+if (NE && OPT.neShare) M.normalElemShare = (f) => (f < NE.from ? 0 : NE.lo + (NE.hi - NE.lo) * Math.min(1, (f - NE.from) / (NE.to - NE.from)));
 
 function newPlayer(level = 1) {
   const p = { lvl: 1, xp: 0, xpNext: (OPT.xpFirst ?? 6) * (OPT.xpNeed ?? 4), maxHp: 20, atk: 3, eq: {}, stones: { stones: 0, nmStones: 0, hellStones: 0 }, bl: {}, rl: {} };
@@ -46,10 +51,13 @@ function stats(p) {
   const g = I.powerTotals(Object.values(p.eq)).stats, b = B.totals({ ...p.bl, ...p.rl }), cap = B.capsOf(b), lp = (p.lvl - 1) * 2;
   const pct = (v, q) => v * (1 + q / 100);
   return {
-    maxHp: Math.round(pct(p.maxHp + g.hp, (b.hpPct || 0) + lp)), atk: Math.round(pct(p.atk + g.atk, (b.atkPct || 0) + lp)), def: Math.round(pct(g.def, b.defPct || 0)),
+    maxHp: Math.round(pct(p.maxHp + g.hp, (b.hpPct || 0) + lp)), atk: Math.round(pct(p.atk + g.atk, (b.atkPct || 0) + lp)), def: Math.round(pct(g.def, (b.defPct || 0) + (b.shieldLv ? B.AWAKE.shield(Math.min(10, b.shieldLv)).defPct : 0))),
     crit: Math.min(cap.crit, b.crit || 0), ls: Math.min(cap.lifesteal, b.lifesteal || 0), dr: Math.min(cap.dmgReduce, b.dmgReduce || 0), parry: Math.min(cap.parry, b.parry || 0),
     ef: Object.fromEntries(B.ELEM_IDS.map(k => { const lv = Math.min(B.ELEM_MAX, b[`${k}Lv`] || 0); return [k, lv ? B.ELEM[k](lv) : null]; })),
-    first: b.firstHit || 0, bossHp: b.bossHp || 0, pot: 0.3 * (1 + (b.potPct || 0) / 100), potCd: 10 - (b.potCd || 0), floorHeal: b.floorHeal || 0, xp: b.xp || 0, elite: b.elite || 0, treasure: b.treasure || 0,
+    first: b.firstHit || 0, bossHp: b.bossHp || 0, pot: (b.perfect || 0) >= 2 && OPT.perf2 == null ? 1 : 0.3 * (1 + ((b.potPct || 0) + ((b.perfect || 0) >= 2 ? OPT.perf2 : (b.perfect || 0) >= 1 ? 50 : 0)) / 100), potCd: 10 - (b.potCd || 0), floorHeal: b.floorHeal || 0, xp: b.xp || 0, elite: b.elite || 0, treasure: b.treasure || 0,
+    // 각성 (dc#163): 불의 장화·얼음 보호막(방어력은 위 def에 더함)·전자기장, 속성 저항 (유물)
+    boots: b.bootsLv ? B.AWAKE.boots(Math.min(10, b.bootsLv)) : null, field: b.fieldLv ? B.AWAKE.field(Math.min(10, b.fieldLv)) : null,
+    res: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },
   };
 }
 
@@ -95,7 +103,8 @@ function floorMonsters(zone, f, r) {
   const L = M.effLevel(f), deep = zone !== "normal";
   const count = (deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2)) * SW.count;
   const rOn = RG && (deep || f >= RG.from), rShare = deep ? RG?.deepShare : RG?.share;
-  return { count: Math.round(count * KILL_SHARE), make: (kind) => { const m = swarmM(mk(kind)); if (rOn && r() < rShare) { m.ranged = true; m.rcd = 1 + Math.floor(r() * RG.every); } return m; } };
+  const eShare = NE && zone === "normal" ? M.normalElemShare(f) : 0;
+  return { count: Math.round(count * KILL_SHARE), make: (kind) => { const m = swarmM(mk(kind)); if (rOn && r() < rShare) { m.ranged = true; m.rcd = 1 + Math.floor(r() * RG.every); } if (eShare && r() < eShare) m.nel = NE.list[Math.floor(r() * NE.list.length)]; return m; } };
   function mk(kind) {
     if (zone === "hell") return zm("hell", M.makeHell(M.pickNightmareType(r), kind, f));
     if (zone === "nm") return zm("nm", M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r)));
@@ -156,6 +165,17 @@ function castElem(s, foes, st, r, killed) {
     else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
     for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
   }
+  // 각성 (dc#163) — 불의 장화: 붙어서 쫓아오는 몬스터는 내가 지나간 불 위를 밟음 (턴마다 근접 몬스터의 OPT.trail(기본 0.6)만큼)
+  if (s.boots && foes.length) { for (const m of foes) if (!m.ranged && r() < (OPT.trail ?? 0.6)) hit(m, s.atk * s.boots.mul, "fire"); for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]); }
+  //   전자기장: every턴마다 radius칸 안 (1칸이면 붙은 둘, 2칸부터 무리 전부) 최대 HP pct% (보스 절반)
+  if (s.field && foes.length) {
+    st.fcd = (st.fcd || 0) - 1;
+    if (st.fcd <= 0) {
+      st.fcd = s.field.every;
+      for (const m of foes.slice(0, s.field.radius >= 2 ? foes.length : 2)) { const v = Math.round((m.maxHp || m.hp) * s.field.pct / 100 * (m.kind === "boss" ? s.field.bossMul : 1)); DMG.field = (DMG.field || 0) + Math.min(v, Math.max(0, m.hp)); m.hp -= v; }
+      for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
+    }
+  }
 }
 
 // 싸움: foes 배열과 동시에. 이기면 true
@@ -167,7 +187,7 @@ function fight(p, s, foes, st, r, zone, f) {
     st.hp -= Math.max(1, Math.round(d));
     if (st.hp > 0) return false;
     if (!GUARD || st.guard) return false;
-    st.guard = true; st.hp = 1; st.cd = 0; st.guards = (st.guards || 0) + 1;
+    st.guard = true; st.hp = 1; st.cd = 0; st.guards = (st.guards || 0) + 1; st.burn = st.poison = null;   // 버티기: 화상·독도 풀림 (dc#163, 게임과 같게)
     return true;
   };
   let kn = st.killed.length;
@@ -178,9 +198,26 @@ function fight(p, s, foes, st, r, zone, f) {
       if (r() < (big ? RS.big : RS.chance) && r() < XP_PICK) { st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * RS.heal)); st.orbs = (st.orbs || 0) + 1; }
     }
   };
+  // 몬스터 공격 속성 (dc#163): 맞은 뒤 효과. 저항%만큼 덜 (번개는 저항% 확률로 막음)
+  //   화상·독은 맞은 피해(방어력으로 줄어든 뒤)의 mul% (강타는 보통 공격 한 번 만큼으로 셈)
+  const elHit = (m, hit) => {
+    const el = m.nel;   // 일반 던전 몬스터의 공격 속성만 (나이트메어·헬의 속성 몬스터 m.el은 따로)
+    if (!el || !NE) return;
+    const res = (s.res[el] || 0) / 100;
+    if (el === "fire") st.burn = { left: NE.burn.ticks * NE.burn.every, every: NE.burn.every, d: Math.max(1, hit * NE.burn.mul * (1 - res)) };
+    else if (el === "poison") st.poison = { left: NE.poison.ticks * NE.poison.every, every: NE.poison.every, d: Math.max(1, hit * NE.poison.mul * (1 - res)) };
+    else if (el === "ice") { st.shred = Math.min(NE.ice.max, (st.shredT > 0 ? st.shred : 0) + NE.ice.shred * (1 - res)); st.shredT = NE.ice.turns; }
+    else if (el === "bolt" && r() >= res) st.boltCd = Math.min(NE.bolt.max, (st.boltCd || 0) + NE.bolt.dodgeCd);
+    st.elHits = (st.elHits || 0) + 1;
+  };
+  const defNow = () => s.def * (1 - (st.shredT > 0 ? st.shred : 0) / 100);
+  // 번개: 회피 대기가 늘어 피하기 어려움 → 대기 1턴마다 피할 확률 ×0.85
+  const dodgeK = () => (OPT.boltK ?? 0.92) ** (st.boltCd || 0);   // 회피 대기 +1턴(최대 1)이면 피할 확률 ×0.92
   while (foes.length) {
     turn++;
     if (st.cd > 0) st.cd--;
+    if (st.shredT > 0) st.shredT--;
+    if (st.boltCd > 0 && turn % 4 === 0) st.boltCd--;
     castElem(s, foes, st, r, st.killed);
     rescue();
     if (!foes.length) break;
@@ -198,6 +235,9 @@ function fight(p, s, foes, st, r, zone, f) {
       if (t.hp <= 0) { foes.shift(); st.killed.push(t); }
       rescue();
     }
+    // 화상·독 틱 (dc#163): 게임처럼 내가 움직인(포션·공격) 뒤에
+    for (const k of ["burn", "poison"]) { const t = st[k]; if (!t || t.left <= 0) continue; if (t.left-- % t.every === 0 && t.d >= 0.5) { hurt(t.d); st.dot = (st.dot || 0) + t.d; } }
+    if (st.hp <= 0) return false;
     const melee = foes.filter(m => !m.ranged || foes.length === 1);
     const crowd = M.crowdCut(melee.length);
     // 강타: 예고 중인 몬스터는 보통 공격 대신 기다렸다가 내려침
@@ -205,7 +245,7 @@ function fight(p, s, foes, st, r, zone, f) {
     let guarded = false;
     if (SM && st.smash && --st.smash.t <= 0) {
       const m = st.smash.m; st.smash = null;
-      if (r() >= S_DODGE) { guarded = hurt(s.maxHp * M.smashPct(m.kind, f, zone !== "normal") * (1 - s.dr / 100)); st.smashHit = (st.smashHit || 0) + 1; }
+      if (r() >= S_DODGE * dodgeK()) { guarded = hurt(s.maxHp * M.smashPct(m.kind, f, zone !== "normal") * (1 - s.dr / 100)); st.smashHit = (st.smashHit || 0) + 1; elHit(m, M.damageToPlayer(m.atk, defNow()) * (1 - s.dr / 100)); }
       st.smashN = (st.smashN || 0) + 1;
     }
     for (const m of guarded ? [] : foes) {
@@ -218,21 +258,23 @@ function fight(p, s, foes, st, r, zone, f) {
         if (m.shc == null) m.shc = 1 + Math.floor(r() * SH[shK].every);
         if (--m.shc <= 0) {
           m.shc = SH[shK].every;
-          if (r() >= P_DODGE) { const mul = shK === "boss" ? SH.boss.fan.mul : SH.elite.mul; let d = M.damageToPlayer(m.atk * mul + Math.floor(r() * 2), s.def) * (1 - s.dr / 100); if (zone !== "normal") d *= ELEM_MUL; if (hurt(d)) break; }
+          if (r() >= P_DODGE * dodgeK()) { const mul = shK === "boss" ? SH.boss.fan.mul : SH.elite.mul; let d = M.damageToPlayer(m.atk * mul + Math.floor(r() * 2), defNow()) * (1 - s.dr / 100); if (zone !== "normal") d *= ELEM_MUL; elHit(m, d); if (hurt(d)) break; }
         }
       }
       if (m.ranged && foes.length > 1) {   // 다른 몬스터가 남아 있는 동안은 떨어져서 던짐 (혼자 남으면 붙어서 싸움)
         if (--m.rcd > 0) continue;
         m.rcd = RG.every + RG.windup;
-        if (r() < R_DODGE) continue;
-        let d = M.damageToPlayer(m.atk * RG.mul + Math.floor(r() * 2), s.def) * (1 - s.dr / 100);
+        if (r() < R_DODGE * dodgeK()) continue;
+        let d = M.damageToPlayer(m.atk * RG.mul + Math.floor(r() * 2), defNow()) * (1 - s.dr / 100);
         if (zone !== "normal") d *= ELEM_MUL;
+        elHit(m, d);
         if (hurt(d)) break;
         continue;
       }
       if (s.parry && r() * 100 < s.parry) continue;
-      let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), s.def) * (1 - s.dr / 100) * (1 - crowd) * (SM ? SM.hitMul : 1);
+      let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), defNow()) * (1 - s.dr / 100) * (1 - crowd) * (SM ? SM.hitMul : 1);
       if (zone !== "normal") d *= ELEM_MUL;
+      elHit(m, d);
       if (hurt(d)) break;
     }
     if (st.hp <= 0) return false;
@@ -254,16 +296,18 @@ function pickBest(list, pri) { return [...list].sort((a, b) => priOf(pri, a) - p
 // 한 던전 50층 (p를 이어서 씀). 쓰러지면 쓰러진 층, 다 깨면 0
 function runZone(p, zone, r, rid, out, from = 1) {
   const st = { hp: stats(p).maxHp, cd: 0, killed: [] };
-  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
+  //   dc#163: 레벨 업 축복은 2레벨마다 (짝수 레벨, OPT.lvEvery: 1이면 예전처럼 매 레벨)
+  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { if (lvl % (OPT.lvEvery ?? 2)) return; const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
   for (let f = from; f <= 50; f++) {
     // 새 층: 축복 하나
-    const off = B.offer(`${rid}|${zone}|${f}`, p.bl);
+    const off = f === 1 && !OPT.firstBless ? [] : B.offer(`${rid}|${zone}|${f}`, p.bl);   // dc#163: 1층(던전에 처음 들어갈 때)은 축복 없음 (OPT.firstBless: 예전처럼)
     if (off.length && !OPT.noBless) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; }
     // 축복 상점 (dc#151): 상점 층(보스 층 바로 전)에서 축복 하나 더 (OPT.shrine: false면 없음)
     if (OPT.shrine !== false && !OPT.noBless && I.isShopFloor(f)) { const so = B.offer(`${rid}|${zone}|${f}|sh`, p.bl); if (so.length) { const id = pickBest(so, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } }
     let s = stats(p);
     st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * s.floorHeal / 100));
-    st.guard = false; st.sc = SM ? SM.start : 0; st.smash = null; st.low = 1; const g0 = st.guards || 0;   // 층마다: 버티기 다시 · 강타 박자 처음부터
+    st.guard = false; st.sc = SM ? SM.start : 0; st.smash = null; st.low = 1; const g0 = st.guards || 0;
+    st.burn = st.poison = null; st.shredT = 0; st.boltCd = 0;   // 층을 옮기면 화상·독·방어력 깎임·회피 대기 풀림 (게임 clearStatus)   // 층마다: 버티기 다시 · 강타 박자 처음부터
     const fm = floorMonsters(zone, f, r), L = itemLevel(zone, f), log = out.log;
     const eliteP = Math.min(1, eliteBaseOf(zone, f) * (1 + s.elite / 100));
     let left = fm.count, kills = 0;
@@ -301,6 +345,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
     { const c = ((out.cc[zone] ||= {})[Math.ceil(f / 10)] ||= { n: 0, close: 0, guard: 0, sm: 0, smHit: 0, orbs: 0 }); c.n++; c.sm += st.smashN || 0; c.smHit += st.smashHit || 0; c.orbs += st.orbs || 0; st.smashN = st.smashHit = st.orbs = 0; if (st.low < CLOSE) c.close++; if ((st.guards || 0) > g0) c.guard++; }   // 아슬아슬 (dc#155)
     if ([1, 10, 25, 50].includes(f)) ((out.income[`${zone}${f}`] ||= []).push((p.got || 0) - (p.gotFloor || 0)));
     p.gotFloor = p.got || 0;
+    if (zone === "normal" && [20, 35, 50].includes(f)) (out.bsnap[f] ||= []).push({ bl: { ...p.bl }, rl: { ...p.rl }, lvl: p.lvl });   // 축복 모은 것 (dc#163)
     if (OPT.trace && f % 10 === 0) out.trace.push(`${zone}${f} Lv${p.lvl} ${JSON.stringify(stats(p))} gear ${Object.values(p.eq).map(i => `${i.rarity[0]}${i.enh}`).join(" ")}`);
   }
   return 0;
@@ -315,7 +360,7 @@ function report(name, deaths, extra = "") {
 
 const r0 = B.rng("sim-v2");
 const zones = ZONE === "all" ? ["normal", "nm", "hell"] : [ZONE];
-const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}, cc: {} };
+const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}, cc: {}, bsnap: {} };
 // 1) 이어가기: 일반 1층부터 한 판으로 → 나이트메어 → 헬
 {
   const res = { normal: [], nm: [], hell: [] }, lv = { normal: [], nm: [], hell: [] }, saved = { normal: [], nm: [] };
@@ -347,6 +392,12 @@ const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}
 // 아슬아슬한 층 (dc#155): 살아서 넘긴 층 중 HP가 CLOSE 아래로 내려간 적이 있는 층 % (버티기로 산 층 %)
 for (const z of zones) { const c = out.cc[z]; if (!c) continue; const all = Object.values(c).reduce((a, v) => Object.fromEntries(Object.keys(v).map(k => [k, a[k] + v[k]])), { n: 0, close: 0, guard: 0, sm: 0, smHit: 0, orbs: 0 }); const pc = (v) => `${Math.round(v.close / Math.max(1, v.n) * 100)}%${v.guard ? `(버팀 ${Math.round(v.guard / v.n * 100)}%)` : ""}${OPT.cc ? `[강타 ${(v.sm / v.n).toFixed(1)}·맞음 ${(v.smHit / v.n).toFixed(1)}·회복 ${(v.orbs / v.n).toFixed(1)}]` : ""}`;
   console.log(`아슬아슬한 층 ${z} (HP ${Math.round(CLOSE * 100)}% 아래): 전체 ${pc(all)} · ` + Object.entries(c).map(([b, v]) => `${(b - 1) * 10 + 1}~${b * 10} ${pc(v)}`).join(" / ")); }
+// 축복 모은 것 (dc#163): 일반 던전 20·35·50층에 도착한 판들의 평균 — 고른 횟수, 만렙(max)인 축복 수, 속성·각성 단계
+for (const [f, list] of Object.entries(out.bsnap)) {
+  const ids = [...new Set(list.flatMap(x => Object.keys(x.bl)))].sort((a, b) => mean(list.map(x => x.bl[b] || 0)) - mean(list.map(x => x.bl[a] || 0)));
+  const maxed = mean(list.map(x => Object.entries(x.bl).filter(([id, n]) => n >= (B.defOf(id)?.max || 1)).length));
+  console.log(`${f}층 (${list.length}판, Lv ${mean(list.map(x => x.lvl)).toFixed(0)}): 축복 ${mean(list.map(x => Object.values(x.bl).reduce((a, b) => a + b, 0))).toFixed(1)}번 · 만렙 ${maxed.toFixed(1)}개 · ` + ids.map(id => `${id} ${mean(list.map(x => x.bl[id] || 0)).toFixed(1)}/${B.defOf(id)?.max}`).join(" ") + ` · 유물 ${mean(list.map(x => Object.values(x.rl).reduce((a, b) => a + b, 0))).toFixed(1)}`);
+}
 console.log("자동 장비:", out.log);
 console.log("한 층에서 분해로 모이는 강화석 (평균):", Object.entries(out.income).map(([k, v]) => `${k} ${Math.round(mean(v))}`).join(" · "));
 if (OPT.where) console.log("쓰러진 곳:", JSON.stringify(Object.entries(out.where).sort((a, b) => b[1] - a[1]).slice(0, 15)));
