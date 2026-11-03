@@ -232,7 +232,8 @@
   // 원거리 몬스터 (dc#149): 일반 던전 from층부터 (나이트메어·헬은 처음부터) 몬스터 일부(share, 깊은 던전 deepShare)가
   //   붙지 않고 keep~range칸 거리에서 every턴마다 "저주 구슬"을 던짐. 던지기 전 windup턴 동안 내가 선 칸(radius 0 = 한 칸, dc#150: 3×3은 거의 못 피해서)에
   //   붉은 표시와 남은 턴 (3D는 한 턴이 0.5초라 windup3d턴 = 약 1.5초) → 그 사이 표시 밖으로 나가거나 회피(무적)면 빗나감. 맞으면 공격력 ×mul — 붙어서 매 턴 때리는 것보다 드물어서 한 방이 셈 (시뮬레이션: 절반 피하면 원거리 없을 때와 비슷). 내 속성 스킬과 다른 진홍색
-  const RANGED = { from: 20, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
+  //   liveFrom (dc#159): 실시간(2D·3D)이면 이 층부터 — 날아오는 한 발을 보고 비키는 연습을 앞쪽 층부터 (턴제는 from층 그대로)
+  const RANGED = { from: 20, liveFrom: 6, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
   // 강타 (dc#155, 새 규칙): 긴장감은 "조금씩 꾸준히 깎이는 체력"보다 "가끔 오는 크지만 피할 수 있는 한 방"에서 나옴.
   //   붙어 있는 근접 몬스터(원거리·황금 고블린·이무기 빼고)가 every턴(붙어 있는 턴만 셈, 층 처음은 start턴)마다 한 마리씩
   //   내가 선 칸을 노려 windup턴(3D windup3d턴) 동안 주황 표시 → 그 칸에 그대로 있으면 최대 HP × pct (받는 피해 감소만 적용, 방패로 못 막음)
@@ -250,8 +251,12 @@
   //   ranged: 원거리 몬스터 (칸에 떨어지는 저주 구슬 대신) 하나를 곧게 · every턴마다
   //   elite: from층부터 정예가 가끔 세 갈래 (부채꼴 spread 라디안) · boss: 보스·네임드가 부채꼴(fan)과 둘레 전체(ring)를 번갈아
   //   mul: 몬스터 공격력 × (방어력으로 줄어듦, 받는 피해 감소 적용)
+  //   gap (dc#159): 한 층 전체에서 정예·원거리가 새로 모으기 시작하는 건 gap턴에 한 번만 (보스·네임드는 빼고, 보스가 모으면 그 뒤 gap턴도 쉼)
+  //     깊은 층은 몬스터·정예가 많아 한 층 300발(초당 5발)까지 쏟아짐 → 하나하나 보고 피할 수 있는 양으로
+  //   deep (dc#159): 일반 던전 from층부터 to층까지 탄 한 발의 공격력이 ×1 → ×mul로 (탄이 줄어든 만큼 한 발이 더 아픔. 실시간 봇: 31~45층에서 체력이 반도 안 깎였음)
+  const shotDeepMul = (n) => 1 + (SHOTS.deep.mul - 1) * Math.max(0, Math.min(1, (n - SHOTS.deep.from) / (SHOTS.deep.to - SHOTS.deep.from)));
   const SHOTS = {
-    speed: 5, r: 0.22, life: 3, range: 7,
+    speed: 5, r: 0.22, life: 3, range: 7, gap: 3, deep: { from: 20, to: 50, mul: 1.5 },
     ranged: { every: 4, windup: 2, mul: 2, color: "#ff2e4d" },
     elite: { from: 3, every: 7, windup: 2, n: 3, spread: 0.3, mul: 0.8, color: "#ffcf5c" },
     boss: { every: 5, windup: 2, fan: { n: 5, spread: 0.26, mul: 0.8 }, ring: { n: 12, mul: 0.6 }, color: "#c77dff" },
@@ -525,7 +530,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, SHOTS, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

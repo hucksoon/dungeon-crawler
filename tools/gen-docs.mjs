@@ -79,7 +79,9 @@ ${table(["표시", "이름", "HP", "공격", "방어", "경험치", "나오는 �
 - **실시간 탄환 (dc#158)**: 실시간 2D·3D에서만 (턴제는 아래처럼 칸 표시). 몬스터가 ${M.SHOTS.elite.windup}턴 동안 빛나는 고리를 조이며 모았다가(한 발·부채꼴이면 나를 향한 점선) 화면을 실제로 날아가는 구슬을 쏴요 (초당 ${M.SHOTS.speed}칸). 몸에 닿으면 맞고, 옆으로 비키거나 회피(무적)하면 안 맞고, 벽에 닿으면 사라져요. 보이고 2~${M.SHOTS.range}칸 떨어져 있을 때만 쏘고, 모으는 동안은 움직이지 않아요
   - 정예 (일반 ${M.SHOTS.elite.from}층부터, 나이트메어·헬은 처음부터): ${M.SHOTS.elite.every}턴마다 세 갈래 (한 발 공격력 ×${M.SHOTS.elite.mul})
   - 보스·네임드: ${M.SHOTS.boss.every}턴마다 부채꼴 ${M.SHOTS.boss.fan.n}발(×${M.SHOTS.boss.fan.mul})과 둘레 전체 ${M.SHOTS.boss.ring.n}발(×${M.SHOTS.boss.ring.mul})을 번갈아
-  - 원거리 몬스터: 칸에 떨어지는 저주 구슬 대신 ${M.SHOTS.ranged.windup}턴 모았다가 한 발 (×${M.SHOTS.ranged.mul})
+  - 원거리 몬스터: 칸에 떨어지는 저주 구슬 대신 ${M.SHOTS.ranged.windup}턴 모았다가 한 발 (×${M.SHOTS.ranged.mul}). 실시간이면 일반 던전 ${M.RANGED.liveFrom}층부터 나옴 (턴제는 ${M.RANGED.from}층부터, dc#159)
+  - 한꺼번에 쏟아지지 않게 (dc#159): 한 층에서 정예·원거리가 새로 탄을 모으기 시작하는 건 ${M.SHOTS.gap}턴에 한 번만 (보스·네임드는 빼고, 보스가 모으면 그 뒤 ${M.SHOTS.gap}턴도 쉼)
+  - 깊은 층 (dc#159): 일반 던전 ${M.SHOTS.deep.from}층부터 ${M.SHOTS.deep.to}층까지 탄 한 발의 공격력이 ×1 → ×${M.SHOTS.deep.mul} (35층 ×${M.shotDeepMul(35).toFixed(2)}). 탄이 줄어든 만큼 한 발이 더 아픔
   - 시뮬레이션: 쏘는 것의 70%를 피하면 끝까지 일반 약 67% → 60%, 85%를 피하면 거의 그대로 (잘 피할수록 쉬움)
 - **회복 구슬 (dc#155)**: HP가 최대의 ${Math.round(M.RESCUE.below * 100)}% 아래일 때 몬스터를 쓰러뜨리면 ${Math.round(M.RESCUE.chance * 100)}% 확률로(정예·보스·네임드는 꼭) 그 자리에 빨간 구슬. 경험치 구슬처럼 1칸 안으로 가면 주워서 최대 HP의 ${Math.round(M.RESCUE.heal * 100)}% 회복. 층을 떠나면 사라져요
 - **버티기 (dc#155)**: 층마다 한 번, 쓰러질 피해를 받으면 HP 1로 남아요. 그 턴의 남은 피해는 막고, 회피·포션이 바로 준비돼요. 화면 가장자리가 붉게 번쩍. 쓰고 나면 위 상태 줄에 "버티기 사용함"
