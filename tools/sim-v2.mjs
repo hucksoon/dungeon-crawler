@@ -16,6 +16,10 @@ const KILL_SHARE = OPT.kill ?? 1, ELEM_MUL = OPT.elem ?? 1.2;
 // 한 번에 붙는 몬스터 수: 일반 던전 앞쪽은 1~2마리, 깊을수록 많이 (나이트메어·헬은 몰려옴)
 const GROUP = (zone, f) => OPT.group ?? (zone === "normal" ? (f <= 5 ? 1 : f <= 20 ? 2 : 3) : 4);
 if (OPT.mul) Object.assign(I.POWER.mul, OPT.mul);
+if (OPT.ncurve != null) M.NORMAL.curve = OPT.ncurve;   // 일반 던전 깊이 배율 곡선 (dc#155, monsters.js NORMAL.curve)
+if (OPT.nr != null) M.NORMAL.ramp = OPT.nr;
+if (OPT.hpx != null) M.NORMAL.hp = OPT.hpx;
+if (OPT.acurve != null) M.NORMAL.atkCurve = OPT.acurve;   // 공격력만 앞쪽 층부터 세게 (dc#155)   // 일반 던전 몬스터 HP만 더 곱함 (dc#155)
 if (OPT.zone) Object.assign(I.POWER.zone, OPT.zone);
 
 const between = (r, a, b) => a + Math.floor(r() * (b - a + 1));
@@ -106,6 +110,14 @@ const swarmM = (m) => ({ ...m, xp: Math.max(1, Math.round(m.xp * SW.xp)) });
 // 원거리 몬스터 (dc#149): 붙지 않고 every턴마다 저주 구슬 (공격력 ×mul). 표시를 보고 벗어나면 안 맞음 → 피할 확률 OPT.rdodge (기본 0.5,
 //   몰려오는 무리 사이라 다 피하지는 못한다고 봄). 멀리 있어 맨 나중에 잡고, 둘러싸임 방어의 마릿수에는 넣지 않음. OPT.ranged: false면 없음
 const RG = OPT.ranged === false ? null : { ...M.RANGED, ...(OPT.rg || {}) }, R_DODGE = OPT.rdodge ?? 0.5;
+// 강타 (dc#155): 붙은 근접 몬스터 중 하나가 every턴마다 windup턴 예고 뒤 최대 HP × pct. 예고를 보고 한 칸 옮기거나 회피하면 0 →
+//   피할 확률 OPT.sdodge (기본 0.75, 둘러싸이면 못 피할 때도 있음). 보통 공격 × hitMul. OPT.smash: false면 없음 (예전), OPT.sm: 값 바꿔 보기
+const SM = OPT.smash === false ? null : { ...M.SMASH, ...(OPT.sm || {}), pct: { ...M.SMASH.pct, ...(OPT.sm?.pct || {}) } }, S_DODGE = OPT.sdodge ?? 0.75;
+// 위기 (dc#155): 회복 구슬(HP below 아래일 때 처치하면 chance, 정예·보스 big → 최대 HP × heal, 줍는 몫 XP_PICK) + 층마다 버티기 한 번
+//   OPT.rescue: false면 없음, OPT.rs: 값 바꿔 보기, OPT.guard: false면 버티기만 없음
+const RS = OPT.rescue === false ? null : { ...M.RESCUE, ...(OPT.rs || {}) }, GUARD = !!RS && OPT.guard !== false;
+// 아슬아슬 (dc#155): 층을 살아서 넘겼는데 그 층에서 HP가 최대의 CLOSE 아래로 내려간 적이 있으면 "아슬아슬한 층"
+const CLOSE = OPT.close ?? 0.3;
 // OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
 function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
@@ -144,14 +156,30 @@ function castElem(s, foes, st, r, killed) {
 }
 
 // 싸움: foes 배열과 동시에. 이기면 true
-function fight(p, s, foes, st, r, zone) {
+function fight(p, s, foes, st, r, zone, f) {
   let turn = 0;
   st.ecd = st.ecd || {};
   foes.sort((a, b) => (a.ranged ? 1 : 0) - (b.ranged ? 1 : 0));   // 원거리는 멀리 있어 맨 나중에
+  const hurt = (d) => {   // 피해: 0 아래로 내려가면 버티기(층마다 한 번) → HP 1, 이 턴의 남은 피해 막음. 버텼으면 true
+    st.hp -= Math.max(1, Math.round(d));
+    if (st.hp > 0) return false;
+    if (!GUARD || st.guard) return false;
+    st.guard = true; st.hp = 1; st.cd = 0; st.guards = (st.guards || 0) + 1;
+    return true;
+  };
+  let kn = st.killed.length;
+  const rescue = () => {   // 이번 턴에 쓰러진 몬스터마다: HP가 낮으면 확률로 회복 구슬
+    for (; kn < st.killed.length; kn++) {
+      if (!RS || st.hp >= s.maxHp * RS.below) continue;
+      const m = st.killed[kn], big = m.kind === "elite" || m.kind === "boss";
+      if (r() < (big ? RS.big : RS.chance) && r() < XP_PICK) { st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * RS.heal)); st.orbs = (st.orbs || 0) + 1; }
+    }
+  };
   while (foes.length) {
     turn++;
     if (st.cd > 0) st.cd--;
     castElem(s, foes, st, r, st.killed);
+    rescue();
     if (!foes.length) break;
     if (st.hp < s.maxHp * 0.45 && st.cd === 0) { st.hp = Math.min(s.maxHp, st.hp + Math.max(8, Math.round(s.maxHp * s.pot))); st.cd = s.potCd; }
     else {
@@ -165,26 +193,44 @@ function fight(p, s, foes, st, r, zone) {
       t.hp -= dmg;
       if (s.ls) st.hp = Math.min(s.maxHp, st.hp + Math.floor(taken * s.ls / 100));
       if (t.hp <= 0) { foes.shift(); st.killed.push(t); }
+      rescue();
     }
-    const crowd = M.crowdCut(foes.filter(m => !m.ranged).length);
-    for (const m of foes) {
+    const melee = foes.filter(m => !m.ranged || foes.length === 1);
+    const crowd = M.crowdCut(melee.length);
+    // 강타: 예고 중인 몬스터는 보통 공격 대신 기다렸다가 내려침
+    if (SM && st.smash && !foes.includes(st.smash.m)) st.smash = null;   // 예고 중에 쓰러뜨림
+    let guarded = false;
+    if (SM && st.smash && --st.smash.t <= 0) {
+      const m = st.smash.m; st.smash = null;
+      if (r() >= S_DODGE) { guarded = hurt(s.maxHp * M.smashPct(m.kind, f, zone !== "normal") * (1 - s.dr / 100)); st.smashHit = (st.smashHit || 0) + 1; }
+      st.smashN = (st.smashN || 0) + 1;
+    }
+    for (const m of guarded ? [] : foes) {
       if (m.slowImm > 0) m.slowImm--;
       if (m.slow > 0) { m.slow--; if (turn % 2) continue; }   // 느려짐: 2턴에 한 번
+      if (st.smash?.m === m) continue;
       if (m.ranged && foes.length > 1) {   // 다른 몬스터가 남아 있는 동안은 떨어져서 던짐 (혼자 남으면 붙어서 싸움)
         if (--m.rcd > 0) continue;
         m.rcd = RG.every + RG.windup;
         if (r() < R_DODGE) continue;
         let d = M.damageToPlayer(m.atk * RG.mul + Math.floor(r() * 2), s.def) * (1 - s.dr / 100);
         if (zone !== "normal") d *= ELEM_MUL;
-        st.hp -= Math.max(1, Math.round(d));
+        if (hurt(d)) break;
         continue;
       }
       if (s.parry && r() * 100 < s.parry) continue;
-      let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), s.def) * (1 - s.dr / 100) * (1 - crowd);
+      let d = M.damageToPlayer(m.atk + Math.floor(r() * 3), s.def) * (1 - s.dr / 100) * (1 - crowd) * (SM ? SM.hitMul : 1);
       if (zone !== "normal") d *= ELEM_MUL;
-      st.hp -= Math.max(1, Math.round(d));
+      if (hurt(d)) break;
     }
     if (st.hp <= 0) return false;
+    st.low = Math.min(st.low ?? 1, st.hp / s.maxHp);
+    // 강타 박자: 붙은 근접 몬스터가 있는 턴만 셈 → 0이 되면 하나가 예고 시작 (보스 > 정예 > 보통)
+    if (SM && !st.smash && melee.length && --st.sc <= 0) {
+      const rank = (m) => (m.kind === "boss" ? 2 : m.kind === "elite" ? 1 : 0);
+      st.smash = { m: [...melee].sort((a, b) => rank(b) - rank(a))[0], t: SM.windup };
+      st.sc = SM.every;
+    }
     if (turn > 400) return false;   // 못 잡음
   }
   return true;
@@ -205,6 +251,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
     if (OPT.shrine !== false && !OPT.noBless && I.isShopFloor(f)) { const so = B.offer(`${rid}|${zone}|${f}|sh`, p.bl); if (so.length) { const id = pickBest(so, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } }
     let s = stats(p);
     st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * s.floorHeal / 100));
+    st.guard = false; st.sc = SM ? SM.start : 0; st.smash = null; st.low = 1; const g0 = st.guards || 0;   // 층마다: 버티기 다시 · 강타 박자 처음부터
     const fm = floorMonsters(zone, f, r), L = itemLevel(zone, f), log = out.log;
     const eliteP = Math.min(1, eliteBaseOf(zone, f) * (1 + s.elite / 100));
     let left = fm.count, kills = 0;
@@ -212,7 +259,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
       const n = Math.min(GROUP(zone, f), left); left -= n;
       const foes = Array.from({ length: n }, () => fm.make(r() < eliteP ? "elite" : "normal"));
       st.killed = [];
-      if (!fight(p, s, foes, st, r, zone)) { out.where[`${zone}${f}`] = (out.where[`${zone}${f}`] || 0) + 1; return f; }
+      if (!fight(p, s, foes, st, r, zone, f)) { out.where[`${zone}${f}`] = (out.where[`${zone}${f}`] || 0) + 1; return f; }
       for (const m of st.killed) {
         gainXp(p, Math.round(m.xp * (1 + s.xp / 100) * XP_PICK));
         const it = I.rollDrop(`${rid}|${tag(zone)}${f}|k${kills++}`, L, m.kind, (zone === "normal" ? 1.5 : 1) * SW.drop);
@@ -233,12 +280,13 @@ function runZone(p, zone, r, rid, out, from = 1) {
       st.killed = [];
       // 넓은 지역(dc#143): 보스는 부하 2 + 층/10마리와 함께 (부하 먼저 잡는다고 보고 앞에)
       const adds = OPT.noAdds ? [] : Array.from({ length: 2 + Math.floor(f / 10) }, () => fm.make(r() < 0.35 ? "elite" : "normal"));
-      if (!fight(p, s, [...adds, boss], st, r, zone)) { out.bossDeaths = (out.bossDeaths || 0) + 1; out.where[`${zone}${f}b`] = (out.where[`${zone}${f}b`] || 0) + 1; return f; }
+      if (!fight(p, s, [...adds, boss], st, r, zone, f)) { out.bossDeaths = (out.bossDeaths || 0) + 1; out.where[`${zone}${f}b`] = (out.where[`${zone}${f}b`] || 0) + 1; return f; }
       for (const m of st.killed) gainXp(p, Math.round(m.xp * (1 + s.xp / 100)));
       for (let k = 0; k < 2; k++) { const it = I.rollDrop(`${rid}|${tag(zone)}${f}|b${k}`, L, "boss"); if (it) autoGear(p, it, log); }
       if (!OPT.noBless) { const ro = B.offer(`${rid}|${zone}|r${f}`, p.rl, true); if (ro.length) { const id = pickBest(ro, RELIC_PRI); p.rl[id] = (p.rl[id] || 0) + 1; } }
       autoEnhance(p);
     }
+    { const c = ((out.cc[zone] ||= {})[Math.ceil(f / 10)] ||= { n: 0, close: 0, guard: 0, sm: 0, smHit: 0, orbs: 0 }); c.n++; c.sm += st.smashN || 0; c.smHit += st.smashHit || 0; c.orbs += st.orbs || 0; st.smashN = st.smashHit = st.orbs = 0; if (st.low < CLOSE) c.close++; if ((st.guards || 0) > g0) c.guard++; }   // 아슬아슬 (dc#155)
     if ([1, 10, 25, 50].includes(f)) ((out.income[`${zone}${f}`] ||= []).push((p.got || 0) - (p.gotFloor || 0)));
     p.gotFloor = p.got || 0;
     if (OPT.trace && f % 10 === 0) out.trace.push(`${zone}${f} Lv${p.lvl} ${JSON.stringify(stats(p))} gear ${Object.values(p.eq).map(i => `${i.rarity[0]}${i.enh}`).join(" ")}`);
@@ -255,7 +303,7 @@ function report(name, deaths, extra = "") {
 
 const r0 = B.rng("sim-v2");
 const zones = ZONE === "all" ? ["normal", "nm", "hell"] : [ZONE];
-const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {} };
+const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}, cc: {} };
 // 1) 이어가기: 일반 1층부터 한 판으로 → 나이트메어 → 헬
 {
   const res = { normal: [], nm: [], hell: [] }, lv = { normal: [], nm: [], hell: [] }, saved = { normal: [], nm: [] };
@@ -284,6 +332,9 @@ const out = { log: { dup: 0, swap: 0, dis: 0 }, trace: [], where: {}, income: {}
   }
 }
 { const tot = Object.values(DMG).reduce((a, b) => a + b, 0); console.log("몬스터에게 들어간 피해 비율:", Object.entries(DMG).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v / tot * 100)}%`).join(" · ")); }
+// 아슬아슬한 층 (dc#155): 살아서 넘긴 층 중 HP가 CLOSE 아래로 내려간 적이 있는 층 % (버티기로 산 층 %)
+for (const z of zones) { const c = out.cc[z]; if (!c) continue; const all = Object.values(c).reduce((a, v) => Object.fromEntries(Object.keys(v).map(k => [k, a[k] + v[k]])), { n: 0, close: 0, guard: 0, sm: 0, smHit: 0, orbs: 0 }); const pc = (v) => `${Math.round(v.close / Math.max(1, v.n) * 100)}%${v.guard ? `(버팀 ${Math.round(v.guard / v.n * 100)}%)` : ""}${OPT.cc ? `[강타 ${(v.sm / v.n).toFixed(1)}·맞음 ${(v.smHit / v.n).toFixed(1)}·회복 ${(v.orbs / v.n).toFixed(1)}]` : ""}`;
+  console.log(`아슬아슬한 층 ${z} (HP ${Math.round(CLOSE * 100)}% 아래): 전체 ${pc(all)} · ` + Object.entries(c).map(([b, v]) => `${(b - 1) * 10 + 1}~${b * 10} ${pc(v)}`).join(" / ")); }
 console.log("자동 장비:", out.log);
 console.log("한 층에서 분해로 모이는 강화석 (평균):", Object.entries(out.income).map(([k, v]) => `${k} ${Math.round(mean(v))}`).join(" · "));
 if (OPT.where) console.log("쓰러진 곳:", JSON.stringify(Object.entries(out.where).sort((a, b) => b[1] - a[1]).slice(0, 15)));

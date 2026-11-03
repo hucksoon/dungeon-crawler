@@ -753,6 +753,34 @@ const SCENES = [
     });
     return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 900], ["ArrowRight", 2000], ["ArrowUp", 2500], ["ArrowRight", 3000], ["ArrowDown", 3500], ["ArrowDown", 4000]], 4700, { cols: 9, rows: 7, every: 50 }), delay: 5 }; }],
   // dc#153: 마지막 몬스터를 쓰러뜨리면 계단이 열리며 맵에 남은 경험치 구슬이 모두 날아옴
+  // dc#155: 강타 — 옆 몬스터가 내 칸을 주황으로 노림(2 → 1) → 한 칸 비키면 빈 칸을 내려침
+  ["v15-smash", "옆 몬스터가 내 칸을 노리면 한 칸 비켜요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v15smash", { l: 18, hp: 99999 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-2, -1, 0, 1, 2].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y - 2) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: L.px + 1, y: L.py, hp: 99999, maxHp: 99999, atk: 0, ranged: false, ready: true, smash: null }];
+      L.items = []; L.fs = { ...(L.fs || {}), sc: 1 };
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1300], ["ArrowUp", 2300]], 3400, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
+  // dc#155: 버티기 — HP가 낮을 때 강타를 맞으면 HP 1로 버팀(붉게 번쩍) → 옆의 빨간 회복 구슬을 주움
+  ["v15-guard", "쓰러질 한 방을 버티고 회복 구슬을 주워요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v15guard", { l: 18, hp: 300, mh: 2000 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const ok = (x, y) => L.map[y * L.w + x] === "1";
+      const fit = (x, y) => [-3, -2, -1, 0, 1, 2].every(k => ok(x + k, y) && ok(x + k, y - 1) && ok(x + k, y + 1));
+      if (!fit(L.px, L.py)) for (let i = 0; i < L.map.length; i++) { const x = i % L.w, y = (i / L.w) | 0; if (fit(x, y)) { L.px = x; L.py = y; break; } }
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "elite", x: L.px + 1, y: L.py, hp: 99999, maxHp: 99999, atk: 0, ranged: false, ready: false, smash: null }];
+      L.items = [{ x: L.px - 2, y: L.py, type: "heal" }]; L.fs = { ...(L.fs || {}), sc: 1, ls: 0 };
+      L.seen = Array.from(L.map, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.max(Math.abs(x - L.px), Math.abs(y - L.py)) <= 8 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1100], [".", 1900], ["ArrowLeft", 3300]], 4300, { cols: 7, rows: 5, every: 60 }), delay: 6 }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

@@ -1344,5 +1344,15 @@
     "📘 위험할 때는 회피! Space를 누르면 움직이던 쪽으로 3칸 굴러가고, 그동안은 무적이에요.": "📘 When in danger, dodge! Press Space to roll 3 tiles the way you were moving — you're invulnerable meanwhile.",
     "✦ 레벨 업! 첫 스킬 배우기": "✦ Level up! Learn your first skill",
     "속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.": "Learn one element skill. It casts by itself, and picking the same skill again makes it stronger.",
+    "{0}이(가) 크게 내려칠 준비를 한다! 주황 칸에서 {1}턴 안에 벗어나세요.": "{0} winds up a Smash! Get off the orange tile within {1} turns.",
+    "{0}의 강타를 피했다!": "Dodged {0}'s Smash!",
+    "{0}의 강타에 맞아 {1} 피해를 입음!{2}": "{0}'s Smash hits you for {1}!{2}",
+    "회복 구슬을 주웠다! HP +{0}": "Picked up a heal orb! HP +{0}",
+    "버팀!": "Hold on!",
+    "✦ 버티기! 쓰러질 피해를 버텨 HP 1. 회피와 포션이 바로 준비됐어요. (이 층에서 한 번)": "✦ Hold on! You survived a fatal blow with 1 HP. Dodge and potion are ready right now. (Once per floor)",
+    "♥ 버티기 사용함 (다음 층에서 다시)": "♥ Hold on used (back next floor)",
+    "강타": "Smash",
+    "저주 구슬": "Curse Orb",
+    "⚠ {0}! {1}턴 안에 옮기세요": "⚠ {0}! Move within {1} turns",
   } });
 })(typeof self !== "undefined" ? self : this);

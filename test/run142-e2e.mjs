@@ -17,7 +17,7 @@ const HOOK = `
   window.__t = {
     s: () => ({ scene, depth, zone: player.zone, gameOver, gold: player.gold, lv: player.plvl, hp: player.hp, wp: wpSpot, bl: { ...(player.bl || {}) } }),
     st: () => { const S = stats(); return { fireball: S.fireball, fbRadius: S.fbRadius, fbRange: S.fbRange, fbEvery: S.fbEvery, nova: S.nova, novaRadius: S.novaRadius, chain: S.chain, chainStrikes: S.chainStrikes, chainMax: S.chainMax }; },
-    die: () => { player.hp = 0; death(); render(); },
+    die: () => { floorSt.ls = 1; player.hp = 0; death(); render(); },   // 버티기(dc#155)는 이미 쓴 것으로
     start: () => enterDungeon("start"),
     abyss: () => enterAbyss(),
     hell50: () => { player.zone = "hell"; depth = 50; completeHell(); },

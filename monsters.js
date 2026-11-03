@@ -209,7 +209,14 @@
   //     → 4.4 (시뮬레이션: 4 → 88%, 4.3 → 79%, 4.4 → 73~74%, 4.6 → 56%, 5 → 26%). 속성 축복을 안 고르면 여전히 11~30층에서 쓰러짐
   //   dc#146: 몬스터 무리(×2, 경험치·드롭 절반) · 처음부터 마력탄 · 첫 레벨 업에 속성 스킬 → 4.4면 81% → 4.6
   //   dc#153: 레벨 경험치 ×4(dc#152)와 속성 스킬 범위 상한으로 48%가 되어 4.6 → 4.2 (4.3 → 59%, 4.1 → 78%, 300판 4.2 → 69%)
-  const NORMAL = { ramp: 4.2 };
+  //   dc#155 "너무 쉬워 긴장감이 없음": 시뮬레이션·실제 게임 봇 모두 1~30층은 몬스터 한 대가 최대 HP의 3~4%라 거의 안 아프고(HP 50% 아래로 내려가는 층 1~6%),
+  //     41~50층에서 갑자기 벽. 그래서 강타(크지만 피할 수 있는 한 방) · 회복 구슬 · 버티기를 넣고 보통 공격 ×0.8, 그리고
+  //     hp: 몬스터 HP × (1층 ×1 → hpEase층에 걸쳐 hp까지): 오래 버텨 붙어 싸우는 시간이 늘고 그 사이 강타가 옴
+  //     atkCurve: 공격력의 깊이 배율만 앞쪽 층부터 세게 ((층 비율)^atkCurve, 50층은 그대로 ×5.2). 1~atkEase층은 차츰 (1층 ×1, 2층 ×1.22, 6층 ×2.9)
+  //     → 시뮬레이션 300판: 끝까지 69~72% (전 63%) · HP 50% 아래로 내려가는 층 1~10층 3% → 8~13%, 11~20층 1% → 29%, 21~30층 6% → 60%, 31~40층 16% → 69%
+  //       (HP ×1.5 → 78%, ×1.6 → 81%, ×1.7 → 69~72%. 공격력 곡선 없이 HP만 올리면 끝까지 비율만 바뀌고 긴장감은 그대로 1~6%)
+  //     curve: HP 깊이 배율 곡선 (1 = 고르게. 1보다 작게도 시험했지만 앞쪽 HP만 늘어 긴장감은 안 늘었음)
+  const NORMAL = { ramp: 4.2, curve: 1, hp: 1.7, hpEase: 5, atkCurve: 0.35, atkEase: 5 };
   // 나이트메어·헬 몬스터 HP·공격력에 더 곱함 (dc#142, 속성 스킬 축복 뒤 시뮬레이션 300판: 이어가기 나이트메어 약 90% · 헬 약 45%)
   //   없으면 둘 다 100%. 나이트메어 ×2 / ×1.45 → 11%, ×1.6 / ×1.3 → 87~92%. 헬 ×1.6 / ×1.35 → 11%, ×1.43 / ×1.23 → 43~47%, ×1.4 / ×1.2 → 60~65%
   //   헬 몬스터는 나이트메어 50층 몬스터를 바탕으로 만들지만 나이트메어 배율은 곱하지 않음 (헬 배율만). 끝이 없는 구멍(헬 바탕)도 헬 배율
@@ -217,7 +224,8 @@
   //     → 이어가기 나이트메어 92% · 헬 44% (300판)
   //   dc#146: 위 변화로 나이트메어 96% · 헬 62% → 나이트메어 ×1.05, 헬 ×1.04
   //   dc#153: 같은 이유로 나이트메어 80% · 헬 30% → 둘 다 ×0.96 (300판 83% · 44%, ×0.93이면 94% · 60%)
-  const V2 = { nightmare: { hp: 1.94, atk: 1.57 }, hell: { hp: 1.72, atk: 1.48 } };
+  //   dc#155: 강타·회복 구슬·버티기로 나이트메어 100% · 헬 90%라 HP만 나이트메어 ×1.6 (×1.5 → 89%, ×1.8 → 74%), 헬 ×1.5 (×1.8 → 13%)
+  const V2 = { nightmare: { hp: 3.1, atk: 1.57 }, hell: { hp: 2.58, atk: 1.48 } };
   // 몬스터 무리 (dc#146, 넓은 광장): 한 층 몬스터 수 ×count, 대신 한 마리당 경험치 ×xp · 장비 드롭 확률 ×drop · 처치 골드 ×gold
   //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
   const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
@@ -225,18 +233,31 @@
   //   붙지 않고 keep~range칸 거리에서 every턴마다 "저주 구슬"을 던짐. 던지기 전 windup턴 동안 내가 선 칸(radius 0 = 한 칸, dc#150: 3×3은 거의 못 피해서)에
   //   붉은 표시와 남은 턴 (3D는 한 턴이 0.5초라 windup3d턴 = 약 1.5초) → 그 사이 표시 밖으로 나가거나 회피(무적)면 빗나감. 맞으면 공격력 ×mul — 붙어서 매 턴 때리는 것보다 드물어서 한 방이 셈 (시뮬레이션: 절반 피하면 원거리 없을 때와 비슷). 내 속성 스킬과 다른 진홍색
   const RANGED = { from: 20, share: 0.2, deepShare: 0.25, range: 5, keep: 3, every: 4, windup: 2, windup3d: 3, radius: 0, mul: 2, color: "#ff2e4d" };
+  // 강타 (dc#155, 새 규칙): 긴장감은 "조금씩 꾸준히 깎이는 체력"보다 "가끔 오는 크지만 피할 수 있는 한 방"에서 나옴.
+  //   붙어 있는 근접 몬스터(원거리·황금 고블린·이무기 빼고)가 every턴(붙어 있는 턴만 셈, 층 처음은 start턴)마다 한 마리씩
+  //   내가 선 칸을 노려 windup턴(3D windup3d턴) 동안 주황 표시 → 그 칸에 그대로 있으면 최대 HP × pct (받는 피해 감소만 적용, 방패로 못 막음)
+  //   한 칸만 옮기거나 회피하면 0. 보스·정예가 붙어 있으면 그쪽이 먼저. 일반 던전 1~early층은 pct가 절반에서 차츰 올라감
+  //   대신 보통 공격은 × hitMul (평소에는 덜 아프게)
+  const SMASH = { every: 5, start: 3, windup: 2, windup3d: 3, pct: { normal: 0.3, elite: 0.4, boss: 0.5 }, early: 6, hitMul: 0.8, color: "#ff8c1a" };
+  const smashPct = (kind, f, deep) => SMASH.pct[kind === "boss" ? "boss" : kind === "elite" ? "elite" : "normal"] * (deep ? 1 : Math.min(1, 0.5 + 0.5 * (Math.max(1, f) - 1) / (SMASH.early - 1)));
+  // 위기에서 되살아날 길 (dc#155, 새 규칙)
+  //   회복 구슬: HP가 below 아래일 때 몬스터를 쓰러뜨리면 chance(정예·보스 big) 확률로 빨간 구슬. 주우면 최대 HP × heal
+  //   버티기: 층마다 한 번, 쓰러질 피해를 받으면 HP 1로 남고 그 턴의 남은 피해는 막음 + 회피·포션 바로 준비
+  const RESCUE = { below: 0.5, chance: 0.3, big: 1, heal: 0.15, color: "#ff4d6d" };
   const v2mul = (m, k) => { const hp = Math.round(m.hp * k.hp); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k.atk) }; };
-  const normalMul = (n) => 1 + NORMAL.ramp * (Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1);
+  const normalMul = (n, c = NORMAL.curve, ease = 0) => 1 + NORMAL.ramp * Math.pow((Math.max(1, Math.min(MAX_FLOOR, n)) - 1) / (MAX_FLOOR - 1), c) * (ease ? Math.min(1, (Math.max(1, n) - 1) / ease) : 1);
+  const normalAtkMul = (n) => normalMul(n, NORMAL.atkCurve, NORMAL.atkEase);
+  const normalHpMul = (n) => normalMul(n) * (1 + (NORMAL.hp - 1) * (NORMAL.hpEase ? Math.min(1, (Math.max(1, n) - 1) / NORMAL.hpEase) : 1));
   // n: 일반 던전 층 (1~50). 강함은 effLevel(n) 레벨 × 깊이 배율
   function makeNormal(t, kind, n) {
-    const m = makeMonster(t, kind, effLevel(n)), k = normalMul(n);
-    const hp = Math.round(m.hp * k);
-    return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * k) };
+    const m = makeMonster(t, kind, effLevel(n));
+    const hp = Math.round(m.hp * normalHpMul(n));
+    return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * normalAtkMul(n)) };
   }
   function makeNormalBoss(n) {
-    const b = makeBoss(n, effLevel(n)), k = normalMul(n);
-    const hp = Math.round(b.hp * k);
-    return { ...b, hp, maxHp: hp, atk: Math.round(b.atk * k) };
+    const b = makeBoss(n, effLevel(n));
+    const hp = Math.round(b.hp * normalHpMul(n));
+    return { ...b, hp, maxHp: hp, atk: Math.round(b.atk * normalAtkMul(n)) };
   }
 
   // ---- 나이트메어 던전: 일반 던전(최대 층)을 완료하고 v4 이후 장비만 낀 사람이 들어가는 50층 던전 ----
@@ -492,7 +513,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, SMASH, smashPct, RESCUE, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
