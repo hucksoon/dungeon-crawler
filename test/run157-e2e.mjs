@@ -56,7 +56,8 @@ try {
   // ---- 2. 누르고 있는 동안 부드럽게 걸음 (칸 사이에도 멈춤) ----
   await A.page.keyboard.down("ArrowRight"); await sleep(250); const m1 = await T(A.page, "st"); await sleep(400); const m2 = await T(A.page, "st"); await A.page.keyboard.up("ArrowRight"); await sleep(80);
   const m3 = await T(A.page, "st");
-  check("holding → walks smoothly (position grows between frames, not whole tiles)", m2.pos.x > m1.pos.x + 0.5 && m1.pos.x > a0.x + 0.5 + 0.2 && Math.abs(m1.pos.x % 1 - 0.5) > 0.01, JSON.stringify([a0, m1.pos, m2.pos]));
+  // 칸 가운데에 딱 맞은 순간을 찍을 수도 있어서, 두 번 찍은 것 중 하나만 칸 가운데가 아니면 됨 (dc#162)
+  check("holding → walks smoothly (position grows between frames, not whole tiles)", m2.pos.x > m1.pos.x + 0.5 && m1.pos.x > a0.x + 0.5 + 0.2 && [m1, m2].some(m => Math.abs(m.pos.x % 1 - 0.5) > 0.01), JSON.stringify([a0, m1.pos, m2.pos]));
   check("the tile follows the body (player.x is the tile under it)", m3.x === Math.floor(m3.pos.x) && m3.x > a0.x, JSON.stringify(m3));
   await sleep(300); const m4 = await T(A.page, "st");
   check("let go → stops", Math.abs(m4.pos.x - m3.pos.x) < 0.25, JSON.stringify([m3.pos, m4.pos]));
