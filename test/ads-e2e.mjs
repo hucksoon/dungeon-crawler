@@ -18,7 +18,7 @@ const bal = {}; const consumed = [];
 const subOf = (h) => { try { return JSON.parse(Buffer.from(h.split(".")[1], "base64url")).sub; } catch { return null; } };
 function storeHandle(method, p, auth, body) {
   if (p === "/user/virtual_currency_balance") return [200, { items: [{ sku: "cash", amount: bal[subOf(auth.slice(7))] || 0 }] }];
-  if (p === "/items/virtual_items") return [200, { items: [{ sku: "revive", virtual_prices: [{ sku: "cash", amount: 10 }] }] }];
+  if (p === "/items/virtual_items") return [200, { items: [{ sku: "revive", virtual_prices: [{ sku: "cash", amount: 5 }] }] }];
   if (p === "/user/inventory/items") return [200, { items: [] }];
   if (p === "/user/inventory/item/consume") { const s = subOf(auth.slice(7)), q = JSON.parse(body).quantity; consumed.push(q); if ((bal[s] || 0) < q) return [422, {}]; bal[s] -= q; return [204, null]; }
   return [404, { errorMessage: "unmocked " + p }];
@@ -104,14 +104,14 @@ try {
   await waitFor(async () => (await st(G.page)).scene === "dungeon");
   await G.page.evaluate(() => window.__t.die());
   const adRevive = G.page.locator("#revive-ad-btn");
-  check("death screen offers revive by ad (guest, once a day)", await waitFor(() => adRevive.isVisible()) && (await adRevive.innerText()) === "광고 보고 부활 (오늘 1회 남음)");
-  check("guest: cash revive needs an account (10 cash)", (await G.page.locator("#death-revive").innerText()).includes("캐시 10개로도 부활"));
+  check("death screen offers revive by ad (guest, no daily cap, dc#162)", await waitFor(() => adRevive.isVisible()) && (await adRevive.innerText()) === "광고 보고 부활");
+  check("guest: cash revive needs an account (5 cash)", (await G.page.locator("#death-revive").innerText()).includes("캐시 5개로도 부활"));
   await G.page.screenshot({ path: path.join(SHOTS, "ad-revive.png") });
   await adRevive.click();
   await waitFor(() => G.page.locator("#ad-modal").isVisible());
   await waitFor(async () => !(await G.page.locator("#ad-claim").isDisabled()), 4000);
   await G.page.locator("#ad-claim").click();
-  check("revived by ad", await waitFor(async () => { const s = await st(G.page); return !s.gameOver && s.revived; }) && (await logText(G.page)).includes("광고를 보고 부활했다"));
+  check("revived by ad", await waitFor(async () => { const s = await st(G.page); return !s.gameOver && s.revived; }) && (await logText(G.page)).includes("광고를 보고 쓰러진 자리에서 부활했다"));
   await G.page.evaluate(() => window.__t.die());
   check("second death: already revived this run", await waitFor(async () => (await G.page.locator("#death-revive").innerText()).includes("이미 부활했어요")));
   check("guest: no page errors", G.errors.length === 0, G.errors.join("; "));
@@ -150,7 +150,7 @@ try {
   await walkTo(B.page, 15);
   await waitFor(async () => (await st(B.page)).scene === "dungeon");
   await B.page.evaluate(() => window.__t.die());
-  check("logged-in death: cash revive costs 10 + ad revive offered", await waitFor(async () => (await B.page.locator("#revive-btn").innerText()) === "캐시 10개로 부활") && await B.page.locator("#revive-ad-btn").isVisible());
+  check("logged-in death: cash revive costs 5 + ad revive offered", await waitFor(async () => (await B.page.locator("#revive-btn").innerText()) === "캐시 5개로 부활") && await B.page.locator("#revive-ad-btn").isVisible());
   check("buyer: no page errors", B.errors.length === 0, B.errors.join("; "));
   await B.ctx.close();
 

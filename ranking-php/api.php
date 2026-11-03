@@ -747,6 +747,8 @@ function read_score(array $body, int $oldBest, string $key): array {
         'rejected' => $rejected,
         'bal' => SNAPSHOT_BAL,
     ];
+    // 이번 판에 부활함 (dc#162): 이 판에서 세운 층 기록(장비 기록과 같이 바뀜)에 "부활" 표시
+    if (!empty($body['rv'])) $snapshot['revived'] = true;
     return [$stage, $item, $snapshot, $nm, $hell, $abyss];
 }
 
@@ -883,6 +885,8 @@ const BOARDS = [
 
 // 랭킹 기록에 현금으로 산 아이템(고대 유니크 선택 상자)이 있는지: 저장된 장비·아이템 화면 정보의 bought 표시
 function has_bought(?string $json): bool { return $json !== null && strpos($json, '"bought":true') !== false; }
+// 최고 층 기록을 부활한 판에서 세웠는지 (dc#162, 장비 기록의 revived)
+function has_revived(?string $json): bool { return $json !== null && strpos($json, '"revived":true') !== false; }
 
 // 장비 기록 전체에 view_keys (아이템마다, 세트에는 id)
 function gear_keys(?array $gear): ?array {
@@ -923,6 +927,7 @@ function row_out(array $r, ?int $rank): array {
     return [
         'bought' => has_bought($r['stage_gear'] ?? null),          // 최고 층 기록의 장비에 구매 아이템
         'itemBought' => has_bought($r['item_json'] ?? null),      // 최고 아이템이 구매 아이템
+        'revived' => has_revived($r['stage_gear'] ?? null),       // 최고 층 기록을 부활한 판에서 세움 (dc#162)
         'rank' => $rank,
         'id' => $r['pub_id'] ?? null,
         'name' => isset($r['pkey']) ? titled($r['pkey'], $r['display']) : $r['display'],
@@ -1004,6 +1009,7 @@ function get_player(): array {
         'guest' => $r['kind'] === 'guest',
         'stage' => (int)$r['best_stage'],
         'stageAt' => $r['stage_at'] !== null ? (int)$r['stage_at'] : null,
+        'revived' => has_revived($r['stage_gear'] ?? null),
         'gear' => gear_out(gear_keys(snapshot_now($gear))),
         'bestItem' => view_out(view_keys($r['item_json'] ? json_decode($r['item_json'], true) : null)),
     ];

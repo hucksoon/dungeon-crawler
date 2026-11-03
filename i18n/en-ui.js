@@ -1367,5 +1367,15 @@
     "{0}의 탄에 맞아 {1} 피해를 입음.{2}": "{0}'s shot hits you for {1}.{2}",
     "{0}이(가) 둘레로 탄을 퍼뜨리려 한다! 틈으로 비키거나 회피!": "{0} is about to fire a ring of shots! Slip through a gap or dodge!",
     "{0}이(가) 부채꼴로 탄을 쏘려 한다! 옆으로 비키세요!": "{0} is about to fire a fan of shots! Step aside!",
+    "쓰러진 자리에서 HP 가득 찬 채로 이어서 해요. 축복·유물·레벨·능력치·골드, 이 층에서 잡은 몬스터도 그대로예요. 한 판에 한 번, 이 판의 랭킹 기록에는 ♻ 부활 표시가 붙어요.": "You get back up where you fell with full HP. Blessings, relics, level, stats, gold and the monsters you already killed on this floor all stay. Once per run, and this run's ranking record gets a ♻ revived mark.",
+    "운영자: 그 자리에서 무료 부활": "Staff: free revive on the spot",
+    "지금은 광고로 부활할 수 없어요. 캐시로 부활해 주세요.": "You can't revive with an ad right now. Please revive with cash.",
+    "운영자: 쓰러진 자리에서 부활했다. HP가 가득 찼다.": "Staff: revived where you fell. HP is full.",
+    "광고를 보고 쓰러진 자리에서 부활했다! HP가 가득 찼고 잠깐 무적이다. (이번 판 부활 사용)": "Watched an ad and got back up where you fell! Full HP and briefly invulnerable. (revive used this run)",
+    "부활했다! 쓰러진 자리에서 HP 가득 찬 채로 이어서 한다. 잠깐 무적이다. (이번 판 부활 사용)": "Revived! You carry on where you fell with full HP, briefly invulnerable. (revive used this run)",
+    "부활!": "Revived!",
+    " · ♻ 부활": " · ♻ revived",
+    "♻ 부활": "♻ revived",
+    "이 층 기록을 세운 판에서 부활을 한 번 썼어요": "A revive was used in the run that set this floor record",
   } });
 })(typeof self !== "undefined" ? self : this);

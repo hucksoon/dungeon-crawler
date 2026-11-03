@@ -37,7 +37,7 @@ const db = () => new DatabaseSync(DB);
 const ticket = async (who, kind) => (await call("ad_start", who, { kind })).body?.ticket;
 try {
   const s0 = await call("entry_status", G);
-  check("guest: 5 free entries today, ad caps revive 1 / fee 3", s0.body.left === 5 && s0.body.free === 5 && s0.body.ads.revive === 1 && s0.body.ads.fee === 3 && /^\d{4}-\d\d-\d\d$/.test(s0.body.day), s0.text);
+  check("guest: 5 free entries today, ad caps fee 3, revive practically none (dc#162)", s0.body.left === 5 && s0.body.free === 5 && s0.body.ads.revive >= 1000 && s0.body.ads.fee === 3 && /^\d{4}-\d\d-\d\d$/.test(s0.body.day), s0.text);
   let last; for (let i = 0; i < 5; i++) last = await call("entry", G, {});
   check("5 free entries counted", last.body.ok && last.body.by === "free" && last.body.left === 0 && last.body.used === 5);
   const sixth = await call("entry", G, {});
@@ -54,7 +54,8 @@ try {
   const tWrong = await ticket(G, "revive"); await sleep(1100);
   check("wrong kind (revive ticket for entry) → bad_ticket", (await call("entry", G, { adTicket: tWrong })).body?.error === "bad_ticket");
   check("revive by ad (guest)", (await call("revive_ad", G, { adTicket: tWrong })).body?.ok === true);
-  check("revive ad cap 1/day → ad_limit", (await call("ad_start", G, { kind: "revive" })).body?.error === "ad_limit");
+  const tAgain = await call("ad_start", G, { kind: "revive" });   // dc#162: 광고 부활은 하루 상한 없음 (한 판에 한 번은 게임이 지킴)
+  check("revive by ad again the same day → still gets a ticket (no daily cap)", tAgain.status === 200 && !!tAgain.body.ticket, tAgain.text);
   const tOld = await ticket(G, "entry"); await sleep(1100);
   db().prepare("UPDATE ad_tickets SET day = '2000-01-01' WHERE id = ?").run(tOld);
   check("yesterday's ticket → bad_ticket", (await call("entry", G, { adTicket: tOld })).body?.error === "bad_ticket");
@@ -69,11 +70,11 @@ try {
   // dc#123: 운영자 기기(운영자 계정 + 등록한 기기)는 광고 보상 하루 상한도 없음 (테스트용). 운영자 계정이라도 등록 안 한 기기는 그대로
   const reg = spawnSync("php", [path.join(REPO, "ranking-php/admin.php"), "devices", "add", "adsdev-device-01", "test"], { env: { ...process.env, RANKING_CONFIG: path.join(DIR, "config.ads.php") } });
   const STAFF = { ...DEV, device: "adsdev-device-01" }, DEVX = { ...DEV, device: "adsdev-other-01" };
-  const st1 = await call("ad_start", STAFF, { kind: "revive" });
-  db().prepare("UPDATE ad_tickets SET used_at = 1 WHERE id = ?").run(st1.body.ticket);   // 오늘 광고 부활 1회(상한) 다 씀
-  const st2 = await call("ad_start", STAFF, { kind: "revive" }), stx = await call("ad_start", DEVX, { kind: "revive" });
+  let st1 = null;
+  for (let i = 0; i < 3; i++) { st1 = await call("ad_start", STAFF, { kind: "fee" }); db().prepare("UPDATE ad_tickets SET used_at = 1 WHERE id = ?").run(st1.body.ticket); }   // 오늘 수수료 광고 3회(상한) 다 씀
+  const st2 = await call("ad_start", STAFF, { kind: "fee" }), stx = await call("ad_start", DEVX, { kind: "fee" });
   const sStaff = (await call("entry_status", STAFF)).body;
-  check("staff device: daily ad cap doesn't apply (revive cap 1 used → still gets a ticket, status shows full)", reg.status === 0 && st1.status === 200 && st2.status === 200 && !!st2.body.ticket && sStaff.ads.revive === 1, JSON.stringify([reg.stdout.toString(), st2.body, sStaff.ads]));
+  check("staff device: daily ad cap doesn't apply (fee cap 3 used → still gets a ticket, status shows full)", reg.status === 0 && st1.status === 200 && st2.status === 200 && !!st2.body.ticket && sStaff.ads.fee === 3, JSON.stringify([reg.stdout.toString(), st2.body, sStaff.ads]));
   check("same operator account on an unregistered device: cap applies (ad_limit)", stx.status === 429 && stx.body?.error === "ad_limit", stx.text);
   check("no raw ids in tables", !JSON.stringify([db().prepare("SELECT * FROM daily_entries").all(), db().prepare("SELECT * FROM ad_tickets").all()]).includes("adsguest-0000"));
 

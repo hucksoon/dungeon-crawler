@@ -205,6 +205,16 @@ try {
   await call("POST", "score", { ...carol, body: { stage: 6, plvl: 9, gear: [ref(H5b)] } });
   const p3 = (await call("GET", "player", { query: `&id=${carolRow.id}` })).body;
   check("gear: new best stage replaces snapshot", p3.stage === 6 && p3.gear.stats.level === 9 && p3.gear.items.length === 1 && p3.gear.stage === 6);
+  // dc#162: 부활한 판에서 세운 층 기록은 "부활" 표시 (장비 기록과 같이: 더 높은 층일 때만 바뀜)
+  const rvRow = async () => (await call("GET", "ranking", { query: "&type=stage&limit=100" })).body.rows.find(r => r.id === carolRow.id);
+  check("revive: no mark without rv", (await rvRow()).revived === false && p3.revived === false);
+  await call("POST", "score", { ...carol, body: { stage: 7, plvl: 9, rv: 1, gear: [ref(H5b)] } });
+  const pr = (await call("GET", "player", { query: `&id=${carolRow.id}` })).body;
+  check("revive: new best from a revived run → ♻ mark in ranking and player", (await rvRow()).revived === true && pr.revived === true && pr.stage === 7);
+  await call("POST", "score", { ...carol, body: { stage: 7, plvl: 9, gear: [ref(H5b)] } });
+  check("revive: same stage without revive keeps the mark (record unchanged)", (await rvRow()).revived === true);
+  await call("POST", "score", { ...carol, body: { stage: 8, plvl: 9, gear: [ref(H5b)] } });
+  check("revive: higher stage without revive clears the mark", (await rvRow()).revived === false);
   const db2 = new DatabaseSync(path.join(DIR, "test.sqlite"));
   db2.prepare("UPDATE players_v4 SET stage_gear = NULL, pub_id = NULL WHERE display = 'b***@naver.com'").run();
   await call("POST", "score", { ...bob, body: { stage: 15, plvl: 12, gear: [ref(R15, 1)] } });

@@ -93,18 +93,18 @@ const BOXES = [1, 10, 50].map((draws, i) => ({
   custom_attributes: { draws },
 }));
 
-// 부활권: 쓰러졌을 때 게임 안에서만 캐시로 사서 바로 사용. 한 판에 한 번
+// 부활권: 쓰러졌을 때 게임 안에서만 캐시로 사서 바로 사용. 한 판에 한 번 (dc#162: 쓰러진 자리에서 이어서, 10 → 5캐시)
 const REVIVE = {
   sku: "revive",
   name: { en: "Revive", ko: "부활권", ja: "復活チケット" },
   description: {
-    en: "Restart the floor you fell on with full HP. Once per run.",
-    ko: "쓰러진 층을 처음부터 HP 가득 찬 채로 다시 시작해요. 한 판에 한 번만 쓸 수 있어요.",
-    ja: "倒れた階をHP満タンで最初からやり直せます。1プレイにつき1回まで。",
+    en: "Get back up where you fell with full HP, keeping your blessings, relics and stats. Once per run; the run's ranking record is marked as revived.",
+    ko: "쓰러진 자리에서 HP 가득 찬 채로 이어서 해요. 축복·유물·능력치는 그대로예요. 한 판에 한 번, 그 판의 랭킹 기록에는 부활 표시가 붙어요.",
+    ja: "倒れた場所からHP満タンで再開できます。祝福・遺物・能力値はそのまま。1プレイにつき1回まで、そのプレイのランキング記録には復活マークが付きます。",
   },
   groups: ["game_items"],
   virtual_item_type: "consumable",
-  vc_prices: CASH_PRICE(10),  // $1 (캐시 1개 = $0.10)
+  vc_prices: CASH_PRICE(5),  // $0.5 (캐시 1개 = $0.10). dc#162: 10 → 5
   is_enabled: true,
   is_show_in_store: true,
   order: 1,

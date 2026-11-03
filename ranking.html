@@ -50,6 +50,7 @@
   .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .who small { color: var(--muted); margin-left: 6px; }
   .val small.bought { display: block; color: #e0b44c; font-size: 11px; }
+  .val small.revived { display: block; color: #8fd3a8; font-size: 11px; }
   .val { text-align: right; white-space: nowrap; }
   .item { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
@@ -278,7 +279,7 @@
     try { p = await get(`/api/player?id=${encodeURIComponent(id)}&season=${season.id}`); }
     catch { $("player-title").textContent = T("정보를 불러오지 못했어요"); return; }
     $("player-title").textContent = `${who(p.name)}${p.guest ? T(" (게스트)") : ""} · ${season.name}`;
-    $("player-meta").textContent = T("최고 {0}{1}", stageText(p.stage), p.stageAt ? T(" · {0} 달성", fmtTime(p.stageAt)) : "");
+    $("player-meta").textContent = T("최고 {0}{1}", stageText(p.stage), p.stageAt ? T(" · {0} 달성", fmtTime(p.stageAt)) : "") + (p.revived ? T(" · ♻ 부활") : "");
     const body = [];
     const g = p.gear;
     if (!g) {
@@ -313,7 +314,9 @@
   const stageText = (n) => season.clear && n >= season.clear ? T("{0}층 완료 ✓", season.max) : T("{0}층", n);
   // 현금으로 산 아이템(고대 유니크 선택 상자)을 쓴 기록 표시: 층 = 그 층을 세울 때 낀 장비, 아이템 = 최고 아이템
   const boughtTag = () => el("small", { className: "bought", textContent: T("💰 구매 아이템"), title: T("현금으로 산 고대 유니크 선택 상자의 아이템을 썼어요") });
-  const stageValue = (r) => el("span", { className: "val" }, stageText(r.stage), r.bought ? boughtTag() : null);
+  // 부활한 판에서 세운 층 기록 (dc#162)
+  const revivedTag = () => el("small", { className: "revived", textContent: T("♻ 부활"), title: T("이 층 기록을 세운 판에서 부활을 한 번 썼어요") });
+  const stageValue = (r) => el("span", { className: "val" }, stageText(r.stage), r.revived ? revivedTag() : null, r.bought ? boughtTag() : null);
   function itemValue(r) {
     const rar = RARITY[r.item.rarity] || RARITY.common;
     return el("span", { className: "val" },
