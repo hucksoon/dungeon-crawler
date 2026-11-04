@@ -53,6 +53,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -87,6 +88,8 @@
 <p>몬스터 머리 위에는 HP 막대가 있었는데, 정작 내 HP는 화면 위쪽 숫자로만 보였어요. 이제 <strong>내 머리 위에도 HP 막대</strong>가 있어요.</p>
 <ul><li>초록: 넉넉해요</li><li>노랑: 절반 아래예요</li><li>빨강: 30% 아래예요. 막대가 깜빡이고 위쪽 HP 숫자도 빨개져요</li></ul>
 <p>휴대폰에서는 포션이 준비돼 있으면 포션 버튼이 빨갛게 깜빡여요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>장비 비교와 장비 그림</h2>
 <p>가방에서 장비를 누르면 <strong>끼었을 때 바뀌는 능력치</strong>를 바로 보여 줘요. 오르는 건 초록 ▲, 내리는 건 빨강 ▼예요. 공격력·방어력·최대 HP는 물론 치명타, 흡혈, 속성 저항, 세트 스킬이 생기거나 없어지는 것까지 실제로 끼는 것과 똑같이 계산해요. 지금 낀 장비의 능력치도 바로 아래에서 펼쳐 볼 수 있어요.</p>
 <p>가방 목록에도 ▲(끼면 더 강해짐) / ▼(지금 낀 것이 더 강함)가 붙고, 모든 장비에 무기 종류와 부위 그림이 등급 색 테두리로 들어갔어요.</p>
@@ -96,14 +99,14 @@
 <ul><li>왼손: 방향<ul><li>던전은 ▲◀▶▼ 십자</li><li>마을·점프 던전은 ◀ ▶</li></ul></li><li>오른손: 큰 버튼<ul><li>던전은 둥근 포션 버튼과 점프</li><li>마을·점프 던전은 큰 점프 버튼</li></ul></li><li>위 줄: 인벤토리·도감·포탈</li></ul>
 <figure><img src="images/newbie-phone.png" alt="휴대폰 던전: 왼손 방향, 오른손 포션·점프" loading="lazy"><figcaption>휴대폰 던전: 왼손 방향, 오른손 포션·점프</figcaption></figure>
 <p>&quot;글이 많다&quot;는 이야기도 있어서, 위쪽의 긴 업데이트 안내는 두 줄만 보이고 <strong>더 보기</strong>로 펼치게 했어요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>테스트로 확인한 것</h2>
 <ul><li>처음 온 사람에게 말풍선이 뜨고, 걷기를 막지 않는지</li><li>던전에 들어가면 다음 말풍선으로 바뀌고, 한 번 본 말풍선은 다시 뜨지 않는지</li><li>HP가 적으면 막대가 빨개지는지</li><li>비교 화면에 &quot;공격력 +N ▲&quot;으로 나온 만큼 실제로 끼면 공격력이 정확히 N 오르는지</li><li>휴대폰 버튼이 왼쪽 십자, 오른쪽 큰 포션 자리에 있는지</li><li>칸을 누르면 벽을 돌아서 도착하는지, 계단을 누르면 다음 층으로 가는지, 새 몬스터가 보이면 멈추는지</li></ul>
 <h2>디아블로처럼 겹쳐 보는 지도</h2>
 <p>&quot;전체 맵을 알고 싶다(왔던 곳을 또 안 가게)&quot;는 이야기도 있었어요. 디아블로2의 자동 지도처럼, 게임 화면을 가리지 않고 <strong>위에 반투명 선으로 지도를 겹쳐</strong> 보여 주게 했어요. PC는 <strong>Tab</strong>, 휴대폰은 <strong>지도</strong> 버튼으로 켜고 꺼요.</p>
 <figure><img src="images/walk-overlay.png" alt="디아블로처럼 화면 위에 겹쳐 보는 지도" loading="lazy"><figcaption>디아블로처럼 화면 위에 겹쳐 보는 지도</figcaption></figure>
 <ul><li>가 본 바닥과 벽 사이가 선으로 그려져서 어디가 막혔고 어디로 이어지는지 한눈에 보여요</li><li>지도의 내 점(흰 점과 하늘색 고리)이 화면의 내 캐릭터 위에 오도록 맞춰요</li><li>계단(&gt;), 상점, 떨어진 장비도 점으로 표시돼요</li><li>켜 둔 채로 계속 플레이할 수 있고, 다음에 들어와도 켜져 있어요</li><li>지도는 던전에서 써요. 마을에서 Tab을 누르면 메뉴로 넘어가 버리던 걸 고쳐서, 이제 &quot;지도는 던전에서 써요&quot; 하고 알려 줘요</li></ul>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>밀어서 움직이고, 눌러서 걸어가기</h2>
 <p>&quot;방향키가 너무 선진적&quot;이라는 이야기에 두 가지 방법을 더했어요.</p>
 <ul><li><strong>화면 밀기(휴대폰)</strong>: 던전 화면을 밀면 그 방향으로 한 칸, 손가락을 떼지 않으면 계속 걸어요</li><li><strong>칸 누르기(휴대폰 톡 · PC 클릭)</strong>: 가 본 바닥을 누르면 길을 찾아 거기까지 <strong>자동으로 걸어가요</strong>. 누른 칸에는 노란 ×가 떠요</li></ul>

@@ -53,6 +53,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -90,20 +91,22 @@
 <p>쓰러진 뒤 새로 시작하면 골드가 처음으로 돌아가요. 이제는 쓰러진 자리에 묘비(†)가 남아요. 그 층에 다시 가서 묘비를 밟으면 쓰러질 때 가지고 있던 골드의 90%를 돌려받아요.</p>
 <ul><li>웨이포인트로 가까운 층부터 가면 묘비까지 금방이에요</li><li>묘비는 하나만 남아요. 찾기 전에 또 쓰러지면 예전 묘비는 사라지니 조심하세요 (쓰러진 창에서 미리 알려 줘요)</li></ul>
 <figure><img src="images/wp-grave.png" alt="10층: 시작 자리 옆 웨이포인트와 내 묘비" loading="lazy"><figcaption>10층: 시작 자리 옆 웨이포인트와 내 묘비</figcaption></figure>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>튜토리얼은 왼쪽 위에서 하나씩</h2>
 <p>처음 하는 사람을 위한 안내도 다시 다듬었어요. 처음엔 모든 안내를 한 번에 펼쳐 보게 했는데, 펼치면 게임 화면을 가려서 게임하면서 볼 수가 없었어요. 그래서 이렇게 바꿨어요.</p>
 <ul><li>왼쪽 위 작은 상자에 튜토리얼이 하나씩 나와요: 던전에 들어가기 → 던전 탐험 → 장비 끼기 → HP 회복 → 웨이포인트</li><li>직접 해 본 단계에는 ✓가 붙고, 다 하면 &quot;잘했어요!&quot;와 함께 다음 튜토리얼로 넘어가요. HP가 적으면 HP 회복을 먼저 알려 줘요</li><li>상자 위를 눌러도 게임은 그대로 움직여요. 접으면 한 줄로 줄어들어요</li><li>일반 던전 25층까지 보여요</li></ul>
 <figure><img src="images/tutorial-one.png" alt="튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓" loading="lazy"><figcaption>튜토리얼: 왼쪽 위에 하나씩, 해 본 단계에 ✓</figcaption></figure>
 <h2>아이템 이름은 내 언어로</h2>
 <p>랭킹과 거래소에 보이는 아이템 이름과 능력치는 서버가 한국어 글자로 만들어 보내고 있었어요. 이제 서버는 아이템의 값만 보내고, 게임과 랭킹 화면이 그 값으로 아이템을 다시 만들어 내가 고른 언어로 이름과 능력치를 보여 줘요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>일반 던전은 50층으로, 그리고 정식 v1</h2>
 <p>일반 던전 75층은 끝까지 가기에 너무 길었어요. 그래서 50층으로 줄였어요.</p>
 <ul><li>층 수만 줄였어요. 몬스터 강함과 아이템 레벨은 예전 75층까지의 흐름을 그대로 눌러 담아서, 50층이 예전 75층과 같은 레벨 75예요</li><li>한 판에 만나는 몬스터가 줄어든 만큼 일반 던전의 장비 드롭 확률을 1.5배로 올렸어요. 끝까지 한 번 내려갈 때 모이는 장비 수는 예전과 비슷해요</li><li>웨이포인트도 10·20·30·40·50층으로 맞췄어요. 예전에 25·50층 웨이포인트를 켜 둔 사람은 그보다 얕은 가장 가까운 웨이포인트(10·30층)가 켜져 있어요</li><li>진행 중이던 판, 최고 층, 묘비도 50층 기준으로 바꿔서 이어서 할 수 있어요</li></ul>
 <p>이번 기회에 시즌 이름도 정리했어요. 지금까지의 &quot;v4 베타&quot;는 이제 <strong>정식 v1</strong>이에요. 새 시즌을 따로 만들지 않고 그대로 이어서, 지금 랭킹 기록도 50층 기준으로 바꿔 이어 가요. 75층이 생기기 전의 아주 예전 기록은 <strong>클로즈 베타</strong> 탭에 기록용으로 그대로 남아 있어요.</p>
 <figure><img src="images/ranking-v1.png" alt="랭킹: 정식 v1, 50층 완료 ✓" loading="lazy"><figcaption>랭킹: 정식 v1, 50층 완료 ✓</figcaption></figure>
 <p>Claude Code와 함께 층 기준이 바뀌어도 예전 저장, 예전 기록, 예전 아이템이 모두 그대로 인정되는지 자동 테스트로 하나씩 확인했어요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>드디어 소리가 나요</h2>
 <p>게임은 소리가 중요하죠. 지금까지 던전 크롤러는 조용했어요. 이제 공격할 때마다, 속성 공격이 나갈 때마다 소리가 나요.</p>
 <ul><li>휘두르는 소리와 맞히는 소리, 치명타는 쇳소리가 한 번 더 나요</li><li>불은 지글지글, 얼음은 맑은 '찡', 번개는 '지직'. 낀 장비에서 가장 센 속성 소리가 같이 나요</li><li>파이어볼은 날아가는 소리 뒤에 '쾅' 터지고, 프로스트 노바와 체인 라이트닝도 각자 소리가 있어요</li><li>레전더리·세트·유니크가 떨어지면 반짝이는 소리가 나요. 바닥을 보지 않아도 좋은 게 떨어진 걸 알 수 있어요</li><li>레벨 업, 포션, 계단, 포탈, 웨이포인트, 묘비에도 소리를 붙였어요</li><li>마을에서 점프하면 마리오처럼 '뿅' 소리가 나요. 공중에서 한 번 더 뛰는 더블 점프는 더 높은 소리예요</li></ul>

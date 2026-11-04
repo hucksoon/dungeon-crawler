@@ -53,6 +53,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -88,6 +89,8 @@
 <h2>자물쇠와 속성 줄 정리</h2>
 <p>&quot;필요 없는 레전더리가 너무 많은데 하나만 남기고 싶으면 하나씩 팔아야 한다&quot;는 피드백에 <strong>🔒 자물쇠</strong>를 달았어요. 레전더리·세트만 잠글 수 있고, 잠긴 아이템은 하나씩 팔기·가방 전부 판매·거래소에서 모두 빠져요. 이제 남길 것만 잠그고 &quot;모두 판매&quot;를 누르면 한 번에 정리돼요.</p>
 <p>나이트메어 아이템에 불·얼음·번개 피해 줄이 여러 개 붙는 것도 <strong>하나만</strong> 붙게 바꿨어요. 예전 아이템도 가장 큰 줄만 남기고 나머지는 다른 능력치로 바꿨는데, 다른 값이 흔들리지 않게 이 정리만 따로 굴렸어요. 예전 규칙 아이템 9만 개를 비교해서 바뀌어야 할 7,176개만 바뀌고 나머지는 하나도 안 바뀐 걸 확인했어요. 덤으로 속성이 없는 아이템 이름에서 &quot;무속&quot;도 뺐어요 (&quot;악몽의 레전더리 바지&quot;).</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>둘러싸이면 쓰러지는 문제</h2>
 <p>나이트메어 40층에서 거의 고대 아이템인데도 둘러싸이면 답이 없다는 피드백이 있었어요. 재 보니 재미있는 사실이 나왔어요.</p>
 <ul><li>8마리가 한 번에 붙기만 하면 40층도 3%만 쓰러지는데, <strong>20마리가 계속 몰려오면</strong> 최적 장비도 100% 쓰러져요</li><li>몬스터는 층이 깊어질수록 제곱으로 강해지는데 장비는 아이템 레벨만큼만 강해져요</li><li>몰려오는 동안 회복 수단이 흡혈뿐이라, 흡혈이 0이면 25층에서도 95% 쓰러졌어요</li></ul>
@@ -98,14 +101,14 @@
 <p>골드가 처음엔 부족한데 나중엔 너무 많다는 피드백도 있었어요. 쓰는 곳이 대부분 &quot;한 번 쓰면 끝&quot;이라 장비가 모두 고대가 되면 쓸 데가 없었던 거예요. 수입을 줄이면 초반이 다시 힘들어져서, <strong>수입은 그대로 두고 끝없이 쓸 곳</strong>을 만들었어요.</p>
 <ul><li>로비 아래쪽에 <strong>⚒ 대장간</strong>이 생겼어요. 걸어 들어가면 인벤토리가 대장간으로 열려요</li><li><strong>옵션 재련</strong>: 레전더리·세트의 추가 능력치 한 줄을 다시 굴려요</li><li><strong>홈 초기화</strong>: 수수료를 내고 넣은 보석을 모두 지워요</li><li><strong>+11·+12 강화</strong>: 강화석에 골드도 들고 성공 확률은 5%. +12에서는 추가 능력치가 하나 더 올라요</li></ul>
 <p>처음엔 재련 비용이 할 때마다 ×1.5씩 올랐는데, 계산해 보니 운이 나쁜 10명 중 1명은 원하는 줄을 얻는 데 약 9천 층 분량의 골드가 들었어요. 그래서 비용은 <strong>×1.15, 처음의 5배까지</strong>로 낮추고, 대신 너무 쉬워지지 않게 <strong>아이템마다 한 줄만</strong> 재련할 수 있게 바꿨어요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>세트 효과 다듬기</h2>
 <ul><li>방어구 세트 단계를 <strong>2·4·5 → 2·3·5</strong>로 바꿨어요. 5부위를 2 + 3으로 나눠 입으면 2세트 효과만 두 개 켜지던 문제 때문이에요</li><li>속성 세트(화염·서리·뇌전)는 3세트와 5세트 효과를 맞바꿨어요. 이제 3세트부터 화상·느려짐·4번 튕김 같은 스킬의 성격이 나오고, 5세트를 다 모은 사람의 힘은 그대로예요</li></ul>
 <h2>끝판 목표 보여주기: 추천 능력치</h2>
 <p>&quot;고대로 다 맞췄을 때 어떤 추가 능력치를 노려야 하는지 보여 달라&quot;는 요청에, 시뮬레이션으로 나이트메어 50층 보스를 잡을 수 있는 조합을 찾았어요.</p>
 <ul><li>목표: <strong>저항 75 · 흡혈 20 · 치명타 75</strong>, 고대 레전더리 +10</li><li>인벤토리에 부위별로 추천 주 능력치와 추가 능력치를 보여주고, 이미 맞춘 줄에는 ✓를 붙여요</li><li>장비 칸마다 &quot;추천 N/5&quot;로 몇 줄을 맞췄는지 바로 보여요</li></ul>
 <p>설명이 많아지면서 가방이 화면 아래로 밀려나서, 인벤토리 화면도 정리했어요. 넓은 화면은 왼쪽에서 장비와 가방을 고르고 오른쪽 [상세]·[능력치]·[추천] 탭에서 읽어요. 휴대폰은 아이템을 고르면 탭 창이 아래에서 올라오고, 긴 칸은 접힌 채로 보여요. 그 밖에 개발용 테스트 기능도 만들었어요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>룬과 룬워드</h2>
 <p>홈에 넣는 두 번째 재료, <strong>룬</strong>을 만들었어요. 한글 기본 자음 14개 <strong>가 나 다 라 마 바 사 아 자 차 카 타 파 하</strong>예요. &quot;가&quot;가 가장 흔하고 &quot;하&quot;가 가장 귀해요.</p>
 <ul><li><strong>나이트메어 50층 보스만</strong> 떨어뜨리고, 잡을 때마다 2개가 확정이에요</li><li>&quot;하&quot;가 나올 확률을 0.3%로 정했어요. 시뮬레이션해 보니 &quot;하&quot; 하나를 얻는 데 평균 113판쯤이에요</li><li>아래 룬 3개 = 바로 위 룬 1개로 자동으로 합쳐져요</li><li>나이트메어를 완료하면 로비의 나이트메어 건물 오른쪽 문으로 50층 보스 층에 바로 갈 수 있어요</li></ul>

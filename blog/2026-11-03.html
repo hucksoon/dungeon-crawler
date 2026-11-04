@@ -53,6 +53,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -96,6 +97,8 @@
 <h2>휴대폰은 누른 자리가 스틱</h2>
 <p>휴대폰에서는 내 캐릭터가 스틱 가운데여서, 캐릭터가 화면 아래쪽에 있으면 손가락을 옮기기 불편했어요. 이제 <strong>화면 아무 곳이나 누른 자리가 스틱 가운데</strong>예요. 누른 자리에 동그란 고리가 나타나고, 거기서 위·아래·왼쪽·오른쪽으로 끌면 그쪽으로 계속 걸어요. 손가락을 가운데로 되돌리면 멈추고, 톡 누르면 회피예요.</p>
 <p>시뮬레이션으로 보면 축복 상점에서 받는 축복과 못 줍는 경험치가 서로 비슷해서 난이도는 그대로예요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>속성 스킬은 조금 좁게</h2>
 <p>몬스터가 몰려드는 광장에서 화염구와 얼음 폭발이 너무 넓게 쓸어 버렸어요. 그래서 범위에 상한을 뒀어요. 화염구와 얼음 폭발은 Lv 7까지 둘레 1칸(3×3)이고, Lv 8이 되어야 2칸(5×5)으로 넓어져요. 예전처럼 7×7까지 커지지는 않아요. 연쇄 번개도 최대 6번만 튕겨요. 대신 단계가 오를 때마다 피해는 그대로 세져요.</p>
 <p>살펴보다가 버그도 하나 찾았어요. 속성 축복을 Lv 6 이상 골라도 실제로는 Lv 5 효과만 들어가고 있었어요. 이제 카드에 적힌 대로 Lv 10까지 들어가요.</p>
@@ -119,7 +122,7 @@
 <p>HP가 절반 아래일 때 몬스터를 쓰러뜨리면, 가끔 <strong>빨간 회복 구슬</strong>이 떨어져요(정예·보스는 꼭). 주우면 최대 HP의 15%가 차요. 몬스터 사이로 주우러 갈지, 물러날지 골라야 해요.</p>
 <p>그리고 <strong>층마다 한 번은 버틸 수 있어요.</strong> 쓰러질 만큼 맞으면 HP 1로 남고, 화면이 붉게 번쩍이며 그 턴의 나머지 공격은 막아 줘요. 회피와 포션도 바로 쓸 수 있게 돼요. 한 번 쓰고 나면 위쪽 상태 줄에 &quot;버티기 사용함&quot;이 떠요. 다음 층에서 다시 생겨요.</p>
 <figure><img src="images/v15-guard.gif" alt="쓰러질 한 방을 버티고 회복 구슬을 주워요" loading="lazy"><figcaption>쓰러질 한 방을 버티고 회복 구슬을 주워요</figcaption></figure>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>몬스터는 앞쪽 층부터 세게</h2>
 <p>강타와 회복만 넣었더니 오히려 너무 쉬워졌어요. 몬스터 HP만 올려 보니 끝까지 가는 비율만 바뀌고, 긴장감은 그대로였어요. 몬스터가 쓰러지기 전에 거의 때리지를 못하기 때문이에요.</p>
@@ -137,6 +140,8 @@
 <ul><li><strong>정예 몬스터</strong>(3층부터): 가끔 노란 탄을 세 갈래로 쏴요.</li><li><strong>보스</strong>: 보라색 탄을 부채꼴로 다섯 발, 그다음에는 둘레 전체로 열두 발을 번갈아 쏴요. 둘레로 퍼지는 탄은 틈 사이로 빠져나가야 해요.</li><li><strong>원거리 몬스터</strong>(실시간은 6층부터, 턴제는 20층부터): 칸에 떨어지던 저주 구슬 대신, 진홍색 구슬을 곧게 쏴요.</li></ul>
 <figure><img src="images/v17-shots.gif" alt="실시간 탄환: 보스의 둘레 탄과 정예의 세 갈래를 보고 피해요" loading="lazy"><figcaption>실시간 탄환: 보스의 둘레 탄과 정예의 세 갈래를 보고 피해요</figcaption></figure>
 <p>시뮬레이션으로 보면, 쏘는 탄의 70%쯤 피하는 사람은 일반 던전을 끝까지 가는 비율이 67%에서 60%로 조금 어려워져요. 잘 피하는 사람은 거의 그대로예요. 이제 실력이 좋을수록 쉬워지는 게임이 됐어요. 턴제를 고르면 탄은 나오지 않아요.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>탄이 한꺼번에 쏟아지지 않아요</h2>
 <p>이번에는 실시간 던전을 <strong>직접 하는 봇</strong>을 만들어 끝까지 돌려 봤어요. 봇은 날아오는 탄을 보고 옆으로 비키고, 급하면 회피를 쓰고, 강타 칸에서 벗어나요. 잘 피하는 봇과 보통인 봇, 서툰 봇으로 나눠서 재 봤어요.</p>
 <p>해 보니 깊은 층으로 갈수록 탄이 끝없이 늘어났어요. 1~5층에서는 한 층에 4발쯤 날아오는데, 46~50층에서는 한 층에 300발이 넘었어요. 이러면 하나하나 보고 피할 수가 없어요. 그런데 6~15층은 반대로 너무 조용했어요. 잘 피하는 봇은 HP가 절반 아래로 내려간 적이 한 번도 없었어요.</p>

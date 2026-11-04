@@ -151,6 +151,7 @@ const CSS = `
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -165,9 +166,16 @@ const CSS = `
 // 애드센스 자동 광고 코드 (dc#120): 공개 글·목록·게임 이미지 페이지에만. 네이버 옮기기 페이지(noindex)는 뺌
 //   자동 광고는 AdSense에서 사이트 전체 끔 (게임 화면 양옆에 붙어서, dc#128). 광고는 글 중간 광고 칸(AD_UNIT)과 게임의 보상형 광고만
 const ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6503525638904411" crossorigin="anonymous"></script>';
-// 블로그 글 디스플레이 광고 단위 "블로그 글" (dc#128): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그 글에만 이 칸을 직접 넣음
-const AD_UNIT = `<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>`;
+// 광고 단위 (AdSense에서 만든 것, dc#166): 자동 광고는 게임 화면에 붙어서 사이트 전체에서 끄고, 블로그에만 직접 넣음
+//   본문: 인아티클 "6587762445" (예전 dc#128~의 "블로그 글" 6983849276은 세로형으로 바꿔 양옆 칸에만)
+//   목록: 인피드 "6647859236" (글 카드 사이)
+const AD_PUSH = "<script>(adsbygoogle = window.adsbygoogle || []).push({});</script>";
+const AD_UNIT = `<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+${AD_PUSH}</div>`;
+const FEED_AD = `<div class="ad-unit feed-ad"><ins class="adsbygoogle" style="display:block" data-ad-format="fluid" data-ad-layout-key="-fb+5w+4e-db+86" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6647859236"></ins>
+${AD_PUSH}</div>`;
+// 목록의 인피드 광고 자리: 글 카드 3개 다음, 그 뒤로 6개마다 (맨 위·맨 끝에는 안 넣음)
+const feedAdAfter = (i, n) => i < n - 1 && i >= 2 && (i - 2) % 6 === 0;
 // 글 양옆 세로 광고 (dc#135): 같은 광고 단위 "블로그 글"(AdSense에서 세로형으로 바꿈)을 160×600으로 양쪽에 하나씩
 //   좁은 화면(휴대폰·태블릿)에서는 칸을 숨기고 광고도 요청하지 않음 (숨긴 칸에 광고를 요청하면 오류). 세로 고정 광고는 PC에서만 허용
 //   https://support.google.com/adsense/answer/10734935 : 위아래로만 따라오고, 본문을 가리지 않아야 함
@@ -175,13 +183,24 @@ const RAIL_SCRIPT = `<script>if (window.matchMedia && matchMedia("(min-width: 11
   d.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:160px;height:600px" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276"></ins>';
   (adsbygoogle = window.adsbygoogle || []).push({});
 });</script>`;
-// 광고 칸은 본문 중간 (dc#129): 글 길이의 절반에 가장 가까운 소제목(h2·h3, 없으면 문단 끝) 바로 앞. 첫 줄 앞에는 안 넣음
-function withMidAd(html) {
+// 본문 광고 칸 수 (dc#166): 글 길이(마크다운 바이트)에 따라 짧은 글 1 · 중간 2 · 긴 글 3
+const adCount = (md) => (Buffer.byteLength(md) < 7000 ? 1 : Buffer.byteLength(md) < 13000 ? 2 : 3);
+// 광고 칸은 본문 안 (dc#129 → dc#166): 1개면 절반, 2개면 1/3·2/3, 3개면 1/4·1/2·3/4에 가장 가까운 소제목(h2·h3, 없으면 문단 끝) 바로 앞.
+//   첫 줄 앞에는 안 넣고, 광고끼리는 글 길이의 15% 넘게 떨어뜨림 (붙을 자리가 없으면 그 칸은 뺌)
+function withMidAd(html, n = 1) {
   const at = (re) => [...html.matchAll(re)].map(m => m.index + (m[0].startsWith("</") ? m[0].length : 0)).filter(i => i > 0 && i < html.length);
-  const cuts = [/<h[23][ >]/g, /<\/p>\n/g].map(at).find(c => c.length);
-  if (!cuts) return `${html}\n${AD_UNIT}`;
-  const mid = cuts.reduce((a, b) => Math.abs(b - html.length / 2) < Math.abs(a - html.length / 2) ? b : a);
-  return `${html.slice(0, mid)}${AD_UNIT}\n${html.slice(mid)}`;
+  const heads = at(/<h[23][ >]/g), paras = at(/<\/(p|ul|ol|figure|blockquote|table)>\n/g);   // 문단·목록·그림 등 덩어리 끝
+  if (!heads.length && !paras.length) return `${html}\n${AD_UNIT}`;
+  const L = html.length, chosen = [], free = (c) => chosen.every(x => Math.abs(x - c) > L * 0.15);
+  const near = (cs, t) => cs.filter(free).reduce((a, b) => (a == null || Math.abs(b - t) < Math.abs(a - t) ? b : a), null);
+  for (const f of { 1: [0.5], 2: [1 / 3, 2 / 3], 3: [0.25, 0.5, 0.75] }[n]) {
+    const t = f * L, h = near(heads, t), q = near(paras, t);
+    const c = h != null && Math.abs(h - t) <= L * 0.1 ? h : q ?? h;   // 소제목이 목표 자리에서 10% 안이면 소제목 앞, 아니면 가까운 문단 끝
+    if (c != null) chosen.push(c);
+  }
+  let out = html;
+  for (const c of chosen.sort((a, b) => b - a)) out = `${out.slice(0, c)}${AD_UNIT}\n${out.slice(c)}`;
+  return out;
 }
 const page = ({ title, desc, url, body, noindex = false, extraHead = "", image = null, rails = false }) => `<!DOCTYPE html>
 <html lang="ko">
@@ -219,7 +238,7 @@ function postPage(p, prev, next) {
 <article>
 <h1>${esc(p.title)}</h1>
 <p class="meta">${dateText(p.date)}${p.tags.length ? " · " + p.tags.map(esc).join(" · ") : ""}</p>
-${withMidAd(markdown(p.body, NO_STYLE))}
+${withMidAd(markdown(p.body, NO_STYLE), adCount(p.body))}
 </article>
 <nav class="pager"><span>${prev ? `<a href="${prev.slug}.html">← ${esc(prev.title)}</a>` : ""}</span><span>${next ? `<a href="${next.slug}.html">${esc(next.title)} →</a>` : ""}</span></nav>`,
   });
@@ -232,7 +251,7 @@ function indexPage(posts) {
 <a href="${SITE}/"><img class="banner" src="../img/banner.png" alt="던전 크롤러 (Dungeon Crawler)" width="773" height="253"></a>
 <h1>${esc(BLOG_TITLE)}</h1>
 <p class="meta">${esc(BLOG_DESC)}. 글은 날짜별 개발 일지를 바탕으로 써요.</p>
-${posts.map(p => `<a class="post" href="${p.slug}.html"><b>${esc(p.title)}</b><p class="meta" style="margin:2px 0 0">${dateText(p.date)}</p><p>${esc(p.summary)}</p>${tagList(p.tags)}</a>`).join("\n")}`,
+${posts.map((p, i) => `<a class="post" href="${p.slug}.html"><b>${esc(p.title)}</b><p class="meta" style="margin:2px 0 0">${dateText(p.date)}</p><p>${esc(p.summary)}</p>${tagList(p.tags)}</a>${feedAdAfter(i, posts.length) ? `\n${FEED_AD}` : ""}`).join("\n")}`,
   });
 }
 

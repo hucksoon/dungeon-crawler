@@ -53,6 +53,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -85,6 +86,8 @@
 <p>로비 오른쪽에 &quot;준비 중&quot;이던 건물이 드디어 <strong>나이트메어(▼)</strong> 입구가 됐어요. 일반 던전 75층을 완료하고, v4 이후 장비만 낀 사람이 들어갈 수 있어요.</p>
 <figure><img src="images/nightmare.png" alt="나이트메어 던전" loading="lazy"><figcaption>나이트메어 던전</figcaption></figure>
 <ul><li>50층 구성, 아이템 레벨 76~125</li><li>랭킹에 <strong>나이트메어 탭</strong>이 따로 생겼어요</li><li>50층 보스를 깨면 &quot;나이트메어 완료!&quot;</li></ul>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h3>속성과 저항</h3>
 <p>나이트메어 몬스터는 속성을 하나씩 가져요.</p>
 <ul><li><strong>불</strong>: 10턴 동안 2턴마다 피해를 주는 화상. 다시 맞으면 중첩 대신 갱신만 돼요</li><li><strong>얼음</strong>: 25% 확률로 4턴 동안 느려짐(2턴에 한 번만 행동). 풀리면 4턴 동안 면역</li><li><strong>번개</strong>: 내가 걸면 근처 몬스터 2마리에게 튕기고, 몬스터가 걸면 내가 한 번 더 맞아요</li></ul>
@@ -93,12 +96,12 @@
 <h2>포션, 보물, 포탈</h2>
 <ul><li><strong>포션은 개수 제한 없이 10턴마다 한 번</strong>, 최대 HP 30% 회복. 시뮬레이션해 보니 쓰러지는 건 포션이 모자라서가 아니라 두세 턴 안에 크게 맞아서였어요</li><li>바닥의 포션 자리(!)는 <strong>보물</strong>로 바뀌었어요. 주우면 <strong>레어 이상 장비 1개</strong>. 1~75층 한 번에 레전더리·세트가 약 30% 더 나와요</li><li>포탈(P)은 바로 로비로 가고, 로비의 <strong>파란 포탈</strong>로 떠난 자리에 돌아가요</li><li><strong>포탈로 로비에 오면 HP가 가득 차고</strong> 쿨타임·화상·느려짐도 풀려요. 위험하면 포탈 → 회복 → 다시 싸우기를 할 수 있어요</li><li>던전 입구 오른쪽 문은 <strong>최고 층 − 10층부터</strong> 시작해요. 보스를 다시 잡으며 파밍할 수 있어요</li></ul>
 <p>처음엔 &quot;옆 칸에 포탈을 열고 걸어 들어가기&quot;로 만들었는데, 시뮬레이션해 보니 여는 턴에 맞아 쓰러지는 경우가 늘어서 바로 가는 방식으로 되돌렸어요.</p>
-<div class="ad-unit"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6983849276" data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>세트가 너무 강했어요</h2>
 <p>직접 해 보니 <strong>40층쯤에 시험의 세트 5부위 + 광란 2를 맞추면 75층까지 그대로 깰 것 같다</strong>는 피드백이 나왔어요. 시뮬레이션해 보니 정말 그랬고, 원인은 레벨과 상관없는 <strong>흡혈 38%</strong>였어요. 흡혈만 상한이 없었거든요. 코드를 보다가 흡혈이 넘친 피해까지 계산되고 있던 것도 찾았어요.</p>
 <ul><li>흡혈은 장비·세트를 합쳐 <strong>최대 20%</strong>, 그리고 <strong>실제로 깎은 HP만큼만</strong></li><li>시험의 세트 5세트: 흡혈 +8% → <strong>받는 피해 −10%</strong></li><li>광란의 세트: 주변 피해 100% → 50%</li></ul>
 <p>이제 40레벨 세트는 65층까지는 괜찮지만, 75층 보스에서는 높은 레벨 장비로 바꿔야 해요. 깊은 층에서 다시 세트를 맞추는 목표가 생긴 거죠.</p>
+<div class="ad-unit"><ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-layout="in-article" data-ad-format="fluid" data-ad-client="ca-pub-6503525638904411" data-ad-slot="6587762445"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div>
 <h2>골드 쓸 곳, 모을 곳</h2>
 <p>53층쯤에서 골드가 남아돈다는 피드백이 있었어요. 그래서 골드를 쓸 곳과 모을 곳을 같이 만들었어요.</p>
 <ul><li><strong>고대 다시 굴리기</strong>: 고대가 아닌 레전더리·세트를 골드로 다시 굴려 <strong>5% 확률로 고대</strong>. 아이템마다 20번까지예요. 비용은 처음엔 상점 가격이었는데 너무 비싸서 1/3로 낮췄어요</li><li><strong>판매 골드</strong>: 장비를 팔면 강화석과 함께 골드도 조금 받아요 (50레벨 레전더리 235골드)</li><li><strong>로비 시간 상점</strong>: 던전 상점과 같은 진열이 <strong>매 시간 정각에 바뀌어요</strong>. 진열은 사람마다 달라요</li><li><strong>골드 던전</strong>: 75층을 완료하면 열려요. 75층 난이도에 장비는 안 나오지만 완료하면 <strong>22,400골드</strong>. 75레벨 레전더리를 고대 굴리기 20번 할 수 있는 금액이에요</li></ul>

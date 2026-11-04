@@ -311,6 +311,11 @@ const SCENES = [
     await o.page.addStyleTag({ content: '.rail-ad ins { background: #1d2030; outline: 2px dashed #ffcf5c; text-decoration: none; } .rail-ad ins::after { content: "광고 160×600"; display: block; padding-top: 280px; text-align: center; color: #ffcf5c; font: bold 14px "Courier New", monospace; }' });
     await o.page.evaluate(() => scrollTo(0, 1600)); await sleep(300);
     return o; }],
+  ["blog-feed", "블로그 글 목록: 글 카드 사이에 인피드 광고 자리가 생겼어요", async () => {
+    const o = await open({ file: "blog/index.html", viewport: { width: 900, height: 900 } });
+    await o.page.addStyleTag({ content: '.feed-ad ins { background: #1d2030; outline: 2px dashed #ffcf5c; min-height: 110px; } .feed-ad ins::after { content: "광고 (인피드)"; display: block; padding-top: 46px; text-align: center; color: #ffcf5c; font: bold 14px monospace; }' });
+    await o.page.evaluate(() => { const ad = document.querySelector(".feed-ad"); scrollTo(0, ad.getBoundingClientRect().top + scrollY - 420); }); await sleep(300);
+    return o; }],
   // 웹샵 (dc#134): apacimtest.com 첫 화면의 "지금 플레이" 옆 웹샵 버튼, 웹샵 상품 그림 (img/shop-items, 웹샵 자체는 xsolla.site라 여기서 찍지 않음)
   ["home-webshop", "apacimtest.com 첫 화면: 지금 플레이 옆에 생긴 웹샵 버튼", async () => {
     const o = await open({ file: "site/index.html", viewport: { width: 760, height: 420 }, dsf: 2 }); return { ...o, shot: "header" }; }],

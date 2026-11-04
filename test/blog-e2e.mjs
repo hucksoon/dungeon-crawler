@@ -66,17 +66,26 @@ try {
   // 애드센스 자동 광고 코드 (dc#120): 공개 페이지(글·목록·게임 이미지)에만, 네이버 옮기기 페이지에는 없음
   const ads = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes("adsbygoogle.js?client=ca-pub-6503525638904411");
   check("AdSense code on public blog pages, not on Naver copy pages", ads("index.html") && ads("media.html") && posts.every(s => ads(`${s}.html`)) && !ads("naver/index.html") && posts.every(s => !ads(`naver/${s}.html`)));
-  // 블로그 글 광고 칸 (dc#128): 공개 글에만, 네이버 옮기기·목록에는 없음
-  const unit = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes('data-ad-slot="6983849276"');
-  check("display ad unit on public posts only", posts.every(s => unit(`${s}.html`)) && !unit("index.html") && posts.every(s => !unit(`naver/${s}.html`)));
-  // 광고 칸은 본문 중간 (dc#129): 글 안에 한 번, 앞뒤로 본문이 있고 글의 30~70% 자리
+  // 광고 단위 (dc#166): 본문 인아티클 6587762445 · 양옆 세로형 6983849276 · 목록 인피드 6647859236
+  const read = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8");
+  const has = (f, slot) => read(f).includes(`data-ad-slot="${slot}"`) || read(f).includes(`data-ad-slot=\\"${slot}\\"`);
+  check("in-article unit (6587762445) on public posts only, side unit (6983849276) only in post rails", posts.every(s => has(`${s}.html`, "6587762445") && read(`${s}.html`).includes('data-ad-layout="in-article"'))
+    && !has("index.html", "6587762445") && !has("index.html", "6983849276") && posts.every(s => !has(`naver/${s}.html`, "6587762445") && !has(`naver/${s}.html`, "6983849276")));
+  // 본문 광고 칸 (dc#129 → dc#166): 짧은 글 1 · 중간 2 · 긴 글 3, 소제목·문단 앞, 글의 15~85% 자리, 광고끼리 15% 넘게 떨어짐, 뒤에 본문이 이어짐
   const midBad = posts.filter(s => {
-    const h = fs.readFileSync(path.join(REPO, `blog/${s}.html`), "utf8");
-    const a = h.indexOf("<article>"), e = h.indexOf("</article>"), u = h.indexOf('<div class="ad-unit">');
-    const r = (u - a) / (e - a);
-    return h.split('<div class="ad-unit">').length !== 2 || !(r > 0.3 && r < 0.7) || !/<h[23]>|<p>/.test(h.slice(h.indexOf("</div>", u), e));
+    const h = read(`${s}.html`), md = Buffer.byteLength(fs.readFileSync(path.join(REPO, `blog/posts/${s}.md`), "utf8").replace(/^---\n[\s\S]*?\n---\n/, ""));   // 본문만 (글 머리 빼고)
+    const want = md < 7000 ? 1 : md < 13000 ? 2 : 3;
+    const a = h.indexOf("<article>"), e = h.indexOf("</article>");
+    const us = [...h.matchAll(/<div class="ad-unit">/g)].map(m => m.index), rs = us.map(u => (u - a) / (e - a));
+    return us.length !== want || rs.some(r => !(r > 0.15 && r < 0.85)) || rs.some((r, i) => i && r - rs[i - 1] <= 0.12)
+      || us.some(u => !/^\s*<(h[23]|p|ul|ol|figure|blockquote|table)[ >]/.test(h.slice(h.indexOf("</div>", u) + 6, e)));
   });
-  check("ad unit sits in the middle of the post body (once, 30~70%)", midBad.length === 0, midBad.join(", "));
+  check("in-article ads sit inside the body (1 / 2 / 3 by length, spaced, before a heading or another block)", midBad.length === 0, midBad.join(", "));
+  // 목록 인피드 (dc#166): 글 카드 3개 다음, 그 뒤로 6개마다. 맨 위·맨 끝은 아님
+  const idx = read("index.html"), feedSeq = [...idx.matchAll(/<a class="post"|<div class="ad-unit feed-ad">/g)].map(m => m[0].startsWith("<a") ? "p" : "A").join("");
+  const wantFeed = posts.map((_, i) => (i < posts.length - 1 && i >= 2 && (i - 2) % 6 === 0 ? "pA" : "p")).join("");
+  check(`blog list: in-feed ads (6647859236, fluid + layout key) after card 3 and every 6 (${feedSeq})`, feedSeq === wantFeed && idx.includes('data-ad-layout-key="-fb+5w+4e-db+86"') && has("index.html", "6647859236")
+    && posts.every(s => !has(`${s}.html`, "6647859236")) && !has("naver/index.html", "6647859236"), wantFeed);
   // 글 양옆 세로 광고 (dc#135): 공개 글에만 양쪽 칸, 넓은 화면(PC)에서만 160×600 광고를 요청하고 좁은 화면에서는 숨김
   const rail = (f) => fs.readFileSync(path.join(REPO, "blog", f), "utf8").includes('<aside class="rail rail-l">');
   check("side rails only on public posts (not list / Naver pages)", posts.every(s => rail(`${s}.html`)) && !rail("index.html") && !rail("media.html") && posts.every(s => !rail(`naver/${s}.html`)));
