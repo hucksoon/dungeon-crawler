@@ -52,6 +52,7 @@
   .dl:hover { background: var(--accent); color: #111; }
   .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
   .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
   /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
   .rail { display: none; }
   @media (min-width: 1140px) {
@@ -83,7 +84,7 @@
 <p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
 <div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
 <p id="status" aria-live="polite"></p>
-<p class="steps">이미지 11장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v21-revive.gif" download="2026-11-04-1-v21-revive.gif">1. 몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요</a> · <a href="../images/v21-revive-death.png" download="2026-11-04-2-v21-revive-death.png">2. 쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활</a> · <a href="../images/v21-rank.png" download="2026-11-04-3-v21-rank.png">3. 랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</a> · <a href="../images/v22-awake.gif" download="2026-11-04-4-v22-awake.gif">4. 불의 장화로 지나간 자리에 불이 붙고, 전자기장이 주변 몬스터를 한꺼번에 깎아요</a> · <a href="../images/v22-bless.png" download="2026-11-04-5-v22-bless.png">5. 속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로</a> · <a href="../images/v22-relic.png" download="2026-11-04-6-v22-relic.png">6. 보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)</a> · <a href="../images/v22-nelem.png" download="2026-11-04-7-v22-nelem.png">7. 10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해</a> · <a href="../images/v22-stairs.png" download="2026-11-04-8-v22-stairs.png">8. 넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요</a> · <a href="../images/v23-bag.png" download="2026-11-04-9-v23-bag.png">9. 가방에는 펫과 스킨만: 가장 좋은 펫을 저절로 데리고 다니고, 누르면 그 펫으로 고정</a> · <a href="../images/v23-pet.gif" download="2026-11-04-10-v23-pet.gif">10. 할로윈 트롤 펫(전설)이 지도에 남은 경험치 구슬·골드·장비를 대신 주워 와요</a> · <a href="../images/v24-portal1.png" download="2026-11-04-11-v24-portal1.png">11. 1층에서 포탈을 타도 마을에 파란 포탈이 생기고 그 위에 서요. 왼쪽 1층 문은 맨몸으로 새 판</a></p>
+<p class="steps">이미지 12장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v21-revive.gif" download="2026-11-04-1-v21-revive.gif">1. 몬스터에 둘러싸여 쓰러져도, 부활하면 그 자리에서 HP 가득 · 몬스터는 밀려나요</a> · <a href="../images/v21-revive-death.png" download="2026-11-04-2-v21-revive-death.png">2. 쓰러지면: 광고를 보거나 캐시 5개로 쓰러진 자리에서 부활</a> · <a href="../images/v21-rank.png" download="2026-11-04-3-v21-rank.png">3. 랭킹: 부활한 판에서 세운 층 기록에는 ♻ 부활 표시</a> · <a href="../images/v22-awake.gif" download="2026-11-04-4-v22-awake.gif">4. 불의 장화로 지나간 자리에 불이 붙고, 전자기장이 주변 몬스터를 한꺼번에 깎아요</a> · <a href="../images/v22-bless.png" download="2026-11-04-5-v22-bless.png">5. 속성 스킬 Lv 10 다음에는 각성 스킬, 물약 장인 다음에는 완벽한 물약, 흡혈귀의 이빨도 새로</a> · <a href="../images/v22-relic.png" download="2026-11-04-6-v22-relic.png">6. 보스를 쓰러뜨리면 받는 유물에 속성 저항 넷 (불·얼음·번개·독)</a> · <a href="../images/v22-nelem.png" download="2026-11-04-7-v22-nelem.png">7. 10층부터 몬스터 공격에 속성: 불은 화상, 얼음은 방어력 깎기, 번개는 회피 대기, 독은 도트 피해</a> · <a href="../images/v22-stairs.png" download="2026-11-04-8-v22-stairs.png">8. 넓은 층에서 마지막 몬스터를 잡으면 화면 안, 너무 가깝지 않은 곳에 계단이 나와요</a> · <a href="../images/v23-bag.png" download="2026-11-04-9-v23-bag.png">9. 가방에는 펫과 스킨만: 가장 좋은 펫을 저절로 데리고 다니고, 누르면 그 펫으로 고정</a> · <a href="../images/v23-pet.gif" download="2026-11-04-10-v23-pet.gif">10. 할로윈 트롤 펫(전설)이 지도에 남은 경험치 구슬·골드·장비를 대신 주워 와요</a> · <a href="../images/v24-portal1.png" download="2026-11-04-11-v24-portal1.png">11. 1층에서 포탈을 타도 마을에 파란 포탈이 생기고 그 위에 서요. 왼쪽 1층 문은 맨몸으로 새 판</a> · <a href="../images/blog-feed.png" download="2026-11-04-12-blog-feed.png">12. 블로그 글 목록: 글 카드 사이에 광고 자리가 생겼어요</a></p>
 <div id="paper">
 <p>깊은 층까지 가는 게 랭킹이라, 아깝게 쓰러졌을 때 한 번 더 기회가 있어야 해요. 그런데 지금까지 부활은 쓰러진 층을 <strong>처음부터</strong> 다시 시작했어요. 몬스터도 모두 새로 나와서, 거의 다 잡아 둔 층이면 손해였어요. 값도 캐시 10개였고, 광고 부활은 하루에 한 번뿐이었어요.</p>
 <p><br></p>
@@ -202,6 +203,14 @@
 <p><br></p>
 <p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v24-portal1.png" alt="1층에서 포탈을 타도 마을에 파란 포탈이 생기고 그 위에 서요. 왼쪽 1층 문은 맨몸으로 새 판" style="max-width:100%;height:auto;"></p>
 <p style="text-align:center;"><span style="font-size:13px;color:#888888;">1층에서 포탈을 타도 마을에 파란 포탈이 생기고 그 위에 서요. 왼쪽 1층 문은 맨몸으로 새 판</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">블로그 광고 자리 정리</span></b></p>
+<p>이 블로그의 광고도 조금 정리했어요. 지금까지는 광고 하나를 글 가운데와 양옆에 같이 써서, 어느 자리가 잘 되는지 알 수 없었어요.</p>
+<p><br></p>
+<p>이제 글 가운데에는 글 사이에 자연스럽게 들어가는 광고를 쓰고, 긴 글에는 두세 개를 나눠서 넣어요. 글 목록에도 글 몇 개마다 광고 자리가 하나씩 생겼어요. 읽는 흐름을 끊지 않게 소제목 앞이나 문단 끝에만 들어가요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/blog-feed.png" alt="블로그 글 목록: 글 카드 사이에 광고 자리가 생겼어요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">블로그 글 목록: 글 카드 사이에 광고 자리가 생겼어요</span></p>
 <p><br></p>
 <p><br></p>
 <p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-04.html">https://game.apacimtest.com/blog/2026-11-04.html</a></p>
