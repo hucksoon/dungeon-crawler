@@ -1533,6 +1533,8 @@
       } catch { return it; }
     }
     const write = () => { trimLog(data); store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
+    // 펫만 바뀌었을 때: 이 기기에만 저장 (펫은 계정 저장에 넣지 않고 서버 pets.php가 따로 관리해서 계정 저장을 올릴 필요 없음)
+    const writePets = () => store.set(key(owner), JSON.stringify(data));
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
     const fullEquip = (eq) => Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, eq?.[s] || null]));
     // 이 아이템을 낄 칸: at(고른 칸)이 맞으면 거기, 아니면 빈 칸, 다 차 있으면 첫 칸 (반지는 반지 1·2)
@@ -1615,7 +1617,7 @@
         data.pets.have[key] = { g, at: Date.now(), ...(src ? { s: src } : {}) };
         if (!data.pets.pin) data.pets.on = petBest(data.pets.have);
         record("pet", { id: `pet:${key}` }, { pet: key, g });
-        write();
+        writePets();
         return { key, g, on: data.pets.on === key };
       },
       // 서버(pets.php)의 펫 목록으로 바꿈 (로그인 사용자, dc#164). keep: 서버에 아직 못 올린 펫(하루 한도)은 남김
@@ -1624,7 +1626,7 @@
         data.pets = cleanPets(d);
         for (const k of keep) if (cur[k] && !data.pets.have[k]) data.pets.have[k] = cur[k];
         if (!data.pets.pin) data.pets.on = petBest(data.pets.have);
-        write();
+        writePets();
         return data.pets;
       },
       // 데리고 다닐 펫을 내가 고름 (고정). null이면 고정을 풀고 가장 좋은 펫으로
@@ -1632,7 +1634,7 @@
         data.pets ||= { have: {}, on: null, pin: false };
         if (key && data.pets.have[key]) { data.pets.on = key; data.pets.pin = true; }
         else { data.pets.pin = false; data.pets.on = petBest(data.pets.have); }
-        write();
+        writePets();
         return data.pets.on;
       },
       equipped: () => data.equip,
