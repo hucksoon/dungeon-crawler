@@ -1678,6 +1678,15 @@
         write();
         return true;
       },
+      // 새 판 (dc#165): 1층 문으로 들어가면 낀 장비·가방 장비·강화석(3종)을 모두 비움. 펫·스킨·보석·룬(서버 보관)·보상 표시(v2c)는 그대로
+      runReset() {
+        const n = all().length, st = (data.stones || 0) + (data.nmStones || 0) + (data.hellStones || 0);
+        if (!n && !st) return 0;
+        data.bag = []; data.equip = fullEquip({}); data.stones = 0; data.nmStones = 0; data.hellStones = 0;
+        write();
+        return n;
+      },
+      hasGear: () => all().length > 0,
       // 운영자 테스트 (dc#141): 가방·낀 장비·강화석(3종)을 모두 비움. 보석·룬(서버 보관)·보상 표시(v2c)는 그대로
       staffWipe() {
         const n = all().length;
@@ -4078,6 +4087,7 @@
     rv: player.revived ? 1 : 0,
     ...(player.ud ? { ud: player.ud } : {}),
     ...(player.oldGear ? { og: 1 } : {}),
+    ...(player.tp ? { tp: 1 } : {}),
     ...(["nm", "gold", "hell", "abyss"].includes(player.zone) ? { z: player.zone } : {}),
     ...(goldNM() ? { gn: player.gn } : {}),
     ...(player.deathAt ? { da: [player.deathAt.x, player.deathAt.y] } : {}),   // 쓰러진 자리 (묘비, dc#97)
@@ -4295,6 +4305,7 @@
       revived: !!r.rv,
       ud: typeof r.ud === "string" ? r.ud : null,   // 천하무적 불사를 쓴 층
       oldGear: !!r.og,
+      tp: !!r.tp,
       zone: ["nm", "gold", "hell", "abyss"].includes(r.z) ? r.z : "normal",
       gn: r.z === "gold" ? Math.max(0, Math.min(NM.floors, r.gn | 0)) : 0,
       deathAt: Array.isArray(r.da) && Number.isInteger(r.da[0]) && Number.isInteger(r.da[1]) ? { x: r.da[0], y: r.da[1] } : null,
@@ -4983,7 +4994,8 @@
   let lobbyPos = { x: 30, y: 10 };
 
   // 포탈 층 문을 쓸 수 있는지: 쓰러지지 않은 판이 2층 이상에 멈춰 있을 때 (포탈을 타고 나왔거나, 던전에서 창을 닫았을 때)
-  const resumeFloor = () => (!gameOver && (depth >= 2 || inNM() || inGold() || hellish()) ? depth : 0);
+  // 포탈로 돌아갈 층. 1층은 그 층에서 포탈을 탔을 때만 (player.tp, dc#165: 예전에는 2층부터만 마을에 파란 포탈이 생겨서 1층 문으로 새 판이 됐음)
+  const resumeFloor = () => (!gameOver && (depth >= 2 || player?.tp || inNM() || inGold() || hellish()) ? depth : 0);
 
   // 새 조작 휴대폰의 던전은 세로로 긴 화면 (dc#144): 2D 캔버스 24×32칸, 3D는 CSS 3:4 (view3d.js가 캔버스 비율을 따름)
   const tallView = () => !OLD_TOWN && matchMedia("(pointer: coarse) and (orientation: portrait)").matches;
@@ -5029,7 +5041,7 @@
       portal: [T("포탈을 타고 로비로 돌아왔다. HP와 포션이 모두 회복됐다. (골드 {0} · Lv {1}){2}", player.gold.toLocaleString(), player.plvl, resumeFloor() ? T(" 바로 앞 파란 포탈로 {0}의 떠난 자리에 다시 들어갈 수 있다.", floorName()) : ""), "good"],
       clear: [inAbyss() ? T("끝이 없는 구멍을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 다시 1층부터 내려갈 수 있다.")
         : T("{0}을 완료하고 로비로 돌아왔다. 바로 앞 파란 포탈로 {0}의 새 구역에 들어가 계속 파밍할 수 있다.", floorName()), "good"],
-      death: [T("로비에서 새로 시작한다. 레벨 1·골드 0으로 돌아갔고, 장비는 그대로다."), "info"],
+      death: [T("로비에서 새로 시작한다. 레벨 1·골드 0으로 돌아갔다. 1층 문으로 들어가면 장비·강화석도 비우고 맨몸으로 시작한다."), "info"],
       start: [T("로비에 들어왔다. 마을 가운데 던전 입구에서 레벨 1·1층부터 새 판을 시작한다.{0}", backTo()), "info"],
     }[from];
     log(msg[0], msg[1]);
@@ -5045,14 +5057,17 @@
     if (entering) return;
     if (which === "resume") {
       if (!resumeFloor()) return;
+      player.tp = false;
       setScene("dungeon");
       log(T("포탈을 타고 {0}의 떠난 자리로 돌아왔다.", floorName()), "info");
       saveGame(true);
     } else {
       const from = which === "wp" ? wpFloor : 1;
       if (which === "wp" && !waypoints.normal.includes(from)) return;
-      if (resumeFloor() && !(await ask(which === "wp" ? T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())
-        : T("1층부터 새 판을 시작할까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라지고, 레벨 1·골드 0으로 시작해요. 장비는 그대로예요.", floorName())))) return;
+      const wipe = which !== "wp" && !OLD_TOWN;   // dc#165: 1층 문으로 들어가는 새 판은 장비·강화석까지 모두 처음부터
+      if (which === "wp" ? resumeFloor() && !(await ask(T("{0}층부터 새로 들어갈까요?\n지금 포탈로 돌아갈 수 있는 층({1})은 사라져요. 골드·레벨·장비는 그대로예요.", from, floorName())))
+        : (resumeFloor() || (wipe && Inv.hasGear())) && !(await ask(resumeFloor() && wipe ? T("1층부터 새 판을 시작할까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라지고, 레벨 1·골드 0, 장비·강화석 없이 맨몸으로 시작해요.", floorName())
+          : wipe ? T("1층부터 새 판을 시작할까요?\n레벨 1·골드 0, 장비·강화석 없이 맨몸으로 시작해요.") : T("1층부터 새 판을 시작할까요?\n지금 포탈로 돌아갈 수 있는 층({0})은 사라지고, 레벨 1·골드 0으로 시작해요. 장비는 그대로예요.", floorName())))) return;
       entering = true;
       let ok = false;
       try { ok = await allowEntry(); } finally { entering = false; }
@@ -5060,7 +5075,13 @@
       depth = from;
       player.zone = "normal";
       player.rid = newRunId();  // 새 지도 (아이템 시드가 겹치지 않게 판 ID도 새로)
-      if (which !== "wp" && !OLD_TOWN) { Object.assign(player, FRESH); player.hp = stats().maxHp; }   // dc#142: 새 판은 레벨 1·골드 0
+      player.tp = false;
+      let wiped = 0;
+      if (wipe) {   // dc#142: 새 판은 레벨 1·골드 0 / dc#165: 장비·강화석도 비움
+        wiped = Inv.runReset();
+        afterGearChange?.();
+        Object.assign(player, FRESH); player.hp = stats().maxHp;
+      }
       Bless.start("normal", from);   // 새 판: 축복·유물을 비우고, 웨이포인트면 건너뛴 만큼 먼저 고름
       player.oldGear = false;   // 새 판: 예전 장비를 안 끼고 시작하면 다시 정식 v1 랭킹에 기록됨
       noteOldGear();
@@ -5069,7 +5090,8 @@
       shopRerolls = 0;
       setScene("dungeon");
       if (which === "wp") log(T("◎ 웨이포인트를 타고 {0}에 왔다.", floorName()), null, WP_COLOR);
-      else log(depth === 1 ? (OPEN_FLOORS ? T("던전 1층에 발을 들였다. 몬스터를 모두 쓰러뜨리면 계단(>)이 나타난다.") : T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.")) : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
+      if (wiped) log(T("🎒 새 판: 장비 {0}개와 강화석을 모두 비우고 맨몸으로 시작한다.", wiped), null, "#9aa4b2");
+      if (which !== "wp") log(depth === 1 ? (OPEN_FLOORS ? T("던전 1층에 발을 들였다. 몬스터를 모두 쓰러뜨리면 계단(>)이 나타난다.") : T("던전 1층에 발을 들였다. 계단(>)을 찾아 더 깊이 내려가라.")) : T("던전 {0}층에 발을 들였다. 보스를 다시 잡으며 파밍하자. (최고 층 {1}{2})", depth, Math.min(bestDepth, RLMonsters.MAX_FLOOR), cleared ? T(" 완료") : ""), "info");
       newLevel(generateDungeon());
       saveGame(true);
     }
@@ -5289,6 +5311,7 @@
     const reaper = reaperOn();
     if (reaper) { log(T("{0}이(가) 길을 막고 있다… 쓰러뜨리기 전에는 포탈을 열 수 없다!", reaper.name), "bad"); render(); return; }
     markLastSpot();   // 운영자 입구가 이 층을 새로 만들어 다시 들어감
+    player.tp = true;   // 마을의 파란 포탈로 이 자리에 돌아옴 (1층도, dc#165)
     saveGame(true);
     Tips.step("heal");
     Sfx("portal");
@@ -7824,7 +7847,8 @@
       const cx = d.x * TILE, bot = G * TILE;
       if (d.id === "resume") {   // 파란 포탈 (떠난 층으로)
         drawPortal(cx - TILE / 2, bot - TILE);
-        drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(resumeFloor(), inNM()))), cx, bot - TILE - 2, PORTAL_COLOR, 8);
+        // 포탈 위에 서 있으면 이름표는 "↑ 포탈 N층" 안내로 대신 (내 이름과 겹치지 않게, dc#165)
+        if (nearDoor()?.id !== "resume") drawLabel(T("포탈 {0}", presenceLabel(presenceFloor(resumeFloor(), inNM()))), cx, bot - TILE - 2, PORTAL_COLOR, 8);
         return;
       }
       if (d.id === "waypoint") {   // 웨이포인트 (dc#97): 돌 받침에 하늘색 고리와 빛기둥
@@ -7990,7 +8014,8 @@
       const d = nearDoor();
       if (d) {
         const by = G * TILE - TILE - 12 - (myFloor ? 9 : 0) - mine.lift, bob = reduceMotion ? 0 : Math.sin(t * 5) * 1.2;
-        drawLabel(narrowScreen() ? T("▲ 들어가기") : T("↑ 들어가기"), d.x * TILE, by + bob, "#ffffff", 8);
+        if (d.id === "resume") { const f = presenceLabel(presenceFloor(resumeFloor(), inNM())); drawLabel(narrowScreen() ? T("▲ 포탈 {0}", f) : T("↑ 포탈 {0}", f), d.x * TILE, by + bob, PORTAL_COLOR, 8); }
+        else drawLabel(narrowScreen() ? T("▲ 들어가기") : T("↑ 들어가기"), d.x * TILE, by + bob, "#ffffff", 8);
       }
       // 화면 글자: 조작 안내
       ctx.setTransform(PX, 0, 0, PX, 0, 0);
@@ -10895,7 +10920,7 @@
     deathModal.hidden = false;
     const tombG = Math.floor(player.gold * TOMB.rate);
     document.getElementById("death-sub").textContent = [
-      T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 레벨 1·골드 0으로 일반 던전 1층부터 다시 시작해요. 장비는 그대로 남아요.", floorName()),
+      T("{0}에서 쓰러졌어요. 로비에서 새로 시작하면 레벨 1·골드 0, 장비·강화석 없이 맨몸으로 일반 던전 1층부터 다시 시작해요.", floorName()),
       tombG > 0 ? T("쓰러진 자리에 묘비가 남아요. 다시 와서 밟으면 골드 {0}(90%)을 돌려받아요.", tombG.toLocaleString()) : "",
       tombG > 0 && tomb ? T("(전에 남긴 묘비의 골드 {0}은 사라져요)", tomb.g.toLocaleString()) : "",
     ].filter(Boolean).join(" ");
@@ -11075,7 +11100,7 @@
     if (g > 0 && lastDeath) tomb = { ...lastDeath, x: at.x, y: at.y, g };
     newGame();   // dc#142: 새 판은 레벨 1·1층부터 (예전 dc#95: 경험치 10%만 잃고 레벨은 이어 감)
     enterLobby({ from: "death" });
-    log(T("새 판은 레벨 1, 일반 던전 1층부터 시작한다. 장비는 그대로다."), "info");
+    log(T("새 판은 레벨 1, 일반 던전 1층부터 맨몸으로 시작한다."), "info");
     if (g > 0 && tomb) log(T("† {0}의 쓰러진 자리에 묘비를 남겼다. 다시 가서 밟으면 골드 {1}을(를) 돌려받는다.", tombFloorName(tomb), g.toLocaleString()), null, TOMB.color);
     if (lost) log(T("예전 묘비(골드 {0})는 사라졌다.", lost.toLocaleString()), "bad");
     if (PORTAL) portalAdBreak(false);   // 쓰러져서 새로 시작: 중간 광고

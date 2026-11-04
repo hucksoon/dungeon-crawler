@@ -67,7 +67,7 @@ try {
   let a = await s(A.page);
   check("loaded run: level 12, gold 7777, floor 10, no waypoint on the floor", a.lv === 12 && a.gold === 7777 && a.depth === 10 && !a.wp, JSON.stringify(a));
   await A.page.evaluate(() => window.__t.die()); await sleep(200);
-  check("death screen: says level 1 · gold 0 from floor 1", (await A.page.locator("#death-modal").innerText()).includes("레벨 1·골드 0으로 일반 던전 1층부터"));
+  check("death screen: says level 1 · gold 0 · no gear from floor 1 (dc#165)", (await A.page.locator("#death-modal").innerText()).includes("레벨 1·골드 0, 장비·강화석 없이 맨몸으로 일반 던전 1층부터"));
   await A.page.locator("#death-restart").click(); await sleep(300);
   a = await s(A.page);
   check("restart after death → level 1, gold 0, in the town", a.lv === 1 && a.gold === 0 && a.scene === "lobby", JSON.stringify(a));
@@ -78,7 +78,7 @@ try {
   const C = await open({ ...BASE, rl_save: save({}), __scene: "lobby" });
   await C.page.evaluate(() => window.__t.start()); await sleep(400);
   const c = await s(C.page);
-  check("start door with a run in progress: asks, then a fresh run (level 1, gold 0, floor 1)", C.dialogs.some(m => m.includes("레벨 1·골드 0으로 시작")) && c.lv === 1 && c.gold === 0 && c.depth === 1 && c.scene === "dungeon", JSON.stringify([c, C.dialogs]));
+  check("start door with a run in progress: asks, then a fresh run (level 1, gold 0, floor 1)", C.dialogs.some(m => m.includes("레벨 1·골드 0, 장비·강화석 없이 맨몸으로 시작")) && c.lv === 1 && c.gold === 0 && c.depth === 1 && c.scene === "dungeon", JSON.stringify([c, C.dialogs]));
   // 구멍: 이어가기가 아니면 못 들어감
   await C.page.evaluate(() => window.__t.abyss()); await sleep(200);
   check("abyss can't be entered from the town (only by continuing)", (await s(C.page)).zone === "normal");
