@@ -998,6 +998,43 @@ const SCENES = [
     const o = await open({ dsf: 1.6, seed: { rl_bless: "on", rl_autogear: "1", rl_live: "off", rl_save: save(1, "blog-v24p1", { l: 3, g: 120, hp: 300, mh: 300 }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
     await o.page.keyboard.press("p"); await sleep(900);
     return { ...o, shot: "#game" }; }],
+  // apacimtest.com 첫 화면 그림 (site/img, dc#167): 이벤트 장식 없이 지금 게임 그대로. 찍은 뒤 site/img로 복사
+  ["site-town", "마을: 가운데 큰 던전 입구 (1층 문)", async () => {
+    const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_event: "off", rl_market: "paused", rl_tut: JSON.stringify(["intro", "enter", "dungeon"]), rl_save: save(1, "site-town", {}, { best: 1, clr: 0 }), "rl_inv:g:DEV": inv([]) } });
+    await o.page.addStyleTag({ content: "#tip, #gift-banner, #event-banner { display: none !important; }" });
+    await goDoor(o.page, "start", { enter: false });
+    await o.page.keyboard.down("ArrowRight"); await sleep(380); await o.page.keyboard.up("ArrowRight"); await sleep(900);
+    return { ...o, shot: "#stage" }; }],
+  ["site-fight", "던전: 속성 스킬로 몰려오는 몬스터와 싸우기", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_event: "off", rl_bless: "on", rl_autogear: "1", rl_live: "off", rl_tut: JSON.stringify(["intro", "enter", "dungeon"]), rl_save: save(18, "site-fight", { l: 18, hp: 2600, mh: 2600, x: 900, xn: 2400, x4: 1, bz: { normal: 18 }, bl: { fire: 6, bolt: 5, might: 3, vigor: 2 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(8, Math.min(L.w - 9, L.px)), y0 = Math.max(6, Math.min(L.h - 7, L.py));
+      for (let y = y0 - 5; y <= y0 + 5; y++) for (let x = x0 - 7; x <= x0 + 7; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy, kind = "normal") => ({ ...base, kind, x: x0 + dx, y: y0 + dy, hp: 4000, maxHp: 4000, atk: 0, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(2, -1), mk(2, 1), mk(-2, 2), mk(3, -3), mk(-3, -2, "elite"), mk(4, 2), mk(-1, 3)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 9 && Math.abs(y - y0) <= 7 ? "1" : "0"; }).join("");
+    });
+    await o.page.addStyleTag({ content: "#tip, #gift-banner, #event-banner { display: none !important; }" });
+    await press(o.page, [".", ".", ".", ".", ".", "."], 420); await sleep(200);
+    await o.page.addStyleTag({ content: "#status, #log { display: none !important; }" });   // 시험용으로 세운 몬스터의 피해 줄은 숨김
+    await o.page.setViewportSize({ width: 1100, height: 595 });   // 아래 조작 안내 글은 빼고 지도까지
+    await o.page.evaluate(() => window.scrollTo(0, document.getElementById("stats").getBoundingClientRect().top + scrollY - 8)); await sleep(300);
+    return { ...o }; }],
+  ["site-phone", "휴대폰: 화면을 끌어 움직이고, 톡 누르면 회피", async () => {
+    const o = await open({ dsf: 2, touch: true, viewport: { width: 390, height: 844 }, seed: { rl_event: "off", rl_bless: "off", rl_autogear: "1", rl_save: save(6, "site-phone", { l: 8, hp: 99999, x: 120, xn: 400 }), "rl_inv:g:DEV": inv(g40), rl_tut: JSON.stringify(["intro", "enter", "dungeon"]) } });
+    await o.page.addStyleTag({ content: "#tip, #gift-banner, #event-banner { display: none !important; }" });
+    await sleep(400);
+    await o.page.evaluate(() => window.scrollTo(0, document.getElementById("stats").getBoundingClientRect().top + scrollY - 8));
+    await sleep(300);
+    return { ...o }; }],
+  ["site-bless", "새 층마다 축복 3개 중 하나를 골라요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_event: "off", rl_bless: "on", rl_autogear: "1", rl_save: save(12, "site-bless7", { l: 10, bz: { normal: 11 }, bl: { fire: 3, might: 2, vigor: 2 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);
