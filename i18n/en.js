@@ -153,6 +153,8 @@
       "relic.resIce": "Frost Feather",
       "relic.resBolt": "Lightning Rod",
       "relic.resPoison": "Antidote Herb",
+      "pet.skinName.halloween": "Halloween",
+      "pet.skin.halloween": (k, b) => `${k} ${b}`,
       "bfx.atkPct": (n) => `Attack +${n}%`,
       "bfx.hpPct": (n) => `Max HP +${n}%`,
       "bfx.defPct": (n) => `Defense +${n}%`,

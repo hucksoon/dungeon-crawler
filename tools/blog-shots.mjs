@@ -965,6 +965,29 @@ const SCENES = [
     const key = await lastFoe(o.page);
     await o.page.keyboard.press(key); await sleep(900);
     return { ...o, shot: "#game" }; }],
+  // dc#164: 가방에는 펫과 스킨만 · 펫이 지도에 남은 아이템을 주워 옴
+  ["v23-bag", "가방에는 펫과 스킨만: 가장 좋은 펫을 저절로 데리고 다니고, 누르면 그 펫으로 고정", async () => {
+    const pets = { have: { "troll@halloween": { g: "legend", at: 3 }, gumiho: { g: "legend", at: 1 }, orc: { g: "epic", at: 2 }, goblin: { g: "rare", at: 4 }, kobold: { g: "common", at: 5 } }, on: "troll@halloween", pin: false };
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_save: save(24, "blog-v23bag", { bz: { normal: 24 } }), "rl_inv:g:DEV": JSON.stringify({ ...JSON.parse(inv(g40)), pets }) } });
+    await o.page.keyboard.press("i"); await sleep(500);
+    return { ...o, shot: "#inv-modal .modal" }; }],
+  ["v23-pet", "할로윈 트롤 펫(전설)이 지도에 남은 경험치 구슬·골드·장비를 대신 주워 와요", async () => {
+    const pets = { have: { "troll@halloween": { g: "legend", at: 1 } }, on: "troll@halloween", pin: false };
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_save: save(24, "blog-v23pet", { l: 24, hp: 99999, mh: 99999, bz: { normal: 24 } }), "rl_inv:g:DEV": JSON.stringify({ ...JSON.parse(inv(g40.slice(0, 3))), pets }) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L, gear) => {
+      const m = L.map.split(""), x0 = Math.max(6, Math.min(L.w - 7, L.px)), y0 = Math.max(5, Math.min(L.h - 6, L.py));
+      for (let y = y0 - 4; y <= y0 + 4; y++) for (let x = x0 - 6; x <= x0 + 6; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: 1, y: 1, hp: 50, maxHp: 50, slow: 99 }];
+      L.items = [[5, -3, { type: "xp", amount: 12 }], [6, 2, { type: "xp", amount: 9 }], [-5, 3, { type: "gold", amount: 140 }], [-4, -3, { type: "gear", item: gear, from: "drop" }], [3, 4, { type: "xp", amount: 8 }]]
+        .map(([dx, dy, it]) => ({ x: x0 + dx, y: y0 + dy, ...it }));
+      L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      localStorage.setItem("rl_live", "1");
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
+    }, gear(44, "golden", "blogv23")[3]);
+    return { ...o, frames: await recordClock(o.page, [], 6400, { cols: 13, rows: 9, step: 100 }), delay: 10 }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

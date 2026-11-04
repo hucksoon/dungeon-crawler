@@ -6,7 +6,7 @@
 //   GET  api.php?r=me       내 순위
 //   GET  api.php?r=player&id=<공개 ID>  그 사람이 최고 층을 세운 순간의 장비·능력치, 최고 아이템
 //   POST api.php?r=lobby    로비 위치(또는 탐험 중인 층)를 알리고, 지금 접속 중인 사람들을 받음
-//   거래소·우편함 경로는 market.php, 하루 입장·광고 보상 경로는 ads.php, 이벤트는 event.php, 계정 저장은 profile.php 맨 위 설명 참고
+//   거래소·우편함 경로는 market.php, 하루 입장·광고 보상 경로는 ads.php, 이벤트는 event.php, 계정 저장은 profile.php, 펫은 pets.php 맨 위 설명 참고
 //   (서버가 PATH_INFO를 지원하면 api.php/api/score 처럼 불러도 됨)
 //
 // 누구인지는 서버가 확인한다.
@@ -29,6 +29,7 @@ require_once __DIR__ . '/ads.php';
 require_once __DIR__ . '/bonus.php';
 require_once __DIR__ . '/event.php';
 require_once __DIR__ . '/profile.php';
+require_once __DIR__ . '/pets.php';
 
 const RARITY_RANK = ['common' => 0, 'uncommon' => 1, 'rare' => 2, 'epic' => 3, 'set' => 4, 'legendary' => 5, 'unique' => 6];
 const MAX_STAGE = 10000;
@@ -204,6 +205,7 @@ function db(): PDO {
     bonus_tables($pdo);
     event_tables($pdo);
     profile_tables($pdo);
+    pets_tables($pdo);
     foreach (['pub_id VARCHAR(32)', 'stage_gear TEXT', 'item_json TEXT'] as $col) {
         try { $pdo->exec("ALTER TABLE players ADD COLUMN {$col}"); } catch (PDOException $e) { /* 이미 있음 */ }
     }
@@ -1181,6 +1183,9 @@ try {
     elseif ($route === 'event_cash' && $method === 'POST') respond(200, event_cash());
     elseif ($route === 'profile' && $method === 'GET') respond(200, profile_get());
     elseif ($route === 'profile' && $method === 'POST') respond(200, profile_put());
+    elseif ($route === 'pets' && $method === 'GET') respond(200, pets_list());
+    elseif ($route === 'pet_claim' && $method === 'POST') respond(200, pet_claim());
+    elseif ($route === 'pet_set' && $method === 'POST') respond(200, pet_set());
     elseif ($route === 'geo' && $method === 'GET') respond(200, get_geo());
     else respond(404, ['error' => 'not_found']);
 } catch (HttpError $e) {

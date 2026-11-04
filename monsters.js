@@ -252,6 +252,46 @@
     ice: { shred: 10, turns: 4, max: 20 }, bolt: { dodgeCd: 1, max: 1 },
     names: { fire: "불", ice: "얼음", bolt: "번개", poison: "독" }, colors: { fire: "#ff7a3d", ice: "#6fd3ff", bolt: "#ffe14d", poison: "#7ddc4a" },
   };
+  // 펫 (dc#164): 정예·보스·네임드를 쓰러뜨리면 낮은 확률로 그 몬스터가 펫이 됨 (작게 나를 따라다님)
+  //   이벤트 중이면 그 이벤트 모습(할로윈이면 마녀 모자)을 그대로 가져가고 등급이 한 단계 위 (그때만 얻는 펫)
+  //   같은 펫(같은 몬스터·같은 모습)은 다시 나오지 않음. 데리고 다니면 지도에 남은 아이템(회복 구슬 빼고)을 대신 주워 옴
+  //   등급: range = 내 둘레 몇 칸 안의 아이템을 주우러 가는지 (전설은 지도 전체), speed = 한 턴에 걷는 칸
+  //   drop: 떨어뜨릴 확률 (일반 던전 한 판 50층에 정예 약 1,240마리·보스 10마리 → 처음 한 판에 1~2마리), odds: 떨어뜨린 몬스터별 등급 비율
+  const PETS = {
+    drop: { elite: 0.001, boss: 0.03, named: 0.1 },
+    grades: {
+      common: { name: "일반", range: 4, speed: 1, color: "#cfd6e4" },
+      rare: { name: "희귀", range: 7, speed: 2, color: "#5aa9ff" },
+      epic: { name: "영웅", range: 11, speed: 2, color: "#c06bff" },
+      legend: { name: "전설", range: 99, speed: 3, color: "#ffcf5c" },
+    },
+    odds: { elite: { common: 70, rare: 25, epic: 5 }, boss: { rare: 45, epic: 40, legend: 15 }, named: { epic: 40, legend: 60 } },
+    skins: { halloween: { prefix: "hw_", name: "할로윈", icon: "🎃" } },   // 이벤트 모습 (그림 이름 앞에 붙는 것)
+    scale: 0.6,
+  };
+  const PET_GRADES = Object.keys(PETS.grades);
+  // 쓰러뜨린 몬스터가 펫을 떨어뜨릴 수 있는 종류: "named" | "boss" | "elite" | null (황금 고블린·분신은 없음)
+  const petSource = (m) => (!m || m.kind === "golden" || m.clone ? null : m.named || Object.values(NAMED.bosses).some(b => b.id === m.id) ? "named" : m.kind === "boss" ? "boss" : m.kind === "elite" ? "elite" : null);
+  const petDropChance = (m) => PETS.drop[petSource(m)] || 0;
+  // 펫 이름표: "고블린" · 이벤트 모습이면 "고블린@halloween"
+  const petKey = (id, skin = null) => (skin && PETS.skins[skin] ? `${id}@${skin}` : id);
+  const parsePetKey = (key) => { const [id, skin] = String(key).split("@"); return { id, skin: PETS.skins[skin] ? skin : null }; };
+  const petSprite = (key) => { const { id, skin } = parsePetKey(key); return skin ? PETS.skins[skin].prefix + id : `mon_${id}`; };
+  const petName = (key) => { const { id, skin } = parsePetKey(key); const n = nameOf({ id, kind: "normal" }) || id; return skin ? tx(`pet.skin.${skin}`, (k, b) => `${k} ${b}`, `${PETS.skins[skin].icon} ${tx(`pet.skinName.${skin}`, PETS.skins[skin].name)}`, n) : n; };
+  const gradeUp = (g, n = 1) => PET_GRADES[Math.min(PET_GRADES.length - 1, PET_GRADES.indexOf(g) + n)];
+  // 등급 뽑기 (이벤트 모습이면 한 단계 위)
+  function rollPetGrade(src, rand, event = false) {
+    const odds = Object.entries(PETS.odds[src] || PETS.odds.elite), total = odds.reduce((a, [, w]) => a + w, 0);
+    let x = rand() * total, g = odds[odds.length - 1][0];
+    for (const [k, w] of odds) { if ((x -= w) < 0) { g = k; break; } }
+    return event ? gradeUp(g) : g;
+  }
+  const petGrade = (g) => PETS.grades[g] || PETS.grades.common;
+  // 펫이 될 수 있는 몬스터 id (서버 ranking-php/pets.php PET_MONSTERS와 같아야 함, pets-api-test가 비교)
+  const petMonsters = () => [...new Set([...MONSTERS.map(m => m.id), ...BOSSES.map(b => b.id), ...Object.values(NAMED.bosses).map(b => b.id)])];
+  // 떨어뜨린 종류(src)에서 나올 수 있는 등급 (이벤트 모습이면 한 단계 위). 서버도 같은 규칙으로 확인
+  const petGradesFor = (src, event = false) => Object.keys(PETS.odds[src] || {}).map(g => (event ? gradeUp(g) : g));
+  const gradeRank = (g) => PET_GRADES.indexOf(g);
   const normalElemShare = (f) => (f < NORMAL_ELEM.from ? 0 : NORMAL_ELEM.lo + (NORMAL_ELEM.hi - NORMAL_ELEM.lo) * Math.min(1, (f - NORMAL_ELEM.from) / (NORMAL_ELEM.to - NORMAL_ELEM.from)));
   const liveHardMul = (n) => { const k = Math.max(0, Math.min(1, (n - 1) / (LIVE_HARD.ease - 1))); return { hp: 1 + (LIVE_HARD.hp - 1) * k, atk: 1 + (LIVE_HARD.atk - 1) * k }; };
   // 실시간 일반 던전 n층의 원거리 몬스터 비율 (2층 10% → 26층 25% → 50층 40%)
@@ -552,7 +592,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, PETS, PET_GRADES, petSource, petDropChance, petKey, parsePetKey, petSprite, petName, rollPetGrade, petGrade, gradeRank, petMonsters, petGradesFor, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
