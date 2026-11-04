@@ -988,6 +988,11 @@ const SCENES = [
       L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
     }, gear(44, "golden", "blogv23")[3]);
     return { ...o, frames: await recordClock(o.page, [], 6400, { cols: 13, rows: 9, step: 100 }), delay: 10 }; }],
+  // dc#165: 1층에서 탄 포탈도 마을에 파란 포탈이 생기고 그 옆에 섬
+  ["v24-portal1", "1층에서 포탈을 타도 마을에 파란 포탈이 생기고, 그 옆에 서요. 1층 문으로 들어가면 맨몸으로 새 판", async () => {
+    const o = await open({ dsf: 1.6, seed: { rl_bless: "on", rl_autogear: "1", rl_live: "off", rl_save: save(1, "blog-v24p1", { l: 3, g: 120, hp: 300, mh: 300 }), "rl_inv:g:DEV": inv(g40.slice(0, 4)) } });
+    await o.page.keyboard.press("p"); await sleep(900);
+    return { ...o, shot: "#game" }; }],
   ["v14-xp-vacuum", "마지막 몬스터를 잡으면 남은 경험치 구슬이 모두 날아와요", async () => {
     const o = await open({ dsf: 1.4, seed: { rl_save: save(12, "blog-v14vac", { l: 12, hp: 99999, xn: 1e9, x4: 1 }), "rl_inv:g:DEV": inv([]) } });
     await o.page.keyboard.press("."); await sleep(300);

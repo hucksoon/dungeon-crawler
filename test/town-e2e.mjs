@@ -123,7 +123,7 @@ try {
   await N.page.keyboard.press("Enter"); await sleep(250);
   check("Enter at the floor-1 door → dungeon floor 1", (await st(N.page)).scene === "dungeon" && (await st(N.page)).depth === 1);
   await N.page.keyboard.press("p"); await sleep(300);
-  check("portal from floor 1 → town, in front of the floor-1 door", await inLobby(N.page) && (await pos(N.page)).near === "start");
+  check("portal from floor 1 → town, at the blue portal back to floor 1 (dc#165, was the floor-1 door)", await inLobby(N.page) && (await pos(N.page)).near === "resume" && (await st(N.page)).resume === 1);
   check("new player: no page errors", N.errors.length === 0, N.errors.join("; "));
   await N.ctx.close();
 
