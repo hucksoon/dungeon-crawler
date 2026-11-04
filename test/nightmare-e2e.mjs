@@ -94,7 +94,7 @@ try {
   const L1 = await stored(page, "rl_level"), S1 = await stored(page, "rl_save");
   check("enter: nightmare floor 1 (HUD, save z:nm, level z:nm)", !(await inLobby(page)) && (await page.locator("#zone").innerText()).includes("나이트메어") && (await page.locator("#depth").innerText()) === "1" && S1.run.z === "nm" && S1.run.d === 1 && L1.z === "nm", JSON.stringify(S1.run));
   const mobs = L1.enemies.filter(e => e.kind !== "golden");
-  check(`nightmare floor 1 has ~20 strong monsters (${mobs.length})`, mobs.length >= 15 && mobs.length <= 24 && mobs.every(e => e.name.startsWith("악몽의") || e.name.includes("악몽의")) && Math.min(...mobs.map(e => e.hp)) > M.makeMonster(M.MONSTERS[0], "normal", 75).hp);
+  check(`nightmare floor 1 has ~50 strong monsters (dc#168, ${mobs.length})`, mobs.length >= M.nmMonsterCount(1) - 4 && mobs.length <= M.nmMonsterCount(1) + 4 && mobs.every(e => e.name.startsWith("악몽의") || e.name.includes("악몽의")) && Math.min(...mobs.map(e => e.hp)) > M.makeMonster(M.MONSTERS[0], "normal", 75).hp);
   // 나이트메어 안에서는 예전 장비를 낄 수 없음
   await page.keyboard.press("i"); await sleep(150);
   await page.locator(".bag-item", { hasText: I.itemName(v3) }).click();
