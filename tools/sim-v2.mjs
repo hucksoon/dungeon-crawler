@@ -11,6 +11,9 @@ const I = require("../items.js"), M = require("../monsters.js"), B = require("..
 
 const RUNS = +(process.argv[2] || 200), ZONE = process.argv[3] || "all";
 const OPT = JSON.parse(process.argv[4] || "{}");
+// OPT.nmMon: 나이트메어 몬스터 수 규칙을 바꿔 보기 ({ start, perFloor, max }, dc#168)
+if (OPT.nmMon) Object.assign(M.NIGHTMARE.monsters, OPT.nmMon);
+if (OPT.nmEntry) Object.assign(M.NIGHTMARE.entry, OPT.nmEntry);   // 나이트메어 입구 배율 ({ until, from })
 // 넓은 지역(dc#143): 층의 몬스터를 모두 잡아야 계단(보스 층은 보스+부하)이 나오므로 모두 잡음
 const KILL_SHARE = OPT.kill ?? 1, ELEM_MUL = OPT.elem ?? 1.2;
 // 한 번에 붙는 몬스터 수: 일반 던전 앞쪽은 1~2마리, 깊을수록 많이 (나이트메어·헬은 몰려옴)
@@ -27,7 +30,8 @@ const SLOTS9 = ["weapon", "offhand", "head", "chest", "arms", "pants", "boots", 
 const ENH_ORDER = SLOTS9;
 // 속성 스킬 축복 (dc#142)은 재미로 많이 고른다고 보고 앞쪽 (OPT.noElem: 고르지 않음)
 //   dc#163: 각성 스킬은 그 속성이 Lv 10이면 바로 고름 (각성 → 원래 속성 순), 흡혈·완벽한 물약도
-const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["fireAw", "boltAw", "iceAw", "fire", "bolt", "ice"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
+//   dc#168: 독구름·역병·융합 스킬도 (융합 → 각성 → 원래 속성 순)
+const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["neuro", "ignite", "flamebolt", "steam", "storm", "frostfog", "fireAw", "boltAw", "poisonAw", "iceAw", "fire", "bolt", "poison", "ice"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
 const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall", "resPoison", "resFire", "resIce", "resBolt"];
 // 몬스터 공격 속성 (dc#163, monsters.js NORMAL_ELEM): 일반 던전 일부 몬스터 (OPT.nelem: false면 없음)
 const NE = OPT.nelem === false || !M.NORMAL_ELEM ? null : M.NORMAL_ELEM;
@@ -57,6 +61,8 @@ function stats(p) {
     first: b.firstHit || 0, bossHp: b.bossHp || 0, pot: (b.perfect || 0) >= 2 && OPT.perf2 == null ? 1 : 0.3 * (1 + ((b.potPct || 0) + ((b.perfect || 0) >= 2 ? OPT.perf2 : (b.perfect || 0) >= 1 ? 50 : 0)) / 100), potCd: 10 - (b.potCd || 0), floorHeal: b.floorHeal || 0, xp: b.xp || 0, elite: b.elite || 0, treasure: b.treasure || 0,
     // 각성 (dc#163): 불의 장화·얼음 보호막(방어력은 위 def에 더함)·전자기장, 속성 저항 (유물)
     boots: b.bootsLv ? B.AWAKE.boots(Math.min(10, b.bootsLv)) : null, field: b.fieldLv ? B.AWAKE.field(Math.min(10, b.fieldLv)) : null,
+    plague: b.plagueLv ? B.AWAKE.plague(Math.min(10, b.plagueLv)) : null,   // 각성 역병 (dc#168)
+    fu: Object.fromEntries(Object.keys(B.FUSE).map(k => [k, b[`${k}Lv`] ? B.FUSE[k](Math.min(B.FUSE_MAX, b[`${k}Lv`])) : null])),   // 융합 스킬 (dc#168)
     res: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },
   };
 }
@@ -79,7 +85,7 @@ function autoGear(p, it, log) {
   const worst = keys.sort((a, b) => I.basePowerScore(p.eq[a]) - I.basePowerScore(p.eq[b]))[0];
   if (I.basePowerScore(it) > I.basePowerScore(p.eq[worst])) {
     const cur = p.eq[worst];
-    p.eq[worst] = { ...it, enh: cur.enh || 0 };
+    p.eq[worst] = { ...it, enh: OPT.fullEnh ? cur.enh || 0 : I.inheritEnh(cur.enh) };   // dc#168: 강화 절반만 이어받기 (OPT.fullEnh: 예전처럼 그대로)
     dismantle(p, cur, true);
     log.swap++;
     return;
@@ -101,10 +107,13 @@ function autoEnhance(p) {
 // ---- 몬스터 ----
 function floorMonsters(zone, f, r) {
   const L = M.effLevel(f), deep = zone !== "normal";
-  const count = (deep ? M.nmMonsterCount(f) : between(r, 4 + L, 6 + L * 2)) * SW.count;
+  const count = (zone === "nm" ? M.nmMonsterCount(f) : zone === "hell" ? M.hellMonsterCount(f) : between(r, 4 + L, 6 + L * 2)) * SW.count;   // dc#168: 헬은 예전 수
   const rOn = RG && (deep || f >= RG.from), rShare = deep ? RG?.deepShare : RG?.share;
   const eShare = NE && zone === "normal" ? M.normalElemShare(f) : 0;
-  return { count: Math.round(count * KILL_SHARE), make: (kind) => { const m = swarmM(mk(kind)); if (rOn && r() < rShare) { m.ranged = true; m.rcd = 1 + Math.floor(r() * RG.every); } if (eShare && r() < eShare) m.nel = NE.list[Math.floor(r() * NE.list.length)]; return m; } };
+  return { count: Math.round(count * KILL_SHARE), make: (kind) => { const m = swarmM(mk(kind)); if (rOn && r() < rShare) { m.ranged = true; m.rcd = 1 + Math.floor(r() * RG.every); } if (eShare && r() < eShare) m.nel = NE.list[Math.floor(r() * NE.list.length)];
+    // 나이트메어 기술 (dc#168): 원거리 일부는 강화 미사일 2개, 근접 일부는 점프 공격
+    if (zone === "nm" && NMSK) { if (m.ranged) { if (r() < NMSK.twin.share) m.twin = true; } else if (r() < (kind === "elite" ? NMSK.leap.eliteShare : NMSK.leap.share)) m.leap = 1 + Math.floor(r() * NMSK.leap.every); }
+    return m; } };
   function mk(kind) {
     if (zone === "hell") return zm("hell", M.makeHell(M.pickNightmareType(r), kind, f));
     if (zone === "nm") return zm("nm", M.makeNightmare(M.pickNightmareType(r), kind, f, M.pickElement(r)));
@@ -130,6 +139,11 @@ const CLOSE = OPT.close ?? 0.3;
 // 실시간 탄환 (dc#158, 실시간 2D·3D): 정예(from층부터, 깊은 던전은 처음부터)·보스가 every턴마다 windup턴 모았다가 쏨 (모으는 동안 근접 공격 없음)
 //   한 번 쏠 때 한 발 맞을 확률 1 − OPT.pdodge (기본 0.7: 보고 비키면 피함). OPT.shots: false면 없음 (턴제와 같음)
 const SH = OPT.shots === false ? null : M.SHOTS, P_DODGE = OPT.pdodge ?? 0.7;
+// 나이트메어 몬스터 기술 (dc#168, monsters.js NIGHTMARE.skills): OPT.nmSkills: false면 없음, OPT.nmsk: 값 바꿔 보기
+//   강화 미사일: 두 발을 따로 피함 (한 발 피할 확률 OPT.tdodge, 기본 0.45 — 가던 쪽 앞까지 노려서 조금 더 어려움)
+//   점프 공격: every턴마다 (붙어 있는 무리 뒤쪽에서 뛰어든다고 봄) 피할 확률 OPT.ldodge (기본 0.6), 맞으면 최대 HP × pct
+const NMSK = OPT.nmSkills === false || !M.NIGHTMARE.skills ? null : { twin: { ...M.NIGHTMARE.skills.twin, ...(OPT.nmsk?.twin || {}) }, leap: { ...M.NIGHTMARE.skills.leap, ...(OPT.nmsk?.leap || {}), pct: { ...M.NIGHTMARE.skills.leap.pct, ...(OPT.nmsk?.leap?.pct || {}) } } };
+const T_DODGE = OPT.tdodge ?? 0.45, L_DODGE = OPT.ldodge ?? 0.6;
 // OPT.zmul: { nm: { hp, atk }, hell: { hp, atk } } 나이트메어·헬 몬스터에 더 곱해 보기 (시험용)
 function zm(zone, m) { const k = OPT.zmul?.[zone]; if (!k) return m; const hp = Math.round(m.hp * (k.hp || 1)); return { ...m, hp, maxHp: hp, atk: Math.round(m.atk * (k.atk || 1)) }; }
 function makeBoss(zone, f, r) {
@@ -153,9 +167,10 @@ function castElem(s, foes, st, r, killed) {
   const roll = (e) => s.atk * e.mul * (1 + e.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
   // 기본 스킬 마력탄 (dc#146): 2턴마다 하나에게 공격력 60% (방어 무시)
   if (!OPT.noStarter && foes.length) { st.scd = (st.scd || 0) - 1; if (st.scd <= 0) { st.scd = 2; const m = foes[foes.length > 1 ? 1 : 0]; const v = Math.round(s.atk * 0.6 * (r() * 100 < s.crit ? 2 : 1)); DMG.starter = (DMG.starter || 0) + Math.min(v, Math.max(0, m.hp)); m.hp -= v; if (m.hp <= 0) killed.push(foes.splice(foes.indexOf(m), 1)[0]); } }
+  const sweep = () => { for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]); };
   for (const k of B.ELEM_IDS) {
     const e = s.ef[k];
-    if (!e) continue;
+    if (!e || k === "poison") continue;
     st.ecd[k] = (st.ecd[k] || 0) - 1;
     if (st.ecd[k] > 0 || !foes.length) continue;
     st.ecd[k] = e.every;
@@ -165,6 +180,29 @@ function castElem(s, foes, st, r, killed) {
     else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
     for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
   }
+  // 독구름 (dc#168): every턴마다 구름 하나 (size² 칸 × OPT.cloudFill(기본 0.5)마리가 처음에 덮임), turns턴 동안.
+  //   몬스터는 나에게 다가오며 구름을 지나가서 턴마다 덮인 수 × OPT.cloudStay(기본 0.7) — 덮인 몬스터는 턴마다 피해 + 중독 (구름이 겹쳐도 한 번)
+  const pz = s.ef.poison;
+  if (pz && foes.length) {
+    st.clouds = (st.clouds || []).filter(c => c.until > st.t);
+    st.ecd.poison = (st.ecd.poison || 0) - 1;
+    if (st.ecd.poison <= 0) { st.ecd.poison = pz.every; st.clouds.push({ until: st.t + pz.turns, n: pz.size * pz.size * (OPT.cloudFill ?? 0.5) }); }
+    const cover = Math.min(foes.length, Math.round(st.clouds.reduce((a, c) => a + c.n, 0) * (OPT.cloudStay ?? 0.7)));
+    const ff = s.fu.frostfog, d = s.atk * pz.mul * (1 + pz.pct / 100) * (ff ? 1 + ff.add / 100 : 1);
+    for (const m of foes.slice(0, cover)) { hit(m, d, "poison"); m.tox = st.t + 2; if (ff && !(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }
+    st.cover = cover;
+    sweep();
+  } else st.cover = 0;
+  // 융합 스킬 (dc#168): 게임과 같은 주기·피해. 범위는 화염구와 같은 셈 (몰려온 적이 붙어 있다고 봄)
+  const F = s.fu, cd = (k, every) => { st.fcd2 = st.fcd2 || {}; st.fcd2[k] = (st.fcd2[k] || 0) - 1; if (st.fcd2[k] > 0) return false; st.fcd2[k] = every; return true; };
+  const fr = (f) => s.atk * f.mul * (1 + f.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
+  if (F.flamebolt && foes.length && cd("flamebolt", F.flamebolt.every)) { const d = fr(F.flamebolt); for (let i = 0; i < F.flamebolt.strikes && foes.length; i++) { const m = foes[i % foes.length]; hit(m, d + s.atk * 0.5, "fire"); for (const o of foes.filter(x => x !== m).slice(0, 2)) hit(o, d * F.flamebolt.splash, "fire"); sweep(); } }
+  if (F.steam && foes.length && cd("steam", F.steam.every)) { const d = fr(F.steam); for (const m of foes.slice(0, Math.round(6 * (OPT.aoe || 1)))) hit(m, d * (m.slow > 0 ? F.steam.frozenMul : 1), "steam"); sweep(); }
+  if (F.ignite && st.cover && cd("ignite", F.ignite.every)) { const d = fr(F.ignite); for (const m of foes.slice(0, st.cover)) hit(m, d + s.atk * 0.5, "fire"); sweep(); }
+  if (F.storm && foes.length) { const d = s.atk * F.storm.mul * (1 + F.storm.pct / 100); for (const m of foes.slice(0, F.storm.radius >= 2 ? foes.length : 3)) { hit(m, d, "ice"); if (!(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } } sweep(); }
+  if (F.neuro && foes.some(m => m.tox > st.t) && cd("neuro", F.neuro.every)) { const d = fr(F.neuro); for (const m of foes.filter(m => m.tox > st.t).slice(0, F.neuro.targets)) { hit(m, d, "bolt"); m.stun = F.neuro.stun; } sweep(); }
+  // 각성 역병 (dc#168): 중독된 채 쓰러진 적마다 남은 적 (1칸이면 2마리, 2칸이면 4마리)에게 그 적 최대 HP × pct% (줄줄이)
+  if (s.plague) for (let i = 0; i < killed.length && i < 200; i++) { const m = killed[i]; if (!(m.tox > st.t) || m.plagued) continue; m.plagued = true; const v = (m.maxHp || m.hp0 || 0) * s.plague.pct / 100; for (const o of foes.slice(0, s.plague.radius >= 2 ? 4 : 2)) { const w = Math.round(v * (o.kind === "boss" ? s.plague.bossMul : 1)); DMG.plague = (DMG.plague || 0) + Math.min(w, Math.max(0, o.hp)); o.hp -= w; o.tox = st.t + 2; } sweep(); }
   // 각성 (dc#163) — 불의 장화: 붙어서 쫓아오는 몬스터는 내가 지나간 불 위를 밟음 (턴마다 근접 몬스터의 OPT.trail(기본 0.6)만큼)
   if (s.boots && foes.length) { for (const m of foes) if (!m.ranged && r() < (OPT.trail ?? 0.6)) hit(m, s.atk * s.boots.mul, "fire"); for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]); }
   //   전자기장: every턴마다 radius칸 안 (1칸이면 붙은 둘, 2칸부터 무리 전부) 최대 HP pct% (보스 절반)
@@ -213,8 +251,9 @@ function fight(p, s, foes, st, r, zone, f) {
   const defNow = () => s.def * (1 - (st.shredT > 0 ? st.shred : 0) / 100);
   // 번개: 회피 대기가 늘어 피하기 어려움 → 대기 1턴마다 피할 확률 ×0.85
   const dodgeK = () => (OPT.boltK ?? 0.92) ** (st.boltCd || 0);   // 회피 대기 +1턴(최대 1)이면 피할 확률 ×0.92
+  for (const m of foes) if (m.hp0 == null) m.hp0 = m.maxHp || m.hp;
   while (foes.length) {
-    turn++;
+    turn++; st.t = (st.t || 0) + 1;
     if (st.cd > 0) st.cd--;
     if (st.shredT > 0) st.shredT--;
     if (st.boltCd > 0 && turn % 4 === 0) st.boltCd--;
@@ -251,7 +290,13 @@ function fight(p, s, foes, st, r, zone, f) {
     for (const m of guarded ? [] : foes) {
       if (m.slowImm > 0) m.slowImm--;
       if (m.slow > 0) { m.slow--; if (turn % 2) continue; }   // 느려짐: 2턴에 한 번
+      if (m.stun > 0) { m.stun--; continue; }   // 신경독 마비 (dc#168)
       if (st.smash?.m === m) continue;
+      if (m.leap && NMSK && --m.leap <= 0) {   // 점프 공격 (dc#168)
+        m.leap = NMSK.leap.every;
+        if (r() >= L_DODGE * dodgeK()) { st.leapHit = (st.leapHit || 0) + 1; if (hurt(s.maxHp * (NMSK.leap.pct[m.kind] ?? NMSK.leap.pct.normal) * (1 - s.dr / 100))) break; }
+        continue;
+      }
       // 실시간 탄환: 게임에서는 2칸 넘게 떨어져 다가오는 동안 쏘고 붙으면 근접 → 여기서는 근접 공격에 더해 every턴마다 한 번 (맞을 확률 1 − P_DODGE)
       const shK = SH && (m.kind === "boss" ? "boss" : m.kind === "elite" && (zone !== "normal" || f >= SH.elite.from) ? "elite" : null);
       if (shK) {
@@ -264,6 +309,13 @@ function fight(p, s, foes, st, r, zone, f) {
       if (m.ranged && foes.length > 1) {   // 다른 몬스터가 남아 있는 동안은 떨어져서 던짐 (혼자 남으면 붙어서 싸움)
         if (--m.rcd > 0) continue;
         m.rcd = RG.every + RG.windup;
+        if (m.twin) {   // 강화 미사일 2개 (dc#168): 두 발을 따로 피함
+          let n = 0; for (let k = 0; k < 2; k++) if (r() >= T_DODGE * dodgeK()) n++;
+          if (!n) continue;
+          let d = M.damageToPlayer(m.atk * RG.mul * NMSK.twin.mul + Math.floor(r() * 2), defNow()) * (1 - s.dr / 100) * n * ELEM_MUL;
+          if (hurt(d)) break;
+          continue;
+        }
         if (r() < R_DODGE * dodgeK()) continue;
         let d = M.damageToPlayer(m.atk * RG.mul + Math.floor(r() * 2), defNow()) * (1 - s.dr / 100);
         if (zone !== "normal") d *= ELEM_MUL;
@@ -307,7 +359,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
     let s = stats(p);
     st.hp = Math.min(s.maxHp, st.hp + Math.round(s.maxHp * s.floorHeal / 100));
     st.guard = false; st.sc = SM ? SM.start : 0; st.smash = null; st.low = 1; const g0 = st.guards || 0;
-    st.burn = st.poison = null; st.shredT = 0; st.boltCd = 0;   // 층을 옮기면 화상·독·방어력 깎임·회피 대기 풀림 (게임 clearStatus)   // 층마다: 버티기 다시 · 강타 박자 처음부터
+    st.burn = st.poison = null; st.shredT = 0; st.boltCd = 0; st.clouds = [];   // 층을 옮기면 화상·독·방어력 깎임·회피 대기 풀림 (게임 clearStatus)   // 층마다: 버티기 다시 · 강타 박자 처음부터
     const fm = floorMonsters(zone, f, r), L = itemLevel(zone, f), log = out.log;
     const eliteP = Math.min(1, eliteBaseOf(zone, f) * (1 + s.elite / 100));
     let left = fm.count, kills = 0;
@@ -346,6 +398,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
     if ([1, 10, 25, 50].includes(f)) ((out.income[`${zone}${f}`] ||= []).push((p.got || 0) - (p.gotFloor || 0)));
     p.gotFloor = p.got || 0;
     if (zone === "normal" && [20, 35, 50].includes(f)) (out.bsnap[f] ||= []).push({ bl: { ...p.bl }, rl: { ...p.rl }, lvl: p.lvl });   // 축복 모은 것 (dc#163)
+    if (zone === "nm" && f === 50) (out.bsnap["nm50"] ||= []).push({ bl: { ...p.bl }, rl: { ...p.rl }, lvl: p.lvl });   // 헬 들어가기 전 (dc#168: 속성 하나는 각성 마스터?)
     if (OPT.trace && f % 10 === 0) out.trace.push(`${zone}${f} Lv${p.lvl} ${JSON.stringify(stats(p))} gear ${Object.values(p.eq).map(i => `${i.rarity[0]}${i.enh}`).join(" ")}`);
   }
   return 0;
@@ -396,6 +449,8 @@ for (const z of zones) { const c = out.cc[z]; if (!c) continue; const all = Obje
 for (const [f, list] of Object.entries(out.bsnap)) {
   const ids = [...new Set(list.flatMap(x => Object.keys(x.bl)))].sort((a, b) => mean(list.map(x => x.bl[b] || 0)) - mean(list.map(x => x.bl[a] || 0)));
   const maxed = mean(list.map(x => Object.entries(x.bl).filter(([id, n]) => n >= (B.defOf(id)?.max || 1)).length));
+  const awMax = mean(list.map(x => Object.values(B.AWAKE_IDS).some(id => (x.bl[id] || 0) >= B.ELEM_MAX) ? 1 : 0)), fuseAny = mean(list.map(x => Object.keys(B.FUSE_IDS).some(id => x.bl[id] > 0) ? 1 : 0));
+  console.log(`(각성 마스터가 하나라도 ${Math.round(awMax * 100)}% · 융합 스킬이 하나라도 ${Math.round(fuseAny * 100)}%)`);
   console.log(`${f}층 (${list.length}판, Lv ${mean(list.map(x => x.lvl)).toFixed(0)}): 축복 ${mean(list.map(x => Object.values(x.bl).reduce((a, b) => a + b, 0))).toFixed(1)}번 · 만렙 ${maxed.toFixed(1)}개 · ` + ids.map(id => `${id} ${mean(list.map(x => x.bl[id] || 0)).toFixed(1)}/${B.defOf(id)?.max}`).join(" ") + ` · 유물 ${mean(list.map(x => Object.values(x.rl).reduce((a, b) => a + b, 0))).toFixed(1)}`);
 }
 console.log("자동 장비:", out.log);

@@ -148,7 +148,7 @@ try {
   const LN = await level(page), svN = JSON.parse(await page.evaluate(() => localStorage.getItem("rl_save")));
   const boss = LN.enemies.find(e => e.kind === "boss");
   check("right door: nightmare floor 10 difficulty (nightmare monsters + boss on floor 10)", !(await inLobby(page)) && LN.z === "gold" && LN.d === 10 && svN.run.gn === 10
-    && boss?.name.startsWith("악몽의") && LN.enemies.filter(e => e.kind !== "boss").length >= M.nmMonsterCount(10) - 3 && LN.enemies.every(e => e.kind === "boss" || e.name.startsWith("악몽의")), JSON.stringify([LN.z, LN.d, svN.run.gn, boss?.name, LN.enemies.length]));
+    && boss?.name.startsWith("악몽의") && LN.enemies.filter(e => e.kind !== "boss").length >= M.hellMonsterCount(10) - 3 && LN.enemies.every(e => e.kind === "boss" || e.name.startsWith("악몽의")), JSON.stringify([LN.z, LN.d, svN.run.gn, boss?.name, LN.enemies.length]));
   const RN = I.goldDungeonReward(85, 20, true);
   check("right door: status/log show nightmare gold dungeon and ×2 reward", (await page.locator("#zone").innerText()).includes("골드 던전 · 나이트메어") && (await logs(page)).includes(`골드 ${RN.toLocaleString()}`) && RN === 2 * 20 * I.ancientRerollCost({ rarity: "legendary", lvl: 85 }), String(RN));
   check("no shop in the gold dungeon", !LN.shop);

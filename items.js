@@ -804,6 +804,8 @@
   // +4, +6, +8, +10이 되면 추가 능력치 중 하나가 그 능력치 최대치의 50%(최소 +1)만큼 오름
   // +11·+12 (대장간 업데이트): 강화석에 골드도 듦 (enhanceGold), 성공 확률은 +10처럼 최저 5%. +12에서 추가 능력치 하나 더 오름
   const ENHANCE = { max: 12, statPerLevel: 0.1, lineSteps: [4, 6, 8, 10, 12], lineBoost: 0.5, goldFrom: 11, goldBase: 300 };
+  // 자동 장비 (dc#168): 더 좋은 장비로 바꿔 낄 때 이어받는 강화 = 낀 장비 강화의 절반 (내림). 예전에는 그대로 이어받아 등급이 올라도 약해지지 않았음
+  const inheritEnh = (enh) => Math.floor((enh || 0) / 2);
   // 나이트메어 아이템은 강화석도 × NM_SHOP.priceMul
   const enhanceCost = (to, item) => to * (item ? nmCostMul(item) : 1);
   // 강화석 종류: 나이트메어 아이템은 "악몽 강화석"(나이트메어 아이템을 판매해야 나옴)으로만 강화. 일반 아이템은 일반 강화석
@@ -1454,7 +1456,7 @@
     RUNES, RUNE_DROP, RUNE_ODDS, isRune, runeName, socketedName, socketedEffect, runePlan, rollRunes, RUNEWORDS, runesOfName, runewordBaseKeys, runewordsFor, BASE_NAMES, itemTier, RUNEWORD_HIGHLIGHT_TIERS, runewordHighlight,
     RUNEWORD_TIER_MUL, RUNEWORD_FX, runewordOf, runewordStats, runewordMain, RUNEWORD_COLOR, runewordSpecialText,
     STAT_KEYS_V4, STAT_KEYS_NM, ELEMENT_LINES, isElementDmg, isNightmareItem, isHellItem, isDeepItem, HELL_POWER, HELL_SHOP, itemElement, PCT_MAIN, PCT_LINE, PCT_LINE_BOOST, MAIN_V4, mainPoolV4, lineRangeOf, lineBoost, oldCap, effectiveBase, effectiveLines,
-    MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, SHOP, isShopFloor,
+    MAIN, MAX_ROLL_CHANCE, SELL_STONES, SELL_PER_LEVEL, sellStones, SELL_GOLD, sellGold, ENHANCE, inheritEnh, SHOP, isShopFloor,
     rngFrom, generate, fromRef, boxOdds, nameFromKo, rollDrop, UNIQUE, UNIQUE_FX, uniquesOf, uniqueOf, generateUnique, BUY_SEED, isBought, boughtLevel, rollUnique, rollUniqueAcc, FIND, findPct, findCeiling, findBonusChance, findUniqueMul, rollFindBonus, itemName, formatStat, formatRange, totals,
     mainStatsOf, statRange, mainRange, lineRange, isAncient,
     POWER, itemZone, power, powerScore, basePowerScore, isDupOf, powerTotals,

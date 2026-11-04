@@ -12,6 +12,7 @@
   // elem (dc#142): 속성 스킬 축복. 희귀보다 자주 보이게 (후보 3개 중 속성 축복이 하나라도 있을 확률 약 54%, 희귀보다 4배 자주). 꼭 나오지는 않음
   const TIERS = { common: { weight: 75, color: "#8fd3ff" }, rare: { weight: 20, color: "#5aa9ff" }, legend: { weight: 5, color: "#ffcf5c" }, elem: { weight: 26, color: "#ff8a5c" } };
   const ELEM_MAX = 10;   // 속성 스킬 최고 단계 (dc#143)
+  const FUSE_MAX = 5;    // 융합 스킬 최고 단계 (dc#168)
   // fx: 한 번 고를 때 더하는 값 (stats 키). max: 겹칠 수 있는 최대 횟수
   const BLESSINGS = {
     might: { icon: "⚔", name: "전사의 맹세", tier: "common", max: 10, fx: { atkPct: 4 } },
@@ -35,10 +36,20 @@
     fire: { icon: "🔥", name: "화염구", tier: "elem", max: ELEM_MAX, fx: { fireLv: 1 } },
     ice: { icon: "❄", name: "얼음 폭발", tier: "elem", max: ELEM_MAX, fx: { iceLv: 1 } },
     bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: ELEM_MAX, fx: { boltLv: 1 } },
+    // 독구름 (dc#168): 네 번째 속성. 적 자리에 독구름을 깔고, 구름 위의 적은 턴마다 독 피해 + 중독
+    poison: { icon: "☁", name: "독구름", tier: "elem", max: ELEM_MAX, fx: { poisonLv: 1 } },
     // 각성 스킬 (dc#163): 속성 스킬을 Lv 10까지 찍으면 그 속성의 각성 스킬이 후보에 나옴 (원래 스킬은 Lv 10 그대로 계속). 각성도 Lv 10까지 (AWAKE)
     fireAw: { icon: "👢", name: "각성 불의 장화", tier: "elem", max: ELEM_MAX, req: { fire: ELEM_MAX }, fx: { bootsLv: 1 } },
     iceAw: { icon: "🧊", name: "각성 얼음 보호막", tier: "elem", max: ELEM_MAX, req: { ice: ELEM_MAX }, fx: { shieldLv: 1 } },
     boltAw: { icon: "🧲", name: "각성 전자기장", tier: "elem", max: ELEM_MAX, req: { bolt: ELEM_MAX }, fx: { fieldLv: 1 } },
+    poisonAw: { icon: "☣", name: "각성 역병", tier: "elem", max: ELEM_MAX, req: { poison: ELEM_MAX }, fx: { plagueLv: 1 } },
+    // 융합 스킬 (dc#168): 두 속성을 모두 Lv 10까지 찍으면 그 둘을 섞은 스킬이 후보에 나옴 (6가지, 최대 Lv FUSE_MAX). 규칙은 FUSE
+    flamebolt: { icon: "🌩", name: "융합 불꽃 번개", tier: "elem", max: FUSE_MAX, req: { fire: ELEM_MAX, bolt: ELEM_MAX }, fx: { flameboltLv: 1 } },
+    steam: { icon: "💨", name: "융합 증기 폭발", tier: "elem", max: FUSE_MAX, req: { fire: ELEM_MAX, ice: ELEM_MAX }, fx: { steamLv: 1 } },
+    ignite: { icon: "💥", name: "융합 독가스 점화", tier: "elem", max: FUSE_MAX, req: { fire: ELEM_MAX, poison: ELEM_MAX }, fx: { igniteLv: 1 } },
+    storm: { icon: "🌨", name: "융합 번개 눈보라", tier: "elem", max: FUSE_MAX, req: { ice: ELEM_MAX, bolt: ELEM_MAX }, fx: { stormLv: 1 } },
+    frostfog: { icon: "🌫", name: "융합 서리 독안개", tier: "elem", max: FUSE_MAX, req: { ice: ELEM_MAX, poison: ELEM_MAX }, fx: { frostfogLv: 1 } },
+    neuro: { icon: "🧬", name: "융합 신경독", tier: "elem", max: FUSE_MAX, req: { bolt: ELEM_MAX, poison: ELEM_MAX }, fx: { neuroLv: 1 } },
   };
   // 각성 스킬 단계별 값 (dc#163)
   //   불의 장화: 내가 지나간 칸에 불이 turns턴 붙음, 그 칸을 밟는(서 있는) 몬스터는 턴마다 공격력 × mul 불 피해 (방어 무시, 불 저항만큼 덜)
@@ -48,9 +59,27 @@
     boots: (lv) => ({ turns: 3, mul: +(0.08 + 0.02 * lv).toFixed(2) }),
     shield: (lv) => ({ defPct: 5 * lv }),
     field: (lv) => ({ every: lv >= 9 ? 5 : lv >= 5 ? 6 : 7, radius: Math.min(4, 1 + Math.floor((lv - 1) / 3)), pct: 4 + lv, bossMul: 0.5 }),
+    // 역병 (dc#168): 중독된 적이 쓰러지면 터짐 → 주변 radius칸 적에게 쓰러진 적 최대 HP의 pct% 독 피해 + 중독 (보스·네임드는 bossMul배). 줄줄이 터질 수 있음
+    plague: (lv) => ({ pct: 6 + 2 * lv, radius: lv >= 6 ? 2 : 1, bossMul: 0.5 }),
   };
-  const AWAKE_IDS = { fire: "fireAw", ice: "iceAw", bolt: "boltAw" };
-  // 속성 스킬 단계별 값 (dc#143: Lv 10까지, 단계마다 조금씩 세짐). 한 판에 속성 축복은 모두 합쳐 ELEM_CAP번까지 → 세 속성을 모두 마스터(Lv 10)할 수는 없음 (최대 둘)
+  const AWAKE_IDS = { fire: "fireAw", ice: "iceAw", bolt: "boltAw", poison: "poisonAw" };
+  // 융합 스킬 (dc#168): 단계별 값. 피해는 내 공격력 × mul × (1 + pct%) (방어 무시)
+  //   불꽃 번개(불+번개): every턴마다 가장 가까운 적부터 strikes번 튕기는 불 번개, 맞은 적은 화상 + 주변 1칸에 splash배 불 피해
+  //   증기 폭발(불+얼음): every턴마다 range칸 안 적이 가장 많은 곳에 (2·radius+1)² 폭발, 느려진(얼은) 적은 frozenMul배
+  //   독가스 점화(불+독): every턴마다 독구름 위의 적 모두에게 불 피해 + 화상 (구름은 남음)
+  //   번개 눈보라(얼음+번개): 매 턴 내 주변 radius칸 적에게 피해 + 느려짐 + 감전
+  //   서리 독안개(얼음+독): 독구름이 서리 안개가 됨 — 구름 위의 적은 느려지고 독 피해 +add%
+  //   신경독(번개+독): every턴마다 중독된 적 targets마리에게 번개, 맞은 적은 stun턴 동안 못 움직임
+  const FUSE = {
+    flamebolt: (lv) => ({ every: lv >= 4 ? 3 : 4, range: 4, strikes: 3 + lv, mul: 0.35, pct: 20 * (lv - 1), splash: 0.5 }),
+    steam: (lv) => ({ every: lv >= 4 ? 3 : 4, range: 4, radius: 2, mul: 0.6, pct: 20 * (lv - 1), frozenMul: 2 }),
+    ignite: (lv) => ({ every: lv >= 4 ? 3 : 4, mul: 0.5, pct: 25 * (lv - 1) }),
+    storm: (lv) => ({ radius: lv >= 3 ? 2 : 1, mul: 0.15, pct: 20 * (lv - 1) }),
+    frostfog: (lv) => ({ add: 20 + 20 * lv }),
+    neuro: (lv) => ({ every: lv >= 4 ? 2 : 3, targets: 1 + lv, mul: 0.4, pct: 20 * (lv - 1), stun: 1 }),
+  };
+  const FUSE_IDS = { flamebolt: ["fire", "bolt"], steam: ["fire", "ice"], ignite: ["fire", "poison"], storm: ["ice", "bolt"], frostfog: ["ice", "poison"], neuro: ["bolt", "poison"] };
+  // 속성 스킬 단계별 값 (dc#143: Lv 10까지, 단계마다 조금씩 세짐). dc#168: 속성 축복 상한(예전 20번)은 없앰 → 모든 속성을 마스터할 수 있음
   //   피해는 언제나 내 공격력 × mul × (1 + pct%) (공격력이 오르면 같이 셈). 숫자는 시뮬레이션으로 (tools/sim-v2.mjs)
   //   fire: every턴마다 range칸 안 가장 가까운 적 중심 (2·radius+1)² 폭발 + 화상
   //   ice: every턴마다 내 주변 radius칸 적 모두 + 느려짐
@@ -58,11 +87,13 @@
   //   Lv  1  2  3  4  5  6  7  8  9  10
   //   주기 3  3  3  3  2  2  2  2  2  2   (화염구·얼음 폭발 범위: Lv 4부터 2칸, Lv 8부터 3칸 · 연쇄 번개: 1+Lv번, Lv 4부터 감전)
   //   피해 +12%씩, Lv 10 마스터는 +30% 더 (+138%) · 화염구·연쇄 번개 거리 Lv 7부터 4칸
-  const ELEM_CAP = 20;
   // dc#160: 단계가 오를수록 그 속성 축복이 후보에 덜 나옴 (무게 × ELEM_SLOW^지금 단계, Lv 9면 약 13%)
   //   한 속성만 고르는 사람: 30층에 Lv 7쯤, 50층까지 마스터는 10명 중 4명. 다시 뽑기를 고를 때마다 한 번씩 쓰면 35층쯤 마스터
   //   (예전: 한 속성만 고르면 20층쯤, 다시 뽑기를 한 번씩 쓰면 10층쯤 Lv 10)
   const ELEM_SLOW = 0.8;
+  // dc#168: 각성·융합 스킬은 덜 줄어듦 (× AW_SLOW^단계) — 속성 상한을 없앤 뒤 헬 전(나이트메어 50층)에 각성 마스터가 하나라도 있는 판이 절반쯤이라
+  //   (0.8이면 48%, 0.9면 시뮬레이션 tools/sim-v2.mjs)
+  const AW_SLOW = 0.9;
   const grow = (lv) => 12 * (lv - 1) + (lv >= ELEM_MAX ? 30 : 0);
   // dc#153: 범위 상한 — 몰려오는 광장에서 너무 넓게 쓸어서. 화염구·얼음 폭발은 Lv 7까지 1칸(3×3), Lv 8부터 2칸(5×5)이 끝
   //   (예전 Lv 4 2칸 · Lv 8 3칸 7×7), 연쇄 번개는 6번까지 (예전 1 + Lv, Lv 10 11번)
@@ -71,8 +102,13 @@
     fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.5, pct: grow(lv) }),
     ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.4, pct: grow(lv) }),
     bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: Math.min(ELEM_AREA.maxStrikes, 1 + lv), mul: 0.25, pct: grow(lv), shock: lv >= 4 }),
+    // 독구름 (dc#168): every턴마다 range칸 안의 적 자리에 size×size 구름 (turns턴). 구름 위의 적은 턴마다 피해 + 중독 (구름이 겹쳐도 한 번)
+    //   단계마다 넓이와 다른 것이 번갈아 오름: 1칸 → 공격력 업 → 4칸 → 지속 증가 → 9칸 → 피해 추가 → 더 자주 → 지속 증가 → 16칸 → 마스터
+    poison: (lv) => { const L = POISON_LV[Math.max(1, Math.min(ELEM_MAX, lv)) - 1]; return { every: L[2], range: 3, size: L[0], turns: L[1], mul: 0.3, pct: L[3] + (lv >= ELEM_MAX ? 30 : 0) }; },
   };
-  const ELEM_IDS = ["fire", "ice", "bolt"];
+  //   [크기(칸), 지속(턴), 주기(턴), 피해 +%] — Lv 1~10
+  const POISON_LV = [[1, 3, 3, 0], [1, 3, 3, 25], [2, 3, 3, 25], [2, 4, 3, 25], [3, 4, 3, 25], [3, 4, 3, 60], [3, 4, 2, 60], [3, 5, 2, 60], [4, 5, 2, 60], [4, 5, 2, 100]];
+  const ELEM_IDS = ["fire", "ice", "bolt", "poison"];
   const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
   // 유물: 능력치 + 그 상한 (기본 상한: 치명타 75 · 흡혈 20 · 패링 40 · 받는 피해 감소 30)
   const RELICS = {
@@ -124,6 +160,14 @@
     bootsLv: (v) => { const a = AWAKE.boots(v); return tx("bfx.bootsLv", (n, t, d) => `Lv ${n}: 지나간 칸에 ${t}턴 동안 불, 밟은 몬스터는 턴마다 공격력의 ${d}% 불 피해`, v, a.turns, Math.round(a.mul * 100)); },
     shieldLv: (v) => { const a = AWAKE.shield(v); return tx("bfx.shieldLv", (n, d) => `Lv ${n}: 얼음 보호막으로 방어력 +${d}%`, v, a.defPct); },
     fieldLv: (v) => { const a = AWAKE.field(v); return tx("bfx.fieldLv", (n, ev, r, p) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸 몬스터의 최대 HP ${p}%를 깎음 (보스는 절반)`, v, a.every, a.radius, a.pct); },
+    plagueLv: (v) => { const a = AWAKE.plague(v); return tx("bfx.plagueLv", (n, p, r) => `Lv ${n}: 중독된 적이 쓰러지면 터져 주변 ${r}칸 적에게 그 적 최대 HP의 ${p}% 독 피해 + 중독 (줄줄이 터짐)`, v, a.pct, a.radius); },
+    // 융합 스킬 (dc#168)
+    flameboltLv: (v) => { const f = FUSE.flamebolt(v); return tx("bfx.flameboltLv", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 불 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 불 피해 + 화상, 맞은 적 주변에도 절반`, v, f.every, f.strikes, Math.round(f.mul * (100 + f.pct))); },
+    steamLv: (v) => { const f = FUSE.steam(v), sq = f.radius * 2 + 1; return tx("bfx.steamLv", (n, ev, a, d) => `Lv ${n}: ${ev}턴마다 적이 가장 많은 곳에 ${a} 증기 폭발, 공격력의 ${d}% 피해, 느려진 적은 2배`, v, f.every, `${sq}×${sq}`, Math.round(f.mul * (100 + f.pct))); },
+    igniteLv: (v) => { const f = FUSE.ignite(v); return tx("bfx.igniteLv", (n, ev, d) => `Lv ${n}: ${ev}턴마다 독구름에 불이 붙어 구름 위의 적 모두에게 공격력의 ${d}% 불 피해 + 화상`, v, f.every, Math.round(f.mul * (100 + f.pct))); },
+    stormLv: (v) => { const f = FUSE.storm(v); return tx("bfx.stormLv", (n, r, d) => `Lv ${n}: 매 턴 주변 ${r}칸 적에게 공격력의 ${d}% 피해 + 느려짐 + 감전`, v, f.radius, Math.round(f.mul * (100 + f.pct))); },
+    frostfogLv: (v) => { const f = FUSE.frostfog(v); return tx("bfx.frostfogLv", (n, a) => `Lv ${n}: 독구름 위의 적은 느려지고 독 피해 +${a}%`, v, f.add); },
+    neuroLv: (v) => { const f = FUSE.neuro(v); return tx("bfx.neuroLv", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 중독된 적 ${k}마리에게 번개, 공격력의 ${d}% 피해 + 1턴 마비`, v, f.every, f.targets, Math.round(f.mul * (100 + f.pct))); },
     crit: (v) => tx("bfx.crit", (n) => `치명타 확률 +${n}%`, v),
     critCap: (v) => tx("bfx.critCap", (n) => `치명타 상한 +${n}%p`, v),
     lifesteal: (v) => tx("bfx.lifesteal", (n) => `흡혈 +${n}%`, v),
@@ -137,6 +181,7 @@
     iceLv: (v) => { const e = ELEM.ice(v); return tx("bfx.iceLv", (n, ev, r, d) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸의 적 모두에게 공격력의 ${d}% 얼음 피해 + 느려짐`, v, e.every, e.radius, Math.round(e.mul * (100 + e.pct))); },
     boltLv: (v) => { const e = ELEM.bolt(v); return (e.shock ? tx("bfx.boltLvS", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해 + 감전`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))
       : tx("bfx.boltLv", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))); },
+    poisonLv: (v) => { const e = ELEM.poison(v); return tx("bfx.poisonLv", (n, ev, a, t, d) => `Lv ${n}: ${ev}턴마다 적 자리에 ${a} 독구름 (${t}턴), 구름 위의 적은 턴마다 공격력의 ${d}% 독 피해 + 중독`, v, e.every, `${e.size}×${e.size}`, e.turns, Math.round(e.mul * (100 + e.pct))); },
   };
   const fxText = (fx, times = 1) => Object.entries(fx).map(([k, v]) => (FX_TEXT[k] ? FX_TEXT[k](v * times) : `${k} +${v * times}`)).join(", ");
 
@@ -163,16 +208,15 @@
   // elemOnly (dc#146): 첫 레벨 업처럼 속성 스킬 축복만 (고를 수 있는 게 없으면 보통 후보)
   function offer(seed, have = {}, relic = false, elemOnly = false) {
     const r = rng(seed);
-    const elemFull = !relic && elemUsed(have) >= ELEM_CAP;   // 속성 축복을 다 쓰면 더는 안 나옴
     const reqOk = (id) => Object.entries(defOf(id).req || {}).every(([k, v]) => (have[k] || 0) >= v);   // 각성·완벽한 물약: 앞 단계를 다 찍어야 (dc#163)
-    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && !(elemFull && ELEM_IDS.includes(id)) && reqOk(id));
+    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && reqOk(id));
     if (elemOnly && !relic && pool.some(isElem)) pool = pool.filter(isElem);
     const out = [];
     while (out.length < OFFER && pool.length) {
       let i;
       if (relic) i = Math.floor(r() * pool.length);
       else {
-        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier && !b.req).length * (isElem(id) ? ELEM_SLOW ** (have[id] || 0) : 1));   // 나눌 때 각성·완벽한 물약(앞 단계가 필요)은 빼고 셈 (dc#163)
+        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier && !b.req).length * (isElem(id) ? (ELEM_IDS.includes(id) ? ELEM_SLOW : AW_SLOW) ** (have[id] || 0) : 1));   // 나눌 때 각성·완벽한 물약(앞 단계가 필요)은 빼고 셈 (dc#163)
         let x = r() * w.reduce((a, b) => a + b, 0);
         i = 0;
         while ((x -= w[i]) > 0 && i < w.length - 1) i++;
@@ -188,7 +232,7 @@
     return { stones, gold: stones * REROLL.goldPerStone[z] };
   };
 
-  const isElem = (id) => ELEM_IDS.includes(id) || Object.values(AWAKE_IDS).includes(id);   // 각성 스킬도 단계가 오를수록 덜 나옴
+  const isElem = (id) => ELEM_IDS.includes(id) || Object.values(AWAKE_IDS).includes(id) || !!FUSE_IDS[id];   // 각성·융합 스킬도 단계가 오를수록 덜 나옴
   // 카드·기록에 쓰는 설명: 속성 스킬은 그 단계(lv)의 설명, 나머지는 한 번 고를 때 효과
   //   atk를 주면 속성 스킬은 지금 공격력으로 한 번에 주는 피해도 (dc#143)
   const elemDmg = (id, lv, atk) => { const e = ELEM[id](Math.max(1, Math.min(ELEM_MAX, lv))); return Math.max(1, Math.round(atk * e.mul * (1 + e.pct / 100))); };
@@ -197,7 +241,7 @@
     const t = fxText(d.fx, isElem(id) || id === "perfect" ? Math.max(1, lv) : 1);
     return ELEM_IDS.includes(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, AWAKE, AWAKE_IDS, ELEM_MAX, ELEM_CAP, ELEM_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);
