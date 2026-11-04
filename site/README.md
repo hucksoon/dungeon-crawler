@@ -2,7 +2,8 @@
 
 구글 AdSense 신청용 사이트예요. AdSense는 **최상위 도메인(apacimtest.com)** 을 등록하고 심사해요. 그래서 게임(game.apacimtest.com)과 별도로 여기에 다음을 올려요.
 
-- `index.html`: 게임 소개, 플레이 방법, 스크린샷
+- `index.html`: 게임 소개, 플레이 방법, 스크린샷 (지금 게임 기준, dc#167)
+- `img/site-*.png`: 첫 화면 그림. `node tools/blog-shots.mjs site-`로 다시 찍고(이벤트 장식 없이) `blog/images/site-*.png`를 `site/img/`로 옮겨요
 - `privacy.html`: 개인정보처리방침. 게임의 `privacy.html`을 그대로 복사해서 올려요 (원본은 하나)
 - `ads.txt`: AdSense 게시자 확인 파일 (`pub-6503525638904411`). `index.html` 머리에도 같은 ID의 확인 코드가 있어요
 
