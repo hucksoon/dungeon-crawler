@@ -216,7 +216,8 @@
   //     → 시뮬레이션 300판: 끝까지 69~72% (전 63%) · HP 50% 아래로 내려가는 층 1~10층 3% → 8~13%, 11~20층 1% → 29%, 21~30층 6% → 60%, 31~40층 16% → 69%
   //       (HP ×1.5 → 78%, ×1.6 → 81%, ×1.7 → 69~72%. 공격력 곡선 없이 HP만 올리면 끝까지 비율만 바뀌고 긴장감은 그대로 1~6%)
   //     curve: HP 깊이 배율 곡선 (1 = 고르게. 1보다 작게도 시험했지만 앞쪽 HP만 늘어 긴장감은 안 늘었음)
-  const NORMAL = { ramp: 4.2, curve: 1, hp: 1.7, hpEase: 5, atkCurve: 0.35, atkEase: 5 };
+  // dc#168: 더 좋은 장비로 바꿔 낄 때 강화를 절반만 이어받게 되어(items.js inheritEnh) 일반 50층 이어가기 60% → 0% → ramp 4.2 → 2.85 (300판 약 60%)
+  const NORMAL = { ramp: 2.85, curve: 1, hp: 1.7, hpEase: 5, atkCurve: 0.35, atkEase: 5 };
   // 나이트메어·헬 몬스터 HP·공격력에 더 곱함 (dc#142, 속성 스킬 축복 뒤 시뮬레이션 300판: 이어가기 나이트메어 약 90% · 헬 약 45%)
   //   없으면 둘 다 100%. 나이트메어 ×2 / ×1.45 → 11%, ×1.6 / ×1.3 → 87~92%. 헬 ×1.6 / ×1.35 → 11%, ×1.43 / ×1.23 → 43~47%, ×1.4 / ×1.2 → 60~65%
   //   헬 몬스터는 나이트메어 50층 몬스터를 바탕으로 만들지만 나이트메어 배율은 곱하지 않음 (헬 배율만). 끝이 없는 구멍(헬 바탕)도 헬 배율
@@ -227,7 +228,10 @@
   //   dc#155: 강타·회복 구슬·버티기로 나이트메어 100% · 헬 90%라 HP만 나이트메어 ×1.6 (×1.5 → 89%, ×1.8 → 74%), 헬 ×1.5 (×1.8 → 13%)
   //   dc#163: 넓은 눈·숨 고르기·황금 손을 빼서 고르는 축복이 모두 쓸모 있는 것이 되니 이어가기 나이트메어 99% · 헬 94% (옛 규칙 83% · 40%)
   //     → 나이트메어 HP ×1.3·공격 ×1.12, 헬 HP ×1.2·공격 ×1.15 (×1.3·×1.15 / ×1.2·×1.15면 77% · 47%, ×1.2·×1.1이면 나이트메어 93%)
-  const V2 = { nightmare: { hp: 4.03, atk: 1.76 }, hell: { hp: 3.1, atk: 1.7 } };
+  //   dc#168: 나이트메어 몬스터 수 늘림(1층 50 → 90)·입구 배율 없앰·강화 미사일·점프 공격 + 내 쪽 독구름·역병·융합 스킬·속성 상한 없앰·강화 절반 이어받기
+  //     → 그대로면 이어가기 나이트메어 42% · 헬 100% → 나이트메어 HP ×0.72·공격 ×0.9, 헬 HP ×2.5·공격 ×1.5
+  //     (500판: 일반 약 59% · 나이트메어 약 71% · 헬 약 58%, 헬 전에 각성 마스터가 하나라도 있는 판 약 86~91%)
+  const V2 = { nightmare: { hp: 2.92, atk: 1.58 }, hell: { hp: 7.75, atk: 2.55 } };
   // 몬스터 무리 (dc#146, 넓은 광장): 한 층 몬스터 수 ×count, 대신 한 마리당 경험치 ×xp · 장비 드롭 확률 ×drop · 처치 골드 ×gold
   //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
   const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
@@ -353,9 +357,9 @@
     // 공격력만 층 배율의 제곱 항을 낮게 (HP는 perFloor2 그대로): 40층 ×6.3 → ×4.8, 50층 ×9.2 → ×6.8
     // 장비는 아이템 레벨만큼만(완만하게) 강해져서, 고대 장비로도 40층에서 몰려오는 몬스터에게 100% 쓰러졌음 (시뮬레이션)
     atkPerFloor2: 0.002,
-    // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (±3)
-    // 처음부터 50마리면 시작 6칸 안에 평균 9마리가 있어서 들어가자마자 둘러싸였음
-    monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },
+    // 한 층 몬스터 수 (dc#168): 1층 START마리에서 층마다 perFloor마리씩 늘어 max까지 (±3). 헬·구멍은 예전 그대로 (HELL.monsters)
+    //   예전(1층 20 → 41층부터 50)은 일반 던전 50층(무리 ×2)보다 적어서 나이트메어로 넘어가면 오히려 쉬워졌음
+    monsters: { start: 50, perFloor: 0.8, max: 90, spread: 3 },
     // dc#54: 방어력이 올라가면 내 피해가 약 4% 줄고, 한 번에 덜 때리는 만큼 흡혈도 덜 들어옴 → HP × 0.96·공격력 × 0.98로 맞춤
     //   (2.5·1.0·1.5·0.6 → 2.4·0.98·1.44·0.588). 시뮬레이션: 나이트메어 50층 추천 27% → 26%, 헬 50층 레전더리 15% → 13%, 턴은 그대로
     //   헬 몬스터도 이걸 바탕으로 만들어서 같이 바뀜
@@ -371,7 +375,17 @@
     clearStage: 51,     // 랭킹 기록값: 50층 보스까지 쓰러뜨리면 51 ("50층 완료")
     presence: 1000,     // 로비 접속자 목록에 보내는 층: 1000 + 나이트메어 층 (일반 층과 구분)
     // 입구 (정식 v2, dc#140): 마을에서 새로 들어오면 축복이 0개라 1~until층은 HP·공격·방어 × (from → 1)로 천천히 (시뮬레이션 tools/sim-v2.mjs)
-    entry: { until: 10, from: 0.6 },
+    //   dc#168: 나이트메어는 일반 50층을 깨고 "이어가기"로만 들어와서 축복을 그대로 가져옴 → 입구 배율 없음 (from 1)
+    entry: { until: 10, from: 1 },
+    // 나이트메어 몬스터 기술 (dc#168, 나이트메어에서만)
+    //   twin: 원거리 몬스터 중 share만큼은 강화 미사일 2개 — 턴제는 내 자리와 내가 가던 쪽 ahead칸 앞을 함께 조준 (한 곳마다 저주 구슬 × mul),
+    //         실시간은 탄 2발을 spread만큼 벌려서 (한 발 × mul)
+    //   leap: 근접 몬스터 중 share(정예 eliteShare)만큼은 점프 공격 — every턴마다 range칸 거리면 내가 가는 길(내 자리에서 가던 쪽 ahead칸)을 노려
+    //         windup턴(실시간 windup3d) 뒤 그 칸으로 뛰어내림. 착지 칸 둘레 radius칸 안이면 최대 HP × pct (받는 피해 감소만, 방패로 못 막음)
+    skills: {
+      twin: { share: 0.5, mul: 1.4, ahead: 2, spread: 0.22, color: "#ff6a00" },
+      leap: { share: 0.15, eliteShare: 0.3, every: 6, range: [3, 6], ahead: 2, windup: 2, windup3d: 3, radius: 1, pct: { normal: 0.1, elite: 0.15 }, color: "#b06bff" },
+    },
   };
   // 입구 배율: 1층 from에서 until층까지 고르게 올라 그 뒤 1
   const entryMul = (entry, n) => (n > entry.until ? 1 : entry.from + (1 - entry.from) * (Math.max(1, n) - 1) / entry.until);
@@ -410,7 +424,9 @@
     zone === "hell" ? tx("mon.hell", "지옥의") : tx("mon.nm", "악몽의"), el ? ELEMENTS.prefix[el] : "", base);
   const withElement = (m, el) => ({ ...m, name: zoneName(m.hell ? "hell" : "nm", el, m.base), ...(el ? { el } : {}) });
 
-  const nmMonsterCount = (n) => Math.min(NIGHTMARE.monsters.max, Math.floor(NIGHTMARE.monsters.start + NIGHTMARE.monsters.perFloor * (Math.max(1, n) - 1)));
+  const countOf = (M, n) => Math.min(M.max, Math.floor(M.start + M.perFloor * (Math.max(1, n) - 1)));
+  const nmMonsterCount = (n) => countOf(NIGHTMARE.monsters, n);
+  const hellMonsterCount = (n) => countOf(HELL.monsters, n);   // 헬·구멍 (dc#168: 나이트메어만 늘리고 헬은 예전 그대로)
   const nmScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + (NIGHTMARE.perFloor2 || 0) * k * k; };
   const nmAtkScale = (n) => { const k = Math.max(1, n) - 1; return 1 + NIGHTMARE.perFloor * k + NIGHTMARE.atkPerFloor2 * k * k; };
   // 75층에 나오는 몬스터 + 그 뒤에 나오는 몬스터(대악마·타이탄·공허의 군주·고룡). 뒤쪽일수록 자주
@@ -452,7 +468,7 @@
     // 입구: 1~until층 몬스터 HP·공격 × mul. 나이트메어 장비(악몽의 힘 ×3)로 들어오는 층이라, 그대로면 나이트메어 50층보다 어려웠음
     //   (줄 품질 95% 장비로 몰려오는 20마리 48% vs 나이트메어 50층 37%). 5층 보스부터 지옥의 장비(×5)가 나와서 그 뒤로는 그대로
     entry: { until: 15, from: 0.4 },   // 정식 v2 (dc#140): 예전 1~4층 × 0.9 → 1층 0.4에서 15층까지 천천히 (시뮬레이션 tools/sim-v2.mjs)
-    monsters: NIGHTMARE.monsters,
+    monsters: { start: 20, perFloor: 0.75, max: 50, spread: 3 },   // 한 층 몬스터 수: 1층 20마리에서 4층마다 3마리씩 늘어 41층부터 50마리 (예전 나이트메어와 같음, dc#168)
     res: { own: 50, otherFrom: 10, otherTo: 40, boss: 10 },
     gold: { kill: 5, pile: 12, floor: 0.75 },
     milestones: [10, 20, 30, 40, 50],   // 완료하면 로비 오른쪽 문으로 골라서 들어갈 수 있는 층
@@ -592,7 +608,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, PETS, PET_GRADES, petSource, petDropChance, petKey, parsePetKey, petSprite, petName, rollPetGrade, petGrade, gradeRank, petMonsters, petGradesFor, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, PETS, PET_GRADES, petSource, petDropChance, petKey, parsePetKey, petSprite, petName, rollPetGrade, petGrade, gradeRank, petMonsters, petGradesFor, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, hellMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,

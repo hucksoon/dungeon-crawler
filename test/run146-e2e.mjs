@@ -110,7 +110,7 @@ try {
   await T(B.page, "xp", 24); await sleep(200);
   const b = await T(B.page, "s");
   const cards = await B.page.locator("#bless-cards .bless-card b").allInnerTexts();
-  check("first level up → pick a first skill: fireball / frost / lightning only", b.lv === 2 && b.modal && b.title.includes("첫 스킬") && cards.length === 3 && cards.every(c => ["화염구", "얼음 폭발", "연쇄 번개"].includes(c)), JSON.stringify([b, cards]));
+  check("first level up → pick a first skill: element skills only (fire · ice · bolt · poison, dc#168)", b.lv === 2 && b.modal && b.title.includes("첫 스킬") && cards.length === 3 && cards.every(c => ["화염구", "얼음 폭발", "연쇄 번개", "독구름"].includes(c)), JSON.stringify([b, cards]));
   await B.page.screenshot({ path: path.join(SHOTS, "run146-first-skill.png") }).catch(() => {});
   check("no page errors (first skill)", B.errors.length === 0, B.errors.join("; "));
   await B.ctx.close();

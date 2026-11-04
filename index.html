@@ -1894,7 +1894,7 @@
           if (empty) { data.equip[empty] = item; record("get", item, { ...extra, auto: "equip" }); res = { kind: "equip", at: empty, item }; }
           else if (RLItems.basePowerScore(item) > RLItems.basePowerScore(data.equip[worst])) {
             const cur = data.equip[worst];
-            item.enh = Math.max(item.enh || 0, cur.enh || 0);   // 강화 이어받기
+            item.enh = Math.max(item.enh || 0, RLItems.inheritEnh(cur.enh));   // 강화 이어받기: 절반만 (dc#168, 예전에는 그대로)
             data.equip[worst] = item;
             record("get", item, { ...extra, auto: "swap", from: cur.id });
             res = { kind: "swap", at: worst, item, old: cur, out: dispose(cur, "replaced") };
@@ -2215,10 +2215,12 @@
   function stats(TT = Inv.totals()) {
     const g = TT.stats, b = blessTotals(), cap = RLBless.capsOf(b);
     // dc#153: 예전엔 Lv 5에서 멈춰 Lv 6~10 효과가 안 들어감 (카드·시뮬레이션은 Lv 10까지)
-    const elv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), ef = Object.fromEntries(["fire", "ice", "bolt"].map(k => [k, elv(k) ? RLBless.ELEM[k](elv(k)) : null]));
+    const elv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), ef = Object.fromEntries(["fire", "ice", "bolt", "poison"].map(k => [k, elv(k) ? RLBless.ELEM[k](elv(k)) : null]));
     const pct = (v, p) => Math.round(v * (1 + p / 100));
     // 각성 스킬 (dc#163): 불의 장화·얼음 보호막·전자기장 단계 (RLBless.AWAKE)
-    const alv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), aw = { boots: alv("boots") ? RLBless.AWAKE.boots(alv("boots")) : null, shield: alv("shield") ? RLBless.AWAKE.shield(alv("shield")) : null, field: alv("field") ? RLBless.AWAKE.field(alv("field")) : null };
+    const alv = (k) => Math.min(RLBless.ELEM_MAX, b[`${k}Lv`] || 0), aw = { boots: alv("boots") ? RLBless.AWAKE.boots(alv("boots")) : null, shield: alv("shield") ? RLBless.AWAKE.shield(alv("shield")) : null, field: alv("field") ? RLBless.AWAKE.field(alv("field")) : null, plague: alv("plague") ? RLBless.AWAKE.plague(alv("plague")) : null };
+    // 융합 스킬 (dc#168): 두 속성 Lv 10 뒤에 열리는 6가지 (RLBless.FUSE), 최대 Lv FUSE_MAX
+    const flv = (k) => Math.min(RLBless.FUSE_MAX, b[`${k}Lv`] || 0), fu = Object.fromEntries(Object.keys(RLBless.FUSE).map(k => [k, flv(k) ? RLBless.FUSE[k](flv(k)) : null]));
     const maxHp = pct(player.maxHp + g.hp, g.hpPct + (b.hpPct || 0) + levelPct());
     return {
       maxHp,
@@ -2235,7 +2237,8 @@
       // 축복 (dc#140): 첫 공격 +% · 보스 HP −% · 포션 회복 +% · 포션 대기 −턴 · 새 층 회복 % · 정예 +% · 보물 자리 +N · 계단 보기 · 시야 +N
       first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, perfect: b.perfect || 0,   // 완벽한 물약 (dc#163)
       elite: b.elite || 0, treasure: b.treasure || 0, sight: b.sight || 0,
-      aw,   // 각성 스킬 { boots, shield, field } (dc#163)
+      aw,   // 각성 스킬 { boots, shield, field, plague } (dc#163, 역병 dc#168)
+      pois: ef.poison, fu,   // 독구름 (dc#168, RLBless.ELEM.poison) · 융합 스킬 { flamebolt, steam, ignite, storm, frostfog, neuro } (dc#168)
       eres: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },   // 속성 저항 유물 (dc#163): 몬스터 공격 속성 효과를 덜 받음
       dual: !!g.dual,         // 보조 손에 무기: 한 턴에 두 번 공격 (두 번째는 약하게)
       longsword: !!g.longsword,   // 장검: 기본 공격 피해 ×LONGSWORD.hitMul
@@ -2312,15 +2315,25 @@
   const SMASH = RLMonsters.SMASH, RESCUE = RLMonsters.RESCUE, SHOTS = RLMonsters.SHOTS;
   let shots = [];   // 날아가는 탄환 (dc#158): { x, y (칸, 가운데 기준), vx, vy (칸/초), life, atk, color, from }
   const rescueOn = () => OPEN_FLOORS && scene === "dungeon";
+  // 나이트메어 몬스터 기술 (dc#168, monsters.js NIGHTMARE.skills): 원거리 일부는 강화 미사일 2개(twin), 근접 일부는 점프 공격(leap)
+  const NMSK = NM.skills, LEAP = NMSK.leap, TWIN = NMSK.twin;
+  const nmSkill = (m) => {
+    if (!inNM() || !OPEN_FLOORS || m.kind === "boss" || m.kind === "golden" || m.named) return m;
+    if (m.ranged) { if (Math.random() < TWIN.share) m.twin = true; }
+    else if (Math.random() < (m.kind === "elite" ? LEAP.eliteShare : LEAP.share)) m.leap = { cd: 1 + rnd(LEAP.every) };
+    return m;
+  };
   const ranged = (m) => { if (rangedOn() && m.kind !== "boss" && m.kind !== "golden" && !m.named && Math.random() < (nmMobs() || inHell() ? RANGED.deepShare : (View3D.on || LIVE?.on()) && !inAbyss() ? RLMonsters.rangedLiveShare(depth) : RANGED.share)) { m.ranged = true; m.rcd = 1 + rnd(RANGED.every); } return m; };
   // 실시간 일반 던전은 더 세게 (dc#160, RLMonsters.LIVE_HARD): 몬스터가 생길 때 HP·공격력에 곱함
   const liveHard = (m) => { if ((View3D.on || LIVE?.on()) && OPEN_FLOORS && !nmMobs() && !inHell() && !inAbyss() && !inGold() && m.kind !== "boss" && m.kind !== "golden" && !m.named) { const H = RLMonsters.liveHardMul(depth); m.hp = m.maxHp = Math.round(m.maxHp * H.hp); m.atk = Math.round(m.atk * H.atk); } return m; };
   const swarm = (m) => { if (swarmOn() && m.kind !== "boss" && m.kind !== "golden") { const W = RLMonsters.SWARM; m.xp = Math.max(1, Math.round(m.xp * W.xp)); m.goldMul = (m.goldMul || 1) * W.gold; m.dropMul = W.drop; } return m; };
-  const foesExpected = () => (inAbyss() ? RLMonsters.nmMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? RLMonsters.nmMonsterCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
+  // 나이트메어·헬 한 층 몬스터 수 (dc#168): 나이트메어만 늘림, 헬·구멍·악몽의 골드 던전은 예전 그대로 (RLMonsters.hellMonsterCount)
+  const deepCount = (n) => (inNM() ? RLMonsters.nmMonsterCount(n) : RLMonsters.hellMonsterCount(n));
+  const foesExpected = () => (inAbyss() ? RLMonsters.hellMonsterCount(ABYSS.hellFloor) : ((nmMobs() || inHell()) ? deepCount(depth) : 5 + monLevel() * 1.5) * (swarmOn() ? RLMonsters.SWARM.count : 1));
   // dc#145: 다니는 광장(aw×ah)은 처음 층에 작게 (1층 약 21×16) 시작해서 몬스터가 늘수록 커짐 (20층 약 40×30, 40층 약 69×52, 최대 94×70)
   //   dc#146: 몬스터 무리(×2)라 몬스터 한 마리당 넓이를 20 → 12로 (크기는 비슷하게, 더 붐비게)
   //   지도(w×h)는 화면을 채울 만큼은 되게 (최소 OPEN.mapW×OPEN.mapH): 광장 바깥은 모두 벽 (검은 빈 곳 대신). 예전(dc#143)은 최소 32×24
-  const OPEN = { base: 20, perFoe: 12, fill: 0.65, minW: 12, minH: 9, maxW: 94, maxH: 70, mapW: 24, mapH: 18 };
+  const OPEN = { base: 20, perFoe: 10, fill: 0.65, minW: 12, minH: 9, maxW: 94, maxH: 70, mapW: 24, mapH: 18 };
   function openSize(n) {
     const area = (OPEN.base + n * OPEN.perFoe) / OPEN.fill;
     const aw = Math.max(OPEN.minW, Math.min(OPEN.maxW, Math.round(Math.sqrt(area * 4 / 3))));
@@ -2484,6 +2497,7 @@
   // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
   function newLevel(rooms, { quiet = false } = {}) {
     fireTrail?.clear?.();   // 각성 불의 장화의 불은 층마다 (dc#163)
+    toxCloud?.clear?.(); plagueQ = [];   // 독구름도 층마다 (dc#168)
     Pet.reset();   // 펫은 새 층에서 내 옆에 (dc#164)
     const start = rooms[0];
     clearStatus(player);  // 화상·느려짐은 층을 옮기면 풀림
@@ -2553,7 +2567,7 @@
     // 적 스폰 (층이 깊을수록 강한 종류가 더 자주, 가끔 정예)
     // 나이트메어: 1층 30마리 → 41층부터 50마리 (±3), 75층 몬스터(+그 뒤 몬스터)를 나이트메어 배율로
     const deep = nmMobs() || inHell(), eliteUp = stats().elite;
-    const nmCount = deep ? RLMonsters.nmMonsterCount(depth) : 0;
+    const nmCount = deep ? deepCount(depth) : 0;
     const count = Math.round((deep ? between(nmCount - NM.monsters.spread, nmCount + NM.monsters.spread) : between(4 + monLevel(), 6 + monLevel() * 2)) * (swarmOn() ? RLMonsters.SWARM.count : 1));
     for (let i = 0; i < count; i++) {
       let spot = randomFloor([player, ...enemies]);
@@ -2563,7 +2577,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ x: spot.x, y: spot.y, ...ranged(swarm(liveHard(nelem(m)))) });
+      enemies.push({ x: spot.x, y: spot.y, ...nmSkill(ranged(swarm(liveHard(nelem(m))))) });
     }
 
     // 가끔 황금 고블린 1마리: 시작 지점에서 떨어진 곳에 숨어 있음
@@ -2613,7 +2627,7 @@
       const spot = free.length ? free[rnd(free.length)] : randomFloor([player, ...enemies]);
       if (spot) enemies.push({ ...spot, ...RLMonsters.makeAbyssNamed(key, depth) });
     }
-    const n = RLMonsters.nmMonsterCount(ABYSS.hellFloor);
+    const n = RLMonsters.hellMonsterCount(ABYSS.hellFloor);
     const count = between(n - NM.monsters.spread, n + NM.monsters.spread);
     // 들어오자마자 둘러싸이지 않게: 시작 자리에서 알아채는 거리(CHASE_RANGE) 안에는 두지 않음 (dc#125)
     const start = { x: player.x, y: player.y };
@@ -3027,7 +3041,10 @@
   // 원거리 몬스터 한 턴 (dc#149). true면 이 몬스터의 턴은 끝 (false면 보통처럼 다가오거나 붙어서 때림)
   //   조준 중: windup턴을 기다렸다가 조준한 칸에 저주 구슬. 붙어 있으면 근접(공격 예고 규칙 그대로)
   //   준비되면(rcd 0) 보이는 range칸 안의 나를 조준 · keep칸보다 가까우면 한 걸음 물러남 · range칸 안이면 그 자리에서 기다림
-  const aimCells = (a) => { const out = []; for (let dy = -RANGED.radius; dy <= RANGED.radius; dy++) for (let dx = -RANGED.radius; dx <= RANGED.radius; dx++) { const x = a.x + dx, y = a.y + dy; if (map[y]?.[x] !== undefined && map[y][x] !== WALL) out.push({ x, y }); } return out; };
+  const aimCells = (a) => { const out = [], seen = new Set(); for (const p of a.b ? [a, a.b] : [a]) for (let dy = -RANGED.radius; dy <= RANGED.radius; dy++) for (let dx = -RANGED.radius; dx <= RANGED.radius; dx++) { const x = p.x + dx, y = p.y + dy; if (map[y]?.[x] !== undefined && map[y][x] !== WALL && !seen.has(`${x},${y}`)) { seen.add(`${x},${y}`); out.push({ x, y }); } } return out; };   // a.b: 강화 미사일의 두 번째 자리 (dc#168)
+  const aimHits = (a, p) => near8(p, a) <= RANGED.radius || (!!a.b && near8(p, a.b) <= RANGED.radius);
+  // 내가 가는 길 (dc#168): 내 자리에서 마지막으로 움직인 쪽(player.face)으로 n칸 (벽 앞에서 멈춤)
+  const aheadOf = (n) => { const f = player.face || { dx: 0, dy: 0 }; let c = { x: player.x, y: player.y }; for (let i = 0; i < n; i++) { const x = c.x + f.dx, y = c.y + f.dy; if (map[y]?.[x] === undefined || map[y][x] === WALL) break; c = { x, y }; } return c; };
   function rangedTurn(e) {
     if (e.aim) { if (--e.aim.t > 0) return true; curseDrop(e); return true; }
     if (e.rcd > 0) e.rcd--;
@@ -3035,7 +3052,7 @@
     const d = near8(e, player), seen = !!visible[e.y]?.[e.x];
     if (e.rcd <= 0 && seen && d <= RANGED.range && shotsOn()) {   // 실시간 (dc#158): 칸에 떨어지는 구슬 대신 진짜로 날아가는 구슬
       if (!(floorSt.sg > 0)) {   // 다른 몬스터가 막 모으기 시작했으면 기다림 (dc#159 SHOTS.gap)
-        e.charge = { kind: "ranged", pat: "one", t: SHOTS.ranged.windup }; e.rcd = SHOTS.ranged.every + SHOTS.ranged.windup; e.ready = false;
+        e.charge = { kind: "ranged", pat: e.twin ? "two" : "one", t: SHOTS.ranged.windup }; e.rcd = SHOTS.ranged.every + SHOTS.ranged.windup; e.ready = false;   // 강화 미사일 2발 (dc#168)
         floorSt.sg = SHOTS.gap;
         showDamage(e, "!", true, RANGED.color);
         Sfx("aim");
@@ -3044,9 +3061,11 @@
     } else if (e.rcd <= 0 && seen && d <= RANGED.range) {
       const wait = realtime() ? RANGED.windup3d : RANGED.windup;
       e.aim = { x: player.x, y: player.y, t: wait }; e.ready = false;
-      showDamage(e, "!", true, RANGED.color);
+      if (e.twin) { const b = aheadOf(TWIN.ahead); if (b.x !== player.x || b.y !== player.y) e.aim.b = b; }   // 강화 미사일 (dc#168): 가던 쪽 앞도 함께
+      showDamage(e, "!", true, e.twin ? TWIN.color : RANGED.color);
       Sfx("aim");
-      log(T("{0}이(가) 저주 구슬을 겨눈다! 붉은 곳에서 {1}턴 안에 벗어나세요.", e.name, wait), null, RANGED.color);
+      if (e.twin) log(T("{0}이(가) 강화 미사일 2개를 겨눈다! 붉은 곳 두 군데에서 {1}턴 안에 벗어나세요.", e.name, wait), null, TWIN.color);
+      else log(T("{0}이(가) 저주 구슬을 겨눈다! 붉은 곳에서 {1}턴 안에 벗어나세요.", e.name, wait), null, RANGED.color);
       return true;
     }
     const backed = e.backed; e.backed = false;
@@ -3062,11 +3081,12 @@
   // 저주 구슬이 조준한 칸(dc#150부터 한 칸)에 떨어짐. 표시 밖이거나 회피 중(무적)이면 빗나감
   function curseDrop(e) {
     const a = e.aim; e.aim = null; e.rcd = RANGED.every;
-    Fx.curse(e, a, RANGED.radius);
+    Fx.curse(e, { x: a.x, y: a.y }, RANGED.radius);
+    if (a.b) setTimeout(() => Fx.curse(e, a.b, RANGED.radius), 90);   // 강화 미사일 두 번째 (dc#168)
     Sfx("curse");
-    if (near8(player, a) > RANGED.radius || invuln()) { if (visible[e.y]?.[e.x] || near8(player, a) <= RANGED.radius + 2) log(T("{0}의 저주 구슬을 피했다!", e.name), "good"); return; }
+    if (!aimHits(a, player) || invuln()) { if (visible[e.y]?.[e.x] || near8(player, a) <= RANGED.radius + 2) log(a.b ? T("{0}의 강화 미사일을 피했다!", e.name) : T("{0}의 저주 구슬을 피했다!", e.name), "good"); return; }
     const s = stats();
-    const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * RANGED.mul + rnd(2), s.def) * (1 - s.dmgReduce / 100)));
+    const dmg = Math.max(1, Math.round(RLMonsters.damageToPlayer(foeAtk(e) * RANGED.mul * (e.twin ? TWIN.mul : 1) + rnd(2), s.def) * (1 - s.dmgReduce / 100)));
     const took = hurtPlayer(dmg);
     showDamage(player, dmg, false, RANGED.color);
     Anim.hit(player, null, Fx.CURSE_FLY);
@@ -3108,6 +3128,39 @@
     if (player.hp <= 0) death();
     else if (e.nel) nelemHit(e.nel, RLMonsters.damageToPlayer(foeAtk(e), s.def) * (1 - s.dmgReduce / 100));   // 강타는 큰 피해라 보통 공격 한 번 만큼으로 셈
   }
+  // ---- 점프 공격 (dc#168, 나이트메어 근접 몬스터 일부, 규칙은 monsters.js NIGHTMARE.skills.leap) ----
+  //   준비되면(leap.cd 0) 보이는 range칸 거리의 나를 보고 내가 가는 길(가던 쪽 ahead칸 앞)을 노림 (e.leapAt) → windup턴 뒤 그 칸으로 뛰어내림
+  //   착지 칸 둘레 radius칸 안에 있으면 최대 HP × pct (받는 피해 감소만). 방향을 바꾸거나 회피하면 0
+  const leapCells = (a) => { const out = []; for (let dy = -LEAP.radius; dy <= LEAP.radius; dy++) for (let dx = -LEAP.radius; dx <= LEAP.radius; dx++) { const x = a.x + dx, y = a.y + dy; if (map[y]?.[x] !== undefined && map[y][x] !== WALL) out.push({ x, y }); } return out; };
+  function leapStart(e) {
+    if (e.leap.cd > 0) e.leap.cd--;
+    if (e.leap.cd > 0 || e.smash || e.charge) return false;
+    const d = near8(e, player);
+    if (!visible[e.y]?.[e.x] || d < LEAP.range[0] || d > LEAP.range[1]) return false;   // 준비된 채로 거리를 기다림
+    e.leap.cd = LEAP.every;
+    const wait = realtime() ? LEAP.windup3d : LEAP.windup, at = aheadOf(LEAP.ahead);
+    e.leapAt = { x: at.x, y: at.y, t: wait }; e.ready = false;
+    showDamage(e, "⤒", true, LEAP.color);
+    Sfx("windup");
+    log(T("{0}이(가) 높이 뛰어오른다! {1}턴 뒤 보라 칸에 떨어진다 — 가던 길을 바꾸세요!", e.name, wait), null, LEAP.color);
+    return true;
+  }
+  function leapTurn(e) {
+    if (--e.leapAt.t > 0) return;
+    const a = e.leapAt; e.leapAt = null;
+    const spot = [a, ...leapCells(a)].find(c => canStep(e, c.x, c.y));   // 착지: 그 칸, 막혔으면 둘레의 빈 칸
+    if (spot) { e.x = spot.x; e.y = spot.y; }
+    Fx.smash(a); Fx.puff(a, leapCells(a), LEAP.color);
+    Sfx("smash");
+    if (near8(player, a) > LEAP.radius || invuln()) { log(T("{0}의 점프 공격을 피했다!", e.name), "good"); return; }
+    const s = stats();
+    const dmg = Math.max(1, Math.round(s.maxHp * (LEAP.pct[e.kind] ?? LEAP.pct.normal) * (1 - s.dmgReduce / 100)));
+    const took = hurtPlayer(dmg);
+    showDamage(player, dmg, true, LEAP.color);
+    Anim.hit(player, e);
+    log(T("{0}의 점프 공격에 맞아 {1} 피해를 입음!{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
+    if (player.hp <= 0) death();
+  }
   // ---- 실시간 탄환 (dc#158): 실시간 2D·3D에서만 (턴제는 칸 표시 그대로). 규칙·수치는 monsters.js SHOTS ----
   const shotsOn = () => rescueOn() && realtime();
   // 내 몸의 실제 자리 (칸 단위, 가운데 기준): 실시간이면 칸 사이, 아니면 칸 가운데
@@ -3138,10 +3191,10 @@
     const S = SHOTS[c.kind], me = mePos(), ox = e.x + 0.5, oy = e.y + 0.5, base = Math.atan2(me.y - oy, me.x - ox);
     const fan = (n, sp) => Array.from({ length: n }, (_, i) => base + (i - (n - 1) / 2) * sp);
     const [angs, mul] = c.pat === "ring" ? [Array.from({ length: S.ring.n }, (_, i) => base + i * 2 * Math.PI / S.ring.n), S.ring.mul]
-      : c.pat === "fan" ? [fan(S.fan.n, S.fan.spread), S.fan.mul] : c.pat === "fan3" ? [fan(S.n, S.spread), S.mul] : [[base], S.mul];
+      : c.pat === "fan" ? [fan(S.fan.n, S.fan.spread), S.fan.mul] : c.pat === "fan3" ? [fan(S.n, S.spread), S.mul] : c.pat === "two" ? [fan(2, TWIN.spread), S.mul * TWIN.mul] : [[base], S.mul];   // two: 강화 미사일 2발 (dc#168)
     const deep = nmMobs() || inHell() || inAbyss() ? 1 : RLMonsters.shotDeepMul(depth);   // 일반 던전 깊은 층은 한 발이 더 아픔 (dc#159)
     const atk = foeAtk(e) * mul * deep, t0 = performance.now();
-    for (const a of angs) shots.push({ x: ox + Math.cos(a) * 0.45, y: oy + Math.sin(a) * 0.45, vx: Math.cos(a) * SHOTS.speed, vy: Math.sin(a) * SHOTS.speed, life: SHOTS.life, atk, color: S.color, from: e.name, t0, ...(e.nel ? { nel: e.nel } : {}) });
+    for (const a of angs) shots.push({ x: ox + Math.cos(a) * 0.45, y: oy + Math.sin(a) * 0.45, vx: Math.cos(a) * SHOTS.speed, vy: Math.sin(a) * SHOTS.speed, life: SHOTS.life, atk, color: c.pat === "two" ? TWIN.color : S.color, from: e.name, t0, ...(e.nel ? { nel: e.nel } : {}) });
     Sfx("shoot");
   }
   // 매 프레임 (실시간에서 멈춰 있지 않을 때): 날아감 · 벽에 닿으면 사라짐 · 몸에 닿으면 맞음 (회피 중이면 지나감)
@@ -3262,6 +3315,7 @@
 
   function killEnemy(e) {
     enemies = enemies.filter(x => x !== e);
+    plagueMark(e);   // 각성 역병 (dc#168): 중독된 채 쓰러지면 스킬이 끝날 때 터짐
     Anim.die(e);
     Sfx(e.kind === "boss" || e.named ? "bossKill" : "kill");
     // 구미호의 분신: 경험치·골드·장비 없음
@@ -3333,7 +3387,7 @@
       const m = inHell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), kind, depth)
         : nmMobs() ? RLMonsters.makeNightmare(RLMonsters.pickNightmareType(Math.random), kind, depth, RLMonsters.pickElement(Math.random))
         : inGold() ? RLMonsters.makeMonster(RLMonsters.pickType(monLevel(), Math.random), kind, monLevel()) : RLMonsters.makeNormal(RLMonsters.pickType(monLevel(), Math.random), kind, depth);
-      enemies.push({ ...at, ...ranged(swarm(liveHard(nelem(m)))) });
+      enemies.push({ ...at, ...nmSkill(ranged(swarm(liveHard(nelem(m))))) });
     }
     seen[spot.y][spot.x] = true;
     Sfx("bossKill");
@@ -3585,7 +3639,7 @@
     const soldGold = (o) => (o?.kind === "sold" ? sellGoldIn(o.gold) : 0);
     if (r.kind === "dup") gearLog(T("⬆ {0} 중복! {1} +{2}", name, SLOT_LABEL(r.at), r.to), r.item);
     else if (r.kind === "equip") gearLog(T("⚔ {0}을(를) {1}에 꼈다.", name, SLOT_LABEL(r.at)), it);
-    else if (r.kind === "swap") gearLog(T("⚔ 더 좋은 {0}로 바꿔 꼈다. (강화 +{1} 이어받기)", name, r.item.enh || 0), it);
+    else if (r.kind === "swap") gearLog(T("⚔ 더 좋은 {0}로 바꿔 꼈다. (강화 절반 이어받기 +{1})", name, r.item.enh || 0), it);
     else if (r.kind === "bag") gearLog(T("{0}을(를) 가방에 넣었다. (거래소에 팔 수 있어요)", name), it);
     else log(T("{0} 분해: {1} +{2}{3}", name, RLItems.STONE_NAMES[r.key], r.stones, r.gold && !gameOver ? T(", 골드 +{0}", r.gold) : ""), null, "#9aa4b2");
     soldGold(r); soldGold(r.out);
@@ -4590,7 +4644,7 @@
   // 스킬 피해는 속성 피해 (몬스터 속성 저항만큼). 룬워드(태산·마음가짐·몰래)면 스킬에도 흡혈
   // at: 이펙트가 닿는 때(ms) — 그때 맞은 몬스터가 흔들리고 붉게 번쩍
   function skillHit(e, dmg, crit, color, s, at = 80) {
-    const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : color === STARTER.color ? null : "bolt";   // 파이어볼 불·노바 얼음·체인 번개 · 마력탄은 속성 없음
+    const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : color === POISON_COLOR ? "poison" : color === STARTER.color || color === STEAM_COLOR ? null : "bolt";   // 파이어볼 불·노바 얼음·체인 번개·독구름 독 (dc#168) · 마력탄·증기는 속성 없음
     const d = Math.max(1, Math.round(dmg * shockMul(e) * (el ? elemMul(e, el) : 1) * bossMul(e, s)));
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
@@ -4710,7 +4764,140 @@
         log(T("⚡ 연쇄 번개! {0}번 튕겨 한 번에 {1} 피해{2}{3}", n, Math.round(dmg), crit ? T(" (치명타)") : "", s.chainMax ? T(" · 감전") : ""), null, EL.colors.bolt);
       }
     }
+    castPoison(s, alive);
+    castFusion(s, alive);
     castAwake(s, alive);
+    plagueFlush(s);
+  }
+
+  // ---- 독구름 (dc#168, 규칙은 blessings.js ELEM.poison) ----
+  //   every턴마다 range칸 안 보이는 적 중 구름에 가장 많이 걸리는 자리에 size×size 구름 (turns턴, toxCloud "x,y" → 걷히는 턴)
+  //   구름 위의 적은 턴마다(구름이 겹쳐도 한 번) 공격력 × mul × (1 + pct%) 독 피해 (방어 무시) + 중독 (e.tox: 그 턴까지. 역병·신경독이 씀)
+  //   융합 서리 독안개면 구름 위의 적이 느려지고 독 피해 +add%
+  const POISON_COLOR = "#7ddc4a", STEAM_COLOR = "#e8f4ff";
+  var toxCloud = new Map();   // var: 층을 새로 만들 때(newLevel) 비움
+  const cloudCells = (c, size) => { const o = Math.floor((size - 1) / 2), out = []; for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) { const x = c.x - o + dx, y = c.y - o + dy; if (map[y]?.[x] !== undefined && map[y][x] !== WALL) out.push({ x, y }); } return out; };
+  const toxic = (e) => e.tox > turn;
+  const TOX_LEFT = 2;   // 구름에서 나와도 중독이 남는 턴
+  function castPoison(s, alive) {
+    const p = s.pois;
+    if (!p) { if (toxCloud.size) toxCloud.clear(); return; }
+    for (const [k, until] of toxCloud) if (until <= turn) toxCloud.delete(k);
+    if (ready("poisonCd")) {
+      const count = (c) => { const set = new Set(cloudCells(c, p.size).map(q => `${q.x},${q.y}`)); return alive().filter(e => set.has(`${e.x},${e.y}`)).length; };
+      const at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= p.range && e.kind !== "golden").sort((a, b) => count(b) - count(a) || near8(a, player) - near8(b, player))[0];
+      if (at) {
+        player.poisonCd = p.every - (s.rw.skillFast ? 1 : 0);
+        const cells = cloudCells(at, p.size);
+        for (const c of cells) { const k = `${c.x},${c.y}`; toxCloud.set(k, Math.max(toxCloud.get(k) || 0, turn + p.turns)); }
+        Fx.puff(at, cells, POISON_COLOR, player);
+        Sfx("poison");
+        log(T("☁ 독구름! {0}칸에 {1}턴 동안", cells.length, p.turns), null, POISON_COLOR);
+      }
+    }
+    if (!toxCloud.size) return;
+    const frost = s.fu.frostfog;
+    const d = Math.max(1, Math.round(s.atk * p.mul * (1 + p.pct / 100) * (frost ? 1 + frost.add / 100 : 1)));
+    for (const e of alive()) {
+      if (!toxCloud.has(`${e.x},${e.y}`) || !enemies.includes(e)) continue;
+      e.tox = turn + TOX_LEFT;
+      if (frost) chill(e, 1);
+      skillHit(e, d, false, POISON_COLOR, s, 40);
+    }
+  }
+  // 각성 역병 (dc#168): 중독된 적이 쓰러지면 줄(plagueQ)에 넣고, 스킬이 끝날 때 차례로 터뜨림 (터져서 쓰러진 적도 중독이라 줄 끝에 붙음)
+  let plagueQ = [];
+  function plagueMark(e) { if (toxic(e) && !e.clone && player && scene === "dungeon" && stats().aw.plague) plagueQ.push({ x: e.x, y: e.y, mhp: e.maxHp || 0 }); }
+  function plagueFlush(s) {
+    const a = s.aw.plague;
+    if (!a || !plagueQ.length) { plagueQ = []; return; }
+    let n = 0, sum = 0;
+    for (let i = 0; i < plagueQ.length && i < 80; i++) {
+      const q = plagueQ[i], hit = enemies.filter(m => m.hp > 0 && near8(m, q) <= a.radius);
+      n++;
+      if (n <= 12) Fx.puff(q, cloudCells(q, a.radius * 2 + 1), POISON_COLOR);   // 한꺼번에 많이 터져도 그림은 12개까지
+      for (const m of hit) {
+        const d = Math.max(1, Math.round(q.mhp * a.pct / 100 * (m.kind === "boss" || m.named ? a.bossMul : 1)));
+        sum += d; m.tox = turn + TOX_LEFT;
+        if (enemies.includes(m)) skillHit(m, d, false, POISON_COLOR, s, 60);
+      }
+    }
+    plagueQ = [];
+    if (n) { Sfx("poison"); log(T("☣ 역병! 중독된 적 {0}마리가 터져 합계 {1} 독 피해", n, sum), null, POISON_COLOR); }
+  }
+
+  // ---- 융합 스킬 (dc#168, 규칙은 blessings.js FUSE): 두 속성을 모두 Lv 10까지 찍으면 열림 ----
+  function castFusion(s, alive) {
+    const F = s.fu, fast = s.rw.skillFast ? 1 : 0;
+    // 불꽃 번개 (불+번개): 가장 가까운 적부터 strikes번 튕기는 불 번개. 맞은 적은 화상, 주변 1칸 적에게 splash배
+    if (F.flamebolt && ready("fboltCd")) {
+      const f = F.flamebolt;
+      let at = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= f.range).sort((a, b) => near8(a, player) - near8(b, player))[0];
+      if (at) {
+        player.fboltCd = f.every - fast;
+        const { crit, dmg } = skillRoll(s, f.mul, f.pct);
+        const hitOnce = new Set(), pts = [];
+        for (let k = 0; k < f.strikes && at; k++) {
+          hitOnce.add(at); pts.push({ x: at.x, y: at.y });
+          const from = { x: at.x, y: at.y }, near = alive().filter(e => e !== at && near8(e, from) === 1);
+          if (skillHit(at, dmg, crit, EL.colors.fire, s, Fx.CHAIN_STEP * (k + 1))) burnOn(at, Math.round(s.atk * EL.burn.mul));
+          for (const e of near) if (enemies.includes(e) && e.hp > 0) skillHit(e, dmg * f.splash, false, EL.colors.fire, s, Fx.CHAIN_STEP * (k + 1));
+          at = alive().filter(e => !hitOnce.has(e) && near8(e, from) <= CHAIN.range).sort((a, b) => near8(a, from) - near8(b, from))[0] || null;
+        }
+        Fx.chain([player, ...pts], false, EL.colors.fire);
+        Sfx("chain", pts.length, Fx.CHAIN_STEP / 1000); Sfx("fire");
+        log(T("🌩 불꽃 번개! {0}번 튕겨 한 번에 {1} 불 피해 + 화상{2}", pts.length, Math.round(dmg), crit ? T(" (치명타)") : ""), null, EL.colors.fire);
+      }
+    }
+    // 증기 폭발 (불+얼음): range칸 안 적이 가장 많은 곳에 (2·radius+1)² 폭발, 느려진 적은 frozenMul배
+    if (F.steam && ready("steamCd")) {
+      const f = F.steam, inBlast = (c) => alive().filter(e => near8(e, c) <= f.radius).length;
+      const center = alive().filter(e => visible[e.y]?.[e.x] && near8(e, player) <= f.range).sort((a, b) => inBlast(b) - inBlast(a) || near8(a, player) - near8(b, player))[0];
+      if (center) {
+        player.steamCd = f.every - fast;
+        const { crit, dmg } = skillRoll(s, f.mul, f.pct);
+        const hit = alive().filter(e => near8(e, center) <= f.radius);
+        let frozen = 0;
+        for (const e of hit) { const ice = e.slow > 0; if (ice) frozen++; if (enemies.includes(e)) skillHit(e, dmg * (ice ? f.frozenMul : 1), crit, STEAM_COLOR, s, 90); }
+        Fx.puff(center, cloudCells(center, f.radius * 2 + 1), STEAM_COLOR, player);
+        Sfx("blast");
+        log(T("💨 증기 폭발! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), frozen ? T(" · 얼어 있던 {0}마리는 2배", frozen) : "", crit ? T(" (치명타)") : ""), null, STEAM_COLOR);
+      }
+    }
+    // 독가스 점화 (불+독): 독구름 위의 적 모두에게 불 피해 + 화상 (구름은 남음)
+    if (F.ignite && toxCloud.size) {
+      const f = F.ignite, on = alive().filter(e => toxCloud.has(`${e.x},${e.y}`));
+      if (on.length && ready("igniteCd")) {
+        player.igniteCd = f.every - fast;
+        const { crit, dmg } = skillRoll(s, f.mul, f.pct);
+        flash([...toxCloud.keys()].map(k => { const [x, y] = k.split(",").map(Number); return { x, y }; }), "rgba(255, 140, 40, 0.42)");
+        for (const e of on) { fx3d?.("elem", e, { fire: 1 }); if (enemies.includes(e) && skillHit(e, dmg, crit, EL.colors.fire, s, 60)) burnOn(e, Math.round(s.atk * EL.burn.mul)); }
+        Sfx("fireball", 0.02);
+        log(T("💥 독가스 점화! 독구름 위의 {0}마리에게 {1} 불 피해 + 화상{2}", on.length, Math.round(dmg), crit ? T(" (치명타)") : ""), null, EL.colors.fire);
+      }
+    }
+    // 번개 눈보라 (얼음+번개): 매 턴 내 주변 radius칸 적에게 피해 + 느려짐 + 감전
+    if (F.storm) {
+      const f = F.storm, hit = alive().filter(e => near8(e, player) <= f.radius);
+      if (hit.length) {
+        const d = Math.max(1, Math.round(s.atk * f.mul * (1 + f.pct / 100)));
+        const cells = [];
+        for (let dy = -f.radius; dy <= f.radius; dy++) for (let dx = -f.radius; dx <= f.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
+        flash(cells, "rgba(190, 230, 255, 0.16)");
+        for (const e of hit) { if (!enemies.includes(e)) continue; chill(e, 1); e.shock = turn + CHAIN.shock.turns + 1; skillHit(e, d, false, EL.colors.ice, s, 30); }
+      }
+    }
+    // 신경독 (번개+독): 중독된 적 targets마리(가까운 쪽부터)에게 번개, 맞은 적은 stun턴 동안 못 움직임 (e.stun)
+    if (F.neuro) {
+      const f = F.neuro, t = alive().filter(e => toxic(e) && visible[e.y]?.[e.x]).sort((a, b) => near8(a, player) - near8(b, player)).slice(0, f.targets);
+      if (t.length && ready("neuroCd")) {
+        player.neuroCd = f.every - fast;
+        const { crit, dmg } = skillRoll(s, f.mul, f.pct);
+        for (const e of t) { Fx.chain([player, e], true, POISON_COLOR); if (enemies.includes(e) && skillHit(e, dmg, crit, EL.colors.bolt, s, 60)) e.stun = turn + 1 + f.stun; }
+        Sfx("chain", t.length, 0.03);
+        log(T("🧬 신경독! 중독된 {0}마리에게 {1} 번개 피해 + 마비{2}", t.length, Math.round(dmg), crit ? T(" (치명타)") : ""), null, POISON_COLOR);
+      }
+    }
   }
 
   // ---- 각성 스킬 (dc#163, 규칙은 blessings.js AWAKE): 속성 스킬을 Lv 10까지 찍으면 열림 ----
@@ -4767,6 +4954,14 @@
     one(!!s.aw.field, "🧲", T("전자기장"), player.fieldCd);
     if (s.aw.shield) out.push(T("🧊 얼음 보호막 방어력 +{0}%", s.aw.shield.defPct));
     if (s.aw.boots) out.push(T("👢 불의 장화"));
+    one(!!s.pois, "☁", T("독구름"), player.poisonCd);
+    if (s.aw.plague) out.push(T("☣ 역병"));
+    one(!!s.fu.flamebolt, "🌩", T("불꽃 번개"), player.fboltCd);
+    one(!!s.fu.steam, "💨", T("증기 폭발"), player.steamCd);
+    one(!!s.fu.ignite, "💥", T("독가스 점화"), player.igniteCd);
+    if (s.fu.storm) out.push(T("🌨 번개 눈보라"));
+    if (s.fu.frostfog) out.push(T("🌫 서리 독안개"));
+    one(!!s.fu.neuro, "🧬", T("신경독"), player.neuroCd);
     return out;
   }
 
@@ -4844,9 +5039,11 @@
     for (const e of [...enemies]) {
       if (e.hp <= 0 || !enemies.includes(e)) continue;
       if (e.named) namedTurn(e);
-      if (slowedNow(e)) continue;
+      if (slowedNow(e) || e.stun > turn) continue;   // 신경독 마비 (dc#168)
       if (e.kind === "golden") { goldenTurn(e); continue; }
       if (e.smash) { smashTurn(e); if (gameOver) return; continue; }   // 강타 예고 중 (dc#155)
+      if (e.leapAt) { leapTurn(e); if (gameOver) return; continue; }   // 점프 공격 예고 중 (dc#168)
+      if (e.leap && !e.ranged && leapStart(e)) continue;
       if (e.charge) { if (--e.charge.t <= 0) fireShots(e); continue; }   // 탄을 모으는 중 (dc#158)
       if (shotsOn() && !e.ranged && shotStart(e)) continue;
       if (e.ranged && rangedTurn(e)) { if (gameOver) return; continue; }   // 원거리 몬스터 (dc#149)
@@ -6382,6 +6579,26 @@
         }
         return true;
       },
+      puff(f, t) {
+        const fly = f.from ? FB_FLY : 0;
+        if (t < fly) {   // 작은 구슬이 날아감
+          const a = C(f.from), b = C(f.at), e = t / fly;
+          ctx.globalAlpha = 0.9; ctx.fillStyle = f.color; ctx.shadowColor = f.color; ctx.shadowBlur = 8;
+          ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e - Math.sin(e * Math.PI) * TILE * 0.3, 3.5, 0, Math.PI * 2); ctx.fill();
+          return true;
+        }
+        const p = (t - fly) / 520;
+        if (p >= 1) return false;
+        for (const c of f.cells) {
+          const q = C(c);
+          for (let i = 0; i < 3; i++) {
+            const ang = rand(f.seed + c.x * 3 + c.y * 5 + i) * Math.PI * 2, d = TILE * 0.18 * rand(f.seed + i + c.x), r = TILE * (0.22 + 0.3 * Math.sqrt(p)) * (0.7 + 0.3 * rand(i + c.y));
+            ctx.globalAlpha = 0.45 * (1 - p); ctx.fillStyle = f.color;
+            ctx.beginPath(); ctx.arc(q.x + Math.cos(ang) * d, q.y + Math.sin(ang) * d - p * 5, r, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        return true;
+      },
       chain(f, t) {
         const steps = f.pts.length - 1, end = steps * CHAIN_STEP + 260;
         if (t >= end) return false;
@@ -6395,7 +6612,7 @@
           const tip = { x: a.x + (b.x - a.x) * grow, y: a.y + (b.y - a.y) * grow };
           const pts = jag(a, tip, flick * 31 + i, f.thin ? 2.5 : 4);
           ctx.globalAlpha = Math.max(0, 1 - age) * (flick % 3 === 2 ? 0.6 : 1);
-          stroke(pts, "#ffe14d", f.thin ? 2.5 : 4, 10);
+          stroke(pts, f.color || "#ffe14d", f.thin ? 2.5 : 4, 10);
           stroke(pts, "#fffbe6", f.thin ? 1 : 1.6, 0);
           if (grow >= 1) {   // 맞은 곳에 불꽃
             ctx.fillStyle = "#fff6b0";
@@ -6439,7 +6656,9 @@
       curse(from, to, r) { const cells = aimCells(to); fx3d?.("curse", from, to, cells); list.push({ kind: "curse", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, cells, t0: now(), seed: Math.random() * 100 }); },
       fireball(from, to, r) { fx3d?.("fireball", from, to); list.push({ kind: "fireball", from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, r, t0: now(), seed: Math.random() * 100 }); },
       nova(at, r) { fx3d?.("nova", at); list.push({ kind: "nova", at: { x: at.x, y: at.y }, r, t0: now(), seed: Math.random() * 6 }); },
-      chain(pts, thin = false) { fx3d?.("chain", pts); list.push({ kind: "chain", pts: pts.map(p => ({ x: p.x, y: p.y })), thin, t0: now() + (thin ? 60 : 0) }); },
+      chain(pts, thin = false, color = null) { fx3d?.("chain", pts, color); list.push({ kind: "chain", pts: pts.map(p => ({ x: p.x, y: p.y })), thin, color, t0: now() + (thin ? 60 : 0) }); },
+      // 구름·증기·역병이 퍼짐 (dc#168): from이 있으면 작은 구슬이 날아간 뒤 cells 칸마다 뭉게뭉게
+      puff(at, cells, color, from = null) { fx3d?.("puff", at, color, cells); list.push({ kind: "puff", at: { x: at.x, y: at.y }, from: from ? { x: from.x, y: from.y } : null, cells: cells.map(c => ({ x: c.x, y: c.y })), color, t0: now(), seed: Math.random() * 100 }); },
       draw() {
         const t = now();
         list = list.filter(f => {
@@ -6663,14 +6882,15 @@
         const o = Anim.of(e), big = e.named ? 1.35 : e.kind === "boss" ? 1.15 : e.kind === "elite" ? 0.85 : e.kind === "golden" ? 0.7 : 0.75;
         const hurtNow = e.hp < e.maxHp || e.kind !== "normal";
         // 상태: 불탐(불꽃이 피어오름) · 얼어 느려짐(하늘색) · 감전(노란 빛과 전기). 가끔씩 입자를 뿌림
-        const burning = !!e.burn, frozen = e.slow > 0, shockOn = e.shock > turn;
+        const burning = !!e.burn, frozen = e.slow > 0, shockOn = e.shock > turn, toxOn = e.tox > turn;
         if (!reduceMotion && Math.random() < 0.25) {
+          if (toxOn) view.sparks(d.x, d.y, POISON_COLOR, "flame", 1);   // 중독 (dc#168)
           if (burning) view.sparks(d.x, d.y, EL.colors.fire, "flame", 1);
           if (frozen) view.sparks(d.x, d.y, EL.colors.ice, "shard", 1);
           if (shockOn) view.sparks(d.x, d.y, EL.colors.bolt, "spark", 1);
         }
         bills.push({ key: e, sprite: Sprites.name(`mon_${e.id}`), x: d.x + o.x / TILE * 0.6, y: d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha,
-          tint: frozen ? "#9fdcff" : burning ? "#ffc9a0" : shockOn ? "#fff3a0" : null,
+          tint: frozen ? "#9fdcff" : burning ? "#ffc9a0" : shockOn ? "#fff3a0" : toxOn ? "#c8ffb0" : null,
           hp: hurtNow ? Math.max(0, e.hp / e.maxHp) : null,
           barColor: e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : e.kind === "golden" ? "#ffd700" : "#e04a3a",
           glow: burning ? EL.colors.fire : shockOn ? EL.colors.bolt : frozen ? EL.colors.ice : e.el ? EL.colors[e.el] : e.kind === "golden" ? "#ffd700" : null });
@@ -6692,8 +6912,11 @@
       const hs = handState(now);
       const marks = []; for (const e of enemies) if (e.aim) for (const c of aimCells(e.aim)) marks.push({ x: c.x, y: c.y, last: e.aim.t <= 1 });   // 원거리 몬스터 조준 표시 (dc#149)
       for (const e of enemies) if (e.smash) marks.push({ x: e.smash.x, y: e.smash.y, last: e.smash.t <= 1, color: SMASH.color, t: e.smash.t });   // 강타 예고 (dc#155)
+      for (const e of enemies) if (e.leapAt) for (const c of leapCells(e.leapAt)) marks.push({ x: c.x, y: c.y, last: e.leapAt.t <= 1, color: LEAP.color });   // 점프 공격 예고 (dc#168)
+      for (const k of toxCloud.keys()) { const [x, y] = k.split(",").map(Number); marks.push({ x, y, color: POISON_COLOR, op: 0.2 + 0.06 * Math.sin(now / 260 + x + y) }); }   // 독구름 (dc#168)
+      for (const k of fireTrail.keys()) { const [x, y] = k.split(",").map(Number); marks.push({ x, y, color: EL.colors.fire, op: 0.3 + 0.1 * Math.sin(now / 90 + x * 1.7 + y) }); }   // 각성 불의 장화 (3D에도, dc#168)
       // 내 칸이 표시 안이면 화면 가장자리 경고 (dc#155): 강타 주황 · 저주 구슬 진홍, 남은 턴
-      const here = enemies.map(e => e.smash && e.smash.x === player.x && e.smash.y === player.y ? { c: SMASH.color, t: e.smash.t, k: T("강타") } : e.aim && near8(e.aim, player) <= RANGED.radius ? { c: RANGED.color, t: e.aim.t, k: T("저주 구슬") } : null).filter(Boolean).sort((a, b) => a.t - b.t)[0];
+      const here = enemies.map(e => e.smash && e.smash.x === player.x && e.smash.y === player.y ? { c: SMASH.color, t: e.smash.t, k: T("강타") } : e.leapAt && near8(e.leapAt, player) <= LEAP.radius ? { c: LEAP.color, t: e.leapAt.t, k: T("점프 공격") } : e.aim && aimHits(e.aim, player) ? { c: RANGED.color, t: e.aim.t, k: e.aim.b ? T("강화 미사일") : T("저주 구슬") } : null).filter(Boolean).sort((a, b) => a.t - b.t)[0];
       warn.classList.toggle("on", !!here); warn.classList.toggle("last", !!here && here.t <= 1);
       if (here) { warn.style.setProperty("--warn", here.c); warn.firstChild.textContent = T("⚠ {0}! {1}턴 안에 옮기세요", here.k, here.t); }
       view.frame({ x: pos.x, y: pos.y, yaw, pitch, bob, torch: flick, bills, hands: hs, marks, markColor: RANGED.color });
@@ -6835,7 +7058,8 @@
       }
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
       else if (kind === "nova") view.burst(a.x, a.y, EL.colors.ice, 3.2, 520, 0.3);
-      else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, EL.colors.bolt), i * Fx.CHAIN_STEP));
+      else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, b || EL.colors.bolt), i * Fx.CHAIN_STEP));
+      else if (kind === "puff") { view.burst(a.x, a.y, b, 2.4, 560, 0.3); for (const c of (cells || []).slice(0, 16)) view.sparks(c.x, c.y, b, "flame", 3); }   // 독구름·증기·역병 (dc#168)
       else if (kind === "smash") { view.burst(a.x, a.y, SMASH.color, 2.0, 420, 0.1); view.sparks(a.x, a.y, "#8a5a2b", "shard", 10); shakeT = now; }   // 강타 (dc#155): 주황 번쩍 + 돌 조각 + 화면 흔들림
       else if (kind === "curse") {   // 몬스터 저주 구슬 (dc#149): 검붉은 구슬이 날아와 조준한 칸들에서 검붉은 조각이 튐
         view.orb(a, b, RANGED.color, Fx.CURSE_FLY);
@@ -7158,7 +7382,7 @@
       const make = () => (hell() ? RLMonsters.makeHell(RLMonsters.pickNightmareType(Math.random), Math.random() < RLMonsters.eliteChance(NM.base) ? "elite" : "normal", depth)
         : RLMonsters.makeMonster(RLMonsters.pickType(depth, Math.random), "normal", depth));
       // crowd 맵(헬 50층): 몬스터 수를 던전 그 층과 같게 (헬 50층 47~53마리) 발판 곳곳에, 보스(네임드)는 맨 위 발판에
-      const M = J.MAPS[mapId], n = RLMonsters.nmMonsterCount(depth), spread = NM.monsters.spread;
+      const M = J.MAPS[mapId], n = RLMonsters.hellMonsterCount(depth), spread = NM.monsters.spread;
       const spots = M.crowd ? J.spawnSpots(map, between(n - spread, n + spread)) : map.spawns;
       mobs = spots.map(p => ({ ...J.newMob(map, p), ...make(), hitT: -1, deadT: -1, atkT: -1e9 }));
       if (M.boss) {
@@ -8305,6 +8529,24 @@
     Anim.drawDust();
     drawXpSuck();   // 계단이 열릴 때 날아오는 경험치 구슬 (dc#153)
 
+    // 독구름 (dc#168): 초록 안개가 칸마다 뭉게뭉게 (남은 턴이 적을수록 옅게) + 올라오는 거품
+    if (toxCloud.size) {
+      ctx.save();
+      const now = performance.now();
+      for (const [k, until] of toxCloud) {
+        const [x, y] = k.split(",").map(Number), left = until - turn;
+        if (left <= 0 || !visible[y]?.[x]) continue;
+        const fade = Math.min(1, 0.4 + 0.2 * left), cx = x * TILE + TILE / 2, cy = y * TILE + TILE / 2;
+        ctx.fillStyle = `rgba(90, 200, 60, ${0.16 * fade})`; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+        for (let i = 0; i < 3; i++) {
+          const ph = now / (700 + i * 230) + x * 1.3 + y * 0.7 + i * 2.1, r = TILE * (0.26 + 0.06 * Math.sin(ph * 2));
+          ctx.fillStyle = `rgba(125, 220, 74, ${0.22 * fade})`;
+          ctx.beginPath(); ctx.arc(cx + Math.cos(ph) * TILE * 0.18, cy + Math.sin(ph * 1.3) * TILE * 0.14, r, 0, Math.PI * 2); ctx.fill();
+        }
+        if (!reduceMotion) { const b = ((now / 900 + x * 0.37 + y * 0.61) % 1); ctx.fillStyle = `rgba(200, 255, 160, ${0.6 * (1 - b) * fade})`; ctx.beginPath(); ctx.arc(cx + Math.sin(x * 3 + y) * TILE * 0.2, cy + TILE * 0.3 - b * TILE * 0.6, 1.6, 0, Math.PI * 2); ctx.fill(); }
+      }
+      ctx.restore();
+    }
     // 각성 불의 장화 (dc#163): 지나간 칸의 불 (남은 턴이 적을수록 옅게, 일렁임)
     if (fireTrail.size) {
       ctx.save();
@@ -8343,8 +8585,11 @@
       for (const c of cells) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
       ctx.strokeStyle = RANGED.color; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
       const r = RANGED.radius;
-      ctx.strokeRect((e.aim.x - r) * TILE + 1, (e.aim.y - r) * TILE + 1, (2 * r + 1) * TILE - 2, (2 * r + 1) * TILE - 2);
-      if (visible[e.y]?.[e.x]) { ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(e.x * TILE + TILE / 2, e.y * TILE + TILE / 2); ctx.lineTo(e.aim.x * TILE + TILE / 2, e.aim.y * TILE + TILE / 2); ctx.stroke(); ctx.globalAlpha = 1; }
+      for (const p of e.aim.b ? [e.aim, e.aim.b] : [e.aim]) {   // 강화 미사일은 두 곳 (dc#168)
+        if (e.aim.b) ctx.strokeStyle = TWIN.color;
+        ctx.strokeRect((p.x - r) * TILE + 1, (p.y - r) * TILE + 1, (2 * r + 1) * TILE - 2, (2 * r + 1) * TILE - 2);
+        if (visible[e.y]?.[e.x]) { ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(e.x * TILE + TILE / 2, e.y * TILE + TILE / 2); ctx.lineTo(p.x * TILE + TILE / 2, p.y * TILE + TILE / 2); ctx.stroke(); ctx.globalAlpha = 1; }
+      }
       ctx.setLineDash([]);
       // 남은 턴: 표시 오른쪽 위 모서리에 진홍 동그라미 (가운데는 내 캐릭터에 가려짐)
       const bx = (e.aim.x + r + 1) * TILE - 2, by = (e.aim.y - r) * TILE + 2;
@@ -8352,6 +8597,26 @@
       ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
       ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillStyle = "#fff"; ctx.fillText(String(e.aim.t), bx, by + 1);
+      ctx.restore();
+    }
+    // 점프 공격 예고 (dc#168): 떨어질 칸 둘레를 보라로 깜빡 + 테두리 + 몬스터에서 곡선 + 오른쪽 위에 남은 턴
+    for (const e of enemies) {
+      if (!e.leapAt) continue;
+      const a = e.leapAt, last = a.t <= 1, pulse = 0.5 + 0.5 * Math.sin(performance.now() / (last ? 70 : 140)), r = LEAP.radius;
+      ctx.save();
+      ctx.fillStyle = `rgba(176, 107, 255, ${(last ? 0.3 : 0.16) + 0.12 * pulse})`;
+      for (const c of leapCells(a)) ctx.fillRect(c.x * TILE, c.y * TILE, TILE, TILE);
+      ctx.strokeStyle = LEAP.color; ctx.lineWidth = 3;
+      ctx.strokeRect((a.x - r) * TILE + 1.5, (a.y - r) * TILE + 1.5, (2 * r + 1) * TILE - 3, (2 * r + 1) * TILE - 3);
+      if (visible[e.y]?.[e.x]) {
+        const sx = e.x * TILE + TILE / 2, sy = e.y * TILE + TILE / 2, tx = a.x * TILE + TILE / 2, ty = a.y * TILE + TILE / 2;
+        ctx.globalAlpha = 0.65; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo((sx + tx) / 2, Math.min(sy, ty) - TILE * 2, tx, ty); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+      const bx = (a.x + r + 1) * TILE - 2, by = (a.y - r) * TILE + 2;
+      ctx.fillStyle = LEAP.color; ctx.beginPath(); ctx.arc(bx, by, TILE * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+      ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff"; ctx.fillText(String(a.t), bx, by + 1);
       ctx.restore();
     }
     // 강타 예고 (dc#155): 내려칠 칸을 주황으로 깜빡 + 굵은 테두리 + 오른쪽 위에 남은 턴 (원거리 저주 구슬의 진홍 점선과 다르게 실선)
@@ -8511,6 +8776,14 @@
     if (u.shock > turn) {   // 감전: 위쪽에 노란 줄
       ctx.fillStyle = EL.colors.bolt;
       ctx.fillRect(px + 2, py + 2, TILE - 4, 2);
+    }
+    if (u.tox > turn) {   // 중독 (dc#168): 왼쪽에 초록 줄
+      ctx.fillStyle = POISON_COLOR;
+      ctx.fillRect(px + 2, py + 4, 2, TILE - 8);
+    }
+    if (u.stun > turn) {   // 마비 (dc#168): 머리 위에 별
+      ctx.fillStyle = "#e6ff8a"; ctx.font = `bold ${Math.round(TILE * 0.45)}px sans-serif`; ctx.textAlign = "center";
+      ctx.fillText("✦", px + TILE / 2, py + TILE * 0.32);
     }
   }
 
@@ -10851,7 +11124,7 @@
     store.set(key, "1");
     showNotice(T("정식 v2: 축복과 자동 장비"), [
       T("장비는 이제 부위·등급·던전·강화로 정해지는 공격력·방어력·최대 HP 숫자만 줘요. 줍는 순간 자동으로 더 좋은 것을 끼고, 같은 부위·같은 던전·같은 등급을 또 얻으면 강화 +1 (확률 없이, +12까지), 나머지는 분해돼요."),
-      T("더 좋은 등급·던전 장비로 바뀔 때 강화 단계를 그대로 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 끼지 않는 장비는 등급과 상관없이 모두 분해해요."),
+      T("더 좋은 등급·던전 장비로 바뀔 때 강화 단계의 절반을 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 끼지 않는 장비는 등급과 상관없이 모두 분해해요."),
       T("던전에서 새 층에 내려갈 때마다 축복 3개 중 1개, 보스를 쓰러뜨리면 상한을 올리는 유물 1개를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요. 던전을 완료하면 축복을 가진 채 다음 던전으로 이어갈 수 있어요."),
       T("세트·룬워드·보석·유니크 고유 효과는 이제 쓰이지 않아요. 가진 보석·룬은 저장본에 그대로 남아 있어요."),
       ...(c ? [T("가지고 있던 보석·룬 대신 강화석 {0}개와 악몽 강화석 {1}개를 받았어요.", c.stones.toLocaleString(), c.nmStones.toLocaleString())] : []),
@@ -11072,7 +11345,7 @@
   // 부활한 자리를 안전하게: 날아오던 탄·예고를 지우고, 가까운 몬스터는 걸어서 REVIVE_SAFE.to칸 넘게 떨어진 빈 바닥으로
   function reviveClear() {
     shots = [];
-    for (const e of enemies) { e.smash = null; e.aim = null; e.charge = null; if (e.ready) e.ready = false; }
+    for (const e of enemies) { e.smash = null; e.aim = null; e.charge = null; e.leapAt = null; if (e.ready) e.ready = false; }
     const D = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(-1)), q = [[player.x, player.y]];
     D[player.y][player.x] = 0;
     for (let i = 0; i < q.length; i++) {

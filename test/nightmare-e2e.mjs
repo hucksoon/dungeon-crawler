@@ -16,11 +16,11 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const NM = M.NIGHTMARE;
 
 // ---- 규칙 ----
-check("nightmare: 50 floors, 2%/floor + 0.3%×(floor−1)², monsters 20 → 50 (floor 41), items 76~125, clear 51", NM.floors === 50 && NM.perFloor === 0.02 && NM.perFloor2 === 0.003 && M.nmMonsterCount(1) === 20 && M.nmMonsterCount(40) === 49 && M.nmMonsterCount(41) === 50 && M.nmMonsterCount(50) === 50 && NM.itemBase === 75 && NM.clearStage === 51);
+check("nightmare: 50 floors, 2%/floor + 0.3%×(floor−1)², monsters 50 → 89 (dc#168, hell keeps 20 → 50), items 76~125, clear 51", NM.floors === 50 && NM.perFloor === 0.02 && NM.perFloor2 === 0.003 && M.nmMonsterCount(1) === 50 && M.nmMonsterCount(50) === 89 && M.hellMonsterCount(1) === 20 && M.hellMonsterCount(40) === 49 && M.hellMonsterCount(41) === 50 && NM.itemBase === 75 && NM.clearStage === 51);
 const b1 = M.makeNightmareBoss(1), b50 = M.makeNightmareBoss(50), base = M.makeBoss(75);
 // 정식 v2 (dc#140): 1~10층은 입구 배율 (1층 × 0.6 → 10층 × 1)
 const v2 = M.V2.nightmare.hp;   // dc#142: 나이트메어 몬스터 HP ×V2
-check("nightmare boss = 75층 boss × 1.44 HP (dc#54) × entry 0.6 on floor 1 (dc#140) × v2 (dc#142), ×9.18 at 50", Math.abs(b1.hp - Math.round(Math.round(base.hp * M.NIGHTMARE.bossHp * M.entryMul(NM.entry, 1)) * v2)) <= 1 && NM.entry.from === 0.6 && M.NIGHTMARE.bossHp === 1.44 && Math.abs(b50.hp / (base.hp * M.NIGHTMARE.bossHp * v2) - 9.18) < 0.01 && b1.name.startsWith("악몽의"));
+check("nightmare boss = 75층 boss × 1.44 HP (dc#54) × no entry ramp (dc#168, was 0.6) × v2 (dc#142), ×9.18 at 50", Math.abs(b1.hp - Math.round(Math.round(base.hp * M.NIGHTMARE.bossHp * M.entryMul(NM.entry, 1)) * v2)) <= 1 && NM.entry.from === 1 && M.NIGHTMARE.bossHp === 1.44 && Math.abs(b50.hp / (base.hp * M.NIGHTMARE.bossHp * v2) - 9.18) < 0.01 && b1.name.startsWith("악몽의"));
 const pool = M.nightmarePool().map(m => m.id);
 check("nightmare pool has floor-75 monsters plus 대악마·타이탄·공허의 군주·고룡", ["archdemon", "titan", "void_lord", "ancient_dragon"].every(id => pool.includes(id)) || pool.length >= 8, pool.join());
 
@@ -94,7 +94,7 @@ try {
   const L1 = await stored(page, "rl_level"), S1 = await stored(page, "rl_save");
   check("enter: nightmare floor 1 (HUD, save z:nm, level z:nm)", !(await inLobby(page)) && (await page.locator("#zone").innerText()).includes("나이트메어") && (await page.locator("#depth").innerText()) === "1" && S1.run.z === "nm" && S1.run.d === 1 && L1.z === "nm", JSON.stringify(S1.run));
   const mobs = L1.enemies.filter(e => e.kind !== "golden");
-  check(`nightmare floor 1 has ~20 strong monsters (${mobs.length})`, mobs.length >= 15 && mobs.length <= 24 && mobs.every(e => e.name.startsWith("악몽의") || e.name.includes("악몽의")) && Math.min(...mobs.map(e => e.hp)) > M.makeMonster(M.MONSTERS[0], "normal", 75).hp);
+  check(`nightmare floor 1 has ~50 strong monsters (dc#168, ${mobs.length})`, mobs.length >= M.nmMonsterCount(1) - 4 && mobs.length <= M.nmMonsterCount(1) + 4 && mobs.every(e => e.name.startsWith("악몽의") || e.name.includes("악몽의")) && Math.min(...mobs.map(e => e.hp)) > M.makeMonster(M.MONSTERS[0], "normal", 75).hp);
   // 나이트메어 안에서는 예전 장비를 낄 수 없음
   await page.keyboard.press("i"); await sleep(150);
   await page.locator(".bag-item", { hasText: I.itemName(v3) }).click();

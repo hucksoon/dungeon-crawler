@@ -60,7 +60,7 @@ try {
   check("duplicate rule: same slot · zone · rarity", I.isDupOf({ slot: "chest", rarity: "rare", seed: "a|e3|k1", v: 4 }, { slot: "chest", rarity: "rare", seed: "b|e9|k2", v: 4 }) && !I.isDupOf({ slot: "chest", rarity: "rare", seed: "a|e3|k1", v: 4 }, { slot: "chest", rarity: "rare", seed: "b|n9|k2", v: 4 }));
   const M2 = createRequire(import.meta.url)(path.join(REPO, "monsters.js"));
   check("monsters keep their elements, but no resist penalty for the player (no resist gear)", M2.makeNightmare(M2.MONSTERS[M2.MONSTERS.length - 1], "normal", 10, "fire").el === "fire" && M2.ELEMENTS.zonePenalty.nightmare === 0 && M2.ELEMENTS.zonePenalty.hell === 0);
-  check("entry ramp: nightmare floor 1 × 0.6, hell floor 1 × 0.4, full from floor 11 / 16", M2.entryMul(M2.NIGHTMARE.entry, 1) === 0.6 && M2.entryMul(M2.HELL.entry, 1) === 0.4 && M2.entryMul(M2.NIGHTMARE.entry, 11) === 1 && M2.entryMul(M2.HELL.entry, 16) === 1);
+  check("entry ramp: nightmare none (dc#168: continue only), hell floor 1 × 0.4, full from floor 16", M2.entryMul(M2.NIGHTMARE.entry, 1) === 1 && M2.entryMul(M2.HELL.entry, 1) === 0.4 && M2.entryMul(M2.NIGHTMARE.entry, 11) === 1 && M2.entryMul(M2.HELL.entry, 16) === 1);
   check("reroll cost: gold = stones × rate, doubles on the same floor", (() => { const a = B.rerollCost("normal", 25, 0), b = B.rerollCost("normal", 25, 1); return a.gold === a.stones * 10 && b.stones >= a.stones * 2 - 5; })(), JSON.stringify(B.rerollCost("normal", 25, 0)));
 
   // ---- 2. 새 층 축복 (저장 판 3층, 2층까지 받음) ----
@@ -135,7 +135,7 @@ try {
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k3", "common"));
   check("weaker: dismantled into stones (then auto-enhance spends them)", r.eq.chest.rarity === "rare" && (await D.page.locator("#log").innerText()).includes("분해: 강화석"));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k4", "epic", "chest", 20));
-  check("better (epic): swapped in, enhance carried over", r.eq.chest.rarity === "epic" && r.eq.chest.enh >= enhBefore, JSON.stringify({ r: r.eq.chest.rarity, e: r.eq.chest.enh, before: enhBefore }));
+  check("better (epic): swapped in, half the enhance carried over (dc#168)", r.eq.chest.rarity === "epic" && r.eq.chest.enh >= Math.floor(enhBefore / 2), JSON.stringify({ r: r.eq.chest.rarity, e: r.eq.chest.enh, before: enhBefore }));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k5", "legendary", "head", 1));
   r = await D.page.evaluate((it) => window.__t.take(it), mk("v2t|e5|k6", "legendary", "head", 1));
   check("legendary duplicates also merge (+1)", r.eq.head?.enh >= 1);

@@ -229,6 +229,23 @@ async function reviveYard() {
   return o;
 }
 
+// 나이트메어 기술 장면 (dc#168): 넓은 바닥 가운데의 나 + 기술을 쓰는 몬스터 하나 (mon(x0, y0) → 몬스터 값, dx·dy는 내 자리에서)
+async function nmShot(mon) {
+  const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_save: save(30, "blog-v25nm", { l: 30, hp: 99999, mh: 99999, bz: { normal: 30 } }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } });
+  await o.page.keyboard.press("."); await sleep(300);
+  await editLevel(o.page, (L, src) => {
+    const m = L.map.split(""), x0 = Math.max(6, Math.min(L.w - 8, L.px)), y0 = Math.max(5, Math.min(L.h - 6, L.py));
+    for (let y = y0 - 4; y <= y0 + 4; y++) for (let x = x0 - 6; x <= x0 + 7; x++) m[y * L.w + x] = "1";
+    L.map = m.join(""); L.px = x0; L.py = y0;
+    const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0], { dx, dy, ...o } = new Function(`return (${src})`)()(x0, y0);
+    L.enemies = [{ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 9999, maxHp: 9999, atk: 1, def: 0, ranged: false, ready: false, smash: null, slow: 0, ...o }];
+    L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+    L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
+  }, mon.toString());
+  await sleep(400);
+  return { ...o, shot: "#game" };
+}
+
 // ---- 장면: 이름, 설명(그림 아래 글), 찍기 ----
 const g40 = gear(40), g90 = gear(90, "golden", "blognm"), g150 = gear(150, "golden", "bloghell");
 const SCENES = [
@@ -1071,6 +1088,28 @@ const SCENES = [
     const o = await open({ scene: "lobby", dsf: 1.6, seed: { rl_market: "paused", rl_save: save(40, "blog-v2town"), "rl_inv:g:DEV": inv(g40) } });
     await goDoor(o.page, "market"); await sleep(600);
     return { ...o, shot: "#market-modal .modal" }; }],
+  // dc#168: 독구름·각성 역병 · 융합 스킬 · 나이트메어 강화 미사일·점프 공격
+  ["v25-poison", "독구름이 몬스터 자리에 깔리고, 중독된 몬스터가 쓰러지면 역병으로 터져 옆 몬스터에게 번져요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_live: "off", rl_save: save(30, "blog-v25po", { l: 30, hp: 99999, mh: 99999, bz: { normal: 30 }, bl: { poison: 10, poisonAw: 10 } }), "rl_inv:g:DEV": inv(g40.slice(0, 3)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(2, Math.min(L.w - 15, L.px - 6)), y0 = Math.max(5, Math.min(L.h - 6, L.py));
+      for (let y = y0 - 4; y <= y0 + 4; y++) for (let x = x0; x < x0 + 13; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0 + 2; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy, hp) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp, maxHp: 6000, atk: 1, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(5, 0, 300), mk(6, 1, 900), mk(6, -1, 2600), mk(7, 0, 3400), mk(8, 1, 4200), mk(8, -2, 6000), mk(10, 0, 6000)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      localStorage.setItem("rl_live", "1");
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return x >= x0 - 1 && x <= x0 + 13 && Math.abs(y - y0) <= 5 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordClock(o.page, [["+ArrowRight", 300], ["-ArrowRight", 900]], 5200, { cols: 11, rows: 7, step: 100 }), delay: 10 }; }],
+  ["v25-fusion", "두 속성을 모두 Lv 10까지 올리면 융합 스킬이 축복 후보에 나와요 (6가지)", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(45, "blog-v25f229", { l: 40, bz: { normal: 45 }, pq: [{ s: "blog-v25f229" }], bl: { fire: 10, ice: 10, bolt: 10, poison: 10, fireAw: 4, poisonAw: 3, might: 6, vigor: 5, flamebolt: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v25-twin", "나이트메어 강화 미사일: 내 자리와 가던 길 2칸 앞, 두 곳을 함께 노려요 (주황 테두리)", async () => nmShot((x0, y0) => ({ ranged: true, twin: true, rcd: 9, dx: -5, dy: -3, aim: { x: x0, y: y0, t: 2, b: { x: x0 + 2, y: y0 } } }))],
+  ["v25-leap", "나이트메어 점프 공격: 가던 길 2칸 앞에 보라 3×3, 2턴 뒤 뛰어내려요 — 방향을 바꾸면 피해요", async () => nmShot((x0, y0) => ({ leap: { cd: 6 }, dx: 5, dy: -3, leapAt: { x: x0 + 2, y: y0, t: 2 } }))],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
