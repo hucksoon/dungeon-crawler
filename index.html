@@ -566,6 +566,10 @@
   .cmp .chip.up { color: #6fdc6f; } .cmp .chip.down { color: #ff7a6b; }
   .bag-item small { opacity: 0.55; }
   .bag-empty { font-size: 12px; opacity: 0.6; padding: 8px 2px; }
+  /* 가방 = 펫·스킨 (dc#164) */
+  .bag-h { grid-column: 1 / -1; margin: 6px 0 2px; font-size: 13px; color: var(--accent); }
+  .bag-item.pet { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+  .bag-item.pet small { flex-basis: 100%; }
   #inv-sell-all, #inv-staff-gift, #inv-staff-wipe { width: 100%; font-size: 12px; flex: none; }
   .gift-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
   .gift-row button { font-size: 12px; padding: 4px 6px; }
@@ -1454,8 +1458,20 @@
     let owner = null;
     let data = null;  // { bag: [item], equip: { slot: item|null }, log: [entry] }
     const key = (o) => `rl_inv:${o}`;
-    const empty = () => ({ bag: [], equip: Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, null])), log: [] });   // 장착 칸: 7부위 + 목걸이 + 반지 2
-
+    const empty = () => ({ bag: [], equip: Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, null])), log: [], pets: { have: {}, on: null, pin: false } });   // 장착 칸: 7부위 + 목걸이 + 반지 2
+    // 펫 (dc#164): { have: { 펫 이름표: { g: 등급, at: 얻은 때 } }, on: 데리고 다니는 펫 | null, pin: 내가 고정했는지 }
+    //   이름표는 몬스터 id (이벤트 모습이면 "id@이벤트"). 같은 펫은 하나만. 고정하지 않으면 가장 좋은 펫(등급 → 최근)을 저절로 데리고 다님
+    const petBest = (have) => Object.keys(have).sort((a, b) => RLMonsters.gradeRank(have[b].g) - RLMonsters.gradeRank(have[a].g) || (have[b].at || 0) - (have[a].at || 0))[0] || null;
+    function cleanPets(p) {
+      const have = {};
+      for (const [k, v] of Object.entries(p?.have && typeof p.have === "object" ? p.have : {})) {
+        const { id } = RLMonsters.parsePetKey(k);
+        if (typeof k !== "string" || k.length > 40 || !/^[a-z_]+(@[a-z]+)?$/.test(k) || !id || !v || !RLMonsters.PETS.grades[v.g]) continue;
+        have[k] = { g: v.g, at: Number.isFinite(v.at) ? v.at : 0, ...(["elite", "boss", "named"].includes(v.s) ? { s: v.s } : {}) };   // s: 떨어뜨린 종류 (서버에 올릴 때)
+      }
+      const pin = !!p?.pin && typeof p?.on === "string" && !!have[p.on];
+      return { have, on: pin ? p.on : petBest(have), pin };
+    }
     function read(o) {
       try {
         const d = JSON.parse(store.get(key(o)));
@@ -1470,6 +1486,7 @@
     const trimLog = (d) => { if (d.log.length > LOG_MAX) d.log.splice(0, d.log.length - LOG_MAX); };
     function normalize(d) {
       if (Array.isArray(d.log)) trimLog(d);
+      d.pets = cleanPets(d.pets);
       d.equip = fullEquip(d.equip);
       d.bag = d.bag.map(remake);
       for (const s of RLItems.EQUIP_SLOTS) d.equip[s] = d.equip[s] && remake(d.equip[s]);
@@ -1516,6 +1533,8 @@
       } catch { return it; }
     }
     const write = () => { trimLog(data); store.set(key(owner), JSON.stringify(data)); Profile.touch("soon"); };
+    // 펫만 바뀌었을 때: 이 기기에만 저장 (펫은 계정 저장에 넣지 않고 서버 pets.php가 따로 관리해서 계정 저장을 올릴 필요 없음)
+    const writePets = () => store.set(key(owner), JSON.stringify(data));
     const all = () => [...data.bag, ...Object.values(data.equip).filter(Boolean)];
     const fullEquip = (eq) => Object.fromEntries(RLItems.EQUIP_SLOTS.map(s => [s, eq?.[s] || null]));
     // 이 아이템을 낄 칸: at(고른 칸)이 맞으면 거기, 아니면 빈 칸, 다 차 있으면 첫 칸 (반지는 반지 1·2)
@@ -1537,6 +1556,10 @@
       };
       (src.bag || []).forEach(item => take(item, false));
       Object.values(src.equip || {}).filter(Boolean).forEach(item => take(item, true));
+      // 펫 (dc#164): 개수를 더함
+      data.pets ||= { have: {}, on: null, pin: false };
+      for (const [k, v] of Object.entries(cleanPets(src.pets).have)) if (!data.pets.have[k] || RLMonsters.gradeRank(v.g) > RLMonsters.gradeRank(data.pets.have[k].g)) data.pets.have[k] = v;
+      if (!data.pets.pin) data.pets.on = petBest(data.pets.have);
       addMail(wait);
       return moved;
     }
@@ -1562,19 +1585,19 @@
       use(o) { owner = o; data = read(o); if (remade) { remade = 0; store.set(key(owner), JSON.stringify(data)); } },
       owner: () => owner,
       // 서버에 올리는 부분 (얻은·버린 기록 log는 커서 이 기기에만)
-      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, hellStones: data.hellStones || 0, gems: data.gems || {}, runes: data.runes || [], ...(data.v2c ? { v2c: 1 } : {}) }),
+      snapshot: () => ({ bag: data.bag, equip: data.equip, stones: data.stones || 0, nmStones: data.nmStones || 0, hellStones: data.hellStones || 0, gems: data.gems || {}, runes: data.runes || [], ...(data.v2c ? { v2c: 1 } : {}) }),   // 펫은 계정 저장에 넣지 않음 (서버 pets.php가 따로 관리, dc#164)
       // 보석·룬 보상이 막 들어왔으면 한 번 돌려줌 (안내용)
       takeCompNote: () => { const c = compNote; compNote = null; return c; },
       // 서버 저장본으로 바꿈 (기록은 이 기기 것 유지)
       load(o, inv) {
         owner = o;
-        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, hellStones: inv?.hellStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], ...(inv?.v2c ? { v2c: 1 } : {}), log: read(o).log });
+        data = normalize({ bag: Array.isArray(inv?.bag) ? inv.bag : [], equip: inv?.equip, stones: inv?.stones || 0, nmStones: inv?.nmStones || 0, hellStones: inv?.hellStones || 0, gems: inv?.gems || {}, runes: Array.isArray(inv?.runes) ? inv.runes : [], ...(inv?.v2c ? { v2c: 1 } : {}), pets: inv?.pets ?? read(o).pets, log: read(o).log });
         store.set(key(owner), JSON.stringify(data));
       },
       // 이 기기에만 있던 장비를 합침. 옮긴 개수
       absorb(src, from) {
         const moved = absorb(src, from);
-        if (moved) write();
+        write();   // 펫(dc#164)만 합쳐졌을 수도 있어서 늘 저장
         return moved;
       },
       addMail(list) {
@@ -1584,6 +1607,36 @@
       },
       items: () => all(),
       bag: () => data.bag,
+      // 펫 (dc#164)
+      pets: () => data.pets || { have: {}, on: null, pin: false },
+      hasPet: (key) => !!data.pets?.have[key],
+      // 새 펫 (이미 있으면 null). 고정하지 않았으면 가장 좋은 펫을 데리고 다님. 결과 { key, g, on }
+      addPet(key, g, src = null) {
+        data.pets ||= { have: {}, on: null, pin: false };
+        if (data.pets.have[key] || !RLMonsters.PETS.grades[g]) return null;
+        data.pets.have[key] = { g, at: Date.now(), ...(src ? { s: src } : {}) };
+        if (!data.pets.pin) data.pets.on = petBest(data.pets.have);
+        record("pet", { id: `pet:${key}` }, { pet: key, g });
+        writePets();
+        return { key, g, on: data.pets.on === key };
+      },
+      // 서버(pets.php)의 펫 목록으로 바꿈 (로그인 사용자, dc#164). keep: 서버에 아직 못 올린 펫(하루 한도)은 남김
+      loadPets(d, keep = []) {
+        const cur = data.pets?.have || {};
+        data.pets = cleanPets(d);
+        for (const k of keep) if (cur[k] && !data.pets.have[k]) data.pets.have[k] = cur[k];
+        if (!data.pets.pin) data.pets.on = petBest(data.pets.have);
+        writePets();
+        return data.pets;
+      },
+      // 데리고 다닐 펫을 내가 고름 (고정). null이면 고정을 풀고 가장 좋은 펫으로
+      setPet(key) {
+        data.pets ||= { have: {}, on: null, pin: false };
+        if (key && data.pets.have[key]) { data.pets.on = key; data.pets.pin = true; }
+        else { data.pets.pin = false; data.pets.on = petBest(data.pets.have); }
+        writePets();
+        return data.pets.on;
+      },
       equipped: () => data.equip,
       equipKey: (item, at) => equipKey(item, at),
       log: () => data.log,
@@ -1801,8 +1854,9 @@
       autoTake(item, extra = {}) {
         if (all().some(x => x.id === item.id)) return { kind: "have" };
         const keys = RLItems.equipKeysFor(item);
-        // dc#151: 등급과 상관없이 쓰지 않는 장비는 모두 분해 (전에는 레전더리·세트·유니크·고대를 가방에 남김). 예전에 잠근 것만 가방에
-        const keep = (it) => !!it.lock;
+        // dc#151: 등급과 상관없이 쓰지 않는 장비는 모두 분해 (전에는 레전더리·세트·유니크·고대를 가방에 남김)
+        //   dc#164: 가방에는 펫·스킨만 → 예전에 잠근 것도 분해 (전에는 잠근 것만 가방에)
+        const keep = () => false;
         // 바꿔 낀 옛 장비·필요 없는 새 아이템: 잠근 것은 가방, 나머지는 분해
         const dispose = (it, why) => {
           if (keep(it) && data.bag.length < BAG_SIZE) { data.bag.push(it); record("get", it, { ...extra, auto: why }); return { kind: "bag" }; }
@@ -1839,6 +1893,22 @@
         }
         write();
         return res;
+      },
+      // 가방 정리 (dc#164): 가방에는 펫·스킨만. 남아 있는 장비(정식 v2 전에 모은 것·우편함·예전에 잠근 것)를 자동 장비처럼
+      //   더 좋으면 끼고(중복이면 강화) 나머지는 분해. { n, equip, stones: { 강화석 종류: 개수 }, gold }
+      flushBag() {
+        const out = { n: 0, equip: 0, stones: {}, gold: 0 };
+        const sold = (o) => { if (o?.kind !== "sold") return; out.stones[o.key] = (out.stones[o.key] || 0) + o.stones; out.gold += o.gold || 0; };
+        while (data.bag.length) {
+          const it = data.bag.shift();
+          delete it.lock;
+          const r = this.autoTake(it, { from: "bag" });
+          out.n++;
+          if (r.kind === "equip" || r.kind === "swap" || r.kind === "dup") out.equip++;
+          sold(r); sold(r.out);
+        }
+        write();
+        return out;
       },
       // 강화석으로 +4까지: 무기부터 한 번씩 돌아가며 (성공하면 다음 장비로). 오른 것 [{ at, to }]
       autoEnhance() {
@@ -2405,6 +2475,7 @@
   // quiet: 들어가기 전에 미리 만들어 두는 층(최대 층 완료 뒤 포탈 층)이면 안내 메시지를 남기지 않음
   function newLevel(rooms, { quiet = false } = {}) {
     fireTrail?.clear?.();   // 각성 불의 장화의 불은 층마다 (dc#163)
+    Pet.reset();   // 펫은 새 층에서 내 옆에 (dc#164)
     const start = rooms[0];
     clearStatus(player);  // 화상·느려짐은 층을 옮기면 풀림
     player.x = start.cx; player.y = start.cy;
@@ -3211,6 +3282,7 @@
     dropSound(items.slice(n0));
     if (orb) dropXp(e, xp); else gainXp(xp);
     dropHeal(e);   // HP가 낮으면 회복 구슬 (dc#155)
+    Pet.drop(e);   // 정예·보스는 낮은 확률로 펫 (dc#164)
     Bless.onBoss(e);   // 보스: 유물 고르기 (dc#140)
     if (s.rw.blast && e.hp <= 0) corpseBlast(e, s);
     floorProgress(e);
@@ -3515,6 +3587,20 @@
     return true;
   }
 
+  // 가방 정리 (dc#164): 가방에는 펫·스킨만 → 남은 장비(정식 v2 전·우편함·예전에 잠근 것)를 자동 장비로 끼거나 분해
+  //   자동 장비를 끈 테스트(rl_autogear "0")는 예전처럼 가방에 둠
+  function tidyBag() {
+    if (!autoGearOn() || !Inv.bag().length) return null;
+    const r = Inv.flushBag();
+    if (!r.n) return r;
+    if (player && !gameOver) sellGoldIn(r.gold);
+    log(T("🎒 가방 정리: 장비 {0}개 — {1}개는 끼고 나머지는 분해했다 ({2}). 이제 가방에는 펫과 스킨만 있어요.", r.n, r.equip, gainText(r.stones)), null, "#9aa4b2");
+    for (const u of Inv.autoEnhance()) log(T("✦ 자동 강화: {0} +{1}", SLOT_LABEL(u.at), u.to), null, "#8fd3ff");
+    afterGearChange?.();
+    if (player) updateStats();
+    return r;
+  }
+
   function gainXp(amount) {
     player.xp += amount;
     let up = false;
@@ -3571,33 +3657,191 @@
     items.push({ x: e.x, y: e.y, type: "heal", t0: performance.now() });
     showDamage(e, "♥", true, RESCUE.color);
   }
+  // 아이템 하나 줍기 (경험치·회복 구슬은 따로). 주웠으면 true. 펫(dc#164)도 같이 씀
+  function takeItem(it) {
+    if (it.type === "gear") {
+      if (!takeGear(it)) return false;
+      Sfx("pickup");
+    } else if (it.type === "treasure" || it.type === "potion") {
+      treasureLoot();
+      Sfx("gold");
+    } else if (it.type === "gem") {
+      if (!RLItems.GEMS[it.gem]) return false;
+      Inv.addGem(it.gem, it.grade);
+      log(T("{0}을(를) 주웠다. (보석은 인벤토리에서 홈에 넣어요)", RLItems.gemName(it.gem, it.grade)), null, RLItems.GEMS[it.gem].color);
+    } else if (it.type === "rune") {
+      if (!RLItems.RUNES[it.rune]) return false;
+      Inv.addRune(it.rune);
+      log(T("{0}을(를) 주웠다! (룬은 인벤토리에서 홈에 넣어요. 아래 룬 3개 = 위 룬 1개)", RLItems.runeName(it.rune)), "rainbow");
+    } else if (it.type === "gold") {
+      const amount = Math.round(it.amount * (1 + stats().gold / 100));
+      player.gold += amount;
+      Sfx("gold");
+      log(T("골드 +{0}", amount), "info");
+    }
+    items = items.filter(x => x !== it);
+    return true;
+  }
+
+  // ---- 펫 (dc#164, 규칙은 monsters.js PETS) ----
+  //   정예·보스·네임드를 쓰러뜨리면 낮은 확률로 그 몬스터가 펫이 됨. 데리고 다니는 펫 하나가 작게 나를 따라다니며
+  //   내 둘레 등급만큼(range칸, 전설은 지도 전체)에 남은 아이템(경험치 구슬·골드·장비·보물 등)을 대신 주워 옴. 한 턴에 등급만큼(speed칸) 걸음.
+  //   회복 구슬은 줍지 않음 (위험을 무릅쓰고 주우러 갈지 고르는 것, dc#155). 벽은 못 지나가고 몬스터는 지나감. 몬스터는 펫을 공격하지 않음.
+  //   주울 게 없으면 내 둘레 2칸 안으로 따라옴. 3D 화면에는 그리지 않음 (줍기는 그대로)
+  // 펫을 서버(pets.php)에 저장 (로그인 사용자, dc#164). 서버 목록이 기준: 같은 펫 두 번·기간이 끝난 이벤트 모습·나올 수 없는 등급은 서버가 거절
+  // 게스트로 얻은 펫은 그 기기에만 있다가, 계정에 로그인하면 sync()가 올림. 서버에 닿지 못하면 기기에 둔 펫으로 계속 놀고 다음 sync 때 올림
+  const PetSync = (() => {
+    const on = () => !!RANKING_API && Account.loggedIn() && cloudReady;
+    async function call(route, body) {
+      const headers = await serverHeaders();
+      if (!headers) throw new Error("no token");
+      const res = await fetch(rankingUrl(route), body === undefined ? { headers } : { method: "POST", headers, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { const err = new Error(data.error || `HTTP ${res.status}`); err.status = res.status; throw err; }
+      return data;
+    }
+    const refresh = () => { Pet.place(); if (!invModal.hidden) renderInventory(); };
+    // 서버 목록을 받아 오고, 기기에만 있는 펫은 올림 (게스트로 얻은 펫, 서버에 닿지 못했을 때 얻은 펫)
+    async function sync() {
+      if (!on()) return;
+      try {
+        let list = await call("pets");
+        const mine = Inv.pets(), keep = [];
+        for (const [key, v] of Object.entries(mine.have)) {
+          if (list.have[key]) continue;
+          if (!v.s) continue;   // 떨어뜨린 종류를 모르는 옛 펫은 올리지 못함 (서버 목록을 따름)
+          try { list = await call("pet_claim", { key, g: v.g, src: v.s }); }
+          catch (e) { if (e.status === 429 || !e.status) keep.push(key); }   // 하루 한도·연결 끊김이면 다음에 다시
+        }
+        if (mine.pin && mine.on && list.have[mine.on] && !(list.pin && list.on === mine.on)) list = await call("pet_set", { key: mine.on });
+        Inv.loadPets(list, keep);
+        refresh();
+      } catch { /* 다음 로그인·새로고침 때 다시 */ }
+    }
+    async function claim(key, g, src) {
+      if (!on()) return;
+      try { Inv.loadPets(await call("pet_claim", { key, g, src })); }
+      catch (e) {
+        if (!e.status || e.status === 429) return;   // 연결 끊김·하루 한도: 기기에 두고 다음 sync 때 다시
+        try { Inv.loadPets(await call("pets")); } catch { return; }   // 거절(같은 펫·기간 끝·등급): 서버 목록으로
+      }
+      refresh();
+    }
+    async function set(key) {
+      if (!on()) return;
+      try { Inv.loadPets(await call("pet_set", { key })); refresh(); } catch { /* 기기 설정은 그대로 */ }
+    }
+    return { sync, claim, set };
+  })();
+
+  const Pet = (() => {
+    let p = null;   // { key, x, y, fx, fy, t0, face }
+    const MOVE_MS = 200, TAKES = new Set(["xp", "gold", "gear", "treasure", "potion", "gem", "rune"]);
+    const D8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    const on = () => (scene === "dungeon" && player && !gameOver && map ? Inv.pets().on : null);
+    const grade = (key) => RLMonsters.petGrade(Inv.pets().have[key]?.g);
+    const open = (x, y) => map[y]?.[x] !== undefined && map[y][x] !== WALL;
+    function place() {
+      const key = on();
+      if (!key) { p = null; return; }
+      let spot = { x: player.x, y: player.y };
+      for (const [dx, dy] of D8) if (open(player.x + dx, player.y + dy)) { spot = { x: player.x + dx, y: player.y + dy }; break; }
+      p = { key, x: spot.x, y: spot.y, fx: spot.x, fy: spot.y, t0: 0, face: 1 };
+    }
+    // 펫 자리에서 goal(x, y)인 가장 가까운 칸까지 걸어서 가는 첫 걸음 [dx, dy] (없으면 null)
+    function firstStep(goal) {
+      const W = MAP_W, prev = new Map([[p.y * W + p.x, -1]]), q = [p.y * W + p.x];
+      for (let i = 0; i < q.length; i++) {
+        const k = q[i], x = k % W, y = (k / W) | 0;
+        if (i && goal(x, y)) {
+          let c = k; while (prev.get(c) !== q[0]) c = prev.get(c);
+          return [c % W - p.x, ((c / W) | 0) - p.y];
+        }
+        for (const [dx, dy] of D8) {
+          const nx = x + dx, ny = y + dy, nk = ny * W + nx;
+          if (prev.has(nk) || !open(nx, ny)) continue;
+          if (dx && dy && (!open(x + dx, y) || !open(x, y + dy))) continue;   // 벽 모서리는 대각선으로 못 지남
+          prev.set(nk, k); q.push(nk);
+        }
+      }
+      return null;
+    }
+    // 주우러 갈 아이템: 날아가는 중이 아니고, 내 둘레 range칸 안 (전설은 지도 전체)
+    const wanted = (it, range) => TAKES.has(it.type) && !(it.t0 && performance.now() - it.t0 < XP_ORB.fly) && near8(it, player) <= range;
+    // 펫이 선 칸의 아이템을 주움
+    function grab(range) {
+      let xp = 0;
+      for (const it of items.filter(i => i.x === p.x && i.y === p.y && wanted(i, range))) {
+        if (it.type === "xp") { xp += it.amount; items = items.filter(x => x !== it); continue; }
+        takeItem(it);
+      }
+      if (xp) { showDamage(p, `🐾 +${xp} XP`, false, XP_COLOR); Sfx("pickup"); gainXp(xp); }
+    }
+    // 한 턴: 범위 안에 아이템이 있으면 가장 가까운 아이템 쪽으로, 없으면 나를 따라옴
+    function step() {
+      if (!on()) { p = null; return; }
+      if (!p || p.key !== on() || !open(p.x, p.y) || near8(p, player) > 40) place();
+      const g = grade(p.key);
+      p.fx = p.x; p.fy = p.y; p.t0 = performance.now();
+      const targets = () => new Set(items.filter(i => wanted(i, g.range)).map(i => i.y * MAP_W + i.x));
+      let at = targets();
+      for (let n = g.speed; n > 0; n--) {
+        let d = at.size ? firstStep((x, y) => at.has(y * MAP_W + x)) : null;
+        if (!d) { if (near8(p, player) <= 2) break; d = firstStep((x, y) => near8({ x, y }, player) <= 1); }
+        if (!d) break;
+        p.x += d[0]; p.y += d[1];
+        if (d[0]) p.face = d[0];
+        if (at.has(p.y * MAP_W + p.x)) { grab(g.range); if (!on() || gameOver) return; at = targets(); }
+      }
+    }
+    // 정예·보스·네임드를 쓰러뜨리면 낮은 확률로 그 몬스터가 펫이 됨. 이벤트 중이면 그 모습 그대로(등급 한 단계 위). 이미 가진 펫은 다시 안 나옴
+    function drop(e) {
+      const src = RLMonsters.petSource(e);
+      if (!player || !src || !e.id || Math.random() >= RLMonsters.petDropChance(e)) return null;
+      const theme = Events.theme(), skin = theme && RLMonsters.PETS.skins[theme] && Sprites.has(RLMonsters.PETS.skins[theme].prefix + e.id) ? theme : null;
+      const key = RLMonsters.petKey(e.id, skin);
+      if (Inv.hasPet(key) || !Sprites.has(RLMonsters.petSprite(key))) return null;
+      const g = RLMonsters.rollPetGrade(src, Math.random, !!skin), got = Inv.addPet(key, g, src);
+      if (!got) return null;
+      const G = RLMonsters.petGrade(g), name = RLMonsters.petName(key);
+      log(T("🐾 펫 [{0}] {1}을(를) 얻었다! 지도에 남은 아이템을 대신 주워 와요 (내 둘레 {2}, 한 턴에 {3}칸).{4}", T(G.name), name, G.range >= 99 ? T("지도 전체") : T("{0}칸", G.range), G.speed,
+        got.on ? T(" 지금 데리고 다녀요.") : T(" 인벤토리 가방에서 고를 수 있어요.")), null, G.color);
+      showDamage(e, "🐾", true, G.color);
+      Sfx("levelup");
+      if (got.on) place();
+      PetSync.claim(key, g, src);   // 로그인 사용자면 서버에도 저장
+      return key;
+    }
+    // 그리기: 그 몬스터 그림을 작게(scale), 걸음 사이를 부드럽게, 통통, 걷는 쪽을 봄
+    function draw() {
+      if (!p && on()) place();
+      if (!p || !on() || !visible[p.y]?.[p.x]) return;
+      const now = performance.now(), k = Math.min(1, (now - p.t0) / MOVE_MS), e = 1 - (1 - k) * (1 - k);
+      const x = (p.fx + (p.x - p.fx) * e) * TILE, y = (p.fy + (p.y - p.fy) * e) * TILE;
+      const sz = TILE * RLMonsters.PETS.scale, hop = reduceMotion ? 0 : Math.abs(Math.sin(now / 160)) * TILE * 0.05 + (k < 1 ? Math.sin(k * Math.PI) * TILE * 0.12 : 0);
+      const cx = x + TILE / 2, base = y + TILE * 0.95, G = grade(p.key);
+      ctx.save();
+      ctx.globalAlpha = 0.35; ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.ellipse(cx, base - 2, sz * 0.34, sz * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      const src = Sprites.on && Sprites.raw(RLMonsters.petSprite(p.key));
+      ctx.translate(cx, base - sz / 2 - hop);
+      if (p.face < 0) ctx.scale(-1, 1);
+      ctx.shadowColor = G.color; ctx.shadowBlur = 6;   // 등급 색으로 은은하게
+      if (src) { ctx.imageSmoothingEnabled = false; ctx.drawImage(src[0], src[1], src[2], RLSprites.size, RLSprites.size, -sz / 2, -sz / 2, sz, sz); }
+      else { ctx.font = `${Math.round(sz * 0.8)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🐾", 0, 0); }
+      ctx.restore();
+    }
+    return { place, step, drop, draw, reset: () => { p = null; }, busy: () => !!p && performance.now() - p.t0 < MOVE_MS + 30, pos: () => (p ? { x: p.x, y: p.y, key: p.key } : null) };
+  })();
+
   function pickup() {
     if (!player || gameOver) return;
     let xpSum = 0, heals = 0;
     for (const it of items.filter(i => (OPEN_FLOORS ? near8(i, player) <= PICK_R : i.x === player.x && i.y === player.y))) {
       if (it.type === "xp") { xpSum += it.amount; items = items.filter(x => x !== it); continue; }
       if (it.type === "heal") { heals++; items = items.filter(x => x !== it); continue; }
-      if (it.type === "gear") {
-        if (!takeGear(it)) continue;
-        Sfx("pickup");
-      } else if (it.type === "treasure" || it.type === "potion") {
-        treasureLoot();
-        Sfx("gold");
-      } else if (it.type === "gem") {
-        if (!RLItems.GEMS[it.gem]) continue;
-        Inv.addGem(it.gem, it.grade);
-        log(T("{0}을(를) 주웠다. (보석은 인벤토리에서 홈에 넣어요)", RLItems.gemName(it.gem, it.grade)), null, RLItems.GEMS[it.gem].color);
-      } else if (it.type === "rune") {
-        if (!RLItems.RUNES[it.rune]) continue;
-        Inv.addRune(it.rune);
-        log(T("{0}을(를) 주웠다! (룬은 인벤토리에서 홈에 넣어요. 아래 룬 3개 = 위 룬 1개)", RLItems.runeName(it.rune)), "rainbow");
-      } else if (it.type === "gold") {
-        const amount = Math.round(it.amount * (1 + stats().gold / 100));
-        player.gold += amount;
-        Sfx("gold");
-        log(T("골드 +{0}", amount), "info");
-      }
-      items = items.filter(x => x !== it);
+      takeItem(it);
     }
     if (xpSum) { showDamage(player, `+${xpSum} XP`, false, XP_COLOR); Sfx("pickup"); gainXp(xpSum); }
     if (heals) {
@@ -3887,6 +4131,7 @@
   const onFloor = (p) => Number.isInteger(p?.x) && Number.isInteger(p?.y) && p.x >= 0 && p.y >= 0 && p.x < MAP_W && p.y < MAP_H && map[p.y][p.x] !== WALL;
 
   function restoreLevel() {
+    Pet.reset();   // 펫은 불러온 층에서 내 옆에 (dc#164)
     let L = null;
     try { L = JSON.parse(store.get(LEVEL_KEY)); } catch {}
     const lw = Number.isInteger(L?.w) && L.w >= 12 && L.w <= 200 ? L.w : MAP_MIN_W, lh = Number.isInteger(L?.h) && L.h >= 9 && L.h <= 200 ? L.h : MAP_MIN_H;   // 예전 저장은 32×24
@@ -4089,6 +4334,7 @@
         Ranking.schedule();
         Gift.refresh();   // 계정이 바뀌면 선물 상태도 그 계정 것으로 (dc#105)
         Events.refresh();   // 이벤트 재화·스킨도 그 계정 것으로 (dc#130)
+        PetSync.sync();   // 펫 목록도 그 계정 것으로 (dc#164)
         legacyNotice();
       } catch (e) {
         log(T("계정 저장 데이터를 불러오지 못했다: {0} (잠시 뒤 다시 시도)", e.message), "bad");
@@ -4545,6 +4791,8 @@
   // 한 턴: 화상 피해 → 몬스터 행동(느려진 몬스터는 2턴에 한 번) → 느려짐 시간 줄이기
   function worldTurn() {
     turn++;
+    Pet.step();   // 펫 (dc#164): 지도에 남은 아이템을 주우러 / 나를 따라
+    if (gameOver) return;
     if (player.potCd > 0) player.potCd--;
     if (player.jumpCd > 0) player.jumpCd--;
     // 룬워드: 보호막은 every턴마다 다시 채움(쌓이지 않음)
@@ -5142,7 +5390,7 @@
   function lobbyLoop(t) {
     requestAnimationFrame(lobbyLoop);
     // 던전의 짧은 움직임(걷기·공격 등, 0.1~0.4초)은 매 프레임 부드럽게
-    if (scene === "dungeon" && !document.hidden && (Anim.busy() || Fx.busy() || xpSuck.length || items.some(i => i.t0 && t - i.t0 < XP_ORB.fly + 50))) { lobbyFrame = t; render(); return; }
+    if (scene === "dungeon" && !document.hidden && (Anim.busy() || Fx.busy() || Pet.busy() || xpSuck.length || items.some(i => i.t0 && t - i.t0 < XP_ORB.fly + 50))) { lobbyFrame = t; render(); return; }
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
@@ -5497,6 +5745,8 @@
       },
       // 그림 한 칸의 [그림 모음, x, y] (다른 캔버스에 겹칠 때)
       src(name) { const c = S?.map[alias(name)]; return c ? [sheet, c[0] * S.size, c[1] * S.size] : null; },
+      // 이벤트 모습으로 바꾸지 않은 그대로 (펫, dc#164: 얻을 때의 모습을 늘 그대로)
+      raw(name) { const c = S?.map[name]; return c ? [sheet, c[0] * S.size, c[1] * S.size] : null; },
       // (px, py) 칸에 그림 하나. 없는 이름이면 false (그러면 글자로)
       draw(name, px, py) {
         const c = S?.map[alias(name)];
@@ -8150,6 +8400,7 @@
 
     Anim.drawDying();
     drawShots();   // 실시간 탄환 · 모으는 표시 (dc#158)
+    Pet.draw();   // 펫 (dc#164)
 
     // 플레이어 (낀 장비 그림, 걷기·공격·맞음·피함·막음 움직임)
     const po = Anim.of(player), ppx = player.x * TILE + po.x, ppy = player.y * TILE + po.y;
@@ -8611,6 +8862,7 @@
 
   function renderInventory() {
     collectMail();
+    tidyBag();   // 우편함에서 온 장비도 바로 끼거나 분해 (dc#164)
     const equip = Inv.equipped();
     const waiting = Inv.mailCount();
     document.getElementById("inv-count").textContent = [
@@ -8619,7 +8871,7 @@
       `${RLItems.STONE_NAMES.stones} ${Inv.stones()}`,
       showNmStones() ? `${RLItems.STONE_NAMES.nmStones} ${Inv.nmStones()}` : null,
       Inv.hellStones() > 0 || Inv.items().some(RLItems.isHellItem) ? `${RLItems.STONE_NAMES.hellStones} ${Inv.hellStones()}` : null,
-      T("가방 {0}/{1}", Inv.bag().length, BAG_SIZE),
+      autoGearOn() ? T("펫 {0}종", Object.keys(Inv.pets().have).length) : T("가방 {0}/{1}", Inv.bag().length, BAG_SIZE),
       waiting ? T("보관함 {0}", waiting) : null,
     ].filter(Boolean).join(" · ");
 
@@ -8655,7 +8907,7 @@
       ...(player?.oldGear ? [el("div", { className: "msg-bad" }, T("이번 판은 예전 장비를 껴서 정식 v1 랭킹에 기록되지 않아요. 예전 장비 없이 1층부터 새로 시작하면 다시 기록돼요."))] : []),
       // 이 판의 축복·유물 (dc#140)
       el("h3", {}, T("✦ 이 판의 축복·유물")), ...(player ? Bless.lines() : []).map(t => el("div", { className: "meta" }, t)),
-      el("label", { className: "auto-gear" }, el("input", { type: "checkbox", checked: autoGearOn(), onchange: (e) => { store.set("rl_autogear", e.target.checked ? "1" : "0"); } }), T(" 자동 장비 (줍는 즉시 착용·중복 강화·분해)")),
+      ...(autoGearOn() ? [] : [el("label", { className: "auto-gear" }, el("input", { type: "checkbox", checked: autoGearOn(), onchange: (e) => { store.set("rl_autogear", e.target.checked ? "1" : "0"); } }), T(" 자동 장비 (줍는 즉시 착용·중복 강화·분해)"))]),
     );
     // 휴대폰: 능력치 한 줄 요약 (누르면 [능력치] 탭)
     const short = (n) => (n >= 10000 ? (RLI18N.lang === "ko" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}만` : RLI18N.lang === "ja" ? `${(n / 10000).toFixed(1).replace(/\.0$/, "")}万` : `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`) : String(n));
@@ -8689,8 +8941,34 @@
     document.getElementById("inv-staff-gift").hidden = !isStaff();
     document.getElementById("inv-staff-wipe").hidden = !isStaff();
     renderSkins();
+    // dc#164: 가방에는 펫과 스킨만 (장비는 자동 장비로 바로 끼거나 분해). 자동 장비를 끈 테스트만 예전 가방
+    if (autoGearOn()) { invBag.replaceChildren(...bagPanel()); sellAllBtn.hidden = true; document.getElementById("inv-skins").hidden = true; }
 
     renderDetail();
+  }
+
+  // 가방 (dc#164): 펫과 스킨. 펫은 가장 좋은 펫(등급 → 최근)을 저절로 데리고 다니고, 누르면 그 펫으로 고정 (다시 누르면 고정 풀기)
+  function bagPanel() {
+    const M = RLMonsters, pets = Inv.pets(), keys = Object.keys(pets.have).sort((a, b) => M.gradeRank(pets.have[b].g) - M.gradeRank(pets.have[a].g) || (pets.have[b].at || 0) - (pets.have[a].at || 0));
+    const E = window.RLEvents, skins = E ? Events.owned().filter(id => E.SKINS[id]) : [];
+    const out = [el("h3", { className: "bag-h" }, T("🐾 펫"))];
+    if (!keys.length) out.push(el("div", { className: "bag-empty" }, T("아직 펫이 없어요. 정예 몬스터·보스·네임드를 쓰러뜨리면 낮은 확률로 그 몬스터가 펫이 돼요. 데리고 다니면 지도에 남은 아이템을 대신 주워 와요.")));
+    else out.push(el("div", { className: "bag-empty pet-mode" }, pets.pin ? T("📌 고른 펫으로 고정했어요. 고정한 펫을 다시 누르면 가장 좋은 펫을 저절로 데리고 다녀요.") : T("가장 좋은 펫을 저절로 데리고 다녀요. 펫을 누르면 그 펫으로 고정해요.")));
+    for (const key of keys) {
+      const G = M.petGrade(pets.have[key].g), on = pets.on === key;
+      out.push(el("button", { type: "button", className: "bag-item pet" + (on ? " sel" : ""), title: on && pets.pin ? T("누르면 고정을 풀어요") : T("누르면 이 펫으로 고정해요"),
+        onclick: () => { const k = on && pets.pin ? null : key; Inv.setPet(k); PetSync.set(k); Pet.place(); renderInventory(); render(); } },
+        Sprites.icon(M.petSprite(key)), el("b", { style: { color: G.color } }, M.petName(key)),
+        el("small", {}, `${T(G.name)} · ${T("범위 {0}", G.range >= 99 ? T("지도 전체") : T("{0}칸", G.range))} · ${T("한 턴에 {0}칸", G.speed)} · ${on ? (pets.pin ? T("📌 고정") : T("데리고 다니는 중")) : T("쉬는 중")}`)));
+    }
+    out.push(el("h3", { className: "bag-h" }, T("꾸미기")));
+    if (!skins.length) out.push(el("div", { className: "bag-empty" }, T("가진 스킨이 없어요. 이벤트에서 받을 수 있어요.")));
+    for (const id of skins) {
+      const S = E.SKINS[id], on = Events.wear(S.slot) === id;
+      out.push(el("button", { type: "button", className: "bag-item skin-btn" + (on ? " on" : ""),
+        onclick: () => { Events.setWear(id, !on); renderInventory(); } }, Sprites.icon(S.sprite), `${Events.name(S.name)} · ${on ? T("쓰는 중") : T("쓰기")}`));
+    }
+    return out;
   }
 
   // 이벤트 스킨 (dc#130): 가진 스킨마다 쓰기/벗기 버튼 (같은 부위는 하나만). 능력치는 그대로, 모습만
@@ -10900,6 +11178,7 @@
   // 새로 접속하면 로비부터. 새로고침하거나 상점에서 돌아오면 있던 곳(던전)으로
   try { if (sessionStorage.getItem(SCENE_KEY) === "dungeon") scene = "dungeon"; } catch {}
   startFromSave(parseSave(store.get(SAVE_KEY)));
+  tidyBag();   // 가방에 남은 장비 정리 (dc#164)
   if (scene === "dungeon") setScene("dungeon");
   else { logEl.innerHTML = ""; enterLobby(); }
   requestAnimationFrame(lobbyLoop);

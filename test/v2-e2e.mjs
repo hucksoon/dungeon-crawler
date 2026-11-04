@@ -150,7 +150,8 @@ try {
   check("log: duplicate / swap / dismantle lines", logs.includes("중복!") && logs.includes("분해:"));
   // 강화석으로 +4까지 (무기부터 한 번씩) — 수동 강화는 +5부터 막힘
   await D.page.keyboard.press("i"); await sleep(200);
-  check("inventory: auto-gear switch and blessing section", (await D.page.locator("#inv-modal").innerText()).includes("자동 장비"));
+  // dc#164: 자동 장비가 켜져 있으면 스위치는 숨기고 가방에는 펫·꾸미기만
+  check("inventory: auto gear on → no switch, bag shows pets and skins only (dc#164)", (await D.page.locator("#inv-modal .auto-gear").count()) === 0 && (await D.page.locator("#inv-bag").innerText()).includes("펫"));
   await shot(D.page, "inventory");
   await D.page.keyboard.press("Escape");
   check("D: no page errors", D.errors.length === 0, D.errors.join("; "));

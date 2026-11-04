@@ -152,6 +152,8 @@
       "relic.resIce": "霜の羽",
       "relic.resBolt": "避雷針",
       "relic.resPoison": "解毒草",
+      "pet.skinName.halloween": "ハロウィン",
+      "pet.skin.halloween": (k, b) => `${k}${b}`,
       "bfx.atkPct": (n) => `攻撃力+${n}%`,
       "bfx.hpPct": (n) => `最大HP+${n}%`,
       "bfx.defPct": (n) => `防御力+${n}%`,

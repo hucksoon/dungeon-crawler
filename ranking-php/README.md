@@ -156,6 +156,8 @@ sudo -u www-data php admin.php geo 8.8.8.8   # 확인: DB 종류·만든 날짜�
 
 로그인한 사람의 **가방, 장착 장비, 강화석, 도감, 진행 중인 판(층·골드·레벨), 상점 상자 보관함**을 서버에 저장해요 (`profile.php`). 같은 계정이면 웹·앱·다른 기기에서 같은 데이터를 써요.
 
+**펫** (dc#164)은 따로 서버가 관리해요 (`pets.php`, 표 `pets`·`pet_prefs`). 게임이 펫을 얻으면 `pet_claim`으로 알리고, 서버는 몬스터 id·이벤트 기간(이벤트 모습)·떨어뜨린 종류에 맞는 등급·같은 펫 한 번·하루 20마리를 확인해요. 고정은 `pet_set`, 목록은 `pets`. 게스트는 그 기기에만 두었다가 계정을 연결하면 올려요.
+
 - `GET ?r=profile` → `{ rev, data }` / `POST ?r=profile { rev, data }` → `{ ok, rev }`
 - `rev`(저장 번호)가 서버와 같을 때만 덮어써요. 다른 기기가 먼저 저장했으면 `{ ok: false, conflict: true, rev, data }`로 서버 내용을 돌려주고, 게임은 그걸로 바꿔요 (두 기기가 서로의 저장을 지우지 않게)
 - 요청을 줄이려고 게임은 **중요한 변경**(아이템 얻기·팔기·장착·강화, 층 이동, 포탈, 쓰러짐·부활, 골드 거래)은 2초 모았다가, **이동·전투**(HP 등)는 1분에 한 번 올려요. 탭을 닫거나 숨길 때·로그아웃할 때는 바로 올리고, 지난번에 올린 것과 같으면 보내지 않아요. 서버가 안 되면 15초마다 다시 시도해요
@@ -254,7 +256,7 @@ sudo -u www-data php admin.php event-settle            # 교환 기간이 끝난
 
 ```bash
 cd /tmp && rm -rf dungeon && git clone --depth 1 https://github.com/hucksoon/dungeon-crawler.git dungeon
-sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/bonus.php /tmp/dungeon/ranking-php/event.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/admin.php /tmp/dungeon/ranking-php/webhook.php /var/www/html/ranking/
+sudo cp /tmp/dungeon/ranking-php/api.php /tmp/dungeon/ranking-php/rules.php /tmp/dungeon/ranking-php/market.php /tmp/dungeon/ranking-php/gift.php /tmp/dungeon/ranking-php/ads.php /tmp/dungeon/ranking-php/bonus.php /tmp/dungeon/ranking-php/event.php /tmp/dungeon/ranking-php/profile.php /tmp/dungeon/ranking-php/pets.php /tmp/dungeon/ranking-php/admin.php /tmp/dungeon/ranking-php/webhook.php /var/www/html/ranking/
 ```
 
 DB 표는 다음 요청 때 새 칸이 자동으로 추가돼요.
