@@ -84,8 +84,8 @@ try {
   // 2. 던전 입구 오른쪽 문(최고 층 − 10층)은 없어지고 웨이포인트로 (dc#97). 최고 층만으로는 웨이포인트가 켜지지 않음
   ({ ctx, page, errors } = await open("tptest-b", { rl_save: saveB(1, "tpB", 40), rl_level: lv(1, "tpB", "normal"), "rl_inv:g:DEV": inv(plain) }));
   await press(page, "p"); await sleep(200);
-  // 1층에서 나오면 로비 포탈 없음, 1층 문 앞
-  check("leaving from floor 1: no lobby portal (nothing to return to)", await inLobby(page) && !(await logs(page)).includes("파란 포탈로"));
+  // 1층에서 나와도 로비에 파란 포탈 (dc#165, 예전에는 없고 1층 문 앞)
+  check("leaving from floor 1: a blue portal back to floor 1 (dc#165)", await inLobby(page) && (await logs(page)).includes("파란 포탈로"));
   check("no right door (best − 10) in the town anymore", await page.evaluate(() => !window.RLJump.TOWN.doors.some(d => d.id === "skip")));
   await goDoor(page, "waypoint"); await sleep(200);
   check("best 40 but never stepped on a waypoint: 10층 locked", await page.locator("#wp-list .wp-row").nth(0).locator("button", { hasText: "10층" }).isDisabled());

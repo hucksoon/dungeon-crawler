@@ -61,14 +61,14 @@ try {
   await B.page.evaluate(() => window.__t.die());
   s = await st(B.page);
   check("dying alone keeps the level until restart (revive keeps it)", s.gameOver && s.plvl === 5 && s.xp === 20);
-  check("death modal says a new run starts at level 1", (await B.page.locator("#death-sub").innerText()).includes("레벨 1·골드 0으로 일반 던전 1층부터"));
+  check("death modal says a new run starts at level 1 with no gear (dc#165)", (await B.page.locator("#death-sub").innerText()).includes("레벨 1·골드 0, 장비·강화석 없이 맨몸으로 일반 던전 1층부터"));
   await B.page.screenshot({ path: path.join(SHOTS, "level-death.png") });
   await B.page.reload(); await B.page.waitForFunction(() => window.__t);
   check("reload while dead → still Lv 5 / 20 XP, death modal open", (await st(B.page)).xp === 20 && await B.page.locator("#death-modal").isVisible());
   await B.page.locator("#death-restart").click(); await sleep(150);
   s = await st(B.page);
   check("restart → lobby, gold 0, Lv 1 with 0/10 XP, base HP 20 / atk 3", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.xp === 0 && s.xpNext === 10 && s.baseHp === 20 && s.baseAtk === 3, JSON.stringify(s));
-  check("restart log: new run from level 1", (await logText(B.page)).includes("새 판은 레벨 1, 일반 던전 1층부터 시작한다."));
+  check("restart log: new run from level 1", (await logText(B.page)).includes("새 판은 레벨 1, 일반 던전 1층부터 맨몸으로 시작한다."));
   await B.page.reload(); await B.page.waitForFunction(() => window.__t);
   s = await st(B.page);
   check("reload after restart → Lv 1 saved", s.plvl === 1 && s.xp === 0, JSON.stringify(s));

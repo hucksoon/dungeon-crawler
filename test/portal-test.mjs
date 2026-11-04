@@ -97,7 +97,7 @@ try {
   s = await st(P.page);
   check("left door (accept) → floor 1, gold/level kept, new map id", s.scene === "dungeon" && s.depth === 1 && s.gold === 333 && s.plvl === 5 && s.rid !== before.rid);
   await P.page.keyboard.press("p"); await stepIn(P.page);
-  check("portal from floor 1 → no lobby portal, standing at the floor-1 door", (await st(P.page)).resume === 0 && (await near(P.page)) === "start" && !(await logText(P.page)).split("\n").pop().includes("오른쪽 문"));
+  check("portal from floor 1 → a blue portal back to floor 1, standing on it (dc#165)", (await st(P.page)).resume === 1 && (await near(P.page)) === "resume" && !(await logText(P.page)).split("\n").pop().includes("오른쪽 문"));
   check("porter: no page errors", P.errors.length === 0, P.errors.join("; "));
   await P.ctx.close();
 
@@ -105,14 +105,14 @@ try {
   // Lv 5 (필요 경험치 49), 경험치 20: 새로 시작하면 4를 잃고 Lv 5 그대로 (dc#95)
   const D = await open({ rl_device_id: "dier", rl_save: JSON.stringify({ v: 1, f50: 1, best: 4, run: { d: 4, hp: 36, mh: 36, a: 7, g: 210, p: 2, l: 5, x: 20, xn: 49, rid: "portal-run", k: 0, pp: 0 } }) }, { scene: "dungeon" });
   await D.page.evaluate(() => window.__t.die());
-  check("death modal with village restart", await D.page.locator("#death-modal").isVisible() && (await D.page.locator("#death-restart").innerText()) === "로비에서 새로 시작 (R)" && (await D.page.locator("#death-modal").innerText()).includes("레벨 1·골드 0으로 일반 던전 1층부터"));
+  check("death modal with village restart", await D.page.locator("#death-modal").isVisible() && (await D.page.locator("#death-restart").innerText()) === "로비에서 새로 시작 (R)" && (await D.page.locator("#death-modal").innerText()).includes("레벨 1·골드 0, 장비·강화석 없이 맨몸으로 일반 던전 1층부터"));
   check("old 로비로 나가기 button removed", (await D.page.locator("#death-lobby").count()) === 0);
   await D.page.keyboard.press("p");
   check("portal while dead does nothing but keep the death modal", (await st(D.page)).scene === "dungeon" && await D.page.locator("#death-modal").isVisible());
   await D.page.locator("#death-restart").click();
   s = await st(D.page);
   check("로비에서 새로 시작 → village, gold 0, Lv 1 (dc#142: 새 판은 레벨 1), floor 1", s.scene === "lobby" && s.gold === 0 && s.plvl === 1 && s.depth === 1 && !s.gameOver && (await near(D.page)) === "start");
-  check("death restart log (dc#142: back to level 1)", (await logText(D.page)).includes("레벨 1·골드 0으로 돌아갔고, 장비는 그대로다") && (await logText(D.page)).includes("새 판은 레벨 1, 일반 던전 1층부터 시작한다."));
+  check("death restart log (dc#142: back to level 1)", (await logText(D.page)).includes("레벨 1·골드 0으로 돌아갔다. 1층 문으로 들어가면 장비·강화석도 비우고") && (await logText(D.page)).includes("새 판은 레벨 1, 일반 던전 1층부터 맨몸으로 시작한다."));
   check("no portal floor after death", s.resume === 0);
   check("dier: no page errors", D.errors.length === 0, D.errors.join("; "));
   await D.ctx.close();
