@@ -6913,7 +6913,7 @@
       const marks = []; for (const e of enemies) if (e.aim) for (const c of aimCells(e.aim)) marks.push({ x: c.x, y: c.y, last: e.aim.t <= 1 });   // 원거리 몬스터 조준 표시 (dc#149)
       for (const e of enemies) if (e.smash) marks.push({ x: e.smash.x, y: e.smash.y, last: e.smash.t <= 1, color: SMASH.color, t: e.smash.t });   // 강타 예고 (dc#155)
       for (const e of enemies) if (e.leapAt) for (const c of leapCells(e.leapAt)) marks.push({ x: c.x, y: c.y, last: e.leapAt.t <= 1, color: LEAP.color });   // 점프 공격 예고 (dc#168)
-      for (const k of toxCloud.keys()) { const [x, y] = k.split(",").map(Number); marks.push({ x, y, color: POISON_COLOR, op: 0.2 + 0.06 * Math.sin(now / 260 + x + y) }); }   // 독구름 (dc#168)
+      for (const k of toxCloud.keys()) { const [x, y] = k.split(",").map(Number); marks.push({ x, y, color: POISON_COLOR, op: 0.42 + 0.1 * Math.sin(now / 260 + x + y) }); }   // 독구름 (dc#168, dc#169: 더 진하게)
       for (const k of fireTrail.keys()) { const [x, y] = k.split(",").map(Number); marks.push({ x, y, color: EL.colors.fire, op: 0.3 + 0.1 * Math.sin(now / 90 + x * 1.7 + y) }); }   // 각성 불의 장화 (3D에도, dc#168)
       // 내 칸이 표시 안이면 화면 가장자리 경고 (dc#155): 강타 주황 · 저주 구슬 진홍, 남은 턴
       const here = enemies.map(e => e.smash && e.smash.x === player.x && e.smash.y === player.y ? { c: SMASH.color, t: e.smash.t, k: T("강타") } : e.leapAt && near8(e.leapAt, player) <= LEAP.radius ? { c: LEAP.color, t: e.leapAt.t, k: T("점프 공격") } : e.aim && aimHits(e.aim, player) ? { c: RANGED.color, t: e.aim.t, k: e.aim.b ? T("강화 미사일") : T("저주 구슬") } : null).filter(Boolean).sort((a, b) => a.t - b.t)[0];
@@ -8529,24 +8529,7 @@
     Anim.drawDust();
     drawXpSuck();   // 계단이 열릴 때 날아오는 경험치 구슬 (dc#153)
 
-    // 독구름 (dc#168): 초록 안개가 칸마다 뭉게뭉게 (남은 턴이 적을수록 옅게) + 올라오는 거품
-    if (toxCloud.size) {
-      ctx.save();
-      const now = performance.now();
-      for (const [k, until] of toxCloud) {
-        const [x, y] = k.split(",").map(Number), left = until - turn;
-        if (left <= 0 || !visible[y]?.[x]) continue;
-        const fade = Math.min(1, 0.4 + 0.2 * left), cx = x * TILE + TILE / 2, cy = y * TILE + TILE / 2;
-        ctx.fillStyle = `rgba(90, 200, 60, ${0.16 * fade})`; ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-        for (let i = 0; i < 3; i++) {
-          const ph = now / (700 + i * 230) + x * 1.3 + y * 0.7 + i * 2.1, r = TILE * (0.26 + 0.06 * Math.sin(ph * 2));
-          ctx.fillStyle = `rgba(125, 220, 74, ${0.22 * fade})`;
-          ctx.beginPath(); ctx.arc(cx + Math.cos(ph) * TILE * 0.18, cy + Math.sin(ph * 1.3) * TILE * 0.14, r, 0, Math.PI * 2); ctx.fill();
-        }
-        if (!reduceMotion) { const b = ((now / 900 + x * 0.37 + y * 0.61) % 1); ctx.fillStyle = `rgba(200, 255, 160, ${0.6 * (1 - b) * fade})`; ctx.beginPath(); ctx.arc(cx + Math.sin(x * 3 + y) * TILE * 0.2, cy + TILE * 0.3 - b * TILE * 0.6, 1.6, 0, Math.PI * 2); ctx.fill(); }
-      }
-      ctx.restore();
-    }
+    drawClouds("under");   // 독구름 (dc#168): 바닥 안개 · 테두리 · 거품 (몬스터 위 안개는 몬스터를 그린 뒤 "over")
     // 각성 불의 장화 (dc#163): 지나간 칸의 불 (남은 턴이 적을수록 옅게, 일렁임)
     if (fireTrail.size) {
       ctx.save();
@@ -8688,6 +8671,7 @@
       }
     }
 
+    drawClouds("over");   // 독구름 속 몬스터가 안개에 잠겨 보이게 (1칸 구름은 몬스터 그림에 가려져서, dc#169)
     Anim.drawDying();
     drawShots();   // 실시간 탄환 · 모으는 표시 (dc#158)
     Pet.draw();   // 펫 (dc#164)
@@ -8762,6 +8746,43 @@
     ctx.fillStyle = "#ffcf5c"; ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 1 / cam.z; ctx.stroke();
     ctx.restore();
     return true;
+  }
+  // 독구름 그리기 (dc#168, dc#169에서 더 잘 보이게): 남은 턴이 적을수록 옅게
+  //   under: 바닥을 진한 초록으로 + 구름 바깥 테두리(점선) + 뭉게뭉게 안개 + 올라오는 거품
+  //   over: 몬스터를 그린 뒤 그 위에 옅은 안개 두 덩이 (1칸 구름은 그 칸의 몬스터 그림에 가려져 거의 안 보였음)
+  function drawClouds(layer) {
+    if (!toxCloud.size) return;
+    ctx.save();
+    const now = performance.now(), has = (x, y) => (toxCloud.get(`${x},${y}`) || 0) > turn;
+    for (const [k, until] of toxCloud) {
+      const [x, y] = k.split(",").map(Number), left = until - turn;
+      if (left <= 0 || !visible[y]?.[x]) continue;
+      const fade = Math.min(1, 0.5 + 0.17 * left), cx = x * TILE + TILE / 2, cy = y * TILE + TILE / 2, x0 = x * TILE, y0 = y * TILE;
+      if (layer === "over") {
+        for (let i = 0; i < 2; i++) {
+          const ph = now / (800 + i * 300) + x * 1.7 + y * 0.9 + i * 3.1;
+          ctx.fillStyle = `rgba(150, 235, 90, ${0.2 * fade})`;
+          ctx.beginPath(); ctx.ellipse(cx + Math.cos(ph) * TILE * 0.16, cy + TILE * 0.12 + Math.sin(ph * 1.2) * TILE * 0.1, TILE * 0.42, TILE * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        continue;
+      }
+      ctx.fillStyle = `rgba(80, 200, 50, ${0.32 * fade})`; ctx.fillRect(x0, y0, TILE, TILE);
+      for (let i = 0; i < 3; i++) {
+        const ph = now / (700 + i * 230) + x * 1.3 + y * 0.7 + i * 2.1, r = TILE * (0.3 + 0.06 * Math.sin(ph * 2));
+        ctx.fillStyle = `rgba(140, 235, 80, ${0.32 * fade})`;
+        ctx.beginPath(); ctx.arc(cx + Math.cos(ph) * TILE * 0.18, cy + Math.sin(ph * 1.3) * TILE * 0.14, r, 0, Math.PI * 2); ctx.fill();
+      }
+      // 구름 바깥 테두리: 옆 칸이 구름이 아닌 쪽만 초록 점선
+      ctx.strokeStyle = `rgba(190, 255, 120, ${0.95 * fade})`; ctx.lineWidth = 3; ctx.setLineDash([6, 3]); ctx.shadowColor = POISON_COLOR; ctx.shadowBlur = 6;
+      ctx.beginPath();
+      if (!has(x, y - 1)) { ctx.moveTo(x0 + 1, y0 + 1); ctx.lineTo(x0 + TILE - 1, y0 + 1); }
+      if (!has(x, y + 1)) { ctx.moveTo(x0 + 1, y0 + TILE - 1); ctx.lineTo(x0 + TILE - 1, y0 + TILE - 1); }
+      if (!has(x - 1, y)) { ctx.moveTo(x0 + 1, y0 + 1); ctx.lineTo(x0 + 1, y0 + TILE - 1); }
+      if (!has(x + 1, y)) { ctx.moveTo(x0 + TILE - 1, y0 + 1); ctx.lineTo(x0 + TILE - 1, y0 + TILE - 1); }
+      ctx.stroke(); ctx.setLineDash([]); ctx.shadowBlur = 0;
+      if (!reduceMotion) for (let i = 0; i < 2; i++) { const b = ((now / 900 + x * 0.37 + y * 0.61 + i * 0.5) % 1); ctx.fillStyle = `rgba(210, 255, 170, ${0.75 * (1 - b) * fade})`; ctx.beginPath(); ctx.arc(cx + Math.sin(x * 3 + y + i * 2) * TILE * 0.25, cy + TILE * 0.3 - b * TILE * 0.6, 2, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.restore();
   }
   // 느려짐은 칸을 파랗게, 화상은 아래쪽에 주황 줄
   function drawStatus(u, px, py) {

@@ -1110,6 +1110,25 @@ const SCENES = [
     return { ...o, shot: "#bless-modal .modal" }; }],
   ["v25-twin", "나이트메어 강화 미사일: 내 자리와 가던 길 2칸 앞, 두 곳을 함께 노려요 (주황 테두리)", async () => nmShot((x0, y0) => ({ ranged: true, twin: true, rcd: 9, dx: -5, dy: -3, aim: { x: x0, y: y0, t: 2, b: { x: x0 + 2, y: y0 } } }))],
   ["v25-leap", "나이트메어 점프 공격: 가던 길 2칸 앞에 보라 3×3, 2턴 뒤 뛰어내려요 — 방향을 바꾸면 피해요", async () => nmShot((x0, y0) => ({ leap: { cd: 6 }, dx: 5, dy: -3, leapAt: { x: x0 + 2, y: y0, t: 2 } }))],
+  // dc#169: 1칸 독구름이 몬스터 그림에 가려 안 보였음 → 진한 바닥 + 점선 테두리 + 몬스터 위에도 옅은 안개
+  ["v26-cloud", "독구름 Lv 2 (1칸): 진한 초록 바닥과 점선 테두리, 구름 속 몬스터 위에도 안개가 덮여요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_save: save(12, "blog-v26cl", { l: 12, hp: 99999, mh: 99999, bz: { normal: 12 }, bl: { poison: 2 } }), "rl_inv:g:DEV": inv(g40.slice(0, 2)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(5, Math.min(L.w - 6, L.px)), y0 = Math.max(4, Math.min(L.h - 5, L.py));
+      for (let y = y0 - 3; y <= y0 + 3; y++) for (let x = x0 - 5; x <= x0 + 5; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 99999, maxHp: 99999, atk: 1, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(3, -1), mk(3, 2)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 6 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
+    });
+    await press(o.page, [".", "."], 300); await sleep(500);
+    await setGrab(o.page, 9, 6);
+    const f = await o.page.evaluate(() => window.__grab());
+    fs.writeFileSync(path.join(OUT, "v26-cloud.png"), Buffer.from(f.split(",")[1], "base64"));
+    return { ...o, prebuilt: true }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
