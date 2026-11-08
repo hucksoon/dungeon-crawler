@@ -103,22 +103,16 @@
   .name { font-weight: bold; text-align: center; }
   .desc { font-size: 12px; color: var(--muted); text-align: center; min-height: 2.6em; }
   .bonus { position: absolute; top: 8px; right: 8px; background: #3a1a20; color: #ffb3b3; border: 1px solid #ff6b6b; border-radius: 4px; font-size: 11px; padding: 2px 6px; font-weight: bold; }
-  .card.offer { border-color: #e0b44c; box-shadow: 0 0 12px rgba(224, 180, 76, 0.25); }
-  .card.offer .bonus { background: #3a2e10; color: #ffe08a; border-color: #e0b44c; }
+  /* 스킬 스킨 (dc#172): 움직이는 미리보기 + 보유 표시 */
+  .card.skin canvas { width: 100%; aspect-ratio: 2 / 1; border-radius: 6px; border: 1px solid #3a3550; display: block; }
+  .card.skin.owned { border-color: #4fd16a; }
+  .card.skin .bonus { background: #10301a; color: #9ff0b0; border-color: #4fd16a; }
   .card button { width: 100%; padding: 10px; }
   .total { font-size: 12px; color: var(--cash); text-align: center; }
   .skeleton { height: 190px; background: linear-gradient(90deg, var(--panel), var(--row), var(--panel)); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
   @keyframes shimmer { to { background-position: -200% 0; } }
 
-  .rates { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; margin-top: 8px; }
-  .rates span { background: var(--row); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; }
   /* 확률 정보 (dc#107): 장비 상자 1회 기준 등급·고대 확률, 부위, 여러 번 상자 */
-  .odds { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--row); font-size: 12.5px; line-height: 1.6; }
-  .odds h3 { margin: 0 0 6px; font-size: 14px; }
-  .odds table { border-collapse: collapse; margin: 4px 0 8px; min-width: 260px; }
-  .odds th, .odds td { border-bottom: 1px solid var(--border); padding: 3px 10px 3px 0; text-align: left; }
-  .odds td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .odds ul { margin: 0; padding-left: 18px; }
   footer { font-size: 12px; color: var(--muted); line-height: 1.7; margin-top: 10px; }
   /* 이벤트 (dc#130): 주황·보라 칸 */
   #event-sec h2 { color: #ff9a3a; text-shadow: 0 0 8px rgba(255, 140, 40, 0.35); }
@@ -201,24 +195,17 @@
     <div class="grid" id="event-cards"></div>
   </section>
 
-  <section id="offers-sec" hidden>
-    <h2 data-i18n="offerTitle"></h2>
-    <p class="sub" data-i18n="offerSub"></p>
-    <div class="grid" id="offers"></div>
+  <section id="skins-sec">
+    <h2 data-i18n="skinTitle"></h2>
+    <p class="sub" data-i18n="skinSub"></p>
+    <div id="skin-msg" hidden></div>
+    <div class="grid" id="skins"><div class="skeleton"></div><div class="skeleton"></div></div>
   </section>
 
   <section>
     <h2 data-i18n="cashTitle"></h2>
     <p class="sub" data-i18n="cashSub"></p>
     <div class="grid" id="packs"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-  </section>
-
-  <section>
-    <h2 data-i18n="boxTitle"></h2>
-    <p class="sub" data-i18n="boxSub"></p>
-    <div class="grid" id="boxes"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-    <div class="rates" id="rates"></div>
-    <div class="odds" id="odds"></div>
   </section>
 
   <footer data-i18n="footer"></footer>
@@ -248,22 +235,10 @@
   </div>
 </div>
 
-<!-- 상자 열기 -->
-<div class="overlay" id="box-modal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="box-title">
-    <div class="modal-head">
-      <h3 id="box-title"></h3>
-      <button type="button" id="box-close" data-i18n="close"></button>
-    </div>
-    <div id="box-msg"></div>
-    <div class="reveal" id="box-items"></div>
-    <div class="actions-row"><a class="btn primary" href="./" data-i18n="toGame"></a></div>
-  </div>
-</div>
-
 <script src="items.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
+<script src="skins.js"></script>
 <script src="ranking-config.js"></script>
 <script src="vendor/pay-station-sdk/main.js"></script>
 <script>
@@ -278,8 +253,7 @@
     sandbox: false,   // dc#132: 실제 결제 (10/23부터 시험하느라 true였음)
     cashSku: "cash",
     packGroup: "cash_packs",
-    boxGroup: "equipment_boxes",
-    offerGroup: "limited_offers",   // 현금 1회 한정 (고대 유니크 선택 상자)
+    skinGroup: "skill_skins",   // 스킬 스킨 (dc#172, 캐시). 장비 상자·고대 유니크 선택 상자는 dc#172부터 팔지 않음
   };
   const STORE_API = `https://store.xsolla.com/api/v2/project/${SHOP.projectId}`;
   const LOGIN_API = "https://login.xsolla.com/api";
@@ -289,18 +263,16 @@
   const T = {
     ko: {
       title: "⚔ 던전 상점 ⚔", back: "게임으로", close: "닫기", toGame: "게임으로 돌아가서 받기",
-      cashTitle: "캐시 충전", cashSub: "캐시로 장비 상자를 열 수 있어요.",
-      offerTitle: "🎁 한정 판매", offerSub: "계정당 한 번만 살 수 있어요. 결제하면 게임 우편함으로 들어가요. 고른 장비는 지금 하는 판에서 써요 (새 판을 시작하면 비워져요).",
-      offerLimit: "계정당 1회", offerSold: "구매 완료",
+      skinTitle: "⚡ 스킬 스킨", skinSub: "속성 스킬의 모습을 바꿔요. 능력치는 그대로예요. 한 번 사면 계정에 영구로 남아요 (계정당 1개).", skinOwned: "보유 중", skinOwnedTag: "가지고 있어요", skinPrice: (n) => `◆ ${n} 구매`, skinShort: (n) => `캐시 부족 (◆ ${n})`, skinBuying: "사는 중…", skinGot: (n) => `${n}을(를) 샀어요! 게임 인벤토리의 \"꾸미기\"에서 쓰고 벗을 수 있어요 (처음엔 저절로 써져요).`, skinErrOwned: "이미 가지고 있는 스킨이에요.",
+      cashTitle: "캐시 충전", cashSub: "캐시로 스킬 스킨을 살 수 있어요.",
       offerPaid: "결제 완료! 게임 우편함에 \"고대 유니크 선택 상자\"가 들어갔어요. 우편함에서 열어 유니크를 골라 주세요.",
-      boxTitle: "장비 상자", boxSub: "레전더리 또는 세트 장비가 무작위 부위로 나와요 (고대 10%). 아이템 레벨은 지금까지 내려간 가장 깊은 층이에요. 장비는 지금 하는 판에서 써요 (마을의 1층 문으로 새 판을 시작하면 장비가 모두 비워져요).",
-      rates: "등급별 확률", buy: "구매", buyLogin: "로그인하고 구매", notEnough: "캐시 부족",
+      buy: "구매", buyLogin: "로그인하고 구매", notEnough: "캐시 부족",
       bonus: (n, p) => `+${n} 보너스 (+${p}%)`, total: (n) => `총 ${n} 캐시`,
       who: (n) => `${n} 님`, guest: "로그인하지 않음",
       sandbox: "<b>테스트 결제 모드</b> · 실제 돈은 나가지 않아요. 테스트 카드: <b>4111 1111 1111 1111</b> · 만료 <b>12/40</b> · CVV 아무 숫자 3개",
-      loginNote: "상품은 누구나 볼 수 있지만, 구매하려면 <b>게임 계정</b>으로 로그인해야 해요. 구매한 캐시와 장비는 계정에 저장돼요.",
+      loginNote: "상품은 누구나 볼 수 있지만, 구매하려면 <b>게임 계정</b>으로 로그인해야 해요. 구매한 캐시와 스킨은 계정에 저장돼요.",
       loginBtn: "계정 연결하기",
-      footer: "캐시는 계정에 저장돼요. 장비 상자에서 나온 아이템은 게임 우편함으로 들어가고, 받으면 자동 장비로 바로 끼거나 분해해요. 마을의 1층 문으로 새 판을 시작하면 장비가 모두 비워져요.<br>결제는 Xsolla가 처리해요.",
+      footer: "캐시와 스킬 스킨은 계정에 저장돼요. 스킬 스킨은 능력치는 그대로이고 모습만 바뀌어요. 게임 인벤토리의 \"꾸미기\"에서 쓰고 벗을 수 있어요.",
       payTitle: "결제", chooseMethod: "결제 수단을 골라 주세요", otherMethod: "다른 결제 수단",
       loading: "불러오는 중…", creating: "주문을 만드는 중…", noMethods: "쓸 수 있는 결제 수단이 없어요.",
       unsupported: "이 결제 수단은 아직 지원하지 않아요. 다른 결제 수단을 골라 주세요.",
@@ -311,26 +283,9 @@
       moreMethods: (n) => `결제 수단 더 보기 (${n})`, searchMethods: "결제 수단 검색", noMatch: "찾는 결제 수단이 없어요.",
       paid: (n) => `결제 완료! 캐시 ${n}이 들어왔어요.`, paidNoAmount: "결제 완료! 캐시가 들어왔어요.",
       payFailed: "결제가 완료되지 않았어요. 다시 시도해 주세요.",
-      boxTitleN: (n) => `장비 상자 ${n}회`, opening: "상자를 여는 중…",
-      boxGot: (n) => `장비 ${n}개를 얻었어요! 게임 가방에 들어가요.`,
-      recovered: (n) => `열지 않은 상자 ${n}개를 찾아서 열었어요.`,
-      boxMail: (n) => `장비 ${n}개를 얻었어요! 게임 우편함(로비 거래소 옆)에서 받으세요.`,
-      boxLater: "결제가 끝났어요. 상자 결과가 곧 게임 우편함(로비 거래소 옆)에 도착해요.",
       errLoad: "상품을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
       errGeneric: (m) => `문제가 생겼어요: ${m}`, errCash: "캐시가 부족해요. 먼저 캐시를 충전해 주세요.",
       errAuth: "로그인이 만료됐어요. 게임에서 다시 계정을 연결해 주세요.",
-      rarity: { common: "커먼", uncommon: "언커먼", rare: "레어", epic: "에픽", legendary: "레전더리", set: "세트" },
-      oddsTitle: "확률 정보 (장비 상자 1회 기준)", oddsRarity: "등급", oddsChance: "확률", oddsAncient: "그중 고대",
-      oddsSlots: (p) => `부위 9칸(투구·갑옷·팔·바지·장화·무기·보조·목걸이·반지)은 각각 ${p}예요. 목걸이·반지에는 세트가 없어서 그 칸에서 세트가 뽑히면 레전더리가 나와요.`,
-      oddsAncientNote: (p) => `고대: 레전더리·세트가 나오면 ${p} 확률로 고대 아이템이에요 (정식 v2: 장비 숫자 +10%).`,
-      oddsNoUnique: "유니크는 상자에서 나오지 않아요 (헬 네임드 보스만 떨어뜨려요).",
-      oddsLevel: "아이템 레벨은 지금까지 내려간 가장 깊은 층의 레벨이에요. 등급 확률은 레벨과 상관없이 같아요.",
-      oddsNone: "커먼·언커먼·레어·에픽은 나오지 않아요. 원하는 부위·세트·고대가 나오지 않으면 상자를 다시 열어야 해요.",
-      oddsMulti: (set, anc) => `여러 번 상자는 1회 상자를 그 횟수만큼 따로 여는 것과 같아요. 세트가 1개 이상 나올 확률: ${set}. 고대가 1개 이상 나올 확률: ${anc}.`,
-      oddsTimes: (n, p) => `${n}회 ${p}`,
-      oddsUbox: "고대 유니크 선택 상자는 유니크를 직접 고르는 상자라 무작위가 아니에요 (항상 고대).",
-      oddsUpdated: (d) => `확률 정보 마지막 변경: ${d}`,
-      lvl: (n) => `Lv.${n}`, ancient: "고대",
       evTitle: (n) => `🎃 ${n} 이벤트`,
       evSub: (s, e, x, c, p) => `기간 ${s} ~ ${e}. 매일 ${c}을(를) 무료로 받고, ${p}개를 모으면 스킨으로 바꿀 수 있어요. 남은 ${c}은(는) ${x}까지 캐시로 1:1 교환할 수 있고, 그 뒤에 남은 것은 자동으로 캐시로 바뀌어 게임 우편함에 들어가요.`,
       evDaily: (c) => `오늘의 무료 ${c}`, evDailyDesc: (n) => `하루 한 번 ${n}개 (매일 오전 10시에 다시 받을 수 있어요)`, evDayBonus: (d, n) => `오늘은 ${d}! ${n}개를 받아요`,
@@ -346,18 +301,16 @@
     },
     en: {
       title: "⚔ Dungeon Shop ⚔", back: "Back to game", close: "Close", toGame: "Back to the game to collect",
-      cashTitle: "Cash", cashSub: "Spend Cash on equipment boxes.",
-      offerTitle: "🎁 Limited offer", offerSub: "One purchase per account. It goes to your in-game mailbox after payment. The item you pick is for your current run (a new run clears it).",
-      offerLimit: "1 per account", offerSold: "Purchased",
+      skinTitle: "⚡ Skill skins", skinSub: "Change how your element skills look. Stats stay the same. Yours forever once bought (1 per account).", skinOwned: "Owned", skinOwnedTag: "Owned", skinPrice: (n) => `◆ ${n} Buy`, skinShort: (n) => `Not enough Cash (◆ ${n})`, skinBuying: "Buying…", skinGot: (n) => `You bought ${n}! Turn it on or off under \"Cosmetics\" in your in-game inventory (it starts on).`, skinErrOwned: "You already own this skin.",
+      cashTitle: "Cash", cashSub: "Spend Cash on skill skins.",
       offerPaid: "Payment complete! The Ancient Unique Choice Box is in your in-game mailbox. Open it there and pick a unique.",
-      boxTitle: "Equipment boxes", boxSub: "A Legendary or Set item for a random slot (10% Ancient). Item level equals the deepest floor you have reached. Gear is for your current run (starting a new run from the floor 1 gate in town clears all gear).",
-      rates: "Drop rates", buy: "Buy", buyLogin: "Log in to buy", notEnough: "Not enough Cash",
+      buy: "Buy", buyLogin: "Log in to buy", notEnough: "Not enough Cash",
       bonus: (n, p) => `+${n} bonus (+${p}%)`, total: (n) => `${n} Cash in total`,
       who: (n) => n, guest: "Not logged in",
       sandbox: "<b>Test payment mode</b> · No real money is charged. Test card: <b>4111 1111 1111 1111</b> · Exp <b>12/40</b> · any 3-digit CVV",
-      loginNote: "Anyone can browse, but you need to log in with your <b>game account</b> to buy. Cash and gear are saved to your account.",
+      loginNote: "Anyone can browse, but you need to log in with your <b>game account</b> to buy. Cash and skins are saved to your account.",
       loginBtn: "Connect account",
-      footer: "Cash is saved to your account. Gear from boxes goes to your in-game mailbox; when you take it, auto gear equips it or dismantles it. Starting a new run from the floor 1 gate in town clears all gear.<br>Payments are processed by Xsolla.",
+      footer: "Cash and skill skins are saved to your account. Skill skins only change how things look; stats stay the same. Turn them on or off under \"Cosmetics\" in your in-game inventory.",
       payTitle: "Payment", chooseMethod: "Choose a payment method", otherMethod: "Another payment method",
       loading: "Loading…", creating: "Creating your order…", noMethods: "No payment methods are available.",
       unsupported: "This payment method isn't supported yet. Please choose another one.",
@@ -368,26 +321,9 @@
       moreMethods: (n) => `More payment methods (${n})`, searchMethods: "Search payment methods", noMatch: "No matching payment method.",
       paid: (n) => `Payment complete! ${n} Cash added.`, paidNoAmount: "Payment complete! Cash added.",
       payFailed: "The payment was not completed. Please try again.",
-      boxTitleN: (n) => `Equipment box x${n}`, opening: "Opening the box…",
-      boxGot: (n) => `You got ${n} piece(s) of gear! They go into your bag in the game.`,
-      recovered: (n) => `Found and opened ${n} unopened box(es).`,
-      boxMail: (n) => `You got ${n} piece(s) of gear! Collect them from the mailbox in the game (next to the lobby market).`,
-      boxLater: "Payment complete. The box contents will arrive in your game mailbox (next to the lobby market) shortly.",
       errLoad: "Couldn't load the shop. Please try again later.",
       errGeneric: (m) => `Something went wrong: ${m}`, errCash: "Not enough Cash. Top up first.",
       errAuth: "Your login expired. Please connect your account in the game again.",
-      rarity: { common: "Common", uncommon: "Uncommon", rare: "Rare", epic: "Epic", legendary: "Legendary", set: "Set" },
-      oddsTitle: "Drop rates (per equipment box)", oddsRarity: "Rarity", oddsChance: "Chance", oddsAncient: "Of which Ancient",
-      oddsSlots: (p) => `Each of the 9 slots (head, chest, arms, legs, feet, weapon, off-hand, necklace, ring) is ${p}. Necklaces and rings have no sets, so a Set roll in those slots gives a Legendary.`,
-      oddsAncientNote: (p) => `Ancient: a Legendary or Set item has a ${p} chance to be Ancient (v2: gear numbers +10%).`,
-      oddsNoUnique: "Uniques never come from boxes (only Hell named bosses drop them).",
-      oddsLevel: "Item level is the level of the deepest floor you have reached. Rarity chances are the same at every level.",
-      oddsNone: "Common, Uncommon, Rare and Epic items never come from boxes. If you don't get the slot, set or Ancient you want, you need to open another box.",
-      oddsMulti: (set, anc) => `A multi-box is the same as opening that many single boxes. Chance of at least one Set: ${set}. Chance of at least one Ancient: ${anc}.`,
-      oddsTimes: (n, p) => `x${n} ${p}`,
-      oddsUbox: "The Ancient Unique choice box is not random: you pick the Unique (always Ancient).",
-      oddsUpdated: (d) => `Drop rates last changed: ${d}`,
-      lvl: (n) => `Lv.${n}`, ancient: "Ancient",
       evTitle: (n) => `🎃 ${n} event`,
       evSub: (s, e, x, c, p) => `${s} – ${e}. Get free ${c} every day and trade ${p} for a skin. Leftover ${c} can be exchanged 1:1 for Cash until ${x}; after that, whatever is left becomes Cash automatically and goes to your in-game mailbox.`,
       evDaily: (c) => `Today's free ${c}`, evDailyDesc: (n) => `${n} once a day (resets at 10:00 Korea time)`, evDayBonus: (d, n) => `It's ${d}! You get ${n} today`,
@@ -403,18 +339,16 @@
     },
     ja: {
       title: "⚔ ダンジョンショップ ⚔", back: "ゲームに戻る", close: "閉じる", toGame: "ゲームに戻って受け取る",
-      cashTitle: "キャッシュ", cashSub: "キャッシュで装備ボックスを開けられます。",
-      offerTitle: "🎁 限定販売", offerSub: "アカウントごとに1回だけ購入できます。お支払い後、ゲームの郵便受けに届きます。選んだ装備は今の挑戦で使います (新しい挑戦を始めると消えます)。",
-      offerLimit: "アカウントごとに1回", offerSold: "購入済み",
+      skinTitle: "⚡ スキルスキン", skinSub: "属性スキルの見た目を変えます。能力値はそのまま。一度買えばアカウントにずっと残ります (アカウントごとに1個)。", skinOwned: "所持中", skinOwnedTag: "所持中", skinPrice: (n) => `◆ ${n} 購入`, skinShort: (n) => `キャッシュ不足 (◆ ${n})`, skinBuying: "購入中…", skinGot: (n) => `${n}を購入しました！ゲームのインベントリの「着せ替え」で着脱できます (最初は自動で使われます)。`, skinErrOwned: "すでに持っているスキンです。",
+      cashTitle: "キャッシュ", cashSub: "キャッシュでスキルスキンを購入できます。",
       offerPaid: "お支払い完了！「古代ユニーク選択ボックス」がゲームの郵便受けに届きました。郵便受けで開けてユニークを選んでください。",
-      boxTitle: "装備ボックス", boxSub: "レジェンダリーまたはセット装備がランダムな部位で出ます (古代10%)。アイテムレベルはこれまでに到達した最深階です。装備は今の挑戦で使います (町の1階の門から新しい挑戦を始めると装備はすべて消えます)。",
-      rates: "レア度ごとの確率", buy: "購入", buyLogin: "ログインして購入", notEnough: "キャッシュ不足",
+      buy: "購入", buyLogin: "ログインして購入", notEnough: "キャッシュ不足",
       bonus: (n, p) => `+${n} ボーナス (+${p}%)`, total: (n) => `合計 ${n} キャッシュ`,
       who: (n) => `${n} さん`, guest: "未ログイン",
       sandbox: "<b>テスト決済モード</b> · 実際の請求はありません。テストカード: <b>4111 1111 1111 1111</b> · 有効期限 <b>12/40</b> · CVVは任意の3桁",
-      loginNote: "商品は誰でも見られますが、購入には<b>ゲームアカウント</b>でのログインが必要です。キャッシュと装備はアカウントに保存されます。",
+      loginNote: "商品は誰でも見られますが、購入には<b>ゲームアカウント</b>でのログインが必要です。キャッシュとスキンはアカウントに保存されます。",
       loginBtn: "アカウント連携",
-      footer: "キャッシュはアカウントに保存されます。ボックスの装備はゲームの郵便受けに届き、受け取ると自動装備ですぐ装着または分解されます。町の1階の門から新しい挑戦を始めると装備はすべて消えます。<br>決済はXsollaが処理します。",
+      footer: "キャッシュとスキルスキンはアカウントに保存されます。スキルスキンは見た目だけが変わり、能力値はそのままです。ゲームのインベントリの「着せ替え」で着脱できます。",
       payTitle: "お支払い", chooseMethod: "お支払い方法を選んでください", otherMethod: "別のお支払い方法",
       loading: "読み込み中…", creating: "注文を作成中…", noMethods: "利用できるお支払い方法がありません。",
       unsupported: "このお支払い方法はまだ対応していません。別の方法を選んでください。",
@@ -425,26 +359,9 @@
       moreMethods: (n) => `その他のお支払い方法 (${n})`, searchMethods: "お支払い方法を検索", noMatch: "該当するお支払い方法がありません。",
       paid: (n) => `お支払い完了！キャッシュ ${n} が追加されました。`, paidNoAmount: "お支払い完了！キャッシュが追加されました。",
       payFailed: "お支払いが完了しませんでした。もう一度お試しください。",
-      boxTitleN: (n) => `装備ボックス ${n}回`, opening: "ボックスを開けています…",
-      boxGot: (n) => `装備を${n}個手に入れました！ゲームのバッグに入ります。`,
-      recovered: (n) => `未開封のボックスを${n}個見つけて開けました。`,
-      boxMail: (n) => `装備を${n}個手に入れました！ゲームの郵便受け（ロビーの取引所の隣）で受け取ってください。`,
-      boxLater: "決済が完了しました。ボックスの中身はまもなくゲームの郵便受け（ロビーの取引所の隣）に届きます。",
       errLoad: "ショップを読み込めませんでした。しばらくしてからお試しください。",
       errGeneric: (m) => `問題が発生しました: ${m}`, errCash: "キャッシュが足りません。先にチャージしてください。",
       errAuth: "ログインの有効期限が切れました。ゲームでもう一度アカウントを連携してください。",
-      rarity: { common: "コモン", uncommon: "アンコモン", rare: "レア", epic: "エピック", legendary: "レジェンダリー", set: "セット" },
-      oddsTitle: "確率情報 (装備ボックス1回あたり)", oddsRarity: "レア度", oddsChance: "確率", oddsAncient: "うち古代",
-      oddsSlots: (p) => `部位9枠(頭・胴・腕・脚・足・武器・補助・ネックレス・指輪)はそれぞれ${p}です。ネックレス・指輪にはセットがないため、その枠でセットが出るとレジェンダリーになります。`,
-      oddsAncientNote: (p) => `古代: レジェンダリー・セットが出ると${p}の確率で古代アイテムになります（正式v2: 装備の数値+10%）。`,
-      oddsNoUnique: "ユニークはボックスから出ません (ヘルのネームドボスだけが落とします)。",
-      oddsLevel: "アイテムレベルはこれまでに到達した最深階のレベルです。レア度の確率はレベルに関係なく同じです。",
-      oddsNone: "コモン・アンコモン・レア・エピックは出ません。欲しい部位・セット・古代が出なければ、もう一度ボックスを開ける必要があります。",
-      oddsMulti: (set, anc) => `複数回ボックスは1回ボックスをその回数だけ別々に開けるのと同じです。セットが1個以上出る確率: ${set}。古代が1個以上出る確率: ${anc}。`,
-      oddsTimes: (n, p) => `${n}回 ${p}`,
-      oddsUbox: "古代ユニーク選択ボックスはユニークを自分で選ぶため、ランダムではありません (常に古代)。",
-      oddsUpdated: (d) => `確率情報の最終変更: ${d}`,
-      lvl: (n) => `Lv.${n}`, ancient: "古代",
       evTitle: (n) => `🎃 ${n}イベント`,
       evSub: (s, e, x, c, p) => `期間 ${s} ~ ${e}。毎日${c}を無料で受け取り、${p}個集めるとスキンと交換できます。残った${c}は${x}までキャッシュと1:1で交換でき、その後に残った分は自動でキャッシュになりゲームの郵便受けに届きます。`,
       evDaily: (c) => `今日の無料${c}`, evDailyDesc: (n) => `1日1回 ${n}個 (毎日韓国時間午前10時にリセット)`, evDayBonus: (d, n) => `今日は${d}！${n}個もらえます`,
@@ -554,7 +471,6 @@
     }
     const c = Auth.loggedIn() ? Auth.claims() : null;
     $("who").textContent = c ? t("who", c.email || c.phone_number || c.sub.slice(0, 8)) : t("guest");
-    renderRates();
   }
 
   let balance = null;
@@ -568,7 +484,7 @@
     } catch (e) {
       if (e.status === 401) { applyText(); }
     }
-    renderBoxes();
+    if (skinsLoaded) renderSkinShop();   // 캐시가 모자라면 구매 버튼을 막음
   }
 
   function showPageMsg(text, cls = "info") {
@@ -704,7 +620,7 @@
   }
 
   // ---- 상품 ----
-  let packs = [], boxes = [], offers = [];
+  let packs = [], skins = [], ownedSkins = new Set(), skinsLoaded = false;
   const money = (price) => {
     if (!price) return "";
     try { return new Intl.NumberFormat(lang, { style: "currency", currency: price.currency }).format(Number(price.amount)); }
@@ -713,21 +629,20 @@
 
   async function loadCatalog() {
     try {
-      // 로그인했으면 내 구매 제한(한정 판매)이 반영된 목록으로. 토큰이 만료됐으면 로그인 없이
       const itemsUrl = `/items/virtual_items?locale=${lang}&limit=50`;
       const [p, v] = await Promise.all([
         api(`/items/virtual_currency/package?locale=${lang}&limit=50`),
         Auth.loggedIn() ? api(itemsUrl, { auth: true }).catch(() => api(itemsUrl)) : api(itemsUrl),
       ]);
       packs = (p.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.packGroup));
-      boxes = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.boxGroup));
-      offers = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.offerGroup));
-      renderOffers();
+      // 스킬 스킨 (dc#172): 카탈로그의 skill_skins 그룹 중 skins.js에 있는 것만 (그림·미리보기가 있는 것)
+      skins = (v.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.skinGroup) && window.RLSkins?.SKINS[i.sku]);
       renderPacks();
-      renderBoxes();
+      await loadOwnedSkins();
+      renderSkinShop();
     } catch {
       $("packs").replaceChildren(el("div", { className: "msg bad", textContent: t("errLoad") }));
-      $("boxes").replaceChildren();
+      $("skins").replaceChildren();
     }
   }
 
@@ -751,181 +666,86 @@
     }));
   }
 
-  // 한정 판매: 현금 결제, 계정당 1회 (Xsolla 구매 제한. 다 샀으면 Xsolla가 목록에서 빼거나 available 0)
-  const offerLeft = (o) => o.can_be_bought === false ? 0 : (o.limits?.per_user?.available ?? 1);
-  function renderOffers() {
-    $("offers-sec").hidden = !offers.length;
-    $("offers").replaceChildren(...offers.map(o => {
-      const left = offerLeft(o);
-      const btn = el("button", { type: "button", className: "primary" });
-      if (!Auth.loggedIn()) { btn.textContent = t("buyLogin"); btn.onclick = () => (location.href = "./?login=shop"); }
-      else if (left <= 0) { btn.textContent = t("offerSold"); btn.disabled = true; }
-      else { btn.textContent = money(o.price); btn.onclick = () => buyOffer(o); }
-      return el("div", { className: "card offer", dataset: { sku: o.sku } },
-        el("span", { className: "bonus", textContent: t("offerLimit") }),
-        el("div", { className: "art box-art", textContent: "🎁" }),
-        el("div", { className: "name", textContent: o.name }),
-        el("div", { className: "desc", textContent: o.description }),
-        btn);
-    }));
+  // ---- 스킬 스킨 (dc#172): 캐시로 구매 → Xsolla 인벤토리에 영구로 (계정당 1개). 게임이 인벤토리를 읽어 씀 ----
+  // 장비 상자·고대 유니크 선택 상자는 dc#172부터 팔지 않음 (예전에 산 상자는 게임 서버가 웹훅·우편함으로 그대로 처리)
+  async function loadOwnedSkins() {
+    if (!Auth.loggedIn()) { ownedSkins = new Set(); return; }
+    try {
+      const inv = await api("/user/inventory/items?limit=50", { auth: true });
+      ownedSkins = new Set((inv.items || []).filter(i => window.RLSkins?.SKINS[i.sku] && (i.quantity ?? 1) > 0).map(i => i.sku));
+    } catch {}
   }
-
-  function renderBoxes() {
-    if (!boxes.length) return;
-    $("boxes").replaceChildren(...boxes.map(box => {
-      const price = cashPrice(box), draws = drawsOf(box.sku);
+  const skinMsg = (text, cls = "info") => { const m = $("skin-msg"); m.hidden = !text; m.replaceChildren(...(text ? [el("div", { className: `msg ${cls}`, textContent: text })] : [])); };
+  // 미리보기는 한 번만 돌리는 애니메이션 (보이는 캔버스마다 그 스킨을 그림)
+  let previewLoop = 0;
+  function animatePreviews() {
+    cancelAnimationFrame(previewLoop);
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const frame = (now) => {
+      for (const cv of document.querySelectorAll("canvas[data-skin]")) {
+        const ctx = cv.getContext("2d"), w = cv.width, h = cv.height;
+        window.RLSkins.preview(ctx, cv.dataset.skin, still ? 700 : now, w, h);
+      }
+      if (!still) previewLoop = requestAnimationFrame(frame);
+    };
+    previewLoop = requestAnimationFrame(frame);
+  }
+  function renderSkinShop() {
+    $("skins-sec").hidden = !skins.length;
+    skinsLoaded = true;
+    $("skins").replaceChildren(...skins.map(item => {
+      const K = window.RLSkins, owned = ownedSkins.has(item.sku), price = cashPrice(item) || K.PRICE;
       const btn = el("button", { type: "button", className: "primary" });
       if (!Auth.loggedIn()) { btn.textContent = t("buyLogin"); btn.onclick = () => (location.href = "./?login=shop"); }
+      else if (owned) { btn.textContent = t("skinOwned"); btn.disabled = true; }
       else {
         const short = balance != null && balance < price;
-        btn.textContent = short ? `${t("notEnough")} (◆ ${price})` : `◆ ${price} ${t("buy")}`;
+        btn.textContent = short ? t("skinShort", price) : t("skinPrice", price);
         btn.disabled = short;
-        btn.onclick = () => buyBox(box);
+        btn.onclick = () => buySkin(item, btn);
       }
-      return el("div", { className: "card", dataset: { sku: box.sku } },
-        el("div", { className: "art box-art", textContent: draws >= 50 ? "▣▣▣" : draws >= 10 ? "▣▣" : "▣" }),
-        el("div", { className: "name", textContent: box.name }),
-        el("div", { className: "desc", textContent: box.description }),
+      const cv = el("canvas", { width: 240, height: 120, dataset: { skin: item.sku } });
+      return el("div", { className: "card skin" + (owned ? " owned" : ""), dataset: { sku: item.sku } },
+        owned ? el("span", { className: "bonus", textContent: t("skinOwnedTag") }) : null,
+        cv,
+        el("div", { className: "name", textContent: item.name || K.name(item.sku, lang) }),
+        el("div", { className: "desc", textContent: K.desc(item.sku, lang) }),
         btn);
     }));
+    animatePreviews();
   }
-
-  // 확률 공개 (dc#107): 규칙에서 정확히 계산한 값 (RLItems.boxOdds). 위 줄은 요약, 아래 표는 등급·고대·부위·여러 번 상자
-  const ODDS_UPDATED = "2026-10-28";   // 확률이 바뀌는 규칙 변경을 하면 같이 바꿈
-  const pctText = (p) => (p >= 0.99995 && p < 1 ? ">99.99%" : `${(p * 100).toFixed(p < 0.01 ? 3 : 2)}%`);   // 100%가 아닌데 100.00%로 보이지 않게
-  function renderRates() {
-    const odds = RLItems.boxOdds();
-    const order = ["legendary", "set", "epic", "rare", "uncommon", "common"].filter(r => odds.at[r]);   // 나오는 등급만
-    $("rates").replaceChildren(el("span", { textContent: t("rates") }),
-      ...order.map(r => el("span", { style: `color:${RLItems.RARITIES[r].color}`, textContent: `${t("rarity")[r]} ${pctText(odds.at[r])}` })));
-    const row = (r) => el("tr", {}, el("td", { style: `color:${RLItems.RARITIES[r].color}`, textContent: t("rarity")[r] }),
-      el("td", { className: "num", textContent: pctText(odds.at[r]) }), el("td", { className: "num", textContent: odds.ancient[r] != null ? pctText(odds.ancient[r]) : "–" }));
-    const draws = [1, 10, 50];
-    $("odds").replaceChildren(
-      el("h3", { textContent: t("oddsTitle") }),
-      el("table", {}, el("thead", {}, el("tr", {}, ...[t("oddsRarity"), t("oddsChance"), t("oddsAncient")].map(h => el("th", { textContent: h })))), el("tbody", {}, ...order.map(row))),
-      el("ul", {}, ...[
-        t("oddsSlots", pctText(1 / Object.keys(odds.slots).length)),
-        t("oddsAncientNote", pctText(odds.ancientChance)),
-        t("oddsNone"), t("oddsNoUnique"), t("oddsLevel"),
-        t("oddsMulti", draws.map(n => t("oddsTimes", n, pctText(odds.atLeast(n, ["set"])))).join(" · "), draws.map(n => t("oddsTimes", n, pctText(odds.atLeastAncient(n)))).join(" · ")),
-        t("oddsUbox"), t("oddsUpdated", ODDS_UPDATED),
-      ].map(text => el("li", { textContent: text }))));
-  }
-
-  // ---- 장비 상자: 캐시로 구매 → Xsolla 웹훅(order_paid)을 받은 게임 서버가 열어서 게임 우편함으로 ----
-  // 결과는 주문 번호를 시드로 정해짐 (box|o주문 번호|순번). 상점은 서버에 결과를 물어서 보여주기만 함
-  // 게임 서버가 없을 때(RANKING_API 없음)만 예전처럼 브라우저에서 열어 게임 보관함(rl_mail)으로
-  const pendingKey = () => `rl_box_pending:${Auth.owner()}`;
-  const mailKey = () => `rl_mail:${Auth.owner()}`;
-  // 상자 아이템 레벨 = 일반 던전 최고 층의 레벨 (50층 기준 저장 f50이면 1.5 × 층, 최대 75. dc#98, 서버 market.php box_level과 같게)
-  const itemLevel = () => { const s = readJson("rl_save", {}), b = Math.max(1, s?.best || 1); return s?.f50 ? Math.min(75, Math.round(b * 1.5)) : Math.min(75, b); };
-
-  function openBoxes(orderId, sku, draws, lvl) {
-    const items = [];
-    for (let i = 0; i < draws; i++) items.push(RLItems.generate(`box|o${orderId}|${i}`, "box", lvl));
-    const mail = readJson(mailKey(), []);
-    for (const item of items) {
-      if (!mail.some(m => m.item.id === item.id)) mail.push({ item, from: "box", order: String(orderId), sku, t: new Date().toISOString() });
+  let skinBusy = false;
+  async function buySkin(item, btn) {
+    if (skinBusy || ownedSkins.has(item.sku)) return;
+    skinBusy = true;
+    btn.disabled = true; btn.textContent = t("skinBuying");
+    skinMsg("");
+    try {
+      await api(`/payment/item/${encodeURIComponent(item.sku)}/virtual/${SHOP.cashSku}`, { method: "POST", auth: true, body: {} });
+      ownedSkins.add(item.sku);
+      skinMsg(t("skinGot", item.name || window.RLSkins.name(item.sku, lang)), "good");
+    } catch (e) {
+      // 이미 가진 스킨(구매 제한)이면 가진 것으로 표시
+      if (e.status === 422 || /limit/i.test(e.message || "")) { await loadOwnedSkins(); skinMsg(ownedSkins.has(item.sku) ? t("skinErrOwned") : friendly(e), "bad"); }
+      else skinMsg(friendly(e), "bad");
+    } finally {
+      skinBusy = false;
+      await refreshBalance();
+      renderSkinShop();
     }
-    store.set(mailKey(), JSON.stringify(mail));
-    return items;
   }
 
-  // 열기가 끝난 상자는 Xsolla 인벤토리에서 소모해서, 인벤토리에는 아직 안 연 상자만 남게 한다
-  async function consume(sku, quantity) {
-    await api("/user/inventory/item/consume", { method: "POST", auth: true, body: { sku, quantity, instance_id: null } });
-  }
-
+  // 예전 장비 상자 구매에서 소모만 남은 것 (창이 닫혀서) → 마저 소모. 상자 결과는 게임 서버가 우편함으로 보냄
+  const pendingKey = () => `rl_box_pending:${Auth.owner()}`;
   async function settlePending() {
     const pending = readJson(pendingKey(), []);
+    if (!pending.length) return;
     const left = [];
     for (const p of pending) {
-      try { await consume(p.sku, 1); } catch { left.push(p); }
+      try { await api("/user/inventory/item/consume", { method: "POST", auth: true, body: { sku: p.sku, quantity: 1, instance_id: null } }); } catch { left.push(p); }
     }
     store.set(pendingKey(), JSON.stringify(left));
-    return left;
   }
-
-  // 구매 직후 창이 닫혀서 소모하지 못한 상자를 마저 소모. 게임 서버가 있으면 상자는 서버가 이미 우편함에 넣었으므로 열지 않음
-  // (게임 서버가 없을 때만 남은 상자를 브라우저에서 엶)
-  async function recoverUnopened() {
-    const pending = await settlePending();
-    if (window.RANKING_API) return;
-    let inv;
-    try { inv = await api("/user/inventory/items?limit=50", { auth: true }); } catch { return; }
-    let opened = 0;
-    const items = [];
-    for (const it of inv.items || []) {
-      if (!boxes.some(b => b.sku === it.sku) && !/^box_equipment_/.test(it.sku)) continue;
-      const waiting = pending.filter(p => p.sku === it.sku).length;  // 이미 열었고 소모만 남은 것
-      const extra = (it.quantity || 0) - waiting;
-      for (let n = 0; n < extra; n++) {
-        const key = `rec${it.instance_id || ""}${Date.now()}x${n}`;
-        try { await consume(it.sku, 1); } catch { break; }
-        items.push(...openBoxes(key, it.sku, drawsOf(it.sku), itemLevel()));
-        opened++;
-      }
-    }
-    if (opened) showReveal(t("recovered", opened), items);
-  }
-
-  // 서버가 웹훅을 받아 상자를 열 때까지 잠깐 기다림 (보통 몇 초). 결과 아이템 목록, 시간 안에 안 오면 null (나중에 우편함으로 옴)
-  async function serverBox(orderId, waitMs = 20000) {
-    const end = Date.now() + waitMs;
-    while (Date.now() < end) {
-      try {
-        const tok = await Auth.token();
-        const res = await fetch(`${window.RANKING_API}?r=box_order&order=${encodeURIComponent(orderId)}`, { headers: { Authorization: `Bearer ${tok}` } });
-        const d = res.ok ? await res.json() : null;
-        if (d?.ready) return d.items.map(r => RLItems.fromRef(r)).filter(Boolean);
-      } catch {}
-      await new Promise(r => setTimeout(r, 1500));
-    }
-    return null;
-  }
-
-  let busy = false;
-  async function buyBox(box) {
-    if (busy) return;
-    busy = true;
-    const draws = drawsOf(box.sku);
-    $("box-title").textContent = t("boxTitleN", draws);
-    $("box-msg").replaceChildren(el("div", { className: "loader", textContent: t("opening") }));
-    $("box-items").replaceChildren();
-    $("box-modal").hidden = false;
-    try {
-      const { order_id } = await api(`/payment/item/${encodeURIComponent(box.sku)}/virtual/${SHOP.cashSku}`, { method: "POST", auth: true, body: {} });
-      // 소모가 끝나기 전에 창이 닫혀도 다시 열지 않도록 먼저 기록
-      store.set(pendingKey(), JSON.stringify([...readJson(pendingKey(), []), { order: order_id, sku: box.sku }]));
-      if (window.RANKING_API) {
-        const items = await serverBox(order_id);
-        if (items) showReveal(t("boxMail", items.length), items);
-        else $("box-msg").replaceChildren(el("div", { className: "msg good", textContent: t("boxLater") }));
-      } else {
-        const items = openBoxes(order_id, box.sku, draws, itemLevel());
-        showReveal(t("boxGot", items.length), items);
-      }
-      await settlePending();
-    } catch (e) {
-      $("box-msg").replaceChildren(el("div", { className: "msg bad", textContent: friendly(e) }));
-    } finally {
-      busy = false;
-      refreshBalance();
-    }
-  }
-
-  function showReveal(text, items) {
-    $("box-title").textContent ||= t("boxTitle");
-    $("box-msg").replaceChildren(el("div", { className: "msg good", textContent: text }));
-    const order = ["legendary", "set", "epic", "rare", "uncommon", "common"];
-    const sorted = [...items].sort((a, b) => (b.ancient ? 1 : 0) - (a.ancient ? 1 : 0) || order.indexOf(a.rarity) - order.indexOf(b.rarity));   // 고대 먼저
-    $("box-items").replaceChildren(...sorted.map((item, i) => el("div", { style: `animation-delay:${Math.min(i, 30) * 60}ms` },
-      el("span", { textContent: RLItems.itemName(item), style: `color:${RLItems.RARITIES[item.rarity].color}` }),
-      el("small", { textContent: `${t("rarity")[item.rarity]}${item.ancient ? " · " + t("ancient") : ""} · ${t("lvl", item.lvl)}` }))));
-    $("box-modal").hidden = false;
-  }
-  $("box-close").onclick = () => { $("box-modal").hidden = true; $("box-title").textContent = ""; };
 
   // ---- 캐시 충전: 주문 생성 → Headless Checkout ----
   const sdk = window.PayStationSdk?.headlessCheckout;
@@ -1009,30 +829,8 @@
     }
   }
 
-  // 한정 판매 결제: 캐시 충전과 같은 결제 창. 주문 종류를 기억해 둠 (결제 사이트에서 돌아와도 무엇을 샀는지 알게)
+  // 한정 판매(고대 유니크 선택 상자)는 dc#172부터 팔지 않음. 그 전에 시작한 결제가 돌아오면 여기서 마무리
   const offerOrderKey = (id) => `rl_offer_order:${id}`;
-  async function buyOffer(offer) {
-    if (busy) return;
-    busy = true;
-    openPayModal(offer.name);
-    payMsg(t("creating"));
-    try {
-      const order = await api(`/payment/item/${encodeURIComponent(offer.sku)}`, {
-        method: "POST", auth: true,
-        body: { sandbox: SHOP.sandbox, locale: lang, quantity: 1 },
-      });
-      current = { offer, orderId: order.order_id, token: order.token };
-      store.set(offerOrderKey(order.order_id), offer.sku);
-      await ensureSdk();
-      await sdk.setToken(order.token);
-      subscribeOnce();
-      await showMethods();
-    } catch (e) {
-      payMsg(e instanceof ApiError ? friendly(e) : t("errGeneric", e.message), "bad");
-    } finally {
-      busy = false;
-    }
-  }
   // 결제가 끝난 상자를 게임 서버가 Xsolla 인벤토리에서 꺼내 우편함으로 (실패해도 게임 우편함을 열 때 다시 함)
   async function collectOffer() {
     if (!window.RANKING_API) return;
@@ -1314,10 +1112,6 @@
     loadCatalog();
     renderEvent();
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!$("box-modal").hidden) $("box-close").click();
-  });
 
   applyText();
   (async () => {
@@ -1327,7 +1121,7 @@
     await loadCatalog();
     await refreshBalance();
     const returned = await handleReturn();
-    if (Auth.loggedIn() && !returned) recoverUnopened();
+    if (Auth.loggedIn() && !returned) settlePending();
   })();
 })();
 </script>

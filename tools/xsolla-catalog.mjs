@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Xsolla 카탈로그(캐시, 캐시 패키지, 장비 상자, 이벤트 재화, 한정 판매, 보너스 프로모션)를 만든다.
+// Xsolla 카탈로그(캐시, 캐시 패키지, 스킬 스킨, 장비 상자(판매 중지), 이벤트 재화, 한정 판매(판매 중지), 보너스 프로모션)를 만든다.
 //
 //   node tools/xsolla-catalog.mjs          # 무엇이 있고 무엇을 만들지 보여주기만 함
 //   node tools/xsolla-catalog.mjs --apply  # 없는 항목만 생성 (이미 있는 항목은 건드리지 않음)
@@ -9,6 +9,8 @@
 // 프록시 뒤에서 실행할 때는 NODE_USE_ENV_PROXY=1 을 붙인다 (Node 내장 fetch가 HTTPS_PROXY를 쓰도록).
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+const SK = createRequire(import.meta.url)("../skins.js");   // 스킬 스킨 이름·설명 (dc#172)
 
 const APPLY = process.argv.includes("--apply");
 
@@ -43,7 +45,8 @@ const IMG = {
 
 const GROUPS = [
   { external_id: "cash_packs", name: { en: "Cash", ko: "캐시 충전" }, order: 1 },
-  { external_id: "equipment_boxes", name: { en: "Equipment boxes", ko: "장비 상자" }, order: 2 },
+  { external_id: "equipment_boxes", name: { en: "Equipment boxes", ko: "장비 상자" }, order: 2 },   // dc#172부터 팔지 않음
+  { external_id: "skill_skins", name: { en: "Skill skins", ko: "스킬 스킨", ja: "スキルスキン" }, order: 2 },
   { external_id: "limited_offers", name: { en: "Limited offers", ko: "한정 판매", ja: "限定販売" }, order: 0 },
   // 게임 안에서만 파는 아이템 (상점 페이지에는 보이지 않음)
   { external_id: "game_items", name: { en: "Game items", ko: "게임 아이템", ja: "ゲームアイテム" }, order: 3 },
@@ -88,7 +91,7 @@ const BOXES = [1, 10, 50].map((draws, i) => ({
   image_url: IMG[`box_equipment_${draws}`],
   is_paid_randomized_reward: true,
   is_enabled: true,
-  is_show_in_store: true,
+  is_show_in_store: false,   // dc#172: 더는 팔지 않음 (이미 산 상자는 게임 서버가 그대로 처리)
   order: i + 1,
   custom_attributes: { draws },
 }));
@@ -131,9 +134,24 @@ const OFFERS = [{
   image_url: IMG.ancient_unique_box,
   limits: { per_user: { total: 1 }, per_item: null },
   is_enabled: true,
-  is_show_in_store: true,
+  is_show_in_store: false,   // dc#172: 더는 팔지 않음 (이미 산 상자는 우편함에서 그대로 열 수 있음)
   order: 1,
 }];
+
+// 스킬 스킨 (dc#172): 캐시 50개, 계정당 1개, 영구 (non_consumable). 이름·설명은 skins.js
+// 게임은 사용자의 Xsolla 인벤토리에 이 SKU가 있으면 가진 것으로 봄 (소모하지 않음)
+const SKILL_SKINS = SK.IDS.map((sku, i) => ({
+  sku,
+  name: SK.SKINS[sku].name,
+  description: SK.SKINS[sku].desc,
+  groups: ["skill_skins"],
+  virtual_item_type: "non_consumable",
+  vc_prices: CASH_PRICE(SK.PRICE),
+  limits: { per_user: { total: 1 }, per_item: null },
+  is_enabled: true,
+  is_show_in_store: true,
+  order: i + 1,
+}));
 
 // 이벤트 재화 (dc#131): 무료, 1인당 하루 1개 (Xsolla 구매 제한, 매일 한국 시간 오전 10시에 초기화)
 // 상점 이벤트 칸의 "무료로 받기"가 이걸 주문하면 사용자 인벤토리에 들어가고, 게임 서버(ranking-php/event.php event_claim)가
@@ -229,8 +247,9 @@ async function ensurePriced(label, url, createUrl, def, priceField = "prices") {
   if (status !== 200) return ensure(label, async () => false, () => api("POST", createUrl, def));
   const samePrice = priceKey(data[priceField]) === priceKey(def[priceField]);
   const sameImage = (data.image_url || "") === (def.image_url || "");
-  if (samePrice && sameText(data, def) && sameImage) { console.log(`  = ${label} (이미 있음)`); return; }
-  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명", !sameImage && "그림"].filter(Boolean).join(", ");
+  const sameShow = def.is_show_in_store === undefined || !!data.is_show_in_store === !!def.is_show_in_store;   // dc#172: 판매 중지도 반영
+  if (samePrice && sameText(data, def) && sameImage && sameShow) { console.log(`  = ${label} (이미 있음)`); return; }
+  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명", !sameImage && "그림", !sameShow && (def.is_show_in_store ? "판매 시작" : "판매 중지")].filter(Boolean).join(", ");
   if (!APPLY) { console.log(`  ~ ${label} (${what} 갱신 예정)`); return; }
   const res = await api("PUT", url, def);
   if (res.status >= 200 && res.status < 300) console.log(`  ✓ ${label} ${what} 갱신됨`);
@@ -259,6 +278,11 @@ console.log("장비 상자");
 for (const b of BOXES)
   await ensurePriced(`${b.sku}  ${b.vc_prices[0].amount}캐시`, `${V2}/items/virtual_items/sku/${b.sku}`,
     `${V2}/items/virtual_items`, b, "vc_prices");
+
+console.log("스킬 스킨");
+for (const k of SKILL_SKINS)
+  await ensurePriced(`${k.sku}  ${k.vc_prices[0].amount}캐시 · 계정당 ${k.limits.per_user.total}개`, `${V2}/items/virtual_items/sku/${k.sku}`,
+    `${V2}/items/virtual_items`, k, "vc_prices");
 
 console.log("게임 아이템");
 await ensurePriced(`${REVIVE.sku}  ${REVIVE.vc_prices[0].amount}캐시`, `${V2}/items/virtual_items/sku/${REVIVE.sku}`,
