@@ -58,7 +58,7 @@ try {
   check("no cap (dc#168, was 20 picks): after fire 10 · bolt 10 other element cards still come", B.ELEM_CAP === undefined && Array.from({ length: 200 }, (_, i) => B.offer(`cap${i}`, { fire: 10, bolt: 10 })).some(o => o.some(id => B.ELEM_IDS.includes(id))));
   let any = 0; for (let i = 0; i < 3000; i++) if (B.offer(`w${i}`, {}).some(B.isElem)) any++;
   check(`element offers are common but not guaranteed (${Math.round(any / 30)}% of floors)`, any / 3000 > 0.45 && any / 3000 < 0.65);
-  check("monsters: normal depth ramp 2.85 (dc#168, was 4.2), nightmare/hell v2 multipliers", M.NORMAL.ramp === 2.85 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 3.85) < 1e-9);
+  check("monsters: normal depth ramp 3.0 (dc#170, was 4.2 → 2.85), nightmare/hell v2 multipliers", M.NORMAL.ramp === 3.0 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 4.0) < 1e-9);
   const legacy = J.TOWN.doors.filter(d => d.legacy).map(d => d.id).sort().join();
   check("town: nightmare · hell · gold dungeon · waypoint doors are legacy (hidden)", legacy === "golddungeon,golddungeonNM,hell,nightmare,waypoint" && J.TOWN.buildings.filter(b => !b.legacy).map(b => b.id).join() === "market,gate", legacy);
 

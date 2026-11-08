@@ -217,7 +217,8 @@
   //       (HP ×1.5 → 78%, ×1.6 → 81%, ×1.7 → 69~72%. 공격력 곡선 없이 HP만 올리면 끝까지 비율만 바뀌고 긴장감은 그대로 1~6%)
   //     curve: HP 깊이 배율 곡선 (1 = 고르게. 1보다 작게도 시험했지만 앞쪽 HP만 늘어 긴장감은 안 늘었음)
   // dc#168: 더 좋은 장비로 바꿔 낄 때 강화를 절반만 이어받게 되어(items.js inheritEnh) 일반 50층 이어가기 60% → 0% → ramp 4.2 → 2.85 (300판 약 60%)
-  const NORMAL = { ramp: 2.85, curve: 1, hp: 1.7, hpEase: 5, atkCurve: 0.35, atkEase: 5 };
+  // dc#170: 새 유물 넷·유물 5번까지·깊은 던전 경험치로 일반 74% → ramp 2.85 → 3.0 (500판 약 58%)
+  const NORMAL = { ramp: 3.0, curve: 1, hp: 1.7, hpEase: 5, atkCurve: 0.35, atkEase: 5 };
   // 나이트메어·헬 몬스터 HP·공격력에 더 곱함 (dc#142, 속성 스킬 축복 뒤 시뮬레이션 300판: 이어가기 나이트메어 약 90% · 헬 약 45%)
   //   없으면 둘 다 100%. 나이트메어 ×2 / ×1.45 → 11%, ×1.6 / ×1.3 → 87~92%. 헬 ×1.6 / ×1.35 → 11%, ×1.43 / ×1.23 → 43~47%, ×1.4 / ×1.2 → 60~65%
   //   헬 몬스터는 나이트메어 50층 몬스터를 바탕으로 만들지만 나이트메어 배율은 곱하지 않음 (헬 배율만). 끝이 없는 구멍(헬 바탕)도 헬 배율
@@ -231,7 +232,9 @@
   //   dc#168: 나이트메어 몬스터 수 늘림(1층 50 → 90)·입구 배율 없앰·강화 미사일·점프 공격 + 내 쪽 독구름·역병·융합 스킬·속성 상한 없앰·강화 절반 이어받기
   //     → 그대로면 이어가기 나이트메어 42% · 헬 100% → 나이트메어 HP ×0.72·공격 ×0.9, 헬 HP ×2.5·공격 ×1.5
   //     (500판: 일반 약 59% · 나이트메어 약 71% · 헬 약 58%, 헬 전에 각성 마스터가 하나라도 있는 판 약 86~91%)
-  const V2 = { nightmare: { hp: 2.92, atk: 1.58 }, hell: { hp: 7.75, atk: 2.55 } };
+  //   dc#170: 새 유물 넷·유물 5번까지·나이트메어·헬 경험치가 층마다 늘어 끝 레벨 나이트메어 38 → 40 · 헬 39 → 46 → 이어가기 나이트메어 90% · 헬 100%
+  //     → 나이트메어 HP ×1.5, 헬 HP ×1.5·공격 ×1.12 (500판: 일반 약 58% · 나이트메어 약 72% · 헬 약 53%)
+  const V2 = { nightmare: { hp: 4.38, atk: 1.58 }, hell: { hp: 11.63, atk: 2.86 } };
   // 몬스터 무리 (dc#146, 넓은 광장): 한 층 몬스터 수 ×count, 대신 한 마리당 경험치 ×xp · 장비 드롭 확률 ×drop · 처치 골드 ×gold
   //   (한 층에서 얻는 총량은 거의 그대로, 더 많이 싸움). 보스는 그대로. 끝이 없는 구멍·예전 방 던전은 곱하지 않음
   const SWARM = { count: 2, xp: 0.5, drop: 0.5, gold: 0.5 };
@@ -440,15 +443,20 @@
   // el: 속성 ("fire" | "ice" | "bolt", 없으면 속성 없음)
   const makeNightmare = (t, kind, n, el = null) => v2mul(nmRaw(t, kind, n, el), V2.nightmare);
   const makeNightmareBoss = (n, el = null) => v2mul(nmBossRaw(n, el), V2.nightmare);
+  // 깊은 던전 경험치 (dc#170): 예전에는 나이트메어 1층부터 헬 50층까지 몬스터 경험치가 거의 그대로라 헬에서 레벨이 멈췄음 (Lv 39 → 40에 약 100층)
+  //   나이트메어 n층 × (1 + nm × (n − 1)), 헬은 나이트메어 50층 값에 × (1 + hell × (n − 1)). 숫자는 시뮬레이션 (tools/sim-v2.mjs 끝 레벨)
+  const DEEP_XP = { nm: 0.06, hell: 0.08 };
+  const nmXpMul = (n) => 1 + DEEP_XP.nm * (Math.max(1, n) - 1);
+  const hellXpMul = (n) => 1 + DEEP_XP.hell * (Math.max(1, n) - 1);
   function nmRaw(t, kind, n, el = null) {
     const m = makeMonster(t, kind, NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
     const hp = Math.round(m.hp * NIGHTMARE.hp * k * e);
-    return withElement({ ...m, base: m.name, hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n) * e), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
+    return withElement({ ...m, base: m.name, xp: Math.round(m.xp * nmXpMul(n)), hp, maxHp: hp, atk: Math.round(m.atk * NIGHTMARE.atk * nmAtkScale(n) * e), def: Math.round(m.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
   }
   function nmBossRaw(n, el = null) {
     const b = makeBoss(NIGHTMARE.base), k = nmScale(n), e = entryMul(NIGHTMARE.entry, n);
     const hp = Math.round(b.hp * NIGHTMARE.bossHp * k * e);
-    return withElement({ ...b, base: b.name, hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n) * e), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
+    return withElement({ ...b, base: b.name, xp: Math.round(b.xp * nmXpMul(n)), hp, maxHp: hp, atk: Math.round(b.atk * NIGHTMARE.bossAtk * nmAtkScale(n) * e), def: Math.round(b.def * NIGHTMARE.def * nmAtkScale(n) * e), nm: 1 }, el);
   }
 
   // ---- 헬 던전: 나이트메어를 완료한 사람이 들어가는 50층 던전 (완료하면 끝이 없는 구멍) ----
@@ -487,12 +495,12 @@
   function makeHell(t, kind, n, el = pickElement(Math.random)) {
     const m = nmRaw(t, kind, HELL.startNm, el), e = entryMul(HELL.entry, n) * V2.hell.hp, ea = entryMul(HELL.entry, n) * V2.hell.atk;
     const hp = Math.round(m.hp * HELL.hp * hellScale(n) * e);
-    return toHell({ ...m, hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * ea), def: Math.round(m.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, false);
+    return toHell({ ...m, xp: Math.round(m.xp * hellXpMul(n)), hp, maxHp: hp, atk: Math.round(m.atk * HELL.atk * hellAtkScale(n) * ea), def: Math.round(m.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, false);
   }
   function makeHellBoss(n, el = pickElement(Math.random)) {
     const b = nmBossRaw(HELL.startNm, el), e = entryMul(HELL.entry, n) * V2.hell.hp, ea = entryMul(HELL.entry, n) * V2.hell.atk;
     const hp = Math.round(b.hp * HELL.bossHp * hellScale(n) * e);
-    return toHell({ ...b, hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n) * ea), def: Math.round(b.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, true);
+    return toHell({ ...b, xp: Math.round(b.xp * hellXpMul(n)), hp, maxHp: hp, atk: Math.round(b.atk * HELL.bossAtk * hellAtkScale(n) * ea), def: Math.round(b.def * hellAtkScale(n) * entryMul(HELL.entry, n)) }, n, el, true);
   }
 
   // ---- 헬 네임드 보스: 10·20·30·40·50층 보스 자리에 나옴 (헬 보스 × hpMul·atkMul, 보스 속성 저항) ----
@@ -547,7 +555,7 @@
     return k <= ABYSS_PAIRS.length ? { pair: ABYSS_PAIRS[k - 1] } : { all: NAMED_KEYS[k - ABYSS_PAIRS.length - 1] };
   }
   const abyssScale = (n) => 1 + ABYSS.perFloor * (Math.max(1, n) - 1);
-  const abyssXp = (xp, n) => Math.round(xp * ABYSS.xpMul * abyssScale(n));
+  const abyssXp = (xp, n) => Math.round(xp / (hellXpMul(ABYSS.hellFloor) * nmXpMul(NIGHTMARE.floors)) * ABYSS.xpMul * abyssScale(n));   // dc#170: 헬 경험치가 층마다 늘어난 만큼 나눠서 구멍 경험치는 예전 그대로
   // 일반 몬스터: 헬 50층 몬스터 × 층 배율
   function makeAbyss(t, kind, n, el = pickElement(Math.random)) {
     const m = makeHell(t, kind, ABYSS.hellFloor, el), k = abyssScale(n);
@@ -608,7 +616,7 @@
 
   const api = {
     MONSTERS, FLOOR, floorScale, DEFENSE_K, damageToPlayer, ELITE, BOSSES, BOSS_EVERY, MAX_FLOOR, CLEAR_STAGE, EFF_MAX, effLevel, BOSS_SCALE,
-    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, PETS, PET_GRADES, petSource, petDropChance, petKey, parsePetKey, petSprite, petName, rollPetGrade, petGrade, gradeRank, petMonsters, petGradesFor, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, hellMonsterCount, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
+    nameOf, entryMul, NORMAL, V2, SWARM, RANGED, rangedLiveShare, LIVE_HARD, liveHardMul, NORMAL_ELEM, normalElemShare, PETS, PET_GRADES, petSource, petDropChance, petKey, parsePetKey, petSprite, petName, rollPetGrade, petGrade, gradeRank, petMonsters, petGradesFor, SMASH, smashPct, RESCUE, SHOTS, shotDeepMul, normalMul, makeNormal, makeNormalBoss, NIGHTMARE, GOLD_DUNGEON, ELEMENTS, playerRes, pickElement, nmScale, nmAtkScale, CROWD, crowdCut, nmMonsterCount, hellMonsterCount, DEEP_XP, nmXpMul, hellXpMul, nightmarePool, pickNightmareType, makeNightmare, makeNightmareBoss,
     HELL, hellScale, hellAtkScale, hellRes, makeHell, makeHellBoss, NAMED, NAMED_COLOR, namedAt, makeNamedBoss, judgeElement,
     ABYSS, ABYSS_PAIRS, abyssPlan, abyssScale, makeAbyss, makeAbyssNamed, BOSS_COLOR, GOLDEN, GOLD, STAIRS_BLOCK_RADIUS,
     pool, spawnRates, pickType, eliteChance, makeMonster, isBossFloor, makeBoss, makeGolden, goldenRank,
