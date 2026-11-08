@@ -146,8 +146,9 @@ const SKILL_SKINS = SK.IDS.map((sku, i) => ({
   description: SK.SKINS[sku].desc,
   groups: ["skill_skins"],
   virtual_item_type: "non_consumable",
+  inventory_options: { consumable: false, expiration_period: null },   // 소모하지 않는 영구 아이템 (virtual_item_type만으로는 consumable로 만들어짐)
   vc_prices: CASH_PRICE(SK.PRICE),
-  limits: { per_user: { total: 1 }, per_item: null },
+  limits: { per_user: { total: 1 }, per_item: null },   // 산 뒤에는 로그인한 목록에서 빠짐 (limit_exceeded_visibility는 초기화되는 제한에만) → 상점은 로그인 없이 목록을 받음
   is_enabled: true,
   is_show_in_store: true,
   order: i + 1,
@@ -248,8 +249,9 @@ async function ensurePriced(label, url, createUrl, def, priceField = "prices") {
   const samePrice = priceKey(data[priceField]) === priceKey(def[priceField]);
   const sameImage = (data.image_url || "") === (def.image_url || "");
   const sameShow = def.is_show_in_store === undefined || !!data.is_show_in_store === !!def.is_show_in_store;   // dc#172: 판매 중지도 반영
-  if (samePrice && sameText(data, def) && sameImage && sameShow) { console.log(`  = ${label} (이미 있음)`); return; }
-  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명", !sameImage && "그림", !sameShow && (def.is_show_in_store ? "판매 시작" : "판매 중지")].filter(Boolean).join(", ");
+  const sameInv = !def.inventory_options || !!data.inventory_options?.consumable === !!def.inventory_options.consumable;   // 소모 / 영구
+  if (samePrice && sameText(data, def) && sameImage && sameShow && sameInv) { console.log(`  = ${label} (이미 있음)`); return; }
+  const what = [!samePrice && "가격", !sameText(data, def) && "이름/설명", !sameImage && "그림", !sameShow && (def.is_show_in_store ? "판매 시작" : "판매 중지"), !sameInv && "영구 아이템"].filter(Boolean).join(", ");
   if (!APPLY) { console.log(`  ~ ${label} (${what} 갱신 예정)`); return; }
   const res = await api("PUT", url, def);
   if (res.status >= 200 && res.status < 300) console.log(`  ✓ ${label} ${what} 갱신됨`);

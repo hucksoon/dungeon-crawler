@@ -39,7 +39,8 @@ async function open(login = true) {
   await ctx.route(STORE + "/**", async r => { const req = r.request(), p = new URL(req.url()).pathname.replace("/api/v2/project/317991", "");
     if (req.method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "Authorization, Content-Type" } });
     if (p === "/items/virtual_currency/package") return json(r, { items: [{ sku: "cash_50", name: "캐시 50개", groups: [{ external_id: "cash_packs" }], price: { amount: "5", currency: "USD" }, content: [{ sku: "cash", quantity: 50 }] }] });
-    if (p === "/items/virtual_items") return json(r, { items: CATALOG });
+    // Xsolla처럼: 로그인한 목록에서는 구매 제한에 걸린(이미 산) 스킨이 빠짐
+    if (p === "/items/virtual_items") { state.catalogAuth = state.catalogAuth || !!req.headers().authorization; return json(r, { items: req.headers().authorization ? CATALOG.filter(i => !state.inventory.some(x => x.sku === i.sku)) : CATALOG }); }
     if (p === "/user/virtual_currency_balance") return json(r, { items: [{ sku: "cash", amount: state.balance }] });
     if (p === "/user/inventory/items") return json(r, { items: state.inventory });
     const m = /^\/payment\/item\/([^/]+)\/virtual\/cash$/.exec(p);
@@ -95,7 +96,7 @@ try {
   await waitFor(async () => (await page.locator("#skins .card.owned").count()) === 1);
   const b2 = card(page, "skin_bolt_blue").locator("button.primary");
   await waitFor(async () => /캐시 부족/.test(await b2.innerText()));
-  check("owned skin from the inventory shows 'owned'", /보유 중/.test(await card(page, "skin_bolt_aura").locator("button").innerText()));
+  check("owned skin from the inventory still shows (catalog without login) as 'owned'", (await page.locator("#skins .card").count()) === 2 && /보유 중/.test(await card(page, "skin_bolt_aura").locator("button").innerText()) && !state.catalogAuth);
   check("not enough cash (30 < 50) → button disabled with 'not enough'", /캐시 부족 \(◆ 50\)/.test(await b2.innerText()) && await b2.isDisabled(), await b2.innerText());
   check("no page errors (reopen)", errors.length === 0, errors.join("; "));
   await ctx.close();

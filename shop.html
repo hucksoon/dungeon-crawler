@@ -629,10 +629,11 @@
 
   async function loadCatalog() {
     try {
-      const itemsUrl = `/items/virtual_items?locale=${lang}&limit=50`;
+      // 로그인 없이 받음: 로그인한 목록은 구매 제한(계정당 1개)에 걸린 상품, 곧 이미 산 스킨을 빼고 줘서
+      //   산 스킨이 상점에서 사라짐 (dc#172). 가진 것은 인벤토리로 따로 보고 "보유 중"으로 표시
       const [p, v] = await Promise.all([
         api(`/items/virtual_currency/package?locale=${lang}&limit=50`),
-        Auth.loggedIn() ? api(itemsUrl, { auth: true }).catch(() => api(itemsUrl)) : api(itemsUrl),
+        api(`/items/virtual_items?locale=${lang}&limit=50`),
       ]);
       packs = (p.items || []).filter(i => i.groups?.some(g => g.external_id === SHOP.packGroup));
       // 스킬 스킨 (dc#172): 카탈로그의 skill_skins 그룹 중 skins.js에 있는 것만 (그림·미리보기가 있는 것)
