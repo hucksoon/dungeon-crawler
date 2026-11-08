@@ -1129,6 +1129,11 @@ const SCENES = [
     const f = await o.page.evaluate(() => window.__grab());
     fs.writeFileSync(path.join(OUT, "v26-cloud.png"), Buffer.from(f.split(",")[1], "base64"));
     return { ...o, prebuilt: true }; }],
+  // dc#170: 유물 12가지 · 5번까지 — 헬 5층 보스(21번째)에서도 고를 게 셋
+  ["v27-relic", "헬 5층 보스를 쓰러뜨려도 유물이 셋: 새 유물 마도서 조각·사냥꾼의 표식·현자의 돌·생명의 샘, 같은 유물은 5번까지", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(5, "blog-v27r15", { z: "hell", l: 41, bz: { normal: 50, nm: 50, hell: 5 }, pq: [{ r: 1, s: "blog-v27r15" }], bl: { fire: 10, bolt: 10, might: 10, vigor: 10 }, rl: { hawk: 3, grail: 3, wall: 3, heart: 3, resFire: 3, resPoison: 3, resIce: 1, resBolt: 1 } }), "rl_inv:g:DEV": inv(g150) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 유물이 바닥나지 않게, 헬에서도 레벨 업</title>
+<meta name="description" content="헬 5층쯤부터 보스를 잡아도 유물이 2개만 나오고, 헬에서는 레벨이 거의 오르지 않았어요. 새 유물 넷을 더하고 같은 유물은 5번까지 고를 수 있게 했어요. 나이트메어와 헬은 깊이 갈수록 몬스터 경험치가 늘어나요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-08.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 유물이 바닥나지 않게, 헬에서도 레벨 업">
+<meta property="og:description" content="헬 5층쯤부터 보스를 잡아도 유물이 2개만 나오고, 헬에서는 레벨이 거의 오르지 않았어요. 새 유물 넷을 더하고 같은 유물은 5번까지 고를 수 있게 했어요. 나이트메어와 헬은 깊이 갈수록 몬스터 경험치가 늘어나요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-08.html">
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-08.html">블로그 글 보기</a></nav>
+<h1 id="title-text">유물이 바닥나지 않게, 헬에서도 레벨 업</h1>
+<p class="meta">2026년 11월 8일 (일) · 태그: 개발일기, 업데이트, 유물, 레벨, 밸런스</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<p class="steps">이미지 1장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v27-relic.png" download="2026-11-08-1-v27-relic.png">1. 헬 5층 보스를 쓰러뜨려도 유물이 셋, 새 유물과 같은 유물 5번까지</a></p>
+<div id="paper">
+<p>오랜만에 한 판을 길게 하다가 헬 5층에서 두 가지가 눈에 띄었어요. 보스를 잡으면 나오는 유물이 2개뿐이고, 헬에 왔는데도 레벨이 39에서 멈춰 있었어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">유물이 바닥났어요</span></b></p>
+<p>유물은 8가지였고, 같은 유물은 3번까지 고를 수 있었어요. 다 합쳐 24번이에요. 보스는 5층마다 나오니까, 일반과 나이트메어를 깨면 벌써 20번이고 헬 5층 보스가 21번째예요. 남은 유물이 둘뿐이라 다시 뽑아도 같은 둘만 나왔어요.</p>
+<p><br></p>
+<p>그래서 이렇게 바꿨어요.</p>
+<p><br></p>
+<p>• 같은 유물은 <strong>5번까지</strong> 골라요 (속성 저항 넷은 3번 그대로)</p>
+<p>• 새 유물 넷을 더했어요</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 📕 <strong>마도서 조각</strong>: 스킬 피해 +6%</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 🏹 <strong>사냥꾼의 표식</strong>: 정예·보스에게 주는 피해 +8%</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ 🔮 <strong>현자의 돌</strong>: 경험치 +10%</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;◦ ⛲ <strong>생명의 샘</strong>: 포션 회복량 +20%</p>
+<p><br></p>
+<p>이제 유물은 모두 열두 가지, 52번이라 헬 50층까지 가도 고를 게 남아요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v27-relic.png" alt="헬 5층 보스를 쓰러뜨려도 유물이 셋, 새 유물과 같은 유물 5번까지" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">헬 5층 보스를 쓰러뜨려도 유물이 셋, 새 유물과 같은 유물 5번까지</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">헬에서 레벨이 멈췄던 이유</span></b></p>
+<p>다음 레벨까지 필요한 경험치는 레벨마다 1.3배씩 늘어요. 그런데 몬스터 경험치는 나이트메어 1층부터 헬 50층까지 거의 그대로였어요. 그래서 헬에서는 한 레벨 올리는 데 100층쯤 걸렸고, 2레벨마다 받는 축복도 끊겼어요.</p>
+<p><br></p>
+<p>이제 나이트메어와 헬은 <strong>깊이 갈수록 몬스터 경험치가 늘어나요.</strong> 나이트메어 50층은 1층의 약 4배, 헬 50층은 거기서 또 약 5배예요. 시뮬레이션에서는 헬을 끝낼 때 레벨이 39에서 46쯤으로 올라요. 레벨이 오르는 동안 축복도 다시 받아요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">그만큼 몬스터도</span></b></p>
+<p>유물이 늘고 레벨이 오르니 모든 던전이 꽤 쉬워졌어요 (끝까지 가는 비율 일반 74%, 나이트메어 90%, 헬 100%). 그래서 몬스터를 다시 조금씩 세게 맞췄어요. 이제 끝까지 가는 비율은 일반 약 60%, 나이트메어 약 70%, 헬 약 50%예요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-08.html">https://game.apacimtest.com/blog/2026-11-08.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>

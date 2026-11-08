@@ -32,7 +32,7 @@ const ENH_ORDER = SLOTS9;
 //   dc#163: 각성 스킬은 그 속성이 Lv 10이면 바로 고름 (각성 → 원래 속성 순), 흡혈·완벽한 물약도
 //   dc#168: 독구름·역병·융합 스킬도 (융합 → 각성 → 원래 속성 순)
 const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["neuro", "ignite", "flamebolt", "steam", "storm", "frostfog", "fireAw", "boltAw", "poisonAw", "iceAw", "fire", "bolt", "poison", "ice"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
-const RELIC_PRI = OPT.rpri || ["grail", "heart", "hawk", "wall", "resPoison", "resFire", "resIce", "resBolt"];
+const RELIC_PRI = OPT.rpri || ["grail", "heart", "tome", "hawk", "mark", "wall", "spring", "sage", "resPoison", "resFire", "resIce", "resBolt"];   // dc#170: 새 유물 넷
 // 몬스터 공격 속성 (dc#163, monsters.js NORMAL_ELEM): 일반 던전 일부 몬스터 (OPT.nelem: false면 없음)
 const NE = OPT.nelem === false || !M.NORMAL_ELEM ? null : M.NORMAL_ELEM;
 if (NE && OPT.ne) for (const [k, v] of Object.entries(OPT.ne)) NE[k] = v && typeof v === "object" && !Array.isArray(v) ? { ...NE[k], ...v } : v;   // 값 바꿔 보기
@@ -64,6 +64,7 @@ function stats(p) {
     plague: b.plagueLv ? B.AWAKE.plague(Math.min(10, b.plagueLv)) : null,   // 각성 역병 (dc#168)
     fu: Object.fromEntries(Object.keys(B.FUSE).map(k => [k, b[`${k}Lv`] ? B.FUSE[k](Math.min(B.FUSE_MAX, b[`${k}Lv`])) : null])),   // 융합 스킬 (dc#168)
     res: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },
+    skill: b.skillPct || 0, eliteDmg: b.eliteDmg || 0,   // 유물 마도서 조각 · 사냥꾼의 표식 (dc#170)
   };
 }
 
@@ -163,7 +164,7 @@ const DMG = {}, DMGN = {};
 // 속성 스킬 범위에 걸리는 몬스터 수: 화염구 (2r+1)² 폭발에 3·6·9마리, 얼음 폭발은 무리 전부 (OPT.aoe: 배수, 몰려드는 광장에서 무리가 더 클 때)
 function castElem(s, foes, st, r, killed) {
   const res = (m, k) => Math.max(0, 1 - ((m.res?.[k] || 0) / 100));
-  const hit = (m, d, k) => { const v = Math.round(d * res(m, k)); DMG[k] = (DMG[k] || 0) + Math.min(v, Math.max(0, m.hp)); DMGN[k] = (DMGN[k] || 0) + 1; m.hp -= v; };
+  const hit = (m, d, k) => { const v = Math.round(d * res(m, k) * (1 + s.skill / 100) * (m.kind !== "normal" ? 1 + s.eliteDmg / 100 : 1)); DMG[k] = (DMG[k] || 0) + Math.min(v, Math.max(0, m.hp)); DMGN[k] = (DMGN[k] || 0) + 1; m.hp -= v; };
   const roll = (e) => s.atk * e.mul * (1 + e.pct / 100) * (r() * 100 < s.crit ? 2 : 1);
   // 기본 스킬 마력탄 (dc#146): 2턴마다 하나에게 공격력 60% (방어 무시)
   if (!OPT.noStarter && foes.length) { st.scd = (st.scd || 0) - 1; if (st.scd <= 0) { st.scd = 2; const m = foes[foes.length > 1 ? 1 : 0]; const v = Math.round(s.atk * 0.6 * (r() * 100 < s.crit ? 2 : 1)); DMG.starter = (DMG.starter || 0) + Math.min(v, Math.max(0, m.hp)); m.hp -= v; if (m.hp <= 0) killed.push(foes.splice(foes.indexOf(m), 1)[0]); } }
@@ -265,6 +266,7 @@ function fight(p, s, foes, st, r, zone, f) {
       const t = foes[0];
       const crit = r() * 100 < s.crit;
       let dmg = Math.max(1, Math.round((s.atk + Math.floor(r() * 3)) * (crit ? 2 : 1)) - t.def);
+      if (t.kind !== "normal" && s.eliteDmg) dmg = Math.round(dmg * (1 + s.eliteDmg / 100));
       if (!t.hitOnce && s.first) dmg = Math.round(dmg * (1 + s.first / 100));
       t.hitOnce = true;
       const taken = Math.min(dmg, t.hp);

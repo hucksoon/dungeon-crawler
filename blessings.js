@@ -1,6 +1,6 @@
 // 축복·유물 (정식 v2, dc#140): 아이템 효과 대신 판(run)마다 모으는 힘
 // - 축복: 한 판에서 처음 가는 층마다 3개 중 1개 (일반 75% · 희귀 20% · 전설 5%). 같은 축복은 max번까지 겹침
-// - 유물: 보스를 쓰러뜨릴 때만 3개 중 1개. 능력치를 주면서 그 능력치의 상한도 같이 올림 (같은 유물 최대 3번)
+// - 유물: 보스를 쓰러뜨릴 때만 3개 중 1개. 능력치를 주면서 그 능력치의 상한도 같이 올림 (같은 유물 최대 5번, 속성 저항은 3번 — dc#170)
 // - 판에 붙음: 포탈로 마을을 오가거나 부활해도 남고, 쓰러진 뒤 새로 시작하거나 1층·웨이포인트로 새로 들어가면 사라짐.
 //   던전을 깨고 "이어가기"로 다음 던전에 가면 그대로 가져감
 // - 다시 뽑기: 강화석 또는 골드 (1 강화석 = REROLL.goldPerStone 골드). 그 층 한 층 수입의 1/4에서 시작해 같은 층에서 2배씩
@@ -111,11 +111,18 @@
   const ELEM_IDS = ["fire", "ice", "bolt", "poison"];
   const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
   // 유물: 능력치 + 그 상한 (기본 상한: 치명타 75 · 흡혈 20 · 패링 40 · 받는 피해 감소 30)
+  //   dc#170: 보스는 5층마다라 일반·나이트메어를 깨면 20번째, 헬 5층 보스가 21번째인데 유물은 8가지 × 3번 = 24번이라 헬 앞쪽에서 거의 바닥남
+  //   → 상한이 있는 넷은 5번까지, 새 유물 넷(스킬 피해·정예/보스 피해·경험치·포션)도 5번까지. 속성 저항 넷은 3번 그대로 (45%까지) → 모두 52번
+  const RELIC_MAX = 5;
   const RELICS = {
-    hawk: { icon: "🦅", name: "매의 눈", max: 3, fx: { crit: 3, critCap: 3 } },
-    grail: { icon: "🍷", name: "핏빛 성배", max: 3, fx: { lifesteal: 2, lsCap: 2 } },
-    wall: { icon: "🛡", name: "성벽 조각", max: 3, fx: { parry: 3, parryCap: 3 } },
-    heart: { icon: "🫀", name: "강철 심장", max: 3, fx: { dmgReduce: 3, drCap: 3 } },
+    hawk: { icon: "🦅", name: "매의 눈", max: RELIC_MAX, fx: { crit: 3, critCap: 3 } },
+    grail: { icon: "🍷", name: "핏빛 성배", max: RELIC_MAX, fx: { lifesteal: 2, lsCap: 2 } },
+    wall: { icon: "🛡", name: "성벽 조각", max: RELIC_MAX, fx: { parry: 3, parryCap: 3 } },
+    heart: { icon: "🫀", name: "강철 심장", max: RELIC_MAX, fx: { dmgReduce: 3, drCap: 3 } },
+    tome: { icon: "📕", name: "마도서 조각", max: RELIC_MAX, fx: { skillPct: 6 } },
+    mark: { icon: "🏹", name: "사냥꾼의 표식", max: RELIC_MAX, fx: { eliteDmg: 8 } },
+    sage: { icon: "🔮", name: "현자의 돌", max: RELIC_MAX, fx: { xp: 10 } },
+    spring: { icon: "⛲", name: "생명의 샘", max: RELIC_MAX, fx: { potPct: 20 } },
     // 속성 저항 (dc#163): 몬스터 공격의 속성 효과(화상·방어력 깎임·회피 대기·독)를 그만큼 덜 받음
     resFire: { icon: "🔥", name: "불꽃 비늘", max: 3, fx: { resFire: 15 } },
     resIce: { icon: "❄", name: "서리 깃털", max: 3, fx: { resIce: 15 } },
@@ -176,6 +183,8 @@
     parryCap: (v) => tx("bfx.parryCap", (n) => `패링 상한 +${n}%p`, v),
     dmgReduce: (v) => tx("bfx.dmgReduce", (n) => `받는 피해 감소 +${n}%`, v),
     drCap: (v) => tx("bfx.drCap", (n) => `피해 감소 상한 +${n}%p`, v),
+    skillPct: (v) => tx("bfx.skillPct", (n) => `스킬 피해 +${n}%`, v),
+    eliteDmg: (v) => tx("bfx.eliteDmg", (n) => `정예·보스에게 주는 피해 +${n}%`, v),
     // 속성 스킬: v = 단계 (fxText(fx, 단계))
     fireLv: (v) => { const e = ELEM.fire(v), sq = e.radius * 2 + 1; return tx("bfx.fireLv", (n, ev, a, d) => `Lv ${n}: ${ev}턴마다 가장 가까운 적에게 ${a} 폭발, 공격력의 ${d}% 불 피해 + 화상`, v, e.every, `${sq}×${sq}`, Math.round(e.mul * (100 + e.pct))); },
     iceLv: (v) => { const e = ELEM.ice(v); return tx("bfx.iceLv", (n, ev, r, d) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸의 적 모두에게 공격력의 ${d}% 얼음 피해 + 느려짐`, v, e.every, e.radius, Math.round(e.mul * (100 + e.pct))); },
@@ -241,7 +250,7 @@
     const t = fxText(d.fx, isElem(id) || id === "perfect" ? Math.max(1, lv) : 1);
     return ELEM_IDS.includes(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, RELIC_MAX, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

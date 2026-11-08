@@ -2237,6 +2237,7 @@
       // 축복 (dc#140): 첫 공격 +% · 보스 HP −% · 포션 회복 +% · 포션 대기 −턴 · 새 층 회복 % · 정예 +% · 보물 자리 +N · 계단 보기 · 시야 +N
       first: b.firstHit || 0, bossHp: b.bossHp || 0, potPct: b.potPct || 0, potCd: b.potCd || 0, perfect: b.perfect || 0,   // 완벽한 물약 (dc#163)
       elite: b.elite || 0, treasure: b.treasure || 0, sight: b.sight || 0,
+      skillPct: b.skillPct || 0, eliteDmg: b.eliteDmg || 0,   // 유물 마도서 조각 · 사냥꾼의 표식 (dc#170)
       aw,   // 각성 스킬 { boots, shield, field, plague } (dc#163, 역병 dc#168)
       pois: ef.poison, fu,   // 독구름 (dc#168, RLBless.ELEM.poison) · 융합 스킬 { flamebolt, steam, ignite, storm, frostfog, neuro } (dc#168)
       eres: { fire: b.resFire || 0, ice: b.resIce || 0, bolt: b.resBolt || 0, poison: b.resPoison || 0 },   // 속성 저항 유물 (dc#163): 몬스터 공격 속성 효과를 덜 받음
@@ -4628,7 +4629,8 @@
   // 감전(받는 피해 +CHAIN.shock.pct%)과 송곳니 물어뜯기(받는 피해 +bitePct%)
   const shockMul = (e) => (shocked(e) ? 1 + CHAIN.shock.pct / 100 : 1) * (e.biteUntil > turn ? 1 + (e.bitePct || 0) / 100 : 1);
   // 명부의 사슬: 정예·보스에게 주는 피해 +%
-  const bossMul = (e, s) => (s?.uq?.bossDmg && e.kind !== "normal" ? 1 + s.uq.bossDmg / 100 : 1);
+  //   유물 사냥꾼의 표식 (dc#170)도 정예·보스·네임드에게 +%
+  const bossMul = (e, s) => { const p = (s?.uq?.bossDmg || 0) + (s?.eliteDmg || 0); return p && e.kind !== "normal" ? 1 + p / 100 : 1; };
   // 몬스터의 속성 저항 e.res = { fire, ice, bolt } (일반·나이트메어 몬스터는 0, 헬 몬스터는 자기 속성 50%·다른 속성 10~40%)
   // 폭풍전야 디버프면 −vulnPct% → 속성 피해가 그만큼 더 들어감
   const RW_FX = RLItems.RUNEWORD_FX;
@@ -4645,7 +4647,7 @@
   // at: 이펙트가 닿는 때(ms) — 그때 맞은 몬스터가 흔들리고 붉게 번쩍
   function skillHit(e, dmg, crit, color, s, at = 80) {
     const el = color === EL.colors.fire ? "fire" : color === EL.colors.ice ? "ice" : color === POISON_COLOR ? "poison" : color === STARTER.color || color === STEAM_COLOR ? null : "bolt";   // 파이어볼 불·노바 얼음·체인 번개·독구름 독 (dc#168) · 마력탄·증기는 속성 없음
-    const d = Math.max(1, Math.round(dmg * shockMul(e) * (el ? elemMul(e, el) : 1) * bossMul(e, s)));
+    const d = Math.max(1, Math.round(dmg * (1 + (s?.skillPct || 0) / 100) * shockMul(e) * (el ? elemMul(e, el) : 1) * bossMul(e, s)));   // 유물 마도서 조각: 스킬 피해 +% (dc#170)
     const taken = Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     showDamage(e, d, crit, color);
