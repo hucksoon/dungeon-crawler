@@ -37,7 +37,7 @@ check("named in a mob slot (floors 16~20) is marked mob (does not guard the stai
   const phases = new Set(Array.from({ length: 30 }, () => M.makeAbyssNamed(30, 18, false).phase));
   check("mob-slot named: regular-mob strength (not the guard's), 이무기 pattern kept, beats spread out", m18.hp === reg.hp && m18.atk === reg.atk && m18.hp * 10 < g18.hp && m18.atk < g18.atk / 2 && m18.pattern === "sweep" && m18.name === "이무기" && phases.size >= 3, JSON.stringify([m18.hp, reg.hp, g18.hp, m18.atk, g18.atk, [...phases]])); }
 const t = M.MONSTERS.at(-1), h50 = M.makeHell(t, "normal", 50, "fire"), a1 = M.makeAbyss(t, "normal", 1, "fire"), a10 = M.makeAbyss(t, "normal", 10, "fire");
-check("regular mob: hell 50 strength ×scale, XP ×150", a1.hp === h50.hp && a1.xp === h50.xp * 150 && a10.hp === Math.round(h50.hp * 1.63) && a1.abyss === 1, JSON.stringify([a1.hp, h50.hp, a10.hp]));
+check("regular mob: hell 50 strength ×scale, XP ×150 (dc#170: of hell 50 before the deep-XP growth, so the abyss gives the same XP)", a1.hp === h50.hp && Math.abs(a1.xp - h50.xp / (M.hellXpMul(50) * M.nmXpMul(50)) * 150) <= 150 && a10.hp === Math.round(h50.hp * 1.63) && a1.abyss === 1, JSON.stringify([a1.hp, h50.hp, a10.hp]));
 
 // ---- 게임 ----
 const HOOK = `
