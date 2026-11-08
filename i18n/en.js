@@ -193,6 +193,7 @@
       "bfx.eliteDmg": (n) => `Damage to elites and bosses +${n}%`,
       "bfx.fireLv": (n, ev, a, d) => `Lv ${n}: every ${ev} turns, a ${a} blast on the nearest enemy, ${d}% of attack as fire damage + burn`,
       "bfx.iceLv": (n, ev, r, d) => `Lv ${n}: every ${ev} turns, ${d}% of attack as ice damage to all enemies within ${r} tiles + slow`,
+      "bfx.iceLv2": (n, ev, r, d, p) => `Lv ${n}: every ${ev} turns, ${d}% of attack as ice damage to all enemies within ${r} tiles + ${p}% chance to slow`,
       "bfx.boltLv": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each`,
       "bfx.boltLvS": (n, ev, k, d) => `Lv ${n}: every ${ev} turns, lightning bounces ${k} times, ${d}% of attack as lightning damage each + shock`,
       "bfx.now": (n) => ` (with your current attack: ${n} per hit)`,

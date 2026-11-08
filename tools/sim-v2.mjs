@@ -177,7 +177,7 @@ function castElem(s, foes, st, r, killed) {
     st.ecd[k] = e.every;
     const d = roll(e);
     if (k === "fire") for (const m of foes.slice(0, Math.round((e.radius >= 3 ? 9 : e.radius >= 2 ? 6 : 3) * (OPT.aoe || 1)))) hit(m, d + s.atk * 0.5, k);
-    else if (k === "ice") for (const m of foes) { hit(m, d, k); if (!(m.slowImm > 0)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }
+    else if (k === "ice") for (const m of foes) { hit(m, d, k); if (!(m.slowImm > 0) && r() < (e.slow ?? 1)) { m.slow = M.ELEMENTS.ice.turns; m.slowImm = M.ELEMENTS.ice.turns + M.ELEMENTS.ice.immune; } }   // 느려짐 확률 (dc#171)
     else { let n = 0; for (let i = 0; i < e.strikes; i++) { const m = foes[i < foes.length ? i : 0]; if (i >= foes.length && !e.shock) break; hit(m, d * (e.shock && i > 0 ? 1.2 : 1), k); n++; } }
     for (let i = foes.length - 1; i >= 0; i--) if (foes[i].hp <= 0) killed.push(foes.splice(i, 1)[0]);
   }
@@ -354,7 +354,7 @@ function runZone(p, zone, r, rid, out, from = 1) {
   p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { if (lvl % (OPT.lvEvery ?? 2)) return; const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
   for (let f = from; f <= 50; f++) {
     // 새 층: 축복 하나
-    const off = f === 1 && !OPT.firstBless ? [] : B.offer(`${rid}|${zone}|${f}`, p.bl);   // dc#163: 1층(던전에 처음 들어갈 때)은 축복 없음 (OPT.firstBless: 예전처럼)
+    const off = (f === 1 && !OPT.firstBless) || f % (OPT.floorEvery ?? B.FLOOR_EVERY) ? [] : B.offer(`${rid}|${zone}|${f}`, p.bl);   // dc#171: 층 축복은 FLOOR_EVERY층마다 (OPT.floorEvery: 1이면 예전처럼 매 층). 속성 칸은 B.offer가 막음   // dc#163: 1층(던전에 처음 들어갈 때)은 축복 없음 (OPT.firstBless: 예전처럼)
     if (off.length && !OPT.noBless) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; }
     // 축복 상점 (dc#151): 상점 층(보스 층 바로 전)에서 축복 하나 더 (OPT.shrine: false면 없음)
     if (OPT.shrine !== false && !OPT.noBless && I.isShopFloor(f)) { const so = B.offer(`${rid}|${zone}|${f}|sh`, p.bl); if (so.length) { const id = pickBest(so, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } }

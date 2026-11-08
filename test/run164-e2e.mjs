@@ -39,7 +39,7 @@ const HOOK = `
     psave: () => { player.poison = { left: 4, dmg: 7 }; player.ishred = 10; player.ishredT = 3; saveLevel(); return JSON.parse(localStorage.getItem("rl_level")).ps; },
     spawnShare: (d, n = 4000) => { const o = depth; depth = d; const c = {}; let k = 0; for (let i = 0; i < n; i++) { const m = nelem({ kind: "normal" }); if (m.nel) { k++; c[m.nel] = (c[m.nel] || 0) + 1; } } depth = o; return { share: k / n, kinds: c }; },
     // 축복 차례: 1층 처음 오기 → 2층 처음 오기, 레벨 업 3 → 4
-    blessQ: () => { player.pq = []; player.bz = {}; const o = depth; depth = 1; Bless.onFloor(); const a = player.pq.length; depth = 2; Bless.onFloor(); const b = player.pq.length; player.plvl = 3; Bless.onLevel(); const c = player.pq.length; player.plvl = 4; Bless.onLevel(); const d = player.pq.length; depth = o; player.pq = []; Bless.close(); return [a, b, c, d]; },
+    blessQ: () => { player.pq = []; player.bz = {}; const o = depth; depth = 1; Bless.onFloor(); const a = player.pq.length; depth = 3; Bless.onFloor(); const b = player.pq.length; player.plvl = 3; Bless.onLevel(); const c = player.pq.length; player.plvl = 4; Bless.onLevel(); const d = player.pq.length; depth = o; player.pq = []; Bless.close(); return [a, b, c, d]; },
   };
   // ---- 시작 ----`;
 const EXE = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
@@ -81,7 +81,7 @@ try {
   await T(A.page, "yard");
   // ---- 2. 축복 차례 ----
   const q = await T(A.page, "blessQ");
-  check(`no blessing on floor 1, one on floor 2; level-up blessing only on even levels (${q.join(",")})`, q[0] === 0 && q[1] === 1 && q[2] === 1 && q[3] === 2, JSON.stringify(q));
+  check(`no blessing on floor 1, one on floor 3 (dc#171: every 3 floors); level-up blessing only on even levels (${q.join(",")})`, q[0] === 0 && q[1] === 1 && q[2] === 1 && q[3] === 2, JSON.stringify(q));
   // ---- 3. 흡혈 · 완벽한 물약 ----
   await T(A.page, "setBl", { vamp: 3 });
   check("흡혈귀의 이빨 ×3 → lifesteal 6%", (await T(A.page, "st")).ls === 6);

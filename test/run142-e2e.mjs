@@ -53,12 +53,12 @@ try {
   check("element blessings: fire · ice · bolt, max Lv 10, tier elem", B.ELEM_MAX === 10 && B.ELEM_IDS.every(id => B.BLESSINGS[id]?.tier === "elem" && B.BLESSINGS[id].max === 10));
   const f1 = B.ELEM.fire(1), f4 = B.ELEM.fire(4), f5 = B.ELEM.fire(5), f8 = B.ELEM.fire(8), f10 = B.ELEM.fire(10), b1 = B.ELEM.bolt(1), b10 = B.ELEM.bolt(10);
   check("levels grow to Lv 10 with area caps (dc#153): fire radius 1 until Lv 7, 2 from Lv 8 (never 3), every 3 → 2 at Lv 5; bolt strikes 2 → 6 max, shock from Lv 4", f1.radius === 1 && f4.radius === 1 && f8.radius === 2 && B.ELEM.fire(10).radius === 2 && B.ELEM.ice(7).radius === 1 && B.ELEM.ice(10).radius === 2 && f1.every === 3 && f5.every === 2 && f10.pct > f8.pct && f8.pct > f5.pct && b1.strikes === 2 && B.ELEM.bolt(5).strikes === 6 && b10.strikes === 6 && !b1.shock && !B.ELEM.bolt(3).shock && B.ELEM.bolt(4).shock);
-  check("card shows damage from the current attack (item 6)", B.cardText("fire", 1, 100).includes("50") && B.cardText("fire", 1, 200).includes("100") && !B.cardText("fire", 1).includes("지금"), B.cardText("fire", 1, 100));
+  check("card shows damage from the current attack (item 6)", B.cardText("fire", 1, 100).includes("70") && B.cardText("fire", 1, 200).includes("140") && !B.cardText("fire", 1).includes("지금"), B.cardText("fire", 1, 100));
   check("card text shows the level", B.cardText("fire", 3).startsWith("Lv 3:") && B.cardText("bolt", 1).includes("2번") && !B.cardText("might", 4).startsWith("Lv"), B.cardText("fire", 3));
-  check("no cap (dc#168, was 20 picks): after fire 10 · bolt 10 other element cards still come", B.ELEM_CAP === undefined && Array.from({ length: 200 }, (_, i) => B.offer(`cap${i}`, { fire: 10, bolt: 10 })).some(o => o.some(id => B.ELEM_IDS.includes(id))));
+  check("dc#171: 2 element slots — after fire 10 · bolt 10 no other base element card comes", B.ELEM_CAP === undefined && B.ELEM_SLOTS === 2 && !Array.from({ length: 200 }, (_, i) => B.offer(`cap${i}`, { fire: 10, bolt: 10 })).some(o => o.some(id => id === "ice" || id === "poison")));
   let any = 0; for (let i = 0; i < 3000; i++) if (B.offer(`w${i}`, {}).some(B.isElem)) any++;
   check(`element offers are common but not guaranteed (${Math.round(any / 30)}% of floors)`, any / 3000 > 0.45 && any / 3000 < 0.65);
-  check("monsters: normal depth ramp 3.0 (dc#170, was 4.2 → 2.85), nightmare/hell v2 multipliers", M.NORMAL.ramp === 3.0 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 4.0) < 1e-9);
+  check("monsters: normal depth ramp 1.37 (dc#171, was 3.0), nightmare/hell v2 multipliers", M.NORMAL.ramp === 1.37 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 2.37) < 1e-9);
   const legacy = J.TOWN.doors.filter(d => d.legacy).map(d => d.id).sort().join();
   check("town: nightmare · hell · gold dungeon · waypoint doors are legacy (hidden)", legacy === "golddungeon,golddungeonNM,hell,nightmare,waypoint" && J.TOWN.buildings.filter(b => !b.legacy).map(b => b.id).join() === "market,gate", legacy);
 
