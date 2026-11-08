@@ -487,6 +487,8 @@
   .bl-ico.t-elem { border-color: #ff8a5c; background: #2a1810; }
   .bl-ico.relic { border-color: #e0b44c; background: #2a2410; box-shadow: 0 0 6px rgba(224, 180, 76, 0.5); }
   .bl-ico sup { position: absolute; top: -5px; right: -4px; font-size: 10px; background: #000; border-radius: 6px; padding: 0 3px; color: #fff; }
+  .modal.notice .bless-swap { display: block; width: 100%; margin: 8px 0 0; border: 1px dashed #ff8a5c; color: #ffb38f; }   /* 축복 상점의 속성 바꾸기 (dc#171) */
+  .modal.notice .bless-card.swap { min-height: 110px; border-color: #ff8a5c; }
   @media (max-width: 520px) { .bless-cards { grid-template-columns: 1fr; } .modal.notice .bless-card { min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; } }
   .market-paused { text-align: center; padding: 18px 8px; }
   .market-paused .mp-ico { font-size: 40px; }
@@ -881,6 +883,7 @@
     <p id="bless-sub" class="meta"></p>
     <div id="bless-cards" class="bless-cards"></div>
     <p id="bless-left" class="meta"></p>
+    <button id="bless-swap" type="button" class="bless-swap" hidden></button>
     <div class="bless-rr"><button id="bless-reroll-stones" type="button"></button><button id="bless-reroll-gold" type="button"></button></div>
     <p id="bless-have" class="meta"></p>
     <button id="bless-auto" type="button" hidden></button>
@@ -2250,7 +2253,7 @@
       fbEvery: ef.fire?.every || RLItems.FIREBALL.every, fbRadius: ef.fire?.radius || RLItems.FIREBALL.radius,
       fbMul: ef.fire?.mul ?? RLItems.FIREBALL.mul, fbRange: ef.fire?.range || RLItems.FIREBALL.range,   // 축복 화염구는 축복 값 (dc#143: 예전엔 세트 값 0.8을 써서 시뮬레이션보다 셌음)
       // 서리의 세트: 프로스트 노바·피해 +%·느려짐 / 뇌전의 세트: 체인 라이트닝·피해 +%·4번 튕김과 감전
-      nova: g.nova > 0 || !!ef.ice, novaPct: g.novaPct + (ef.ice?.pct || 0), novaSlow: g.novaSlow > 0 || !!ef.ice,
+      nova: g.nova > 0 || !!ef.ice, novaPct: g.novaPct + (ef.ice?.pct || 0), novaSlow: g.novaSlow > 0 || !!ef.ice, novaChance: ef.ice?.slow ?? 1,   // 느려짐 확률 (dc#171)
       novaEvery: ef.ice?.every || RLItems.FROST_NOVA.every, novaRadius: ef.ice?.radius || RLItems.FROST_NOVA.radius, novaMul: ef.ice?.mul ?? RLItems.FROST_NOVA.mul,
       chain: g.chain > 0 || !!ef.bolt, chainPct: g.chainPct + (ef.bolt?.pct || 0), chainMax: g.chainMax > 0 || !!ef.bolt?.shock,
       chainEvery: ef.bolt?.every || RLItems.CHAIN.every, chainStrikes: ef.bolt?.strikes || 0, chainMul: ef.bolt?.mul ?? RLItems.CHAIN.mul, chainRange: ef.bolt?.range || RLItems.CHAIN.range,
@@ -4156,7 +4159,7 @@
   // 저장본의 축복·유물 읽기 (모르는 것·잘못된 값은 버림)
   const blessCounts = (o, defs) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => defs[k] && Number.isInteger(v) && v > 0).map(([k, v]) => [k, Math.min(v, defs[k].max)]));
   const blessZones = (o) => Object.fromEntries(["normal", "nm", "hell"].filter(k => Number.isInteger(o?.[k]) && o[k] >= 0).map(k => [k, Math.min(o[k], 50)]));
-  const blessQueue = (q) => (Array.isArray(q) ? q : []).filter(e => e && typeof e.s === "string" && e.s.length < 80).slice(0, 200).map(e => ({ r: e.r ? 1 : 0, s: e.s, ...(Number.isInteger(e.n) && e.n > 0 ? { n: Math.min(e.n, 50) } : {}) }));
+  const blessQueue = (q) => (Array.isArray(q) ? q : []).filter(e => e && typeof e.s === "string" && e.s.length < 80).slice(0, 200).map(e => ({ r: e.r ? 1 : 0, s: e.s, ...(Number.isInteger(e.n) && e.n > 0 ? { n: Math.min(e.n, 50) } : {}), ...(e.sh ? { sh: 1 } : {}), ...(e.el ? { el: 1 } : {}), ...(Number.isInteger(e.lv) && e.lv > 0 ? { lv: e.lv } : {}) }));   // dc#171: 축복 상점(sh)·첫 스킬(el)·레벨 업(lv) 표시도 남김 (새로고침하면 속성 바꾸기가 사라졌음)
   function makeSave() {
     return {
       v: 1,
@@ -4736,7 +4739,7 @@
         else Fx.nova(player, nR);
         Sfx("nova");
         let slowed = 0;
-        for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice, s, 90) && s.novaSlow && chill(e, 1)) slowed++;
+        for (const e of hit) if (skillHit(e, dmg, crit, EL.colors.ice, s, 90) && s.novaSlow && chill(e, s.novaChance)) slowed++;
         log(T("❄ 얼음 폭발! {0}마리에게 {1} 피해{2}{3}", hit.length, Math.round(dmg), crit ? T(" (치명타)") : "", slowed ? T(" · {0}마리 느려짐", slowed) : ""), null, EL.colors.ice);
       }
     }
@@ -5814,7 +5817,7 @@
       player.bz ||= {};
       if (depth > (player.bz[z] || 0)) {
         player.bz[z] = depth;
-        if (depth > 1) queue().push({ r: 0, s: `${player.rid}|${z}|${depth}` });
+        if (depth > 1 && depth % RLBless.FLOOR_EVERY === 0) queue().push({ r: 0, s: `${player.rid}|${z}|${depth}` });   // dc#171: FLOOR_EVERY층마다 (3·6·9…층)
       }
       show();
     }
@@ -5837,6 +5840,7 @@
     function onShrine() {
       if (!zk() || !player) return;
       queue().unshift({ r: 0, sh: 1, s: `${player.rid}|${player.zone || "normal"}|${depth}|sh` });
+      saveGame(true);   // 상점은 한 번 밟으면 사라져서, 고르기 전에 새로고침해도 남게 (dc#171)
       show();
     }
     const offerOf = (entry) => RLBless.offer(`${entry.s}|${entry.n || 0}`, have(entry.r), !!entry.r, !!entry.el);
@@ -5879,13 +5883,40 @@
       updateStats();
       show();
     }
+    // 속성 바꾸기 (dc#171): 축복 상점에서 축복 하나 대신. swapStep: null(축복 고르기) → "from"(바꿀 속성) → { from }(새 속성)
+    let swapStep = null;
+    function swapTo(from, to) {
+      const entry = head();
+      if (!entry?.sh) return;
+      const before = { ...(player.bl || {}) }, nb = RLBless.swapElem(player.bl, from, to);
+      if (!nb) return;
+      queue().shift();
+      player.bl = nb; swapStep = null;
+      const nf = RLBless.BLESSINGS[from], nt = RLBless.BLESSINGS[to], aw = RLBless.AWAKE_IDS;
+      log(T("🔄 속성 바꾸기: {0} {1} Lv {2} → {3} {4} Lv {5}{6}", nf.icon, RLBless.nameOf(from), before[from], nt.icon, RLBless.nameOf(to), nb[to], nb[aw[to]] ? T(" · {0} Lv {1}", RLBless.nameOf(aw[to]), nb[aw[to]]) : ""), null, RLBless.TIERS.elem.color);
+      Sfx("levelup");
+      saveGame(true); updateStats(); show();
+    }
+    function swapCards() {
+      const held = RLBless.elemHeld(player.bl), B0 = RLBless.BLESSINGS, aw = RLBless.AWAKE_IDS, card = (icon, name, fx, onclick) => el("button", { type: "button", className: "bless-card t-elem swap", onclick }, el("span", { className: "bc-ico" }, icon), el("b", {}, name), el("span", { className: "bc-fx" }, fx));
+      if (swapStep === "from") return held.map(k => card(B0[k].icon, RLBless.nameOf(k), T("Lv {0}{1} → 이 속성을 바꿔요", player.bl[k], player.bl[aw[k]] ? T(" · {0} Lv {1}", RLBless.nameOf(aw[k]), player.bl[aw[k]]) : ""), () => { swapStep = { from: k }; show(); }));
+      const from = swapStep.from, lv = Math.max(1, Math.floor(player.bl[from] / 2)), al = Math.floor((player.bl[aw[from]] || 0) / 2);
+      return RLBless.ELEM_IDS.filter(k => !held.includes(k)).map(k => card(B0[k].icon, RLBless.nameOf(k), T("Lv {0}{1}로 시작", lv, al ? T(" · {0} Lv {1}", RLBless.nameOf(aw[k]), al) : ""), () => swapTo(from, k)));
+    }
     function show() {
       const entry = scene === "dungeon" && !gameOver ? head() : null;
-      if (!entry) { close(); return; }
+      if (!entry) { close(); swapStep = null; return; }
+      if (!entry.sh) swapStep = null;
       const ids = offerOf(entry), relic = !!entry.r, left = queue().length;
       document.getElementById("bless-title").textContent = relic ? T("✦ 유물 고르기") : entry.sh ? T("✦ 축복 상점") : entry.el ? T("✦ 레벨 업! 첫 스킬 배우기") : entry.lv ? T("✦ 레벨 업! Lv {0} 축복 고르기", entry.lv) : T("✦ 축복 고르기");
-      document.getElementById("bless-sub").textContent = relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.sh ? T("상점 주인이 축복 하나를 공짜로 줘요. 이 판 동안 써요.") : entry.el ? T("속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.");
+      const held = RLBless.elemHeld(player.bl), slotNote = !relic && held.length >= RLBless.ELEM_SLOTS ? T(" (속성 칸 {0}/{1}: {2} · 축복 상점에서 바꿀 수 있어요)", held.length, RLBless.ELEM_SLOTS, held.map(k => RLBless.BLESSINGS[k].icon).join(" ")) : "";
+      document.getElementById("bless-sub").textContent = swapStep ? (swapStep === "from" ? T("어느 속성을 바꿀까요? 단계와 각성 단계는 절반만 옮기고, 그 속성이 든 융합 스킬은 사라져요.") : T("새 속성을 골라요.")) : (relic ? T("보스를 쓰러뜨렸다! 능력치와 그 상한을 함께 올려 주는 유물 하나를 골라요. (이 판 동안)") : entry.sh ? T("상점 주인이 축복 하나를 공짜로 줘요. 이 판 동안 써요.") : entry.el ? T("속성 스킬 하나를 배워요. 저절로 나가고, 같은 스킬을 또 고르면 더 세져요.") : entry.lv ? T("레벨이 올랐다! 이 판 동안 쓰는 축복 하나를 더 골라요.") : T("이 판 동안 쓰는 축복 하나를 골라요. 포탈로 마을을 오가도 남고, 쓰러져 새로 시작하면 사라져요.")) + slotNote;
       modalEl.querySelector(".modal").classList.toggle("relic", relic);
+      const sw = document.getElementById("bless-swap");
+      sw.hidden = !entry.sh || !held.length;
+      sw.textContent = swapStep ? T("← 축복 고르기로 돌아가기") : T("🔄 축복 대신 속성 바꾸기 (속성 칸 {0}/{1})", held.length, RLBless.ELEM_SLOTS);
+      modalEl.querySelector(".bless-rr").style.display = swapStep ? "none" : "";   // 속성 바꾸기 중에는 다시 뽑기 숨김
+      if (swapStep) { document.getElementById("bless-cards").replaceChildren(...swapCards()); document.getElementById("bless-left").textContent = ""; modalEl.hidden = false; return; }
       document.getElementById("bless-cards").replaceChildren(...ids.map((id, i) => {
         const d = RLBless.defOf(id), n = have(relic)[id] || 0, tier = relic ? null : RLBless.TIERS[d.tier];
         const b = el("button", { type: "button", className: `bless-card${relic ? " relic" : ` t-${d.tier}`}`, onclick: () => choose(id) },
@@ -5913,10 +5944,11 @@
     document.getElementById("bless-reroll-stones").addEventListener("click", () => reroll("stones"));
     document.getElementById("bless-reroll-gold").addEventListener("click", () => reroll("gold"));
     document.getElementById("bless-auto").addEventListener("click", autoRest);
+    document.getElementById("bless-swap").addEventListener("click", () => { swapStep = swapStep ? null : "from"; show(); });
     function key(e) {
       const k = keyName(e), i = ["1", "2", "3"].indexOf(k);
       const entry = head();
-      if (i >= 0 && entry) { const id = offerOf(entry)[i]; if (id) choose(id); }
+      if (i >= 0 && entry && !swapStep) { const id = offerOf(entry)[i]; if (id) choose(id); }
       e.preventDefault();
     }
     // 화면 위 아이콘 줄: 유물(금테) → 축복. 누르면 전체 목록
@@ -5942,7 +5974,7 @@
       return rows.length ? [...rows, ...(caps.length ? [T("오른 상한: {0}", caps.join(" · "))] : [])] : [T("아직 받은 축복이 없어요. 던전에서 새 층에 내려갈 때마다 하나씩 골라요.")];
     }
     barEl.addEventListener("click", () => showNotice(T("✦ 이 판의 축복·유물"), lines()));
-    return { enabled: () => !off(), start, reset, onFloor, onLevel, onBoss, onShrine, show, isOpen, close, key, renderBar, lines, choose, autoRest, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
+    return { enabled: () => !off(), start, reset, onFloor, onLevel, onBoss, onShrine, show, isOpen, close, key, renderBar, lines, choose, autoRest, swapTo, pending: () => queue().length, offerNow: () => { const e = head(); return e ? offerOf(e) : []; } };
   })();
   window.RLBlessGame = { pending: () => Bless.pending(), offer: () => Bless.offerNow(), choose: (id) => Bless.choose(id), auto: () => Bless.autoRest(), totals: () => blessTotals() };   // 테스트용 (읽기·고르기)
 

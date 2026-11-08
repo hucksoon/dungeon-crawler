@@ -71,12 +71,12 @@
   //   서리 독안개(얼음+독): 독구름이 서리 안개가 됨 — 구름 위의 적은 느려지고 독 피해 +add%
   //   신경독(번개+독): every턴마다 중독된 적 targets마리에게 번개, 맞은 적은 stun턴 동안 못 움직임
   const FUSE = {
-    flamebolt: (lv) => ({ every: lv >= 4 ? 3 : 4, range: 4, strikes: 3 + lv, mul: 0.35, pct: 20 * (lv - 1), splash: 0.5 }),
+    flamebolt: (lv) => ({ every: lv >= 4 ? 3 : 4, range: 4, strikes: 3 + lv, mul: 0.55, pct: 20 * (lv - 1), splash: 0.5 }),
     steam: (lv) => ({ every: lv >= 4 ? 3 : 4, range: 4, radius: 2, mul: 0.6, pct: 20 * (lv - 1), frozenMul: 2 }),
-    ignite: (lv) => ({ every: lv >= 4 ? 3 : 4, mul: 0.5, pct: 25 * (lv - 1) }),
+    ignite: (lv) => ({ every: lv >= 4 ? 3 : 4, mul: 1.1, pct: 25 * (lv - 1) }),
     storm: (lv) => ({ radius: lv >= 3 ? 2 : 1, mul: 0.15, pct: 20 * (lv - 1) }),
-    frostfog: (lv) => ({ add: 20 + 20 * lv }),
-    neuro: (lv) => ({ every: lv >= 4 ? 2 : 3, targets: 1 + lv, mul: 0.4, pct: 20 * (lv - 1), stun: 1 }),
+    frostfog: (lv) => ({ add: 10 + 15 * lv }),   // dc#171: 20 + 20 × Lv → 10 + 15 × Lv (얼음+독이 헬에서 99%라)
+    neuro: (lv) => ({ every: lv >= 4 ? 2 : 3, targets: 1 + lv, mul: 0.65, pct: 20 * (lv - 1), stun: 1 }),
   };
   const FUSE_IDS = { flamebolt: ["fire", "bolt"], steam: ["fire", "ice"], ignite: ["fire", "poison"], storm: ["ice", "bolt"], frostfog: ["ice", "poison"], neuro: ["bolt", "poison"] };
   // 속성 스킬 단계별 값 (dc#143: Lv 10까지, 단계마다 조금씩 세짐). dc#168: 속성 축복 상한(예전 20번)은 없앰 → 모든 속성을 마스터할 수 있음
@@ -98,17 +98,38 @@
   // dc#153: 범위 상한 — 몰려오는 광장에서 너무 넓게 쓸어서. 화염구·얼음 폭발은 Lv 7까지 1칸(3×3), Lv 8부터 2칸(5×5)이 끝
   //   (예전 Lv 4 2칸 · Lv 8 3칸 7×7), 연쇄 번개는 6번까지 (예전 1 + Lv, Lv 10 11번)
   const ELEM_AREA = { radius2: 8, maxRadius: 2, maxStrikes: 6 };
+  const ICE_SLOW = { from: 0.2, per: 0.03 };   // 얼음 폭발 느려짐 확률 (dc#171)
   const ELEM = {
-    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.5, pct: grow(lv) }),
-    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.4, pct: grow(lv) }),
-    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: Math.min(ELEM_AREA.maxStrikes, 1 + lv), mul: 0.25, pct: grow(lv), shock: lv >= 4 }),
+    fire: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.7, pct: grow(lv) }),
+    // dc#171: 느려짐은 확률로 (slow, Lv 1 50% → Lv 10 77%). 예전에는 맞은 적 모두가 느려져 얼음이 든 조합이 늘 가장 셌음
+    ice: (lv) => ({ every: lv >= 5 ? 2 : 3, radius: lv >= ELEM_AREA.radius2 ? ELEM_AREA.maxRadius : 1, mul: 0.4, pct: grow(lv), slow: +(ICE_SLOW.from + ICE_SLOW.per * (lv - 1)).toFixed(2) }),
+    bolt: (lv) => ({ every: lv >= 5 ? 2 : 3, range: lv >= 7 ? 4 : 3, strikes: Math.min(ELEM_AREA.maxStrikes, 1 + lv), mul: 0.32, pct: grow(lv), shock: lv >= 4 }),
     // 독구름 (dc#168): every턴마다 range칸 안의 적 자리에 size×size 구름 (turns턴). 구름 위의 적은 턴마다 피해 + 중독 (구름이 겹쳐도 한 번)
     //   단계마다 넓이와 다른 것이 번갈아 오름: 1칸 → 공격력 업 → 4칸 → 지속 증가 → 9칸 → 피해 추가 → 더 자주 → 지속 증가 → 16칸 → 마스터
-    poison: (lv) => { const L = POISON_LV[Math.max(1, Math.min(ELEM_MAX, lv)) - 1]; return { every: L[2], range: 3, size: L[0], turns: L[1], mul: 0.3, pct: L[3] + (lv >= ELEM_MAX ? 30 : 0) }; },
+    poison: (lv) => { const L = POISON_LV[Math.max(1, Math.min(ELEM_MAX, lv)) - 1]; return { every: L[2], range: 3, size: L[0], turns: L[1], mul: 0.45, pct: L[3] + (lv >= ELEM_MAX ? 30 : 0) }; },
   };
   //   [크기(칸), 지속(턴), 주기(턴), 피해 +%] — Lv 1~10
   const POISON_LV = [[1, 3, 3, 0], [1, 3, 3, 25], [2, 3, 3, 25], [2, 4, 3, 25], [3, 4, 3, 25], [3, 4, 3, 60], [3, 4, 2, 60], [3, 5, 2, 60], [4, 5, 2, 60], [4, 5, 2, 100]];
   const ELEM_IDS = ["fire", "ice", "bolt", "poison"];
+  // 속성 칸 (dc#171): 한 판에 속성은 ELEM_SLOTS가지까지. 칸이 차면 다른 속성(과 그 각성·다른 짝의 융합) 카드는 나오지 않음
+  //   예전(dc#168)에는 모두 고를 수 있어서 "네 속성을 고루"가 늘 가장 셌음 (시뮬레이션) → 두 속성을 골라 그 짝의 융합을 노리는 빌드
+  //   바꾸기: 축복 상점에서 축복 하나 대신 (swapElem). 단계·각성 단계는 절반만 옮기고, 바꾼 속성이 든 융합 스킬은 사라짐
+  const ELEM_SLOTS = 2;
+  // 층 축복 (dc#171): 처음 온 층마다 → FLOOR_EVERY층마다 (3·6·9…층). 레벨 업(2레벨마다)·축복 상점은 그대로
+  //   매 층이면 헬 후반에 축복 183번을 모두 채워 고르는 의미가 없었음
+  const FLOOR_EVERY = 3;
+  const elemHeld = (have) => ELEM_IDS.filter(id => (have?.[id] || 0) > 0);
+  const baseOf = (id) => (ELEM_IDS.includes(id) ? id : Object.keys(AWAKE_IDS).find(k => AWAKE_IDS[k] === id) || null);
+  // 속성 바꾸기: from(가진 속성) → to(없는 속성). 새 축복 모음 (안 되면 null)
+  function swapElem(have, from, to) {
+    const h = { ...(have || {}) }, lv = h[from] || 0, aw = h[AWAKE_IDS[from]] || 0;
+    if (!lv || !ELEM_IDS.includes(to) || (h[to] || 0) > 0) return null;
+    delete h[from]; delete h[AWAKE_IDS[from]];
+    for (const [id, pair] of Object.entries(FUSE_IDS)) if (pair.includes(from)) delete h[id];
+    h[to] = Math.max(1, Math.floor(lv / 2));
+    if (Math.floor(aw / 2) > 0) h[AWAKE_IDS[to]] = Math.floor(aw / 2);
+    return h;
+  }
   const elemUsed = (have) => ELEM_IDS.reduce((n, id) => n + (have?.[id] || 0), 0);
   // 유물: 능력치 + 그 상한 (기본 상한: 치명타 75 · 흡혈 20 · 패링 40 · 받는 피해 감소 30)
   //   dc#170: 보스는 5층마다라 일반·나이트메어를 깨면 20번째, 헬 5층 보스가 21번째인데 유물은 8가지 × 3번 = 24번이라 헬 앞쪽에서 거의 바닥남
@@ -187,7 +208,7 @@
     eliteDmg: (v) => tx("bfx.eliteDmg", (n) => `정예·보스에게 주는 피해 +${n}%`, v),
     // 속성 스킬: v = 단계 (fxText(fx, 단계))
     fireLv: (v) => { const e = ELEM.fire(v), sq = e.radius * 2 + 1; return tx("bfx.fireLv", (n, ev, a, d) => `Lv ${n}: ${ev}턴마다 가장 가까운 적에게 ${a} 폭발, 공격력의 ${d}% 불 피해 + 화상`, v, e.every, `${sq}×${sq}`, Math.round(e.mul * (100 + e.pct))); },
-    iceLv: (v) => { const e = ELEM.ice(v); return tx("bfx.iceLv", (n, ev, r, d) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸의 적 모두에게 공격력의 ${d}% 얼음 피해 + 느려짐`, v, e.every, e.radius, Math.round(e.mul * (100 + e.pct))); },
+    iceLv: (v) => { const e = ELEM.ice(v); return tx("bfx.iceLv2", (n, ev, r, d, p) => `Lv ${n}: ${ev}턴마다 주변 ${r}칸의 적 모두에게 공격력의 ${d}% 얼음 피해 + ${p}% 확률로 느려짐`, v, e.every, e.radius, Math.round(e.mul * (100 + e.pct)), Math.round(e.slow * 100)); },
     boltLv: (v) => { const e = ELEM.bolt(v); return (e.shock ? tx("bfx.boltLvS", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해 + 감전`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))
       : tx("bfx.boltLv", (n, ev, k, d) => `Lv ${n}: ${ev}턴마다 번개가 ${k}번 튕김, 한 번에 공격력의 ${d}% 번개 피해`, v, e.every, e.strikes, Math.round(e.mul * (100 + e.pct)))); },
     poisonLv: (v) => { const e = ELEM.poison(v); return tx("bfx.poisonLv", (n, ev, a, t, d) => `Lv ${n}: ${ev}턴마다 적 자리에 ${a} 독구름 (${t}턴), 구름 위의 적은 턴마다 공격력의 ${d}% 독 피해 + 중독`, v, e.every, `${e.size}×${e.size}`, e.turns, Math.round(e.mul * (100 + e.pct))); },
@@ -218,7 +239,9 @@
   function offer(seed, have = {}, relic = false, elemOnly = false) {
     const r = rng(seed);
     const reqOk = (id) => Object.entries(defOf(id).req || {}).every(([k, v]) => (have[k] || 0) >= v);   // 각성·완벽한 물약: 앞 단계를 다 찍어야 (dc#163)
-    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && reqOk(id));
+    const held = relic ? [] : elemHeld(have), full = held.length >= ELEM_SLOTS;
+    const slotOk = (id) => { if (!full) return true; const b = baseOf(id); if (b) return held.includes(b); const pair = FUSE_IDS[id]; return !pair || pair.every(k => held.includes(k)); };   // 속성 칸 (dc#171)
+    let pool = Object.keys(relic ? RELICS : BLESSINGS).filter(id => (have[id] || 0) < defOf(id).max && reqOk(id) && slotOk(id));
     if (elemOnly && !relic && pool.some(isElem)) pool = pool.filter(isElem);
     const out = [];
     while (out.length < OFFER && pool.length) {
@@ -250,7 +273,7 @@
     const t = fxText(d.fx, isElem(id) || id === "perfect" ? Math.max(1, lv) : 1);
     return ELEM_IDS.includes(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, RELIC_MAX, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, RELIC_MAX, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ICE_SLOW, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, ELEM_SLOTS, FLOOR_EVERY, elemHeld, swapElem, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

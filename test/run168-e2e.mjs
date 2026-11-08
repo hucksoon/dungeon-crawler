@@ -16,7 +16,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 check("element cap removed (no ELEM_CAP)", B.ELEM_CAP === undefined);
 check("4 elements: fire · ice · bolt · poison", JSON.stringify(B.ELEM_IDS) === JSON.stringify(["fire", "ice", "bolt", "poison"]) && B.BLESSINGS.poison.tier === "elem" && B.BLESSINGS.poison.max === 10);
 const offered = (have, id) => Array.from({ length: 300 }, (_, i) => B.offer(`r168|${i}`, have)).some(o => o.includes(id));
-check("with fire 10 · ice 10 · bolt 10 (old cap 30 > 20) element cards still come (poison)", offered({ fire: 10, ice: 10, bolt: 10 }, "poison"));
+check("dc#171: with 2 elements held (fire 10 · ice 10) a third element (poison) never comes", !offered({ fire: 10, ice: 10 }, "poison") && offered({ fire: 10 }, "poison"));
 check("poison grows: area 1 → 4 → 9 → 16 tiles, alternating with damage / duration", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => B.ELEM.poison(l).size).join() === "1,1,2,2,3,3,3,3,4,4"
   && B.ELEM.poison(2).pct > B.ELEM.poison(1).pct && B.ELEM.poison(4).turns > B.ELEM.poison(3).turns && B.ELEM.poison(6).pct > B.ELEM.poison(5).pct && B.ELEM.poison(7).every < B.ELEM.poison(6).every);
 check("awakened plague needs poison Lv 10", !offered({ poison: 9 }, "poisonAw") && offered({ poison: 10 }, "poisonAw") && B.BLESSINGS.poisonAw.name.startsWith("각성 "));

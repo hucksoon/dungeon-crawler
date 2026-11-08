@@ -1436,5 +1436,15 @@
     "점프 공격": "Jump attack",
     "강화 미사일": "Empowered missiles",
     "더 좋은 등급·던전 장비로 바뀔 때 강화 단계의 절반을 이어받아요. 강화석은 +4까지 무기부터 한 번씩 자동으로 써요. 끼지 않는 장비는 등급과 상관없이 모두 분해해요.": "When better-rarity or deeper-dungeon gear replaces yours, it keeps half of the enhancement level. Stones are used automatically up to +4, one step per item starting with the weapon. Gear you do not wear is dismantled, whatever its rarity.",
+    // dc#171: 속성 칸 · 속성 바꾸기
+    "🔄 속성 바꾸기: {0} {1} Lv {2} → {3} {4} Lv {5}{6}": "🔄 Element swap: {0} {1} Lv {2} → {3} {4} Lv {5}{6}",
+    " · {0} Lv {1}": " · {0} Lv {1}",
+    "Lv {0}{1} → 이 속성을 바꿔요": "Lv {0}{1} → swap this element",
+    "Lv {0}{1}로 시작": "Starts at Lv {0}{1}",
+    " (속성 칸 {0}/{1}: {2} · 축복 상점에서 바꿀 수 있어요)": " (element slots {0}/{1}: {2} · swap them at a blessing shrine)",
+    "어느 속성을 바꿀까요? 단계와 각성 단계는 절반만 옮기고, 그 속성이 든 융합 스킬은 사라져요.": "Which element do you want to swap? Half of its level and awakened level carries over, and fusion skills with it are lost.",
+    "새 속성을 골라요.": "Pick the new element.",
+    "← 축복 고르기로 돌아가기": "← Back to blessings",
+    "🔄 축복 대신 속성 바꾸기 (속성 칸 {0}/{1})": "🔄 Swap an element instead of a blessing (slots {0}/{1})",
   } });
 })(typeof self !== "undefined" ? self : this);

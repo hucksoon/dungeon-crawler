@@ -1134,6 +1134,17 @@ const SCENES = [
     const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(5, "blog-v27r15", { z: "hell", l: 41, bz: { normal: 50, nm: 50, hell: 5 }, pq: [{ r: 1, s: "blog-v27r15" }], bl: { fire: 10, bolt: 10, might: 10, vigor: 10 }, rl: { hawk: 3, grail: 3, wall: 3, heart: 3, resFire: 3, resPoison: 3, resIce: 1, resBolt: 1 } }), "rl_inv:g:DEV": inv(g150) } });
     await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
     return { ...o, shot: "#bless-modal .modal" }; }],
+  // dc#171: 속성 칸 2개 · 축복 상점에서 속성 바꾸기
+  ["v28-shrine", "축복 상점: 속성 칸이 2/2면 축복 대신 속성을 바꿀 수 있어요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(24, "blog-v28sh", { l: 28, bz: { normal: 24 }, pq: [{ r: 0, sh: 1, s: "blog-v28sh|normal|24|sh" }], bl: { fire: 8, fireAw: 0, bolt: 6, might: 5, vigor: 4 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v28-swap", "속성 바꾸기: 화염구 Lv 8을 다른 속성으로 바꾸면 Lv 4부터", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_bless: "on", rl_autogear: "1", rl_save: save(24, "blog-v28sw", { l: 28, bz: { normal: 24 }, pq: [{ r: 0, sh: 1, s: "blog-v28sw|normal|24|sh" }], bl: { fire: 8, bolt: 6, might: 5, vigor: 4 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    await o.page.click("#bless-swap"); await sleep(200);
+    await o.page.locator("#bless-cards .bless-card", { hasText: "화염구" }).click(); await sleep(300);
+    return { ...o, shot: "#bless-modal .modal" }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
