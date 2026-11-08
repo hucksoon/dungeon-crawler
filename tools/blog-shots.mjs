@@ -17,6 +17,7 @@ const { chromium } = require("playwright");
 const local = createRequire(import.meta.url);
 const I = local(path.join(REPO, "items.js")), M = local(path.join(REPO, "monsters.js")), BL = local(path.join(REPO, "blessings.js"));
 const ORIGIN = "https://game.apacimtest.com/", API = "https://api.test/api.php", STORE = "https://store.xsolla.com/api/v2/project/317991";
+const SKN = createRequire(import.meta.url)("../skins.js"); globalThis.__SK = SKN.IDS;   // 스킬 스킨 (dc#172)
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const only = process.argv.slice(2);
 
@@ -84,7 +85,7 @@ async function open({ file = "", seed = {}, scene = "dungeon", lang = "ko", api 
   await ctx.route(STORE + "/**", r => { const p = new URL(r.request().url()).pathname.replace("/api/v2/project/317991", "");
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } });
     if (p === "/items/virtual_currency/package") return json(r, { items: [["cash_10", 10, "0.99"], ["cash_55", 55, "4.99"], ["cash_120", 120, "9.99"]].map(([sku, n, usd], i) => ({ sku, name: `캐시 ${n}`, groups: [{ external_id: "cash_packs" }], price: { amount: usd, currency: "USD" }, content: [{ sku: "cash", quantity: n }], promotions: i ? [{ bonus: [{ sku: "cash", quantity: n / 11 | 0 }] }] : [] })) });
-    if (p === "/items/virtual_items") return json(r, { items: [1, 10, 50].map(n => ({ sku: `box_equipment_${n}`, name: `장비 상자 ${n}회`, description: `무기 또는 방어구 ${n}개`, groups: [{ external_id: "equipment_boxes" }], virtual_prices: [{ sku: "cash", amount: n === 1 ? 10 : n === 10 ? 90 : 400 }] })) });
+    if (p === "/items/virtual_items") return json(r, { items: (globalThis.__SK || []).map(sku => ({ sku, name: SKN.name(sku), description: SKN.desc(sku), groups: [{ external_id: "skill_skins" }], virtual_prices: [{ sku: "cash", amount: SKN.PRICE }] })) });   // dc#172: 스킬 스킨만 (장비 상자는 팔지 않음)
     if (p === "/user/virtual_currency_balance") return json(r, { items: [{ sku: "cash", amount: 500 }] });
     if (p === "/user/inventory/items") return json(r, { items: [] });
     if (/\/payment\/item\//.test(p)) return json(r, { order_id: 77001234 });
@@ -364,9 +365,7 @@ const SCENES = [
     [{ ...M.makeMonster(M.MONSTERS.find(m => m.id === "skeleton"), "normal", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 2 }, { ...M.makeMonster(M.MONSTERS.find(m => m.id === "orc"), "elite", 12), hp: 1e6, maxHp: 1e6, atk: 1, at: 4 }], { wait: 300 })],
   ["halloween-shop", "상점의 할로윈 이벤트 칸: 매일 무료 호박 사탕, 6개로 스킨, 남은 사탕은 캐시로", async () => {
     const o = await open({ file: "shop.html#event", api: true, loggedIn: true }); await o.page.locator("#event-cards .card").nth(3).waitFor({ timeout: 8000 }).catch(() => {}); return { ...o, shot: "#event-sec" }; }],
-  ["shop", "캐시와 장비 상자 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
-  ["shopbox", "서버가 열어 준 장비 상자", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator('#boxes .card[data-sku="box_equipment_10"] button.primary').click(); await o.page.locator("#box-items > div").nth(9).waitFor({ timeout: 8000 }).catch(() => {}); await sleep(2200); return o; }],
-  ["shop-odds", "장비 상자 확률 정보: 등급·고대·부위·여러 번 열 때", async () => { const o = await open({ file: "shop.html", api: true, loggedIn: true }); await o.page.locator("#odds table").waitFor(); return { ...o, shot: "#odds" }; }],
+  ["shop", "캐시와 스킬 스킨 상점", async () => open({ file: "shop.html", api: true, loggedIn: true })],
   ["lang-en", "영어로 바뀐 로비", async () => open({ scene: "lobby", lang: "en", seed: { rl_save: save(40, "blog-en"), "rl_inv:g:DEV": inv(g40) } })],
   ["lang-ja", "일본어로 바뀐 인벤토리", async () => { const o = await open({ lang: "ja", seed: { rl_save: save(30, "blog-ja"), "rl_inv:g:DEV": inv(g40) } }); await press(o.page, ["i"]); return o; }],
   // 픽셀 그림: 게임 화면(캔버스)만 실제 픽셀로. 같은 층을 글자로 보기로도 한 장 더
@@ -1145,6 +1144,38 @@ const SCENES = [
     await o.page.click("#bless-swap"); await sleep(200);
     await o.page.locator("#bless-cards .bless-card", { hasText: "화염구" }).click(); await sleep(300);
     return { ...o, shot: "#bless-modal .modal" }; }],
+  // dc#172: 스킬 스킨 (상점 · 푸른 번개 · 번개 오라) · 점프 공격이 잘 보이게
+  ["v29-shop", "상점의 스킬 스킨: 푸른 번개 · 번개 오라, 캐시 50개", async () => {
+    const o = await open({ file: "shop.html", api: true, loggedIn: true });
+    await o.page.locator('#skins .card[data-sku="skin_bolt_aura"] button.primary').waitFor({ timeout: 8000 }).catch(() => {}); await sleep(700);
+    return { ...o, shot: "#skins-sec", nowait: true }; }],
+  ["v29-aura", "번개 오라 + 푸른 번개: 캐릭터 둘레에 번개가 감기고 연쇄 번개가 파랗게", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_sskin_own: JSON.stringify(["skin_bolt_blue", "skin_bolt_aura"]), rl_save: save(12, "blog-v29au", { l: 14, hp: 99999, mh: 99999, bz: { normal: 12 }, bl: { bolt: 6 } }), "rl_inv:g:DEV": inv(g40.slice(0, 2)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(5, Math.min(L.w - 6, L.px)), y0 = Math.max(4, Math.min(L.h - 5, L.py));
+      for (let y = y0 - 3; y <= y0 + 3; y++) for (let x = x0 - 5; x <= x0 + 5; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 99999, maxHp: 99999, atk: 0, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(2, -1), mk(3, 1), mk(4, -1)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 6 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [[".", 300], [".", 1500], [".", 2700], [".", 3900]], 5000, { cols: 7, rows: 4, every: 40 }), delay: 8 }; }],
+  ["v29-leap", "점프 공격: 웅크려 떨다가 큰 포물선을 그리며 내가 가는 길 앞에 쿵", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_save: save(12, "blog-v29lp", { l: 14, hp: 99999, mh: 99999, bz: { normal: 12 }, bl: {} }), "rl_inv:g:DEV": inv(g40.slice(0, 2)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(6, Math.min(L.w - 7, L.px)), y0 = Math.max(3, Math.min(L.h - 7, L.py));
+      for (let y = y0 - 2; y <= y0 + 5; y++) for (let x = x0 - 6; x <= x0 + 6; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      L.enemies = [{ ...base, kind: "normal", x: x0 + 4, y: y0, hp: 99999, maxHp: 99999, atk: 0, def: 0, ranged: false, ready: false, smash: null, slow: 0, leap: { cd: 0 } }];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && y >= y0 - 3 && y <= y0 + 6 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [["ArrowDown", 300], ["ArrowDown", 1200], ["ArrowDown", 2100]], 3300, { cols: 9, rows: 6, every: 50 }), delay: 5 }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

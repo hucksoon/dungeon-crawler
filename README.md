@@ -42,6 +42,7 @@
 | `items.js`, `monsters.js` | 아이템·몬스터 규칙 (게임과 서버 검증이 같이 씀) |
 | `sound.js` | 효과음·배경 음악 (Web Audio로 합성, 소리 파일 없음) |
 | `img/sprites.png`, `sprites.js` | 픽셀 그림 모음과 칸 위치. `node tools/sprites-build.mjs`로 만듦 (CC0 타일 + 직접 그린 그림, 출처는 [CREDITS.md](CREDITS.md)) |
+| `skins.js` | 스킬 스킨 (상점에서 캐시로 사는 꾸미기: 푸른 번개 · 번개 오라). 상점 미리보기와 게임 그리기가 같이 씀 |
 | `shop.html`, `ranking.html`, `privacy.html` | 상점, 랭킹, 개인정보처리방침 |
 | `i18n.js`, `i18n/` | 다국어 틀과 영어·일본어 문구 ([용어집](docs/i18n-glossary.md)). 화면 문구는 한국어 원문이 키(`T("…")`), 빠진 번역은 `node tools/i18n-check.mjs` (안 쓰는 문구는 `--unused`). 게임 언어는 직접 고른 언어 → IP 나라(서버 `r=geo`) → 브라우저 언어, `?lang=en` / `?lang=ja` / `?lang=ko`로 그 탭만 미리 보기 |
 | `ranking-config.js`, `ads-config.js` | 게임 서버 주소, 광고 설정 |

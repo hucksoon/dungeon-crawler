@@ -539,6 +539,7 @@
   .skins-row .skins-label { opacity: 0.7; }
   .skin-btn { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; font-size: 12px; border-color: #7a4a8a; }
   .skin-btn.on { border-color: #ff9a3a; color: #ffcf7a; box-shadow: 0 0 6px rgba(255, 140, 40, 0.5); }
+  .sskin-ico { display: inline-block; width: 16px; text-align: center; text-shadow: 0 0 6px currentColor; }
   .slot {
     text-align: left;
     padding: 6px 8px;
@@ -1036,6 +1037,7 @@
 <script src="blessings.js"></script>
 <script src="sprites.js"></script>
 <script src="events.js"></script>
+<script src="skins.js"></script>
 <script src="jump.js?v=103"></script>   <!-- 점프 던전 맵을 바꾸면 v를 올림 (예전 jump.js가 캐시에 남아 새 화면과 안 맞는 일 막기) -->
 <script src="sound.js"></script>
 <script>RLI18N.apply(window.RLItems, window.RLMonsters); RLI18N.translateDom(); document.documentElement.lang = RLI18N.lang;</script>
@@ -3142,26 +3144,40 @@
     const d = near8(e, player);
     if (!visible[e.y]?.[e.x] || d < LEAP.range[0] || d > LEAP.range[1]) return false;   // 준비된 채로 거리를 기다림
     e.leap.cd = LEAP.every;
-    const wait = realtime() ? LEAP.windup3d : LEAP.windup, at = aheadOf(LEAP.ahead);
+    const wait = realtime() ? LEAP.windup3d : LEAP.windup, at = aheadOf(realtime() ? LEAP.ahead3d : LEAP.ahead);   // dc#172: 실시간은 더 앞 (기다리는 동안 내가 걸어가니)
     e.leapAt = { x: at.x, y: at.y, t: wait }; e.ready = false;
     showDamage(e, "⤒", true, LEAP.color);
     Sfx("windup");
     log(T("{0}이(가) 높이 뛰어오른다! {1}턴 뒤 보라 칸에 떨어진다 — 가던 길을 바꾸세요!", e.name, wait), null, LEAP.color);
     return true;
   }
+  // 날아가는 모습 (dc#172): 3D는 이걸로 자리·높이를 그림 (2D는 Anim.leap). 높이는 칸 단위
+  const leapFly = new WeakMap();
+  const afterMs = (ms, fn) => (ms > 0 ? setTimeout(fn, ms) : fn());
+  function leapFlyStart(e, to, ms) { if (ms > 0) leapFly.set(e, { fx: e.x, fy: e.y, tx: to.x, ty: to.y, t0: performance.now(), ms, dist: Math.hypot(to.x - e.x, to.y - e.y) }); }
+  function leapPose(e) {
+    const f = leapFly.get(e); if (!f) return null;
+    const p = (performance.now() - f.t0) / f.ms;
+    if (p >= 1 || p < 0) { if (p >= 1) leapFly.delete(e); return null; }
+    return { x: f.fx + (f.tx - f.fx) * p, y: f.fy + (f.ty - f.fy) * p, lift: Math.sin(p * Math.PI) * (1.1 + 0.15 * f.dist), p };
+  }
   function leapTurn(e) {
     if (--e.leapAt.t > 0) return;
     const a = e.leapAt; e.leapAt = null;
     const spot = [a, ...leapCells(a)].find(c => canStep(e, c.x, c.y));   // 착지: 그 칸, 막혔으면 둘레의 빈 칸
+    // dc#172: 하늘로 크게 뛰어 착지 칸까지 날아감 (LEAP.fly ms) → 떨어지는 순간 쿵 (흔들림·보라 구름·소리·피해 숫자)
+    const fly = reduceMotion ? 0 : LEAP.fly, land = spot || { x: e.x, y: e.y };
+    Anim.leap(e, land.x, land.y, fly); leapFlyStart(e, land, fly);
     if (spot) { e.x = spot.x; e.y = spot.y; }
-    Fx.smash(a); Fx.puff(a, leapCells(a), LEAP.color);
-    Sfx("smash");
-    if (near8(player, a) > LEAP.radius || invuln()) { log(T("{0}의 점프 공격을 피했다!", e.name), "good"); return; }
+    Sfx("roll");
+    const zone = scene;
+    afterMs(fly, () => { if (scene !== zone) return; Fx.smash(a); Fx.puff(a, leapCells(a), LEAP.color); Sfx("smash"); });
+    if (near8(player, a) > LEAP.radius || invuln()) { afterMs(fly, () => log(T("{0}의 점프 공격을 피했다!", e.name), "good")); return; }
     const s = stats();
     const dmg = Math.max(1, Math.round(s.maxHp * (LEAP.pct[e.kind] ?? LEAP.pct.normal) * (1 - s.dmgReduce / 100)));
     const took = hurtPlayer(dmg);
-    showDamage(player, dmg, true, LEAP.color);
-    Anim.hit(player, e);
+    afterMs(fly, () => showDamage(player, dmg, true, LEAP.color));
+    Anim.hit(player, e, fly);
     log(T("{0}의 점프 공격에 맞아 {1} 피해를 입음!{2}", e.name, dmg, took < dmg ? T(" (보호막이 {0} 막음)", dmg - took) : ""), "bad");
     if (player.hp <= 0) death();
   }
@@ -4403,6 +4419,7 @@
         Ranking.schedule();
         Gift.refresh();   // 계정이 바뀌면 선물 상태도 그 계정 것으로 (dc#105)
         Events.refresh();   // 이벤트 재화·스킨도 그 계정 것으로 (dc#130)
+        SkillSkins.sync();   // 상점에서 산 스킬 스킨 (dc#172)
         PetSync.sync();   // 펫 목록도 그 계정 것으로 (dc#164)
         legacyNotice();
       } catch (e) {
@@ -4924,7 +4941,7 @@
         player.fieldCd = a.field.every;
         const cells = [];
         for (let dy = -a.field.radius; dy <= a.field.radius; dy++) for (let dx = -a.field.radius; dx <= a.field.radius; dx++) if (dx || dy) cells.push({ x: player.x + dx, y: player.y + dy });
-        flash(cells, "rgba(255, 225, 77, 0.22)");
+        flash(cells, SkillSkins.bolt().field);   // 스킬 스킨 색 (dc#172)
         Sfx("chain", Math.min(4, hit.length), 0.05);
         let sum = 0;
         for (const e of hit) {
@@ -5619,7 +5636,9 @@
     if (t - lobbyFrame < 1000 / LOBBY_FPS - 2) return;
     const dt = Math.min(0.1, (t - lobbyFrame) / 1000 || 0);
     lobbyFrame = t;
-    if (scene === "dungeon" && !document.hidden && (Anim.idleChanged() || rainbowInSight() || lowBlink())) render();
+    // dc#172: 번개 오라를 쓰거나 점프 공격을 준비하는 몬스터(웅크려 떪)가 있으면 계속 움직이게
+    const moving = !reduceMotion && (!!SkillSkins.aura() || enemies?.some(e => e.leapAt));
+    if (scene === "dungeon" && !document.hidden && (moving || Anim.idleChanged() || rainbowInSight() || lowBlink())) render();
   }
 
   // 헬 건물 장식: 둘레의 붉은 빛, 지붕 위 불꽃, 가운데 큰 이름 (나이트메어를 완료하기 전에는 어둡게)
@@ -5718,6 +5737,51 @@
     ctx.fillStyle = color;
     ctx.fillText(text, cx, by);
   }
+
+  // ---- 스킬 스킨 (dc#172, skins.js): 상점에서 캐시로 산 꾸미기. 능력치는 그대로, 번개 색·오라 모습만 ----
+  //   가진 것: 로그인한 계정의 Xsolla 인벤토리 (영구 아이템). 못 읽으면 이 기기에 기억한 목록 (rl_sskin_own)
+  //   쓸지 말지: 이 기기에 (rl_sskin_wear: { 칸: id | "" }). 처음 산 스킨은 저절로 씀, ""는 직접 벗은 것
+  //   운영자 기기는 모든 스킨을 시험해 볼 수 있음 (직접 쓰기를 눌렀을 때만)
+  const SkillSkins = (() => {
+    const K = window.RLSkins, OWN_KEY = "rl_sskin_own", WEAR_KEY = "rl_sskin_wear";
+    const readJ = (k, d) => { try { return JSON.parse(store.get(k) || "null") ?? d; } catch { return d; } };
+    let owned = (readJ(OWN_KEY, []) || []).filter(id => K?.SKINS[id]), wear = readJ(WEAR_KEY, {}) || {};
+    const has = (id) => !!K?.SKINS[id] && (owned.includes(id) || isStaff());
+    const list = () => (K ? K.IDS.filter(has) : []);
+    function worn(slot) {
+      const w = wear[slot];
+      if (w === "") return null;
+      if (w && has(w) && K.SKINS[w].slot === slot) return w;
+      return owned.find(id => K.SKINS[id]?.slot === slot) || null;   // 산 것은 저절로 씀 (운영자 무료 시험은 직접 켤 때만)
+    }
+    function setWear(id, on) {
+      if (!K?.SKINS[id]) return;
+      wear = { ...wear, [K.SKINS[id].slot]: on ? id : "" };
+      store.set(WEAR_KEY, JSON.stringify(wear));
+    }
+    let syncing = null;
+    function sync() {
+      if (!K || !Account.configured() || !Account.loggedIn()) return Promise.resolve(false);
+      return (syncing ||= storeCall("/user/inventory/items?limit=50").then(inv => {
+        const got = (inv?.items || []).filter(i => K.SKINS[i.sku] && (i.quantity ?? 1) > 0).map(i => i.sku);
+        const changed = got.join() !== owned.join();
+        owned = got; store.set(OWN_KEY, JSON.stringify(owned));
+        return changed;
+      }).catch(() => false).finally(() => { syncing = null; }));
+    }
+    function forget() { owned = []; store.del(OWN_KEY); }
+    // 번개 색: 푸른 번개를 쓰면 그 색, 아니면 원래 노랑
+    const BASE = { color: "#ffe14d", core: "#fffbe6", spark: "#fff6b0", field: "rgba(255, 225, 77, 0.22)" };
+    const bolt = () => { const id = worn("bolt"); return id ? K.SKINS[id] : BASE; };
+    // 오라: 쓰면 { color, core } (푸른 번개도 쓰면 푸른 오라), 아니면 null
+    function aura() {
+      const id = worn("aura");
+      if (!id) return null;
+      const b = worn("bolt");
+      return b ? { color: K.SKINS[b].color, core: K.SKINS[b].core } : { color: K.SKINS[id].color, core: K.SKINS[id].core };
+    }
+    return { list, has, worn, setWear, sync, forget, bolt, aura, owned: () => owned.slice() };
+  })();
 
   // ---- 이벤트 (dc#130): events.js의 일정 → 테마(마을·몬스터 모습)와 스킨 ----
   // 테마는 이 기기의 시계(한국 시간 날짜)로 정함. 주소에 ?event=halloween(미리 보기) · ?event=off(끄기)
@@ -6337,6 +6401,17 @@
           dust.push({ x: nx, y: ny, dx: 0, side: 1, t0: t + 290, dur: 360 });
         }
       },
+      // 점프 공격 (dc#172): (지금 칸) → (nx, ny)로 하늘 높이 날아감 (멀수록 높이). 떠날 때·떨어질 때 먼지
+      leap(who, nx, ny, dur) {
+        if (reduceMotion || !dur) return;
+        const t = now(), fx0 = who.x, fy0 = who.y;
+        last.set(who, { x: nx, y: ny });
+        add(who, "leap", dur, { dx: fx0 - nx, dy: fy0 - ny });
+        if (Sprites.on) {
+          dust.push({ x: fx0, y: fy0, dx: nx - fx0, side: 1, t0: t, dur: 320 });
+          for (const side of [-1, 1]) dust.push({ x: nx, y: ny, dx: side, side, t0: t + dur - 30, dur: 420 });
+        }
+      },
       // 회피 (dc#144): (지금 칸) → (nx, ny)로 낮게 미끄러지듯 굴러감, 반투명 + 먼지
       dash(who, nx, ny) {
         if (reduceMotion) return;
@@ -6371,7 +6446,7 @@
           const p = (t - f.t0) / f.dur;
           if (p >= 1) continue;
           busy = true;
-          if (p < 0) { if (f.kind === "walk" || f.kind === "jump" || f.kind === "dash") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
+          if (p < 0) { if (f.kind === "walk" || f.kind === "jump" || f.kind === "dash" || f.kind === "leap") { o.walkX += f.dx * TILE; o.walkY += f.dy * TILE; } continue; }
           const arc = Math.sin(p * Math.PI);
           if (f.kind === "walk") {
             o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
@@ -6384,6 +6459,12 @@
             o.y -= o.lift;
             o.rot += -Math.sign(f.dx || 0) * arc * 0.25;   // 뛰는 쪽으로 몸을 숙임
           }
+          else if (f.kind === "leap") {   // dc#172: 크게 포물선 (멀수록 높이), 뛰는 쪽으로 몸을 숙였다가 떨어질 때 바로 섬
+            o.walkX += f.dx * TILE * (1 - p); o.walkY += f.dy * TILE * (1 - p);
+            o.lift = arc * TILE * (1.1 + 0.15 * Math.hypot(f.dx, f.dy));
+            o.y -= o.lift;
+            o.rot += -Math.sign(f.dx || 0) * arc * 0.35;
+          }
           else if (f.kind === "dash") {
             o.walkX += f.dx * TILE * (1 - ease(p)); o.walkY += f.dy * TILE * (1 - ease(p));
             o.alpha = Math.min(o.alpha, 0.45 + 0.55 * p);   // 굴러가는 동안 반투명
@@ -6394,6 +6475,11 @@
           else if (f.kind === "hit") { o.x += f.dx * TILE * 0.12 * arc + Math.sin(p * Math.PI * 7) * 1.4 * (1 - p); o.y += f.dy * TILE * 0.12 * arc; o.flash = Math.max(o.flash, 0.75 * (1 - p)); }
           else if (f.kind === "dodge") { o.x += f.dx * TILE * 0.42 * arc; o.y += f.dy * TILE * 0.42 * arc; o.alpha = Math.min(o.alpha, 1 - 0.45 * arc); }
           else if (f.kind === "block") { o.x -= f.dx * TILE * 0.1 * arc; o.y -= f.dy * TILE * 0.1 * arc; o.spark = { dx: f.dx, dy: f.dy, a: p < 0.4 ? 1 : (1 - p) / 0.6 }; }
+        }
+        if (who.leapAt) {   // 점프 공격 준비 (dc#172): 몸을 낮추고 부르르 떪 (떨어질 때가 가까울수록 빠르게)
+          const fast = who.leapAt.t <= 1;
+          o.y += TILE * 0.1; o.x += Math.sin(t / (fast ? 25 : 45)) * 1.6; o.rot += Math.sin(t / (fast ? 40 : 70)) * 0.08;
+          busy = true;
         }
         if (!busy) {
           fx.delete(who);
@@ -6646,10 +6732,11 @@
           const tip = { x: a.x + (b.x - a.x) * grow, y: a.y + (b.y - a.y) * grow };
           const pts = jag(a, tip, flick * 31 + i, f.thin ? 2.5 : 4);
           ctx.globalAlpha = Math.max(0, 1 - age) * (flick % 3 === 2 ? 0.6 : 1);
-          stroke(pts, f.color || "#ffe14d", f.thin ? 2.5 : 4, 10);
-          stroke(pts, "#fffbe6", f.thin ? 1 : 1.6, 0);
+          const sk = f.color ? null : SkillSkins.bolt();   // 내 번개: 스킬 스킨 색 (dc#172)
+          stroke(pts, f.color || sk.color, f.thin ? 2.5 : 4, 10);
+          stroke(pts, sk ? sk.core : "#fffbe6", f.thin ? 1 : 1.6, 0);
           if (grow >= 1) {   // 맞은 곳에 불꽃
-            ctx.fillStyle = "#fff6b0";
+            ctx.fillStyle = sk ? sk.spark : "#fff6b0";
             for (let k = 0; k < 6; k++) { const ang = rand(flick + k + i * 7) * Math.PI * 2, d = 3 + rand(k + i) * 5; ctx.fillRect(b.x + Math.cos(ang) * d - 0.75, b.y + Math.sin(ang) * d - 0.75, 1.5, 1.5); }
           }
         }
@@ -6902,6 +6989,12 @@
         hurt.classList.remove("on"); void hurt.offsetWidth; hurt.classList.add("on");
       }
       hpSeen = player.hp;
+      // 번개 오라 (dc#172): 1인칭이라 내 몸 대신 손에 번개 빛 + 눈앞 둘레로 튀는 불꽃
+      const aura = !reduceMotion && SkillSkins.aura();   // 손 빛은 손 그리는 곳에서 (무기 속성 빛과 같이)
+      if (aura && Math.random() < 0.55) {
+        const a = Math.random() * Math.PI * 2, fx = Math.sin(yaw), fy = -Math.cos(yaw);
+        view.sparks(pos.x - 0.5 + fx * 0.55 + Math.cos(a) * 0.3, pos.y - 0.5 + fy * 0.55 + Math.sin(a) * 0.3, Math.random() < 0.3 ? aura.core : aura.color, "spark", 1);
+      }
       const bills = [];
       // 쓰러진 몬스터: 그 자리에 잠깐 붉은 연기
       for (const e of drawn) if (!enemies.includes(e) || e.hp <= 0) { const d = disp.get(e); if (d) view.burst(d.x, d.y, "#c0503a", 1.2, 380, 0.4); }
@@ -6913,6 +7006,9 @@
         if (d.tx !== e.x || d.ty !== e.y) { d.fx = d.x; d.fy = d.y; d.tx = e.x; d.ty = e.y; d.t0 = now; }
         const p = Math.min(1, (now - d.t0) / 220);
         d.x = d.fx + (d.tx - d.fx) * p; d.y = d.fy + (d.ty - d.fy) * p;
+        const lp = leapPose(e);   // 점프 공격으로 날아가는 중 (dc#172): 포물선 자리·높이
+        if (lp) { d.x = lp.x; d.y = lp.y; d.fx = d.tx; d.fy = d.ty; d.t0 = 0; }
+        const wind = e.leapAt && !reduceMotion ? Math.abs(Math.sin(now / (e.leapAt.t <= 1 ? 40 : 80))) : 0;   // 준비: 제자리에서 통통 떪
         const o = Anim.of(e), big = e.named ? 1.35 : e.kind === "boss" ? 1.15 : e.kind === "elite" ? 0.85 : e.kind === "golden" ? 0.7 : 0.75;
         const hurtNow = e.hp < e.maxHp || e.kind !== "normal";
         // 상태: 불탐(불꽃이 피어오름) · 얼어 느려짐(하늘색) · 감전(노란 빛과 전기). 가끔씩 입자를 뿌림
@@ -6923,11 +7019,12 @@
           if (frozen) view.sparks(d.x, d.y, EL.colors.ice, "shard", 1);
           if (shockOn) view.sparks(d.x, d.y, EL.colors.bolt, "spark", 1);
         }
-        bills.push({ key: e, sprite: Sprites.name(`mon_${e.id}`), x: d.x + o.x / TILE * 0.6, y: d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha,
+        if (e.leapAt && !reduceMotion && Math.random() < 0.35) view.sparks(d.x, d.y, LEAP.color, "spark", 1);
+        bills.push({ key: e, sprite: Sprites.name(`mon_${e.id}`), x: lp ? d.x : d.x + o.x / TILE * 0.6, y: lp ? d.y : d.y + o.y / TILE * 0.6, w: big, h: big, flash: o.flash, alpha: o.alpha, lift: lp ? lp.lift : wind * 0.12,
           tint: frozen ? "#9fdcff" : burning ? "#ffc9a0" : shockOn ? "#fff3a0" : toxOn ? "#c8ffb0" : null,
           hp: hurtNow ? Math.max(0, e.hp / e.maxHp) : null,
           barColor: e.named || e.clone ? RLMonsters.NAMED_COLOR : e.kind === "boss" ? BOSS_COLOR : e.kind === "elite" ? ELITE_COLOR : e.kind === "golden" ? "#ffd700" : "#e04a3a",
-          glow: burning ? EL.colors.fire : shockOn ? EL.colors.bolt : frozen ? EL.colors.ice : e.el ? EL.colors[e.el] : e.kind === "golden" ? "#ffd700" : null });
+          glow: e.leapAt || lp ? LEAP.color : burning ? EL.colors.fire : shockOn ? EL.colors.bolt : frozen ? EL.colors.ice : e.el ? EL.colors[e.el] : e.kind === "golden" ? "#ffd700" : null });
       }
       for (const it of items) {
         const g = it.type === "gear" ? it.item : null;
@@ -7000,9 +7097,11 @@
       }
       const el = weaponElement(now), c = el && EL.colors[el];
       const glow = c ? `drop-shadow(0 0 ${8 + 4 * Math.sin(now / 160)}px ${c}) drop-shadow(0 0 3px ${c})` : "";
-      hand.style.filter = glow ? `brightness(0.95) ${glow}` : "";
+      // 번개 오라 (dc#172): 두 손 둘레가 번개 색으로 번쩍번쩍 (무기 속성 빛 위에 더함)
+      const au = !reduceMotion && SkillSkins.aura(), zap = au ? `drop-shadow(0 0 ${Math.floor(now / 90) % 2 ? 9 : 5}px ${au.color}) drop-shadow(0 0 2px ${au.core})` : "";
+      hand.style.filter = glow || zap ? `brightness(0.95) ${glow} ${zap}`.trim() : "";
       if (off && off.type !== "shield") handL.style.filter = hand.style.filter;
-      else handL.style.filter = "";
+      else handL.style.filter = zap;
       // 피하기: 화면이 옆으로 살짝 흔들림
       const kd = arc(dodgeT, 300);
       view.canvas.style.transform = kd ? `translateX(${-14 * kd}px) rotate(${-1.2 * kd}deg)` : "";
@@ -7092,7 +7191,7 @@
       }
       if (kind === "fireball") setTimeout(() => view.burst(b.x, b.y, EL.colors.fire, 2.4, 520), Fx.FB_FLY);
       else if (kind === "nova") view.burst(a.x, a.y, EL.colors.ice, 3.2, 520, 0.3);
-      else if (kind === "chain") a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, b || EL.colors.bolt), i * Fx.CHAIN_STEP));
+      else if (kind === "chain") { const c = b || SkillSkins.bolt().color; a.forEach((p, i) => i && setTimeout(() => view.bolt(a[i - 1], p, c), i * Fx.CHAIN_STEP)); }   // 스킬 스킨 색 (dc#172)
       else if (kind === "puff") { view.burst(a.x, a.y, b, 2.4, 560, 0.3); for (const c of (cells || []).slice(0, 16)) view.sparks(c.x, c.y, b, "flame", 3); }   // 독구름·증기·역병 (dc#168)
       else if (kind === "smash") { view.burst(a.x, a.y, SMASH.color, 2.0, 420, 0.1); view.sparks(a.x, a.y, "#8a5a2b", "shard", 10); shakeT = now; }   // 강타 (dc#155): 주황 번쩍 + 돌 조각 + 화면 흔들림
       else if (kind === "curse") {   // 몬스터 저주 구슬 (dc#149): 검붉은 구슬이 날아와 조준한 칸들에서 검붉은 조각이 튐
@@ -8159,6 +8258,8 @@
     // 사람 하나: 나는 낀 장비 그림, 다른 사람은 기사 그림(쓰고 있는 스킨은 그 위에). 이름 · 포탈 층(◎) · 왕관·운영자 표시
     function person(x, y, name, color, portalFloor, crown, staff, face, self, lift = 0, skins = null) {
       const px = x * TILE - TILE / 2, py = y * TILE - TILE;
+      const aura = self && !reduceMotion && SkillSkins.aura();   // 번개 오라 (dc#172): 마을에서도 내 캐릭터 둘레에
+      if (aura) RLSkins.drawAura(ctx, x * TILE, y * TILE - TILE / 2, TILE * 0.62, performance.now(), aura.color, aura.core, "back");
       ctx.save();
       ctx.translate(x * TILE, 0); ctx.scale(face < 0 ? -1 : 1, 1); ctx.translate(-x * TILE, 0);
       if (self) {
@@ -8172,6 +8273,7 @@
         if (art) ctx.drawImage(art, px, py, TILE, TILE); else drawArt("player", "@", px, py, color);
       }
       ctx.restore();
+      if (aura) RLSkins.drawAura(ctx, x * TILE, y * TILE - TILE / 2, TILE * 0.62, performance.now(), aura.color, aura.core, "front");
       const by = py - 1 - lift;
       drawLabel(name, x * TILE, by, staff ? STAFF_COLOR : color, 8);
       ctx.font = 'bold 8px "Courier New", monospace';
@@ -8662,6 +8764,19 @@
     for (const e of enemies) {
       if (!visible[e.y]?.[e.x]) continue;
       const o = Anim.of(e), px = e.x * TILE + o.x, py = e.y * TILE + o.y;
+      if (o.lift > 0) {   // 점프 공격으로 날아가는 중 (dc#172): 땅에 그림자 (높을수록 작고 옅게)
+        const k = Math.min(1, o.lift / (TILE * 2));
+        ctx.save(); ctx.globalAlpha = 0.5 - 0.25 * k; ctx.fillStyle = "#000"; ctx.beginPath();
+        ctx.ellipse(px + TILE / 2, py + o.lift + TILE - 3, TILE * (0.4 - 0.15 * k), TILE * (0.13 - 0.05 * k), 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (e.leapAt) {   // 점프 공격 준비 (dc#172): 발밑에서 보라 기운이 솟음 + 머리 위 "⤒"
+        const k = 0.5 + 0.5 * Math.sin(performance.now() / (e.leapAt.t <= 1 ? 60 : 120));
+        ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * k; ctx.fillStyle = LEAP.color; ctx.shadowColor = LEAP.color; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.ellipse(px + TILE / 2, py + TILE - 3, TILE * (0.45 + 0.12 * k), TILE * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.font = `bold ${Math.round(TILE * 0.75)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.lineWidth = 3; ctx.strokeStyle = "#000"; ctx.strokeText("⤒", px + TILE / 2, py + 2 - 4 * k); ctx.fillStyle = LEAP.color; ctx.fillText("⤒", px + TILE / 2, py + 2 - 4 * k);
+        ctx.restore();
+      }
       // 그림 모드: 몬스터 그림을 먼저, 테두리·상태·속성 점은 그 위에
       const pic = Sprites.on && Sprites.has(`mon_${e.id}`);
       ctx.save();
@@ -8722,6 +8837,8 @@
       ctx.fill();
       ctx.restore();
     }
+    const aura = !reduceMotion && SkillSkins.aura();   // 번개 오라 (dc#172): 몸 뒤 빛·솟는 기운 → 캐릭터 → 앞 번개 줄기
+    if (aura) RLSkins.drawAura(ctx, ppx + TILE / 2, ppy + TILE / 2, TILE * 0.62, performance.now(), aura.color, aura.core, "back");
     drawStatus(player, ppx, ppy);
     ctx.save();
     ctx.globalAlpha = po.alpha;
@@ -8731,6 +8848,7 @@
       if (Sprites.on) drawFlash(Doll.canvas(), ppx, ppy, po.flash);
     });
     ctx.restore();
+    if (aura) RLSkins.drawAura(ctx, ppx + TILE / 2, ppy + TILE / 2, TILE * 0.62, performance.now(), aura.color, aura.core, "front");
     if (po.spark) drawSpark(ppx, ppy, po.spark);
     // 내 HP 막대 (dc#91): 머리 위, 초록 → 노랑(절반) → 빨강(30% 이하, 깜빡임)
     if (!gameOver && player.hp > 0) {
@@ -9097,6 +9215,7 @@
     renderAccount();
     Gift.refresh();
     Events.refresh();
+    SkillSkins.forget();   // 다른 계정의 스킬 스킨이 남지 않게 (dc#172)
   });
 
   // 탭을 닫거나 숨길 때 남은 저장을 바로 보냄
@@ -9315,7 +9434,8 @@
         el("small", {}, `${T(G.name)} · ${T("범위 {0}", G.range >= 99 ? T("지도 전체") : T("{0}칸", G.range))} · ${T("한 턴에 {0}칸", G.speed)} · ${on ? (pets.pin ? T("📌 고정") : T("데리고 다니는 중")) : T("쉬는 중")}`)));
     }
     out.push(el("h3", { className: "bag-h" }, T("꾸미기")));
-    if (!skins.length) out.push(el("div", { className: "bag-empty" }, T("가진 스킨이 없어요. 이벤트에서 받을 수 있어요.")));
+    if (!skins.length && !SkillSkins.list().length) out.push(el("div", { className: "bag-empty" }, T("가진 스킨이 없어요. 상점(스킬 스킨)이나 이벤트에서 받을 수 있어요.")));
+    out.push(...skillSkinButtons("bag-item skin-btn"));
     for (const id of skins) {
       const S = E.SKINS[id], on = Events.wear(S.slot) === id;
       out.push(el("button", { type: "button", className: "bag-item skin-btn" + (on ? " on" : ""),
@@ -9324,17 +9444,30 @@
     return out;
   }
 
+  // 스킬 스킨 (dc#172): 가진 것마다 쓰기/벗기 버튼 (같은 칸은 하나만). 운영자 기기는 모두 시험해 볼 수 있음
+  function skillSkinButtons(cls) {
+    const K = window.RLSkins;
+    return SkillSkins.list().map(id => {
+      const S = K.SKINS[id], on = SkillSkins.worn(S.slot) === id;
+      return el("button", { type: "button", className: cls + (on ? " on" : ""), title: K.desc(id, RLI18N.lang), ariaPressed: String(on),
+        onclick: () => { SkillSkins.setWear(id, !on); renderInventory(); render(); } },
+        el("span", { className: "sskin-ico", style: { color: S.color } }, S.icon), `${K.name(id, RLI18N.lang)} · ${on ? T("쓰는 중") : T("쓰기")}`);
+    });
+  }
+
   // 이벤트 스킨 (dc#130): 가진 스킨마다 쓰기/벗기 버튼 (같은 부위는 하나만). 능력치는 그대로, 모습만
   function renderSkins() {
     const box = document.getElementById("inv-skins"), E = window.RLEvents, own = E ? Events.owned().filter(id => E.SKINS[id]) : [];
-    box.hidden = !own.length;
-    if (!own.length) { box.replaceChildren(); return; }
+    const sk = skillSkinButtons("skin-btn");
+    box.hidden = !own.length && !sk.length;
+    if (!own.length && !sk.length) { box.replaceChildren(); return; }
     box.replaceChildren(el("span", { className: "skins-label" }, T("꾸미기")), ...own.map(id => {
       const S = E.SKINS[id], on = Events.wear(S.slot) === id;
       return el("button", { type: "button", className: "skin-btn" + (on ? " on" : ""), title: S.slot === "head" ? T("머리 모습만 바뀌어요 (능력치는 그대로)") : T("무기를 들면 모습만 바뀌어요 (능력치는 그대로)"),
         onclick: () => { Events.setWear(id, !on); renderInventory(); } }, Sprites.icon(S.sprite), `${Events.name(S.name)} · ${on ? T("쓰는 중") : T("쓰기")}`);
     }));
     box.querySelectorAll(".skin-btn").forEach((b, i) => b.setAttribute("aria-pressed", String(Events.wear(E.SKINS[own[i]].slot) === own[i])));
+    box.append(...sk);
   }
 
   // 판매하면 받는 강화석: "강화석 +A · 악몽 강화석 +B" (0인 쪽은 빼고, 둘 다 0이면 "강화석 +0")
@@ -9940,6 +10073,7 @@
 
   function openInventory(forge = false) {
     Tips.step("inv");
+    SkillSkins.sync().then(changed => { if (changed && !invModal.hidden) renderInventory(); });   // 상점에서 산 스킬 스킨 (dc#172)
     selected = null;
     invMsg = null;
     invTab = forge ? "detail" : "stats";

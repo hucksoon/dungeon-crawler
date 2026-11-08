@@ -388,9 +388,11 @@
     //         실시간은 탄 2발을 spread만큼 벌려서 (한 발 × mul)
     //   leap: 근접 몬스터 중 share(정예 eliteShare)만큼은 점프 공격 — every턴마다 range칸 거리면 내가 가는 길(내 자리에서 가던 쪽 ahead칸)을 노려
     //         windup턴(실시간 windup3d) 뒤 그 칸으로 뛰어내림. 착지 칸 둘레 radius칸 안이면 최대 HP × pct (받는 피해 감소만, 방패로 못 막음)
+    //         dc#172: 실시간은 기다리는 동안 내가 더 멀리 가니 ahead3d칸 앞을 노림 (예전 2칸이면 늘 내 뒤에 떨어짐).
+    //         뛰는 모습: 기다리는 동안 웅크려 떨고, 떨어질 때 fly ms 동안 큰 포물선으로 날아가 쿵
     skills: {
       twin: { share: 0.5, mul: 1.4, ahead: 2, spread: 0.22, color: "#ff6a00" },
-      leap: { share: 0.15, eliteShare: 0.3, every: 6, range: [3, 6], ahead: 2, windup: 2, windup3d: 3, radius: 1, pct: { normal: 0.1, elite: 0.15 }, color: "#b06bff" },
+      leap: { share: 0.15, eliteShare: 0.3, every: 6, range: [3, 6], ahead: 2, ahead3d: 4, windup: 2, windup3d: 3, fly: 520, radius: 1, pct: { normal: 0.1, elite: 0.15 }, color: "#b06bff" },
     },
   };
   // 입구 배율: 1층 from에서 until층까지 고르게 올라 그 뒤 1

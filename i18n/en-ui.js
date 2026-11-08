@@ -1397,7 +1397,7 @@
     "한 턴에 {0}칸": "{0} tiles per turn",
     "데리고 다니는 중": "Following you",
     "쉬는 중": "Resting",
-    "가진 스킨이 없어요. 이벤트에서 받을 수 있어요.": "No skins yet. You can get them in events.",
+    "가진 스킨이 없어요. 상점(스킬 스킨)이나 이벤트에서 받을 수 있어요.": "No skins yet. Get them in the shop (skill skins) or in events.",
     "🐾 펫 [{0}] {1}을(를) 얻었다! 지도에 남은 아이템을 대신 주워 와요 (내 둘레 {2}, 한 턴에 {3}칸).{4}": "🐾 Got a [{0}] pet: {1}! It fetches items left on the map (within {2} of you, {3} tiles per turn).{4}",
     "지도 전체": "the whole map",
     "{0}칸": "{0} tiles",
