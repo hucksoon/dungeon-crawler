@@ -195,6 +195,17 @@ sudo -u www-data php gift.php --resume <이메일>
 캐시는 이미 받은 것으로 표시하고, 다음 "받기"에서 골드·아이템만 들어가요 (캐시를 다시 지급하지 않아요).
 지금 버전은 캐시를 지급하거나 받은 순간을 바로 기록해서, 중간에 오류가 나도 다음 "받기"나 1분 뒤 자동으로 마무리돼요.
 
+## 디스코드 상점 봇 로그인 확인 (bot_auth.php)
+
+Xsolla Bot in Discord에서 플레이어가 `/shop`에 플레이어 ID(게임 계정 줄의 "🆔 플레이어 ID")를 넣으면 Xsolla가 이 주소로 물어봐요. Publisher Account → Storefront → Xsolla Bot in Discord → Settings → **User authentication webhook**에 `https://apacimtest.com/ranking/bot_auth.php`를 넣어요.
+
+- 형식: [웹샵 사용자 확인 웹훅](https://developers.xsolla.com/webhooks/user-validation/user-validation-in-webshop). 요청 `{"user": {"id"}, "settings": {...}}`
+- 게임에 로그인한 적 있는 ID → `200 {"user": {"id": "..."}}`, 모르는 ID → `404 INVALID_USER`, 형식 오류 → 400
+- 서명 방식이 문서에 없어서 서명이 없어도 처리하고, 서명 상태만 로그에 남겨요 (`sig=none` / `sig=ok:webhook_secret` / `sig=other`). 확인한 뒤 `bot_auth_require_sig => true`로 서명을 필수로 바꿀 수 있어요
+- `bot_auth_ips => '34.102.38.178'`(문서에 나온 보내는 IP)을 넣으면 다른 곳의 요청은 403
+- 로그: `sudo grep -h '\[bot_auth\]' /var/log/apache2/*error*.log | tail` (결과와 서명 상태만, ID·IP는 남기지 않음)
+- 결제 중 확인(`user_validation`)과 결제 웹훅은 그대로 `webhook.php`
+
 ## Xsolla 웹훅 (webhook.php)
 
 Store 프로젝트(`xsolla_project_id`, 기본 317991)의 웹훅을 받는 주소예요. 예: `https://apacimtest.com/ranking/webhook.php`
