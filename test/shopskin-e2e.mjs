@@ -106,5 +106,19 @@ try {
   await page.selectOption("#lang", "en"); await sleep(400);
   check("English: section title and skin text", /Skill skins/.test(await page.locator("#skins-sec h2").innerText()) && /turn blue/.test(await card(page, "skin_bolt_blue").innerText()));
   await ctx.close();
+
+  // 이용약관 (dc#173): 상점 아래 링크 · 한국어/영어/일본어 · ?lang · 개인정보처리방침 링크
+  ({ ctx, page, errors } = await open(false));
+  check("shop footer links to the terms page", (await page.locator('footer a[href="terms.html"]').count()) === 1);
+  await page.goto(ORIGIN + "terms.html"); await sleep(200);
+  const vis = async () => page.evaluate(() => [...document.querySelectorAll("section[lang]")].filter(s => getComputedStyle(s).display !== "none").map(s => s.lang).join());
+  check("terms: Korean by default (game language ko), 13 sections, refund + Xsolla + privacy link", await vis() === "ko" && (await page.locator('section[lang="ko"] h2').count()) === 13
+    && /7일 안에/.test(await page.locator('section[lang="ko"]').innerText()) && /Xsolla/.test(await page.locator('section[lang="ko"] .summary').innerText()) && (await page.locator('section[lang="ko"] a[href="privacy.html"]').count()) === 1);
+  await page.locator('.langs button[data-lang="en"]').click();
+  check("terms: English button shows the English version", await vis() === "en" && /Terms of Service/.test(await page.title()) && (await page.locator('section[lang="en"] h2').count()) === 13);
+  await page.goto(ORIGIN + "terms.html?lang=ja"); await sleep(200);
+  check("terms: ?lang=ja shows Japanese", await vis() === "ja" && (await page.locator('section[lang="ja"] h2').count()) === 13 && /利用規約/.test(await page.title()));
+  check("no page errors (terms)", errors.length === 0, errors.join("; "));
+  await ctx.close();
 } finally { await browser.close(); }
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);

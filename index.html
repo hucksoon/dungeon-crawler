@@ -816,7 +816,7 @@
   <span data-t>적에게 부딪히면 공격, 계단(&gt;)을 밟으면 아래층. 새 층마다 <b>축복</b>을 하나 고르고, 5층마다 보스를 쓰러뜨리면 <b>유물</b>을 골라요.<br>
   판은 언제나 레벨 1·1층부터. 50층 보스를 잡으면 같은 판 그대로 <b>나이트메어 → 헬 → 끝이 없는 구멍</b>으로 이어가요. 장비는 주우면 자동으로 끼고 강화돼요.<br>
   포션(Q)은 10턴마다 무제한. <b>포탈(P)</b>을 타면 로비로 가고 HP가 다 차요. 로비의 파란 포탈로 떠난 자리에 돌아가요.<br></span>
-  <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a> <a id="odds-link" href="shop.html#odds" style="color: inherit" data-t>장비 상자 확률</a></p>
+  <a id="privacy-link" href="privacy.html" style="color: inherit" data-t>개인정보처리방침</a> <a id="terms-link" href="terms.html" style="color: inherit" data-t>이용약관</a></p>
 </div>
 
 <div id="inv-modal" class="overlay" hidden>
@@ -11690,7 +11690,7 @@
   // 포털 빌드 (dc#102): 계정·상점·랭킹·바깥 링크·같이 접속한 사람 칸을 숨기고, 플레이 중인지 포털에 알림
   if (PORTAL) {
     document.body.classList.add("portal");
-    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "odds-link", "lobby-panel", "view3d-btn"]) {
+    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "terms-link", "lobby-panel", "view3d-btn"]) {
       const e = document.getElementById(id);
       if (e) e.style.display = "none";
     }
