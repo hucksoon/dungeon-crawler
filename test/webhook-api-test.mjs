@@ -58,6 +58,8 @@ try {
   check("game login (profile GET, no save yet) → user remembered", g.rev === 0 && g.data === null, JSON.stringify(g));
   const v = await hook(validation);
   check("user_validation, correct signature → 204", v.status === 204, v.text);
+  const vSpace = { ...validation, user: { ...validation.user, id: "  " + USER.toUpperCase() + " " } };
+  check("pasted ID with spaces / upper case → still 204 (dc#176)", (await hook(vSpace)).status === 204);
   check("wrong signature → 400 INVALID_SIGNATURE", (await hook(validation, { sig: sign(JSON.stringify(validation), "other-key") })).code === "INVALID_SIGNATURE");
   check("no Authorization header → 400 INVALID_SIGNATURE", (await hook(validation, { auth: null })).code === "INVALID_SIGNATURE");
   check("bearer token instead of signature → 400", (await hook(validation, { auth: "Bearer abc" })).status === 400);
@@ -197,5 +199,7 @@ try {
   check("admin.php webhooks: [캐시] for cash orders, granted / revoked / no user", adm.includes("[캐시]") && adm.includes("→ 우편함 지급") && adm.includes("→ 회수") && adm.includes("→ 사용자 없음"), adm);
 } finally { php.kill(); php0.kill(); }
 check("400s logged with reason and type only", phpErr.includes("[webhook] 400 INVALID_USER type=user_validation") && phpErr.includes("[webhook] 400 INVALID_SIGNATURE") && !phpErr.includes(USER) && !phpErr.includes("test_xsolla_"), phpErr.slice(0, 300));
+check("user_validation logs result, field names and ID kind only (dc#176)", phpErr.includes("[webhook] user_validation unknown fields=notification_type,settings{merchant_id,project_id},user{id} id=test")
+  && phpErr.includes("[webhook] user_validation ok fields=notification_type,settings{merchant_id,project_id},user{country,email,id,ip} id=uuid") && !phpErr.includes(EMAIL) && !phpErr.includes(IP), phpErr.slice(0, 600));
 check("no php errors", !/Fatal|Warning|Notice|Deprecated/.test(phpErr), phpErr.slice(0, 400));
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);

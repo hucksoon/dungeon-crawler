@@ -4,6 +4,7 @@
 //
 // 기록하고, 장비 상자는 서버가 열어서 우편함으로 지급 (2단계). 캐시(가상 화폐)는 Xsolla가 직접 넣어 줌
 //   user_validation            → 게임에 로그인한 적 있는 사용자면 204, 아니면 400 INVALID_USER
+//                                 (dc#176: 결과와 요청 모양(항목 이름만)·ID 종류를 로그에 남김: [webhook] user_validation ok|unknown fields=… id=uuid|test|other)
 //                                 (계정 저장본이 있거나 known_users에 있음. 상점 로그인은 게임을 거치므로 사기 전에 기록됨)
 //   order_paid / order_canceled → 주문 번호로 한 번만 기록 (같은 웹훅이 다시 와도 204, 두 번 기록·지급하지 않음)
 //     order_paid에 장비 상자(box_equipment_N)가 있으면 열어서 그 사용자의 우편함에 (market.php box_grant)
@@ -55,6 +56,33 @@ function webhook_fail(int $status, string $code, string $type = '-'): void {
 function webhook_user_known(string $uid): bool {
     $key = hmac_hex('u:' . $uid);
     return (bool)q_val('SELECT 1 FROM profiles WHERE pkey = ?', [$key]) || (bool)q_val('SELECT 1 FROM known_users WHERE ukey = ?', [$key]);
+}
+
+function webhook_is_uuid(string $v): bool {
+    return (bool)preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/', $v);
+}
+
+// 요청 모양 (항목 이름만): 예) notification_type,settings{merchant_id,project_id},user{country,email,id,ip}
+function webhook_shape(array $e): string {
+    $out = [];
+    $top = array_keys($e); sort($top);
+    foreach ($top as $k) {
+        $k = preg_replace('/[^A-Za-z0-9_]/', '', (string)$k);
+        $v = $e[$k] ?? null;
+        if (is_array($v) && $v && array_keys($v) !== range(0, count($v) - 1)) {
+            $sub = array_map(fn($x) => preg_replace('/[^A-Za-z0-9_]/', '', (string)$x), array_keys($v)); sort($sub);
+            $out[] = $k . '{' . implode(',', array_slice($sub, 0, 12)) . '}';
+        } else $out[] = $k;
+    }
+    return substr(implode(',', array_slice($out, 0, 12)), 0, 300);
+}
+
+// ID 종류만 (값은 남기지 않음): uuid · test(엑솔라 시험 사용자) · other · none
+function webhook_id_kind($uid): string {
+    if (!is_string($uid) || $uid === '') return 'none';
+    if (webhook_is_uuid($uid)) return 'uuid';
+    if (strpos($uid, 'test_xsolla_') === 0) return 'test';
+    return 'other';
 }
 
 function webhook_signature_ok(string $raw, string $secret): bool {
@@ -149,7 +177,12 @@ try {
 
     if ($type === 'user_validation') {
         $uid = $e['user']['id'] ?? null;
-        if (!is_scalar($uid) || (string)$uid === '' || strlen((string)$uid) > 128 || !webhook_user_known((string)$uid)) { webhook_fail(400, 'INVALID_USER', $type); exit; }
+        // 붙여 넣은 공백 정리, Xsolla Login 사용자 ID(UUID)는 소문자로 (디스코드 봇에 직접 입력한 ID도 찾게, dc#176)
+        if (is_scalar($uid)) { $uid = trim((string)$uid); if (webhook_is_uuid($uid)) $uid = strtolower($uid); }
+        $known = is_string($uid) && $uid !== '' && strlen($uid) <= 128 && webhook_user_known($uid);
+        // 어떤 요청인지 구분용 (dc#176): 항목 이름만 남김 (값·ID는 남기지 않음). 웹훅 시험 버튼 · 결제 · 디스코드 봇의 모양이 다름
+        error_log('[webhook] user_validation ' . ($known ? 'ok' : 'unknown') . ' fields=' . webhook_shape($e) . ' id=' . webhook_id_kind($uid));
+        if (!$known) { webhook_fail(400, 'INVALID_USER', $type); exit; }
         http_response_code(204);
         exit;
     }
