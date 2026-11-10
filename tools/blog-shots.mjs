@@ -1181,6 +1181,15 @@ const SCENES = [
     const o = await open({ file: "terms.html", viewport: { width: 820, height: 600 } });
     await sleep(300);
     return { ...o, nowait: true }; }],   // 화면에 보이는 맨 위만
+  // dc#174: 내 플레이어 ID (디스코드 상점에 넣는 ID)
+  ["v30-pid", "내 플레이어 ID 창: ID와 복사 버튼", async () => {
+    const o = await open({ scene: "lobby", loggedIn: true, dsf: 1.4 });
+    await o.page.locator("#pid-btn").click({ timeout: 5000 }).catch(() => {}); await sleep(300);
+    return { ...o, shot: "#pid-modal .modal", nowait: true }; }],
+  ["v30-pidbar", "계정 줄의 🆔 플레이어 ID 버튼", async () => {
+    const o = await open({ scene: "lobby", loggedIn: true, dsf: 1.4 });
+    await sleep(500);
+    return { ...o, shot: "#account", nowait: true }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

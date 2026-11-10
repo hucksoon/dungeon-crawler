@@ -392,6 +392,13 @@
     font-size: 13px;
   }
   #account-status { opacity: 0.8; }
+  /* 내 플레이어 ID (dc#174) */
+  .pid-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+  .pid-row code { display: block; padding: 8px 10px; background: #0b0c12; border: 1px solid #3a3d4e; border-radius: 6px; font-size: 13px; line-height: 1.5; word-break: break-all; user-select: all; color: #ffe08a; text-align: center; }
+  .pid-row button { width: 100%; }
+  .pid-note { font-size: 12px; opacity: 0.85; margin: 6px 0; }
+  #pid-msg:empty { display: none; }
+  #pid-msg.good { color: #6fe08a; opacity: 1; }
   #update-note { flex-basis: 100%; display: flex; gap: 8px; align-items: flex-start; justify-content: center; font-size: 12.5px; line-height: 1.5; color: var(--text); background: rgba(255, 207, 92, 0.1); border: 1px solid rgba(255, 207, 92, 0.45); border-radius: 6px; padding: 6px 10px; }
   #update-note[hidden] { display: none; }
   #update-note b { color: var(--accent); }
@@ -753,6 +760,7 @@
   <div id="account">
     <span id="account-status"></span>
     <button id="account-btn" type="button"></button>
+    <button id="pid-btn" type="button" hidden data-t>🆔 플레이어 ID</button>
     <button id="inv-btn" type="button" data-t>인벤토리 (I)</button>
     <button id="dex-btn" type="button" data-t>도감 (B)</button>
     <button id="map-btn" class="dungeon-only" type="button"></button>
@@ -896,6 +904,18 @@
     <h2 id="notice-title"></h2>
     <ul id="notice-body"></ul>
     <button id="notice-ok" type="button" data-t>확인</button>
+  </div>
+</div>
+
+<!-- 내 플레이어 ID (dc#174): 디스코드 상점 봇(/shop)에 넣는 ID = Xsolla Login 사용자 ID. 로그인했을 때만 -->
+<div id="pid-modal" class="overlay" hidden>
+  <div class="modal notice" role="dialog" aria-modal="true" aria-labelledby="pid-title">
+    <h2 id="pid-title" data-t>🆔 내 플레이어 ID</h2>
+    <p class="pid-note" data-t>디스코드의 던전 크롤러 상점(/shop)에서 이 ID를 넣으면 이 계정으로 아이템을 받아요.</p>
+    <div class="pid-row"><code id="pid-value"></code><button id="pid-copy" type="button" class="primary" data-t>복사</button></div>
+    <p id="pid-msg" class="pid-note" aria-live="polite"></p>
+    <p class="pid-note" data-t>이 ID로는 로그인할 수 없지만, 다른 사람과는 나누지 마세요.</p>
+    <button id="pid-close" type="button" data-t>닫기</button>
   </div>
 </div>
 
@@ -9085,6 +9105,7 @@
     }
     accountBtn.disabled = false;
     accountBtn.title = "";
+    document.getElementById("pid-btn").hidden = !(Account.loggedIn() && Account.claims()?.sub) || !!PORTAL;   // 내 플레이어 ID (dc#174)
     if (Account.loggedIn()) {
       const c = Account.claims();
       accountStatus.textContent = Lobby.me()?.staff ? T("운영자 로그인됨") : T("{0} 로그인됨", c?.email || c?.phone_number || T("계정"));
@@ -9094,6 +9115,36 @@
       accountBtn.textContent = T("계정 연결");
     }
   }
+
+  // ---- 내 플레이어 ID (dc#174): 디스코드 상점 봇에 넣는 ID (Xsolla Login 사용자 ID, 로그인 토큰의 sub) ----
+  //   서버에 따로 보내거나 저장하지 않고, 본인 화면에만 보여 줌. 봇 결제 때 게임 서버가 user_validation 웹훅으로 이 ID를 확인함
+  const pidBtn = document.getElementById("pid-btn"), pidModal = document.getElementById("pid-modal"), pidMsg = document.getElementById("pid-msg");
+  function openPlayerId() {
+    const id = Account.loggedIn() ? Account.claims()?.sub : null;
+    if (!id) return;
+    document.getElementById("pid-value").textContent = id;
+    pidMsg.textContent = ""; pidMsg.className = "pid-note";
+    pidModal.hidden = false;
+    document.getElementById("pid-copy").focus();
+  }
+  async function copyPlayerId() {
+    const id = document.getElementById("pid-value").textContent;
+    let ok = false;
+    try { await navigator.clipboard.writeText(id); ok = true; } catch {}
+    if (!ok) {   // 클립보드를 못 쓰면 (오래된 브라우저·권한) 글자를 골라 둠
+      const r = document.createRange(); r.selectNodeContents(document.getElementById("pid-value"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      try { ok = document.execCommand("copy"); } catch {}
+    }
+    pidMsg.textContent = ok ? T("복사했어요! 디스코드 상점에 붙여 넣으세요.") : T("복사하지 못했어요. 위의 ID를 길게 눌러 직접 복사해 주세요.");
+    pidMsg.className = "pid-note" + (ok ? " good" : "");
+  }
+  const closePlayerId = () => { pidModal.hidden = true; };
+  pidBtn.addEventListener("click", openPlayerId);
+  document.getElementById("pid-copy").addEventListener("click", copyPlayerId);
+  document.getElementById("pid-close").addEventListener("click", closePlayerId);
+  pidModal.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); closePlayerId(); } });
+  pidModal.addEventListener("click", (e) => { if (e.target === pidModal) closePlayerId(); });
 
   function setMsg(text, cls = "") {
     loginMsg.textContent = text;
@@ -11690,7 +11741,7 @@
   // 포털 빌드 (dc#102): 계정·상점·랭킹·바깥 링크·같이 접속한 사람 칸을 숨기고, 플레이 중인지 포털에 알림
   if (PORTAL) {
     document.body.classList.add("portal");
-    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "terms-link", "lobby-panel", "view3d-btn"]) {
+    for (const id of ["account-btn", "account-status", "shop-btn", "rank-btn", "guest-note", "privacy-link", "terms-link", "pid-btn", "lobby-panel", "view3d-btn"]) {
       const e = document.getElementById(id);
       if (e) e.style.display = "none";
     }
