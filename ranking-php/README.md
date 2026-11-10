@@ -205,6 +205,8 @@ Xsolla Bot in Discord에서 플레이어가 `/shop`에 플레이어 ID(게임 �
 - `bot_auth_ips => '34.102.38.178'`(문서에 나온 보내는 IP)을 넣으면 다른 곳의 요청은 403
 - 로그: `sudo grep -h '\[bot_auth\]' /var/log/apache2/*error*.log | tail` (결과와 서명 상태만, ID·IP는 남기지 않음)
 - 결제 중 확인(`user_validation`)과 결제 웹훅은 그대로 `webhook.php`
+- `webhook.php`의 사용자 확인은 결과와 요청 모양(항목 이름만)·ID 종류를 남겨요 (dc#176). 디스코드 봇 · 웹훅 시험 버튼 · 결제 중 확인을 구분할 때:
+  `sudo grep -h '\[webhook\] user_validation' /var/log/apache2/*error*.log | tail` → `ok|unknown fields=… id=uuid|test|other` (ID·이메일·IP 값은 남기지 않음)
 
 ## Xsolla 웹훅 (webhook.php)
 
