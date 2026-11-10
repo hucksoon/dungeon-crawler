@@ -1177,6 +1177,13 @@
     "🎁 무료 선물로 {0}을(를) 받았다!": "🎁 Got {0} from the free gift!",
     "🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.": "🎉 Bonus! ◆{0} cash arrived in your mailbox.",
     // 장비 상자 확률 공개 (dc#107)
+    "🆔 플레이어 ID": "🆔 Player ID",
+    "🆔 내 플레이어 ID": "🆔 My Player ID",
+    "디스코드의 던전 크롤러 상점(/shop)에서 이 ID를 넣으면 이 계정으로 아이템을 받아요.": "Enter this ID in the Dungeon Crawler shop on Discord (/shop) to receive items on this account.",
+    "복사": "Copy",
+    "이 ID로는 로그인할 수 없지만, 다른 사람과는 나누지 마세요.": "This ID can't be used to log in, but please don't share it with others.",
+    "복사했어요! 디스코드 상점에 붙여 넣으세요.": "Copied! Paste it into the Discord shop.",
+    "복사하지 못했어요. 위의 ID를 길게 눌러 직접 복사해 주세요.": "Couldn't copy. Press and hold the ID above to copy it yourself.",
     "이용약관": "Terms of Service",
     // 3D 화면 (dc#109)
     "공격": "Attack",
