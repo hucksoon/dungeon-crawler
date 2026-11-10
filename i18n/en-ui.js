@@ -1177,7 +1177,7 @@
     "🎁 무료 선물로 {0}을(를) 받았다!": "🎁 Got {0} from the free gift!",
     "🎉 보너스! 캐시 ◆{0}이(가) 우편함에 왔다.": "🎉 Bonus! ◆{0} cash arrived in your mailbox.",
     // 장비 상자 확률 공개 (dc#107)
-    "장비 상자 확률": "Equipment box drop rates",
+    "이용약관": "Terms of Service",
     // 3D 화면 (dc#109)
     "공격": "Attack",
     "3D 화면(시험판): V &nbsp;·&nbsp; 앞뒤 W·S &nbsp;·&nbsp; 옆걸음 A·D &nbsp;·&nbsp; 둘러보기: 마우스 또는 ← → &nbsp;·&nbsp; 공격: 클릭 또는 Space &nbsp;·&nbsp; 지도: Tab (작게·크게·끄기)<br>": "3D view (beta): V &nbsp;·&nbsp; forward/back W·S &nbsp;·&nbsp; strafe A·D &nbsp;·&nbsp; look: mouse or ← → &nbsp;·&nbsp; attack: click or Space &nbsp;·&nbsp; map: Tab (small · large · off)<br>",

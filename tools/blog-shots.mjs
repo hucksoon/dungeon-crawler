@@ -1176,6 +1176,11 @@ const SCENES = [
       L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && y >= y0 - 3 && y <= y0 + 6 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [["ArrowDown", 300], ["ArrowDown", 1200], ["ArrowDown", 2100]], 3300, { cols: 9, rows: 6, every: 50 }), delay: 5 }; }],
+  // dc#173: 이용약관 페이지
+  ["v30-terms", "이용약관 페이지: 한눈에 보기와 한국어·영어·일본어 버튼", async () => {
+    const o = await open({ file: "terms.html", viewport: { width: 820, height: 600 } });
+    await sleep(300);
+    return { ...o, nowait: true }; }],   // 화면에 보이는 맨 위만
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
