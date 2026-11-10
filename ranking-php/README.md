@@ -201,12 +201,41 @@ Xsolla Bot in Discord에서 플레이어가 `/shop`에 플레이어 ID(게임 �
 
 - 형식: [웹샵 사용자 확인 웹훅](https://developers.xsolla.com/webhooks/user-validation/user-validation-in-webshop). 요청 `{"user": {"id"}, "settings": {...}}`
 - 게임에 로그인한 적 있는 ID → `200 {"user": {"id": "..."}}`, 모르는 ID → `404 INVALID_USER`, 형식 오류 → 400
-- 서명 방식이 문서에 없어서 서명이 없어도 처리하고, 서명 상태만 로그에 남겨요 (`sig=none` / `sig=ok:webhook_secret` / `sig=other`). 확인한 뒤 `bot_auth_require_sig => true`로 서명을 필수로 바꿀 수 있어요
-- `bot_auth_ips => '34.102.38.178'`(문서에 나온 보내는 IP)을 넣으면 다른 곳의 요청은 403
+- 서명 방식이 문서에 없어서 서명이 없어도 처리하고, 서명 상태만 로그에 남겨요 (`sig=none` / `sig=ok:webhook_secret` / `sig=other`). **2026-11-10 확인: 봇은 서명을 보내지 않아요(`sig=none`).** 그래서 `bot_auth_require_sig => true`를 켜면 봇 로그인이 모두 막혀요
+- `bot_auth_ips`(쉼표로 여럿)를 넣으면 그 IP 말고는 403. 문서에는 34.102.38.178로 나오지만 **실제로 온 IP는 34.45.1.118**(구글 클라우드, `Go-http-client/1.1`)이에요. IP가 바뀌면 봇이 막히니 켤 때는 로그로 IP를 먼저 확인하세요
 - 로그: `sudo grep -h '\[bot_auth\]' /var/log/apache2/*error*.log | tail` (결과와 서명 상태만, ID·IP는 남기지 않음)
 - 결제 중 확인(`user_validation`)과 결제 웹훅은 그대로 `webhook.php`
 - `webhook.php`의 사용자 확인은 결과와 요청 모양(항목 이름만)·ID 종류를 남겨요 (dc#176). 디스코드 봇 · 웹훅 시험 버튼 · 결제 중 확인을 구분할 때:
   `sudo grep -h '\[webhook\] user_validation' /var/log/apache2/*error*.log | tail` → `ok|unknown fields=… id=uuid|test|other` (ID·이메일·IP 값은 남기지 않음)
+
+### 운영 메모: 봇이 "External authorization service is unavailable"을 낼 때 (2026-11-10)
+
+증상: 디스코드 `/shop` 로그인이 위 오류로 실패하고, 봇 주소를 webhook.php · bot_auth.php · 다른 주소로 바꿔도 접속 로그·PHP 로그에 봇 요청이 하나도 없어요. Publisher Account의 웹훅 시험 버튼(185.30.21.x)은 정상으로 들어와요.
+
+원인: 봇의 요청 프로그램(Go)이 **HTTPS 인증서를 믿지 못해 요청을 보내기 전에 연결을 끊었어요.** 당시 인증서는 Let's Encrypt의 새 ECDSA 계열(YE1 → Root YE → ISRG Root X2)이었어요. 브라우저·curl·openssl은 이 인증서를 정상으로 봐서 겉으로는 문제가 안 보여요. 요청 전에 끊기니 주소를 바꿔도 결과가 같았어요(설정이 안 바뀐 게 아니었음).
+
+해결: 인증서를 **RSA + ISRG Root X1** 계열로 다시 받음 (이후 자동 갱신도 RSA로 이어짐)
+
+```bash
+sudo certbot renew --cert-name apacimtest.com-0001 --key-type rsa --preferred-chain "ISRG Root X1" --force-renewal
+sudo systemctl reload apache2
+# 확인: 맨 위가 ISRG Root X1이면 됨 (YR2 → Root YR → ISRG Root X1)
+echo | openssl s_client -connect apacimtest.com:443 -servername apacimtest.com -showcerts 2>/dev/null | grep -E '^ *[0-9]+ s:|^ *i:'
+```
+
+인증서를 다시 만들거나 서버를 옮길 때도 `--key-type rsa`를 지키세요. ECDSA로 돌아가면 같은 문제가 다시 생길 수 있어요.
+
+다시 생겼을 때 확인하는 법 (접속 로그에 아무것도 없을 때):
+
+```bash
+# 1) 연결이 서버까지 오는지: /shop을 누르는 동안 34.x 주소의 연결이 보이면 옴
+sudo timeout 60 tcpdump -ni any 'tcp port 443 and net 34.0.0.0/8'
+# 2) 왜 끊기는지: HTTPS 자세한 로그를 잠깐 켜고 /shop 한 번 → 끄기
+echo 'LogLevel warn ssl:info' | sudo tee /etc/apache2/conf-available/ssl-debug.conf
+sudo a2enconf ssl-debug && sudo systemctl reload apache2
+sudo grep -hE 'AH02008|alert' /var/log/apache2/*error*.log | tail   # "alert bad certificate (42)"면 인증서 문제
+sudo a2disconf ssl-debug && sudo systemctl reload apache2
+```
 
 ## Xsolla 웹훅 (webhook.php)
 
