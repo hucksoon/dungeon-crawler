@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[네이버 옮기기] 각성 스킬을 처음부터, 축복은 모두 같은 확률로</title>
+<meta name="description" content="속성마다 있는 두 번째 스킬(각성)을 일반 던전 초반부터 쓸 수 있게 바꾸고, 축복 카드가 모두 같은 확률로 나오게 했어요. 레벨도 더 빨리 올라요.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://game.apacimtest.com/blog/naver/2026-11-12.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="던전 크롤러 개발 블로그" href="https://game.apacimtest.com/blog/feed.xml">
+<meta property="og:type" content="article">
+<meta property="og:title" content="[네이버 옮기기] 각성 스킬을 처음부터, 축복은 모두 같은 확률로">
+<meta property="og:description" content="속성마다 있는 두 번째 스킬(각성)을 일반 던전 초반부터 쓸 수 있게 바꾸고, 축복 카드가 모두 같은 확률로 나오게 했어요. 레벨도 더 빨리 올라요.">
+<meta property="og:url" content="https://game.apacimtest.com/blog/naver/2026-11-12.html">
+
+<style>
+  :root { --bg: #0d0e14; --panel: #16181f; --border: #2a2d3a; --text: #cdd3de; --muted: #8a91a0; --accent: #ffcf5c; --link: #6bd3ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", ui-monospace, monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 56px; line-height: 1.8; font-size: 15px; }
+  a { color: var(--link); }
+  h1 { font-size: 22px; color: var(--accent); margin: 8px 0 4px; line-height: 1.4; }
+  h2 { font-size: 18px; color: var(--accent); margin: 32px 0 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  ul { padding-left: 22px; }
+  code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.92em; }
+  blockquote { margin: 0 0 16px; padding: 6px 14px; border-left: 3px solid var(--accent); background: var(--panel); }
+  .nav { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; padding: 0; list-style: none; }
+  .tags li { font-size: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 0 8px; color: var(--muted); }
+  .post { display: block; text-decoration: none; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .post:hover { border-color: var(--accent); }
+  .post b { color: var(--accent); font-size: 16px; }
+  .post p { margin: 6px 0 0; font-size: 14px; }
+  figure { margin: 8px 0 24px; text-align: center; }
+  figure img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .banner { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin: 4px 0 16px; }
+  .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 8px; }
+  .shot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .shot a.view { display: block; }
+  .shot img { display: block; width: 100%; height: 190px; object-fit: contain; background: #000; border: 0; border-radius: 4px; }
+  .shot figcaption { color: var(--text); font-size: 13px; margin: 0; line-height: 1.5; flex: 1; }
+  .shot figcaption span { color: var(--muted); font-size: 12px; }
+  .dl { display: inline-block; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); }
+  .dl:hover { background: var(--accent); color: #111; }
+  .dl.all { background: var(--accent); color: #111; font-size: 14px; padding: 8px 16px; }
+  .ad-unit { margin: 28px 0; min-height: 50px; }
+  .feed-ad { margin: 0 0 12px; }
+  /* 글 양옆 세로 광고 (dc#135): 넓은 화면(1140px 이상, PC)에서만. 본문과 겹치지 않게 양옆 칸에 두고 위아래로만 따라옴 */
+  .rail { display: none; }
+  @media (min-width: 1140px) {
+    .layout { display: grid; grid-template-columns: 1fr 760px 1fr; }
+    .layout > main { margin: 0; }
+    .rail { display: block; padding-top: 96px; }
+    .rail-l { justify-self: end; margin-right: 24px; }
+    .rail-r { justify-self: start; margin-left: 24px; }
+    .rail-ad { position: sticky; top: 24px; width: 160px; min-height: 600px; }
+  }
+
+  #paper { background: #fff; color: #222; border-radius: 8px; padding: 24px; font-family: sans-serif; }
+  #paper h2, #paper h3 { color: #222; border: 0; padding: 0; }
+  #paper a { color: #0068c3; }
+  #paper code { border: 0; }
+  #paper blockquote { background: none; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .bar button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #111; cursor: pointer; }
+  .bar button.alt { background: transparent; color: var(--accent); }
+  #status { color: var(--muted); font-size: 13px; min-height: 1.4em; }
+  .steps { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav"><a href="./">← 네이버 옮기기 목록</a><a href="../2026-11-12.html">블로그 글 보기</a></nav>
+<h1 id="title-text">각성 스킬을 처음부터, 축복은 모두 같은 확률로</h1>
+<p class="meta">2026년 11월 12일 (목) · 태그: 개발일기, 업데이트, 밸런스, 축복, 속성 스킬</p>
+<p class="steps">네이버 블로그 → 글쓰기에서 ① 제목 복사 → 제목 칸에 붙여 넣기 ② 본문 복사 → 본문에 붙여 넣기 ③ 태그 입력 → 발행</p>
+<div class="bar"><button type="button" id="copy-title">① 제목 복사</button><button type="button" id="copy-body">② 본문 복사</button></div>
+<p id="status" aria-live="polite"></p>
+<p class="steps">이미지 2장은 본문과 함께 복사돼요. 네이버에 이미지가 안 들어가면 아래에서 저장해서 그 자리에 올려 주세요: <a href="../images/v31-bless.png" download="2026-11-12-1-v31-bless.png">1. 9층 축복: 각성 불의 장화와 각성 전자기장, 화염구 Lv 4가 함께 나와요</a> · <a href="../images/v31-skills.gif" download="2026-11-12-2-v31-skills.gif">2. 8층: 화염구, 지나간 자리의 불, 연쇄 번개, 전자기장이 함께 터져요</a></p>
+<div id="paper">
+<p>처음부터 33층까지 직접 내려가 봤는데, 속성 스킬이 좀처럼 오르지 않았어요. 레벨은 31이었고, 쓰는 스킬은 화염구와 연쇄 번개 두 개뿐이라 조금 지루했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">왜 그랬을까</span></b></p>
+<p>시뮬레이션으로 한 판을 수백 번 돌려 보니 이유가 두 가지였어요.</p>
+<p><br></p>
+<p>• 속성마다 스킬이 <strong>두 개</strong>(기본 스킬 + 각성 스킬)인데, 각성 스킬은 기본 스킬을 <strong>Lv 10까지</strong> 올려야 열렸어요. 일반 던전 50층까지 가도 화염구가 평균 Lv 5 정도라 각성은 거의 볼 수 없었어요.</p>
+<p>• 속성 카드는 단계가 오를수록 점점 덜 나왔어요. 예전에 &quot;속성이 너무 빨리 만렙이 된다&quot;는 의견으로 넣은 규칙이었는데, 이번에는 이게 발목을 잡았어요.</p>
+<p><br></p>
+<p>레벨만 빨리 올려 보는 것도 시험했지만, 속성 스킬은 거의 그대로이고 게임만 쉬워졌어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">바뀐 것</span></b></p>
+<p>• <strong>각성 스킬은 그 속성을 한 번 고르면 바로</strong> 후보에 나와요. 화염구를 고른 뒤라면 다음 축복부터 각성 불의 장화가 나올 수 있어요.</p>
+<p>• 속성은 지금처럼 <strong>두 가지까지</strong>예요. 두 속성의 기본 스킬과 각성 스킬, 모두 네 개를 처음부터 같이 키워요.</p>
+<p>• 축복 카드는 <strong>모두 같은 확률</strong>로 나와요. 단계가 올라도 그 속성 카드가 덜 나오지 않아요.</p>
+<p>• 레벨이 더 빨리 오르고, <strong>레벨이 오를 때마다</strong> 축복을 하나씩 골라요(예전에는 2레벨마다).</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v31-bless.png" alt="9층 축복: 각성 불의 장화와 각성 전자기장, 화염구 Lv 4가 함께 나와요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">9층 축복: 각성 불의 장화와 각성 전자기장, 화염구 Lv 4가 함께 나와요</span></p>
+<p><br></p>
+<p>각성 역병은 중독된 몬스터가 쓰러질 때 터지는 스킬이라, 독구름 없이 고르면 아무 일도 일어나지 않아요. 그래서 각성 스킬은 기본 스킬을 먼저 한 번 고른 뒤에 열리게 했어요.</p>
+<p><br></p>
+<p><b><span style="font-size:24px;">그래서 얼마나 달라졌나</span></b></p>
+<p>일반 던전 35층에 도착했을 때를 비교하면 이래요.</p>
+<p><br></p>
+<p>• 레벨: 31 → 35</p>
+<p>• 고른 축복: 33번 → 52번</p>
+<p>• 화염구 + 각성 불의 장화: Lv 4 + 0 → <strong>Lv 8 + Lv 6</strong></p>
+<p>• 50층까지 가면 각성 스킬 하나는 거의 늘 만렙이고, 두 속성을 섞은 융합 스킬도 볼 수 있어요.</p>
+<p><br></p>
+<p style="text-align:center;"><img src="https://game.apacimtest.com/blog/images/v31-skills.gif" alt="8층: 화염구, 지나간 자리의 불, 연쇄 번개, 전자기장이 함께 터져요" style="max-width:100%;height:auto;"></p>
+<p style="text-align:center;"><span style="font-size:13px;color:#888888;">8층: 화염구, 지나간 자리의 불, 연쇄 번개, 전자기장이 함께 터져요</span></p>
+<p><br></p>
+<p><b><span style="font-size:24px;">대신 몬스터가 세졌어요</span></b></p>
+<p>스킬과 레벨이 빨리 오르는 만큼, 그대로 두면 거의 모든 판이 끝까지 가 버렸어요. 그래서 몬스터를 다시 맞췄어요. 일반 던전은 깊이 내려갈수록 더 세지고, 나이트메어와 헬 몬스터도 HP와 공격력이 올라갔어요.</p>
+<p><br></p>
+<p>시뮬레이션에서 일반 던전 50층까지 가는 비율은 예전과 비슷한 60% 정도예요. 같은 난이도에서 스킬이 훨씬 화려하게 돌아가는 쪽으로 바뀌었어요.</p>
+<p><br></p>
+<p><br></p>
+<p>📝 원문과 지난 개발 이야기: <a href="https://game.apacimtest.com/blog/2026-11-12.html">https://game.apacimtest.com/blog/2026-11-12.html</a></p>
+<p>🎮 게임 하기: <a href="https://game.apacimtest.com/">https://game.apacimtest.com/</a></p>
+</div>
+<script>
+  async function copy(html, text) {
+    try {
+      if (window.ClipboardItem && html) await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 클립보드 권한이 없으면 선택해서 복사
+      const r = document.createRange(), sel = getSelection(), el = html ? document.getElementById("paper") : document.getElementById("title-text");
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      const ok = document.execCommand("copy"); sel.removeAllRanges(); return ok;
+    }
+  }
+  const status = (t) => { document.getElementById("status").textContent = t; };
+  document.getElementById("copy-title").onclick = async () => status(await copy(null, document.getElementById("title-text").textContent) ? "제목을 복사했어요. 네이버 글쓰기의 제목 칸에 붙여 넣으세요." : "복사하지 못했어요. 제목을 직접 선택해 복사해 주세요.");
+  document.getElementById("copy-body").onclick = async () => { const p = document.getElementById("paper"); status(await copy(p.innerHTML, p.innerText) ? "본문을 복사했어요. 네이버 글쓰기 본문에 붙여 넣으세요 (서식 유지)." : "복사하지 못했어요. 아래 본문을 직접 선택해 복사해 주세요."); };
+</script>
+<footer>던전 크롤러 개발 블로그 · <a href="https://game.apacimtest.com/">게임 하기</a> · <a href="https://game.apacimtest.com/blog/media.html">게임 이미지</a> · <a href="https://game.apacimtest.com/blog/feed.xml">RSS</a></footer>
+</main>
+</body>
+</html>

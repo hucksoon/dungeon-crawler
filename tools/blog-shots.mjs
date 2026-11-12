@@ -1190,6 +1190,25 @@ const SCENES = [
     const o = await open({ scene: "lobby", loggedIn: true, dsf: 1.4 });
     await sleep(500);
     return { ...o, shot: "#account", nowait: true }; }],
+  // dc#178: 각성 스킬이 속성 Lv 1부터 · 모든 축복이 같은 확률 → 기본 스킬과 각성 스킬 카드가 같이 나옴
+  ["v31-bless", "9층 축복: 각성 불의 장화 · 각성 전자기장 · 화염구 Lv 4가 함께 나와요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_event: "off", rl_bless: "on", rl_autogear: "1", rl_save: save(9, "blog-v31b253", { l: 9, bz: { normal: 8 }, bl: { fire: 3, bolt: 2, might: 1, vigor: 1 } }), "rl_inv:g:DEV": inv(g40) } });
+    await o.page.waitForSelector("#bless-modal:not([hidden])", { timeout: 5000 }).catch(() => {});
+    return { ...o, shot: "#bless-modal .modal" }; }],
+  ["v31-skills", "8층: 화염구 · 불의 장화 · 연쇄 번개 · 전자기장이 함께 터져요", async () => {
+    const o = await open({ dsf: 1.4, seed: { rl_autogear: "1", rl_live: "off", rl_save: save(8, "blog-v31sk", { l: 12, hp: 99999, mh: 99999, bz: { normal: 8 }, bl: { fire: 5, fireAw: 4, bolt: 4, boltAw: 4 } }), "rl_inv:g:DEV": inv(g40.slice(0, 2)) } });
+    await o.page.keyboard.press("."); await sleep(300);
+    await editLevel(o.page, (L) => {
+      const m = L.map.split(""), x0 = Math.max(6, Math.min(L.w - 7, L.px)), y0 = Math.max(4, Math.min(L.h - 5, L.py));
+      for (let y = y0 - 3; y <= y0 + 3; y++) for (let x = x0 - 6; x <= x0 + 6; x++) m[y * L.w + x] = "1";
+      L.map = m.join(""); L.px = x0; L.py = y0;
+      const base = L.enemies.find(e => e.kind === "normal") || L.enemies[0];
+      const mk = (dx, dy) => ({ ...base, kind: "normal", x: x0 + dx, y: y0 + dy, hp: 99999, maxHp: 99999, atk: 0, def: 0, ranged: false, ready: false, smash: null, slow: 0 });
+      L.enemies = [mk(-2, -1), mk(-3, 1), mk(3, -1), mk(4, 1)];
+      L.items = []; L.shop = null; L.fs = { ...(L.fs || {}), sc: 999, ls: 1 };
+      L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
+    });
+    return { ...o, frames: await recordMe(o.page, [["ArrowUp", 300], ["ArrowDown", 1100], [".", 1900], [".", 2700], [".", 3500]], 4600, { cols: 7, rows: 4, every: 40 }), delay: 6 }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

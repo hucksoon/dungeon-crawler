@@ -68,7 +68,7 @@ try {
   check("new: 흡혈귀의 이빨 (lifesteal +2%, max 5)", B.BLESSINGS.vamp?.fx.lifesteal === 2 && B.BLESSINGS.vamp.max === 5);
   check("완벽한 물약 only after 물약 장인 is maxed (5)", B.offer("p1", { brew: 4 }).every(id => id !== "perfect") && (() => { for (let i = 0; i < 400; i++) if (B.offer(`p${i}`, { brew: 5 }).includes("perfect")) return true; return false; })());
   const awOffered = (have, id) => { for (let i = 0; i < 600; i++) if (B.offer(`a${i}`, have).includes(id)) return true; return false; };
-  check("awakened skills appear only after Lv 10 of that element", !awOffered({ fire: 9 }, "fireAw") && awOffered({ fire: 10 }, "fireAw") && awOffered({ ice: 10 }, "iceAw") && awOffered({ bolt: 10 }, "boltAw") && !awOffered({ fire: 10 }, "boltAw"));
+  check(`awakened skills appear once that element is picked (dc#178: Lv ${B.AW_FROM}, was Lv 10)`, B.AW_FROM === 1 && !awOffered({}, "fireAw") && awOffered({ fire: 1 }, "fireAw") && awOffered({ ice: 1 }, "iceAw") && awOffered({ bolt: 1 }, "boltAw") && !awOffered({ fire: 10 }, "boltAw"));
   check(`awakened names "각성 …" and Lv 10 max (${B.BLESSINGS.fireAw.name}, ${B.BLESSINGS.iceAw.name}, ${B.BLESSINGS.boltAw.name})`, ["fireAw", "iceAw", "boltAw"].every(k => B.BLESSINGS[k].name.startsWith("각성 ") && B.BLESSINGS[k].max === 10));
   const F = (lv) => B.AWAKE.field(lv);
   check(`전자기장: radius grows 1 → 4 max, longer cooldown than skills (every ${F(1).every} → ${F(10).every}), % of max HP ${F(1).pct} → ${F(10).pct}`, F(1).radius === 1 && F(10).radius === 4 && [1, 4, 7, 10].every((l, i) => F(l).radius === i + 1) && F(10).every > B.ELEM.bolt(10).every && F(10).pct > F(1).pct);
@@ -81,7 +81,7 @@ try {
   await T(A.page, "yard");
   // ---- 2. 축복 차례 ----
   const q = await T(A.page, "blessQ");
-  check(`no blessing on floor 1, one on floor 3 (dc#171: every 3 floors); level-up blessing only on even levels (${q.join(",")})`, q[0] === 0 && q[1] === 1 && q[2] === 1 && q[3] === 2, JSON.stringify(q));
+  check(`no blessing on floor 1, one on floor 3 (dc#171: every 3 floors); level-up blessing on every level (dc#178, was even levels) (${q.join(",")})`, q[0] === 0 && q[1] === 1 && q[2] === 2 && q[3] === 3, JSON.stringify(q));
   // ---- 3. 흡혈 · 완벽한 물약 ----
   await T(A.page, "setBl", { vamp: 3 });
   check("흡혈귀의 이빨 ×3 → lifesteal 6%", (await T(A.page, "st")).ls === 6);

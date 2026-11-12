@@ -24,14 +24,15 @@ if (OPT.nr != null) M.NORMAL.ramp = OPT.nr;
 if (OPT.hpx != null) M.NORMAL.hp = OPT.hpx;
 if (OPT.acurve != null) M.NORMAL.atkCurve = OPT.acurve;   // 공격력만 앞쪽 층부터 세게 (dc#155)   // 일반 던전 몬스터 HP만 더 곱함 (dc#155)
 if (OPT.zone) Object.assign(I.POWER.zone, OPT.zone);
+if (OPT.v2) for (const [k, v] of Object.entries(OPT.v2)) Object.assign(M.V2[k], v);   // 나이트메어·헬 몬스터 배율 바꿔 보기 ({ nightmare: { hp, atk }, hell: { hp, atk } }, dc#178)
 
 const between = (r, a, b) => a + Math.floor(r() * (b - a + 1));
 const SLOTS9 = ["weapon", "offhand", "head", "chest", "arms", "pants", "boots", "neck", "ring1", "ring2"];
 const ENH_ORDER = SLOTS9;
 // 속성 스킬 축복 (dc#142)은 재미로 많이 고른다고 보고 앞쪽 (OPT.noElem: 고르지 않음)
-//   dc#163: 각성 스킬은 그 속성이 Lv 10이면 바로 고름 (각성 → 원래 속성 순), 흡혈·완벽한 물약도
+//   dc#163: 각성 스킬은 그 속성이 Lv 10이면 바로 고름, 흡혈·완벽한 물약도 → dc#178: 각성이 Lv 1부터 나오니 원래 속성 → 각성 순 (각성만 먼저 키우면 약함)
 //   dc#168: 독구름·역병·융합 스킬도 (융합 → 각성 → 원래 속성 순)
-const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["neuro", "ignite", "flamebolt", "steam", "storm", "frostfog", "fireAw", "boltAw", "poisonAw", "iceAw", "fire", "bolt", "poison", "ice"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
+const BLESS_PRI = OPT.bpri || [...(OPT.noElem ? [] : ["neuro", "ignite", "flamebolt", "steam", "storm", "frostfog", "fire", "bolt", "poison", "ice", "fireAw", "boltAw", "poisonAw", "iceAw"]), "hero", "vamp", "might", "vigor", "stone", "perfect", "first", "king", "brew", "quick", "breath", "hunt", "trove", "eye", "guide", "study", "coin"];
 const RELIC_PRI = OPT.rpri || ["grail", "heart", "tome", "hawk", "mark", "wall", "spring", "sage", "resPoison", "resFire", "resIce", "resBolt"];   // dc#170: 새 유물 넷
 // 몬스터 공격 속성 (dc#163, monsters.js NORMAL_ELEM): 일반 던전 일부 몬스터 (OPT.nelem: false면 없음)
 const NE = OPT.nelem === false || !M.NORMAL_ELEM ? null : M.NORMAL_ELEM;
@@ -45,7 +46,7 @@ function newPlayer(level = 1) {
 }
 // 레벨 (dc#143): 다음 레벨까지 ×XP_GROW (게임과 같게 1.3), 레벨이 오를 때마다 축복 하나 (p.lvBless가 있으면)
 //   dc#152: 레벨마다 필요한 경험치 ×OPT.xpNeed (기본 4, 게임 XP_NEED와 같게. 1이면 예전)
-const XP_GROW = OPT.xpGrow ?? 1.3;
+const XP_GROW = OPT.xpGrow ?? 1.25;   // dc#178: 1.3 → 1.25
 // 경험치 구슬 (dc#151): 주워야 오름 → 줍는 몫 OPT.xpPick (기본 0.9, 멀리서 스킬로 잡은 것 일부는 못 주움)
 const XP_PICK = OPT.xpPick ?? 0.9;
 function levelUp(p) { p.lvl++; p.xpNext = Math.floor(p.xpNext * XP_GROW); p.maxHp += 4; p.atk += 1; if (p.lvBless) p.lvBless(p.lvl); }
@@ -350,8 +351,8 @@ function pickBest(list, pri) { return [...list].sort((a, b) => priOf(pri, a) - p
 // 한 던전 50층 (p를 이어서 씀). 쓰러지면 쓰러진 층, 다 깨면 0
 function runZone(p, zone, r, rid, out, from = 1) {
   const st = { hp: stats(p).maxHp, cd: 0, killed: [] };
-  //   dc#163: 레벨 업 축복은 2레벨마다 (짝수 레벨, OPT.lvEvery: 1이면 예전처럼 매 레벨)
-  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { if (lvl % (OPT.lvEvery ?? 2)) return; const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
+  //   dc#163: 레벨 업 축복은 2레벨마다 → dc#178: 다시 매 레벨 (OPT.lvEvery: 2면 dc#163~177처럼 짝수 레벨만)
+  p.lvBless = OPT.noBless || OPT.noLvBless ? null : (lvl) => { if (lvl % (OPT.lvEvery ?? 1)) return; const off = B.offer(`${rid}|lv|${lvl}`, p.bl, false, lvl === 2 && !B.elemUsed(p.bl)); if (off.length) { const id = pickBest(off, BLESS_PRI); p.bl[id] = (p.bl[id] || 0) + 1; } };
   for (let f = from; f <= 50; f++) {
     // 새 층: 축복 하나
     const off = (f === 1 && !OPT.firstBless) || f % (OPT.floorEvery ?? B.FLOOR_EVERY) ? [] : B.offer(`${rid}|${zone}|${f}`, p.bl);   // dc#171: 층 축복은 FLOOR_EVERY층마다 (OPT.floorEvery: 1이면 예전처럼 매 층). 속성 칸은 B.offer가 막음   // dc#163: 1층(던전에 처음 들어갈 때)은 축복 없음 (OPT.firstBless: 예전처럼)
