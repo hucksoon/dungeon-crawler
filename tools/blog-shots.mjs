@@ -1209,6 +1209,12 @@ const SCENES = [
       L.seen = Array.from(m, (_, i) => { const x = i % L.w, y = (i / L.w) | 0; return Math.abs(x - x0) <= 7 && Math.abs(y - y0) <= 4 ? "1" : "0"; }).join("");
     });
     return { ...o, frames: await recordMe(o.page, [["ArrowUp", 300], ["ArrowDown", 1100], [".", 1900], [".", 2700], [".", 3500]], 4600, { cols: 7, rows: 4, every: 40 }), delay: 6 }; }],
+  // dc#179: 휴대폰 던전 화면 왼쪽 위 포션 버튼 (HP가 적고 준비되면 깜빡임)
+  ["v31-potbtn", "휴대폰: 화면 왼쪽 위 포션 버튼 — HP가 적으면 빨갛게 깜빡여요", async () => {
+    const o = await open({ dsf: 2, touch: true, viewport: { width: 390, height: 844 }, seed: { rl_event: "off", rl_bless: "off", rl_autogear: "1", rl_live: "off", rl_save: save(6, "blog-v31pot", { l: 8, hp: 60, mh: 400, x: 120, xn: 400 }), "rl_inv:g:DEV": inv(g40.slice(0, 2)), rl_tut: JSON.stringify(["intro", "enter", "dungeon", "walk", "heal"]) } });
+    await o.page.addStyleTag({ content: "#tip, #gift-banner, #event-banner, #stage-pot { animation: none !important; } #tip { display: none !important; }" });
+    await sleep(500);
+    return { ...o, shot: "#stage" }; }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

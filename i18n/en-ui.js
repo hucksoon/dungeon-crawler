@@ -95,6 +95,7 @@
     "{0} 완료": "{0} cleared",
     "포션 ({0}턴)": "Potion ({0} turns)",
     "포션 (준비됨)": "Potion (ready)",
+    "포션 마시기": "Drink potion",
     "🔥 화상 {0}회": "🔥 Burn ×{0}",
     "❄ 느려짐 {0}턴": "❄ Slowed {0} turns",
     "❄ 면역 {0}턴": "❄ Immune {0} turns",

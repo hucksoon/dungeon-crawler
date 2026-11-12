@@ -111,6 +111,23 @@
   @keyframes guardFlash { 0% { opacity: 0; } 12% { opacity: 1; } 35% { opacity: 0.35; } 50% { opacity: 0.9; } 100% { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { #guard-flash.on { animation: guardFlashCalm 0.9s ease-out; } @keyframes guardFlashCalm { 0% { opacity: 0.7; } 100% { opacity: 0; } } }
   #tp-potion.urgent { border-color: #ff5a4a; color: #ff9a8a; animation: urgent 0.8s ease-in-out infinite alternate; }
+  /* 화면 위 포션 버튼 (dc#179): 휴대폰(새 조작)에서 던전 화면 왼쪽 위. 화면만 보고 하니 아래 메뉴 줄까지 손이 안 감
+     --cd: 남은 대기 비율 (1 = 방금 마심 → 0 = 준비). 대기 중에는 어둡게 + 남은 턴, 준비되면 밝게 */
+  #stage-pot { display: none; }
+  @media (pointer: coarse) {
+    body.joy #stage-pot:not([hidden]) { display: flex; }
+    body.joy #stage-pot:not([hidden]) ~ #tip { top: 72px; }   /* 도움말 말풍선은 버튼 아래로 */
+  }
+  #stage-pot { position: absolute; left: 8px; top: 8px; z-index: 4; width: 56px; height: 56px; padding: 0; border-radius: 50%; align-items: center; justify-content: center;
+    line-height: 1; border: 2px solid #ff7a6a; color: #fff; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+    background: conic-gradient(rgba(10, 8, 16, 0.78) calc(var(--cd, 0) * 360deg), rgba(140, 30, 40, 0.82) 0); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); }
+  #stage-pot .pot-ico { font-size: 26px; }
+  #stage-pot .pot-cd { position: absolute; right: -4px; bottom: -4px; min-width: 22px; padding: 2px 4px; border-radius: 999px; font-size: 12px; font-weight: bold; background: #1a1622; border: 1px solid #5a4a6a; color: #ffcf9a; }
+  #stage-pot .pot-cd:empty { display: none; }
+  #stage-pot.cooling { border-color: #5a4a6a; } #stage-pot.cooling .pot-ico { opacity: 0.45; filter: grayscale(0.8); }
+  #stage-pot:active { transform: scale(0.94); }
+  #stage-pot.urgent { border-color: #ff5a4a; animation: urgent 0.8s ease-in-out infinite alternate; }
+  @media (prefers-reduced-motion: reduce) { #stage-pot.urgent { animation: none; box-shadow: 0 0 12px #ff5a4a; } }
   @keyframes urgent { to { background: #4a1612; } }
   @media (prefers-reduced-motion: reduce) { #tp-potion.urgent { animation: none; background: #4a1612; } }
   #popups { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -784,7 +801,7 @@
     <span id="status" hidden></span>
   </div>
   <div id="bless-bar" role="button" tabindex="0" aria-label="이 판의 축복·유물" data-t-aria hidden></div>
-  <div id="stage"><canvas id="game" width="640" height="480"></canvas><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div><div id="guard-flash" aria-hidden="true"></div>
+  <div id="stage"><canvas id="game" width="640" height="480"></canvas><button id="stage-pot" type="button" hidden><span class="pot-ico" aria-hidden="true">🧪</span><span class="pot-cd" aria-hidden="true"></span></button><div id="popups" aria-hidden="true"></div><div id="tip" role="status" hidden><span id="tip-text"></span><span class="tip-btns"><button id="tip-fold" type="button"></button><button id="tip-close" type="button" data-t>건너뛰기 ×</button></span></div><button id="gift-banner" type="button" hidden></button><button id="event-banner" type="button" hidden></button></div><div id="guard-flash" aria-hidden="true"></div>
   <div id="touch-pad" aria-label="터치 조작" data-t-aria>
     <!-- 휴대폰에서는 CSS 격자로 배치: 왼손 엄지 방향(던전은 십자, 마을·점프 던전은 ◀ ▶), 오른손 엄지 큰 버튼, 위 줄 메뉴 -->
     <div class="dpad dpad-left">
@@ -9024,6 +9041,14 @@
     document.getElementById("best").textContent = inAbyss() ? (abyssCleared ? T("{0} 완료", abyssBest) : (abyssBest || "-")) : inHell() ? (hellCleared ? T("{0} 완료", hellBest) : (hellBest || "-")) : inNM() ? (nmCleared ? T("{0} 완료", nmBest) : (nmBest || "-"))
       : cleared ? T("{0} 완료", bestDepth) : (bestDepth || "-");
     document.getElementById("tp-potion").textContent = player.potCd > 0 ? T("포션 ({0}턴)", player.potCd) : T("포션 (준비됨)");
+    // 화면 위 포션 버튼 (dc#179): 던전에서만. 남은 대기를 둥근 그림자 + 숫자로
+    const sp = document.getElementById("stage-pot"), cdMax = Math.max(1, POTION.cooldown - (s.potCd || 0));
+    sp.hidden = scene !== "dungeon" || gameOver;
+    sp.classList.toggle("cooling", player.potCd > 0);
+    sp.classList.toggle("urgent", low && player.potCd <= 0);
+    sp.style.setProperty("--cd", Math.min(1, Math.max(0, player.potCd / cdMax)).toFixed(3));
+    sp.querySelector(".pot-cd").textContent = player.potCd > 0 ? String(player.potCd) : "";
+    const spl = player.potCd > 0 ? T("포션 ({0}턴)", player.potCd) : T("포션 마시기"); sp.title = spl; sp.setAttribute("aria-label", spl);
     const jumpBtn = document.getElementById("tp-jump");
     jumpBtn.textContent = scene !== "dungeon" ? T("점프") : jumpAim ? T("방향 ▲▼◀▶") : player.jumpCd > 0 ? T("점프 ({0}턴)", player.jumpCd) : T("점프");
     jumpBtn.classList.toggle("aiming", jumpAim);
@@ -11266,6 +11291,12 @@
   pad.addEventListener("contextmenu", (e) => e.preventDefault());  // 길게 눌러도 메뉴가 뜨지 않게
 
   document.getElementById("tp-potion").addEventListener("click", usePotion);
+  // 화면 위 포션 (dc#179): 누르는 순간 마심 (다른 손가락으로 걷는 중에도). 버튼은 지도 위에 있어서 이동·회피(지도 터치)로 넘어가지 않음
+  {
+    const sp = document.getElementById("stage-pot"); let pd = 0;
+    sp.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); pd = performance.now(); if (!anyModalOpen()) { try { navigator.vibrate?.(12); } catch {} usePotion(); } });
+    sp.addEventListener("click", (e) => { e.stopPropagation(); if (performance.now() - pd > 700 && !anyModalOpen()) usePotion(); });   // 키보드 Enter 등 (터치는 위에서 이미)
+  }
   document.getElementById("tp-jump").addEventListener("click", aimJump);
   // 점프 던전: 점프 버튼은 누르고 있는 동안 (짧게 누르면 낮게)
   const tpJump = document.getElementById("tp-jump");
