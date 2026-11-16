@@ -46,16 +46,18 @@ try {
   check("bot_auth_require_sig: unsigned → 401, signed → 200", (await auth(req(USER), { port: 8142 })).status === 401 && (await auth(req(USER), { port: 8142, sig: true })).status === 200);
   check("bot_auth_ips: other IP → 403", (await auth(req(USER), { port: 8143 })).status === 403);
   check("log has result and signature state but not the ID", /\[bot_auth\] 200 ok sig=none/.test(phpErr) && /sig=ok:webhook_secret/.test(phpErr) && !phpErr.includes(USER));
-  // ---- 로그 파일 ----
+  // ---- 로그 파일 (dc#180 → dc#181: 받은 내용·보낸 내용, 개인정보는 가림) ----
+  await auth({ ...req(USER), user: { id: USER, country: "KR", email: "player.one@example.com", ip: "203.0.113.77", name: "Hong Gildong" } });
   const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), [Y, M] = kst.split("-");
   const lf = path.join(LOGS, Y, M, `bot_auth-${kst}.log`), txt = fs.existsSync(lf) ? fs.readFileSync(lf, "utf8") : "";
-  const lines = txt.trim().split("\n").filter(Boolean);
-  check(`log file for logch.php: logs/${Y}/${M}/bot_auth-${kst}.log (${lines.length} lines)`, lines.length >= 12 && /^[a-zA-Z0-9_\-]+-\d{4}-\d{2}-\d{2}\.log$/.test(path.basename(lf)), lf);
-  const ok = lines.find(l => / 200 ok /.test(l)) || "";
-  check(`a line: KST time, result, ip, signature, ID first 8 only, field names, sender (${ok.slice(0, 160)})`,
-    /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} KST\] 200 ok ip=127\.0\.0\.1 sig=none id=0a1b2c3d-\*\*\*\* fields=settings\{merchant_id,project_id\},user\{country,id\} ua=/.test(ok), ok);
-  check("log file has no full ID, no email, no body values (KR)", !txt.includes(USER) && !txt.includes("6666") && !txt.includes("@") && !/\bKR\b/.test(txt));
-  check("errors are logged too (404 · 400 · 401 · 403 · 405)", ["404 unknown", "404 format", "400 json", "400 project", "401 sig", "403 ip", "405 method"].every(k => txt.includes(k)), txt.slice(0, 400));
+  const heads = txt.match(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]\[bot_auth\]\[\d{3}\]/gm) || [];
+  check(`log file for logch.php: logs/${Y}/${M}/bot_auth-${kst}.log (${heads.length} entries)`, heads.length >= 13 && /^[a-zA-Z0-9_\-]+-\d{4}-\d{2}-\d{2}\.log$/.test(path.basename(lf)), lf);
+  const last = txt.slice(txt.lastIndexOf("[" + kst)); const jl = JSON.parse(last.slice(last.indexOf("]{") + 1));
+  check(`entry has request + response + meta (${JSON.stringify(jl).slice(0, 200)})`, jl.request?.settings?.project_id === 317991 && jl.request?.user?.country === "KR" && jl.response?.user?.id && jl.meta?.why === "ok" && jl.meta?.sig === "none" && jl.meta?.ip === "127.0.0.1", last.slice(0, 400));
+  check(`personal data masked: id ${jl.request?.user?.id} · email ${jl.request?.user?.email} · ip ${jl.request?.user?.ip} · name ${jl.request?.user?.name}`,
+    jl.request.user.id === "0a1b2c3d****" && jl.response.user.id === "0a1b2c3d****" && /^p.{0,2}\*\*\*@example\.com$/.test(jl.request.user.email) && jl.request.user.ip === "203.0.*.*" && jl.request.user.name === "H***");
+  check("log file never has a full ID, email, IP or name", !txt.includes(USER) && !txt.includes("player.one@") && !txt.includes("113.77") && !txt.includes("Gildong"));
+  check("errors are logged with the response (404 · 400 · 401 · 403 · 405)", ["[404]", "[400]", "[401]", "[403]", "[405]"].every(k => txt.includes(k)) && txt.includes('"code": "INVALID_USER"') && txt.includes('"why": "unknown"'), txt.slice(0, 400));
 } finally { for (const s of servers) s.kill(); }
 check("no php errors", !/Fatal|Warning|Deprecated/.test(phpErr), phpErr.slice(0, 300));
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);

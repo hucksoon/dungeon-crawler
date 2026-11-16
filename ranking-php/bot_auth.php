@@ -17,9 +17,8 @@
 //   "그 ID가 우리 게임 계정인지"뿐이고, 이메일 등 다른 정보는 주지 않음). bot_auth_require_sig = true면 서명이 맞아야만 처리
 //   bot_auth_ips(쉼표로 여럿)를 config에 넣으면 그 IP에서 온 요청만 받음
 // 개인정보: 받은 ID는 저장하지 않고 HMAC으로만 찾음. 아파치 오류 로그에는 결과와 서명 상태만 (ID·IP는 남기지 않음)
-// 로그 파일 (dc#180): 운영자 로그 보기 페이지(logch.php)가 읽는 곳에 하루 한 파일 — logs/연/월/bot_auth-YYYY-MM-DD.log (한국 시간)
-//   한 줄: [시각 KST] 상태 이유 ip=보낸 곳 sig=서명 id=앞 8자리만(****) fields=항목 이름만 ua=보낸 프로그램
-//   ID 전체·이메일·요청 내용 값은 쓰지 않음. 폴더는 config의 bot_auth_log_dir (없으면 ranking 폴더 옆 logs, 그 폴더가 있을 때만. ''면 끔)
+// 로그 파일 (dc#180 → dc#181): 운영자 로그 보기 페이지(logch.php)가 읽는 logs/연/월/bot_auth-YYYY-MM-DD.log (한국 시간)에
+//   받은 내용·보낸 내용·보낸 곳·서명·이유를 한 건씩 (filelog.php). 이메일·ID·IP 등 개인정보는 가림 (ID 앞 8자리 등)
 
 declare(strict_types=1);
 
@@ -27,40 +26,14 @@ if (!defined('RANKING_NO_ROUTE')) define('RANKING_NO_ROUTE', true);
 require_once __DIR__ . '/api.php';
 
 const BOT_AUTH_MAX_BYTES = 16384;
-$BOT_LOG = ['id' => '-', 'fields' => '-'];   // 로그 파일 한 줄에 쓸 것 (요청을 읽으면서 채움)
-
-// 항목 이름만: {"settings":{"project_id":1},"user":{"id":"…"}} → settings{project_id},user{id}
-function bot_auth_shape($v, int $depth = 0): string {
-    if (!is_array($v) || $depth > 2) return '';
-    $out = [];
-    foreach ($v as $k => $x) { $k = preg_replace('/[^A-Za-z0-9_\-]/', '?', (string)$k); $out[] = is_array($x) && $x && array_keys($x) !== range(0, count($x) - 1) ? $k . '{' . bot_auth_shape($x, $depth + 1) . '}' : $k; }
-    sort($out);
-    return implode(',', $out);
-}
-// ID는 앞 8자리만 (UUID면 "e8abac14-****"), 아니면 종류만
-function bot_auth_mask($uid): string {
-    if (!is_scalar($uid)) return 'none';
-    $u = strtolower(trim((string)$uid));
-    if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $u)) return substr($u, 0, 8) . '-****';
-    return $u === '' ? 'empty' : 'other(' . strlen($u) . ')';
-}
-function bot_auth_file_log(string $line): void {
-    try {
-        $cfg = config();
-        $dir = array_key_exists('bot_auth_log_dir', $cfg) ? (string)$cfg['bot_auth_log_dir'] : dirname(__DIR__) . '/logs';
-        if ($dir === '' || !is_dir($dir)) return;
-        $now = new DateTime('now', new DateTimeZone('Asia/Seoul'));
-        $sub = $dir . '/' . $now->format('Y') . '/' . $now->format('m');
-        if (!is_dir($sub)) @mkdir($sub, 0775, true);
-        @file_put_contents($sub . '/bot_auth-' . $now->format('Y-m-d') . '.log', '[' . $now->format('Y-m-d H:i:s') . " KST] {$line}\n", FILE_APPEND | LOCK_EX);
-    } catch (Throwable $e) {}
-}
+$BOT_LOG = ['why' => '-', 'sig' => '-'];   // 로그 파일에 같이 쓸 것
+require_once __DIR__ . '/filelog.php';
+filelog_begin('bot_auth', function () { global $BOT_LOG; return ['type' => 'bot_auth', 'why' => $BOT_LOG['why'], 'sig' => $BOT_LOG['sig']]; });
 
 function bot_auth_out(int $status, ?array $body, string $why, string $sig): void {
     global $BOT_LOG;
     error_log("[bot_auth] {$status} {$why} sig={$sig}");
-    $clean = fn($s) => preg_replace('/[^\x20-\x7E]/', '?', substr((string)$s, 0, 120));
-    bot_auth_file_log("{$status} {$why} ip=" . $clean($_SERVER['REMOTE_ADDR'] ?? '-') . " sig={$sig} id={$BOT_LOG['id']} fields={$BOT_LOG['fields']} ua=" . $clean($_SERVER['HTTP_USER_AGENT'] ?? '-'));
+    $BOT_LOG['why'] = $why; $BOT_LOG['sig'] = $sig;
     http_response_code($status);
     if ($body !== null) {
         header('Content-Type: application/json; charset=UTF-8');
@@ -98,14 +71,12 @@ try {
 
     $e = json_decode($raw, true);
     if (!is_array($e)) { bot_auth_out(400, ['error' => ['code' => 'INVALID_PARAMETER']], 'json', $sig); exit; }
-    $BOT_LOG['fields'] = bot_auth_shape($e) ?: '-';
     // 다른 프로젝트 요청은 받지 않음 (프로젝트 번호가 있을 때)
     $project = $e['settings']['project_id'] ?? null;
     $mine = (int)($cfg['xsolla_project_id'] ?? (defined('DEFAULT_STORE_PROJECT') ? DEFAULT_STORE_PROJECT : 317991));
     if ($project !== null && (int)$project !== $mine) { bot_auth_out(400, ['error' => ['code' => 'INVALID_PARAMETER']], 'project', $sig); exit; }
 
     $uid = $e['user']['id'] ?? $e['user_id'] ?? $e['id'] ?? null;
-    $BOT_LOG['id'] = bot_auth_mask($uid);
     if (!is_scalar($uid)) { bot_auth_out(400, ['error' => ['code' => 'INVALID_PARAMETER']], 'no-id', $sig); exit; }
     $uid = trim((string)$uid);
     // Xsolla Login 사용자 ID는 UUID. 앞뒤 공백·대문자로 붙여 넣어도 찾게

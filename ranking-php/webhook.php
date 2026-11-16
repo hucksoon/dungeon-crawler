@@ -159,6 +159,13 @@ function webhook_fulfill(PDO $pdo, array $row, array $e): string {
 // 서버 명령(admin.php)이 함수만 빌려 쓸 때
 if (defined('WEBHOOK_NO_ROUTE')) return;
 
+// 운영자 로그 파일 (dc#181): logch.php에서 보는 logs/연/월/webhook-YYYY-MM-DD.log에 받은 내용·보낸 내용 (개인정보는 가림, filelog.php)
+require_once __DIR__ . '/filelog.php';
+filelog_begin('webhook', function () {
+    $j = json_decode((string)file_get_contents('php://input', false, null, 0, FILELOG_MAX_BYTES), true);
+    return ['type' => is_array($j) && is_scalar($j['notification_type'] ?? null) ? (string)$j['notification_type'] : '-'];
+});
+
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(404); exit; }
     $secret = (string)(config()['webhook_secret'] ?? '');

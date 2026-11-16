@@ -204,11 +204,7 @@ Xsolla Bot in Discord에서 플레이어가 `/shop`에 플레이어 ID(게임 �
 - 서명 방식이 문서에 없어서 서명이 없어도 처리하고, 서명 상태만 로그에 남겨요 (`sig=none` / `sig=ok:webhook_secret` / `sig=other`). **2026-11-10 확인: 봇은 서명을 보내지 않아요(`sig=none`).** 그래서 `bot_auth_require_sig => true`를 켜면 봇 로그인이 모두 막혀요
 - `bot_auth_ips`(쉼표로 여럿)를 넣으면 그 IP 말고는 403. 문서에는 34.102.38.178로 나오지만 **실제로 온 IP는 34.45.1.118**(구글 클라우드, `Go-http-client/1.1`)이에요. IP가 바뀌면 봇이 막히니 켤 때는 로그로 IP를 먼저 확인하세요
 - 로그: `sudo grep -h '\[bot_auth\]' /var/log/apache2/*error*.log | tail` (결과와 서명 상태만, ID·IP는 남기지 않음)
-- 로그 파일 (dc#180): 운영자 로그 보기 페이지 `logch.php`가 읽는 `/var/www/html/logs/연/월/bot_auth-YYYY-MM-DD.log`(한국 시간 하루 한 파일)에도 한 줄씩. logch.php 종류(prefix)에 **bot_auth**가 생겨요
-  - 예: `[2026-11-16 14:34:17 KST] 200 ok ip=34.45.1.118 sig=none id=e8abac14-**** fields=settings{merchant_id,project_id},user{country,id} ua=Go-http-client/1.1`
-  - 이유: `ok` · `unknown`(게임 계정 아님) · `format`(UUID 아님) · `json` · `no-id` · `project` · `sig` · `ip` · `method` · `size`
-  - ID는 앞 8자리만, 요청 값(나라 등)·이메일은 쓰지 않음 (항목 이름만). 다른 폴더는 config에 `'bot_auth_log_dir' => '/경로'`, 끄려면 `''`
-  - 폴더는 웹 서버(www-data)가 쓸 수 있어야 해요. 기존 로그와 같은 `/var/www/html/logs`라면 그대로 돼요
+- 로그 파일: 아래 "운영자 로그 파일" (종류 **bot_auth**)
 - 결제 중 확인(`user_validation`)과 결제 웹훅은 그대로 `webhook.php`
 - `webhook.php`의 사용자 확인은 결과와 요청 모양(항목 이름만)·ID 종류를 남겨요 (dc#176). 디스코드 봇 · 웹훅 시험 버튼 · 결제 중 확인을 구분할 때:
   `sudo grep -h '\[webhook\] user_validation' /var/log/apache2/*error*.log | tail` → `ok|unknown fields=… id=uuid|test|other` (ID·이메일·IP 값은 남기지 않음)
@@ -241,6 +237,24 @@ sudo a2enconf ssl-debug && sudo systemctl reload apache2
 sudo grep -hE 'AH02008|alert' /var/log/apache2/*error*.log | tail   # "alert bad certificate (42)"면 인증서 문제
 sudo a2disconf ssl-debug && sudo systemctl reload apache2
 ```
+
+## 운영자 로그 파일 (filelog.php, dc#180 · dc#181)
+
+운영자 로그 보기 페이지 `logch.php`가 읽는 `/var/www/html/logs/연/월/<종류>-YYYY-MM-DD.log`(한국 시간 하루 한 파일)에 **받은 내용 · 보낸 내용**을 한 건씩 남겨요. logch.php 종류(prefix)에 **webhook**(결제 웹훅 · 사용자 확인)과 **bot_auth**(디스코드 봇 로그인)가 생겨요.
+
+```
+[2026-11-16 14:54:01][order_paid][204]{
+    "request": { "notification_type": "order_paid", "items": [{ "sku": "skin_bolt_blue", "quantity": 1 }], "order": { "id": 123456, … },
+                 "user": { "external_id": "e8abac14****", "email": "p***@xsolla.com", "country": "KR" }, … },
+    "response": null,
+    "meta": { "ip": "185.30.21.18", "ua": "XsollaAgent/1.0" }
+}
+```
+- 머리: `[시각 KST][알림 종류][상태 코드]`. 204는 성공(보낸 내용 없음), 400 등은 `response`에 오류 코드
+- **개인정보는 가려요** (사용자 정보는 운영자도 긴급할 때만): 이메일 `ab***@도메인`, 사용자 ID 앞 8자리, IP 앞 두 자리(`8.29.*.*`), 이름·전화·우편번호·주소는 첫 글자만, 토큰·서명·카드 값은 `[지움]`. 상품·수량·금액·주문 번호·거래 번호·나라는 그대로
+- bot_auth는 `meta`에 이유(`ok` · `unknown` · `format` · `json` · `no-id` · `project` · `sig` · `ip` · `method` · `size`)와 서명 상태
+- 다른 폴더: config에 `'file_log_dir' => '/경로'` (예전 이름 `bot_auth_log_dir`도 돼요), 끄려면 `''`. 폴더는 웹 서버(www-data)가 쓸 수 있어야 해요
+- **logch.php는 로그인 없이 열리는 페이지예요.** 가려도 주문·상품 내용은 보이니 Basic 인증이나 IP 제한으로 막아 두세요
 
 ## Xsolla 웹훅 (webhook.php)
 

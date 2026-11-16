@@ -8,7 +8,8 @@ const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
 const DB = path.join(DIR, "webhook.sqlite"); for (const f of [DB, DB + "-wal", DB + "-shm"]) fs.rmSync(f, { force: true });
 const SECRET = "test-webhook-secret";  // 가짜 키
 const CFG = path.join(DIR, "config.webhook.php"), CFG0 = path.join(DIR, "config.webhook0.php");
-fs.writeFileSync(CFG, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}', 'xsolla_project_id' => 317991, 'webhook_secret' => '${SECRET}']);\n`);
+const LOGS = path.join(DIR, "webhook-logs"); fs.rmSync(LOGS, { recursive: true, force: true }); fs.mkdirSync(LOGS, { recursive: true });   // dc#181: logch.php용 로그 파일
+fs.writeFileSync(CFG, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}', 'xsolla_project_id' => 317991, 'webhook_secret' => '${SECRET}', 'file_log_dir' => '${LOGS}']);\n`);
 fs.writeFileSync(CFG0, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}']);\n`);
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -197,6 +198,19 @@ try {
   admin("boxes", "legacy", "--apply");
   const adm = execFileSync("php", [path.join(REPO, "ranking-php/admin.php"), "webhooks", "50"], { env: { ...process.env, RANKING_CONFIG: CFG } }).toString();
   check("admin.php webhooks: [캐시] for cash orders, granted / revoked / no user", adm.includes("[캐시]") && adm.includes("→ 우편함 지급") && adm.includes("→ 회수") && adm.includes("→ 사용자 없음"), adm);
+  // ---- 로그 파일 (dc#181): logch.php에서 보는 logs/연/월/webhook-YYYY-MM-DD.log, 받은 내용·보낸 내용 (개인정보는 가림) ----
+  const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), [Y, M] = kst.split("-");
+  const lf = path.join(LOGS, Y, M, `webhook-${kst}.log`), txt = fs.existsSync(lf) ? fs.readFileSync(lf, "utf8") : "";
+  const entries = [...txt.matchAll(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\[([a-z_\-]+)\]\[(\d{3})\](\{[\s\S]*?\n\})$/gm)].map(m => ({ type: m[2], status: +m[3], j: JSON.parse(m[4]) }));
+  check(`log file for logch.php: logs/${Y}/${M}/webhook-${kst}.log (${entries.length} entries)`, entries.length >= 10, lf);
+  const okv = entries.find(e => e.type === "user_validation" && e.status === 204 && e.j.request?.user?.country === "KR");
+  check(`user_validation entry: request masked (${JSON.stringify(okv?.j.request?.user)})`, okv && okv.j.request.user.id === "a1b2c3d4****" && /^b\*\*\*@example\.com$/.test(okv.j.request.user.email) && okv.j.request.user.ip === "203.0.*.*" && okv.j.response === null && okv.j.meta?.ip === "127.0.0.1", JSON.stringify(okv));
+  const bad = entries.find(e => e.type === "user_validation" && e.status === 400);
+  check("rejected user: response body logged (INVALID_USER)", bad?.j.response?.error?.code === "INVALID_USER", JSON.stringify(bad));
+  const op = entries.find(e => e.type === "order_paid" && e.status === 204 && e.j.request?.order?.id === 5001);
+  check(`order_paid entry: items, order, amount kept; buyer masked (${JSON.stringify(op?.j.request?.user)})`, op && op.j.request.items?.[0]?.sku === "box_ancient" && op.j.request.order.amount === "4.99" && op.j.request.billing?.transaction?.id === 9001 && op.j.request.user.external_id === "a1b2c3d4****" && op.j.request.user.email.startsWith("b***"), JSON.stringify(op));
+  check("bad signature is logged as 400 INVALID_SIGNATURE", entries.some(e => e.status === 400 && e.j.response?.error?.code === "INVALID_SIGNATURE"));
+  check("log file never has a full ID, email or IP", !txt.includes(USER) && !txt.includes(EMAIL) && !txt.includes(IP));
 } finally { php.kill(); php0.kill(); }
 check("400s logged with reason and type only", phpErr.includes("[webhook] 400 INVALID_USER type=user_validation") && phpErr.includes("[webhook] 400 INVALID_SIGNATURE") && !phpErr.includes(USER) && !phpErr.includes("test_xsolla_"), phpErr.slice(0, 300));
 check("user_validation logs result, field names and ID kind only (dc#176)", phpErr.includes("[webhook] user_validation unknown fields=notification_type,settings{merchant_id,project_id},user{id} id=test")
