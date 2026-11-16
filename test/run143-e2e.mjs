@@ -142,14 +142,14 @@ try {
   check("no page errors (reload)", A.errors.length === 0, A.errors.join("; "));
   await A.ctx.close();
 
-  // ---- 7. 레벨: 다음 레벨까지 ×1.3, 레벨 업마다 축복 ----
+  // ---- 7. 레벨: 다음 레벨까지 ×1.25 (dc#178, 예전 ×1.3), 레벨 업마다 축복 ----
   const L = await open({ ...BASE, rl_bless: "on", rl_save: save({ l: 5, x: 0, xn: 100 }) });
   await T(L.page, "auto"); await sleep(100);
   let l = await T(L.page, "s");
   check("blessings on: floor blessing picked, nothing waiting", l.pend === 0 && !l.modal, JSON.stringify(l));
   await T(L.page, "near", 1); await T(L.page, "xp", 3); await sleep(150);
   l = await T(L.page, "s");
-  check("level up 5 → 6: next level needs ×1.3 (100 → 130)", l.lv === 6 && l.xpNext === 130, JSON.stringify(l));
+  check("level up 5 → 6: next level needs ×1.25 (100 → 125)", l.lv === 6 && l.xpNext === 125, JSON.stringify(l));
   check("level up opens a blessing pick titled level up", l.pend === 1 && l.modal && l.title.includes("레벨 업") && l.title.includes("6"), JSON.stringify(l));
   await L.page.screenshot({ path: path.join(SHOTS, "run143-levelup.png") }).catch(() => {});
   await T(L.page, "auto"); await sleep(100);

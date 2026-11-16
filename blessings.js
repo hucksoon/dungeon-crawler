@@ -9,9 +9,13 @@
   const I18N = () => (root && root.RLI18N) || (typeof globalThis !== "undefined" && globalThis.RLI18N) || null;
   const tx = (key, ko, ...a) => { const L = I18N(); return L ? L.tx(key, ko, ...a) : (typeof ko === "function" ? ko(...a) : ko); };
 
-  // elem (dc#142): 속성 스킬 축복. 희귀보다 자주 보이게 (후보 3개 중 속성 축복이 하나라도 있을 확률 약 54%, 희귀보다 4배 자주). 꼭 나오지는 않음
-  const TIERS = { common: { weight: 75, color: "#8fd3ff" }, rare: { weight: 20, color: "#5aa9ff" }, legend: { weight: 5, color: "#ffcf5c" }, elem: { weight: 26, color: "#ff8a5c" } };
+  // elem (dc#142): 속성 스킬 축복
+  // 등급: 카드 색 (dc#178부터 나오는 확률은 등급과 상관없이 같음. 예전 weight: common 75 · rare 20 · legend 5 · elem 26)
+  const TIERS = { common: { color: "#8fd3ff" }, rare: { color: "#5aa9ff" }, legend: { color: "#ffcf5c" }, elem: { color: "#ff8a5c" } };
   const ELEM_MAX = 10;   // 속성 스킬 최고 단계 (dc#143)
+  // 각성 스킬이 후보에 나오는 그 속성 단계 (dc#178: Lv 10 → Lv 1. 속성마다 스킬 2개를 처음부터 같이 키움)
+  //   기본 스킬을 한 번은 골라야 열림: 각성 역병은 독에 걸린 적이 있어야 터지므로 독구름 없이 고르면 효과가 없음
+  const AW_FROM = 1;
   const FUSE_MAX = 5;    // 융합 스킬 최고 단계 (dc#168)
   // fx: 한 번 고를 때 더하는 값 (stats 키). max: 겹칠 수 있는 최대 횟수
   const BLESSINGS = {
@@ -38,11 +42,11 @@
     bolt: { icon: "⚡", name: "연쇄 번개", tier: "elem", max: ELEM_MAX, fx: { boltLv: 1 } },
     // 독구름 (dc#168): 네 번째 속성. 적 자리에 독구름을 깔고, 구름 위의 적은 턴마다 독 피해 + 중독
     poison: { icon: "☁", name: "독구름", tier: "elem", max: ELEM_MAX, fx: { poisonLv: 1 } },
-    // 각성 스킬 (dc#163): 속성 스킬을 Lv 10까지 찍으면 그 속성의 각성 스킬이 후보에 나옴 (원래 스킬은 Lv 10 그대로 계속). 각성도 Lv 10까지 (AWAKE)
-    fireAw: { icon: "👢", name: "각성 불의 장화", tier: "elem", max: ELEM_MAX, req: { fire: ELEM_MAX }, fx: { bootsLv: 1 } },
-    iceAw: { icon: "🧊", name: "각성 얼음 보호막", tier: "elem", max: ELEM_MAX, req: { ice: ELEM_MAX }, fx: { shieldLv: 1 } },
-    boltAw: { icon: "🧲", name: "각성 전자기장", tier: "elem", max: ELEM_MAX, req: { bolt: ELEM_MAX }, fx: { fieldLv: 1 } },
-    poisonAw: { icon: "☣", name: "각성 역병", tier: "elem", max: ELEM_MAX, req: { poison: ELEM_MAX }, fx: { plagueLv: 1 } },
+    // 각성 스킬 (dc#163): 그 속성을 AW_FROM 단계까지 찍으면 각성 스킬이 후보에 나옴 (dc#178: Lv 10 → Lv 1, 원래 스킬과 같이 키움). 각성도 Lv 10까지 (AWAKE)
+    fireAw: { icon: "👢", name: "각성 불의 장화", tier: "elem", max: ELEM_MAX, req: { fire: AW_FROM }, fx: { bootsLv: 1 } },
+    iceAw: { icon: "🧊", name: "각성 얼음 보호막", tier: "elem", max: ELEM_MAX, req: { ice: AW_FROM }, fx: { shieldLv: 1 } },
+    boltAw: { icon: "🧲", name: "각성 전자기장", tier: "elem", max: ELEM_MAX, req: { bolt: AW_FROM }, fx: { fieldLv: 1 } },
+    poisonAw: { icon: "☣", name: "각성 역병", tier: "elem", max: ELEM_MAX, req: { poison: AW_FROM }, fx: { plagueLv: 1 } },
     // 융합 스킬 (dc#168): 두 속성을 모두 Lv 10까지 찍으면 그 둘을 섞은 스킬이 후보에 나옴 (6가지, 최대 Lv FUSE_MAX). 규칙은 FUSE
     flamebolt: { icon: "🌩", name: "융합 불꽃 번개", tier: "elem", max: FUSE_MAX, req: { fire: ELEM_MAX, bolt: ELEM_MAX }, fx: { flameboltLv: 1 } },
     steam: { icon: "💨", name: "융합 증기 폭발", tier: "elem", max: FUSE_MAX, req: { fire: ELEM_MAX, ice: ELEM_MAX }, fx: { steamLv: 1 } },
@@ -87,13 +91,8 @@
   //   Lv  1  2  3  4  5  6  7  8  9  10
   //   주기 3  3  3  3  2  2  2  2  2  2   (화염구·얼음 폭발 범위: Lv 4부터 2칸, Lv 8부터 3칸 · 연쇄 번개: 1+Lv번, Lv 4부터 감전)
   //   피해 +12%씩, Lv 10 마스터는 +30% 더 (+138%) · 화염구·연쇄 번개 거리 Lv 7부터 4칸
-  // dc#160: 단계가 오를수록 그 속성 축복이 후보에 덜 나옴 (무게 × ELEM_SLOW^지금 단계, Lv 9면 약 13%)
-  //   한 속성만 고르는 사람: 30층에 Lv 7쯤, 50층까지 마스터는 10명 중 4명. 다시 뽑기를 고를 때마다 한 번씩 쓰면 35층쯤 마스터
-  //   (예전: 한 속성만 고르면 20층쯤, 다시 뽑기를 한 번씩 쓰면 10층쯤 Lv 10)
-  const ELEM_SLOW = 0.8;
-  // dc#168: 각성·융합 스킬은 덜 줄어듦 (× AW_SLOW^단계) — 속성 상한을 없앤 뒤 헬 전(나이트메어 50층)에 각성 마스터가 하나라도 있는 판이 절반쯤이라
-  //   (0.8이면 48%, 0.9면 시뮬레이션 tools/sim-v2.mjs)
-  const AW_SLOW = 0.9;
+  // dc#178: 단계가 오를수록 그 속성 축복이 덜 나오던 규칙(dc#160 ELEM_SLOW 0.8 · dc#168 AW_SLOW 0.9)을 없앰
+  //   축복 후보는 등급과 상관없이 모두 같은 확률 (아래 offer). 시뮬레이션 tools/sim-v2.mjs (docs/devlog/2026-11-12.md)
   const grow = (lv) => 12 * (lv - 1) + (lv >= ELEM_MAX ? 30 : 0);
   // dc#153: 범위 상한 — 몰려오는 광장에서 너무 넓게 쓸어서. 화염구·얼음 폭발은 Lv 7까지 1칸(3×3), Lv 8부터 2칸(5×5)이 끝
   //   (예전 Lv 4 2칸 · Lv 8 3칸 7×7), 연쇄 번개는 6번까지 (예전 1 + Lv, Lv 10 11번)
@@ -234,7 +233,7 @@
     for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
     return () => { h += 0x6d2b79f5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
-  // 고를 후보 3개: 아직 최대가 아닌 것 중에서, 축복은 등급 가중치로 (seed가 같으면 같은 후보)
+  // 고를 후보 3개: 아직 최대가 아닌 것 중에서 같은 확률로 (seed가 같으면 같은 후보)
   // elemOnly (dc#146): 첫 레벨 업처럼 속성 스킬 축복만 (고를 수 있는 게 없으면 보통 후보)
   function offer(seed, have = {}, relic = false, elemOnly = false) {
     const r = rng(seed);
@@ -246,13 +245,7 @@
     const out = [];
     while (out.length < OFFER && pool.length) {
       let i;
-      if (relic) i = Math.floor(r() * pool.length);
-      else {
-        const w = pool.map(id => TIERS[BLESSINGS[id].tier].weight / Object.values(BLESSINGS).filter(b => b.tier === BLESSINGS[id].tier && !b.req).length * (isElem(id) ? (ELEM_IDS.includes(id) ? ELEM_SLOW : AW_SLOW) ** (have[id] || 0) : 1));   // 나눌 때 각성·완벽한 물약(앞 단계가 필요)은 빼고 셈 (dc#163)
-        let x = r() * w.reduce((a, b) => a + b, 0);
-        i = 0;
-        while ((x -= w[i]) > 0 && i < w.length - 1) i++;
-      }
+      i = Math.floor(r() * pool.length);   // 유물 · 축복 모두 같은 확률 (dc#178: 축복도. 예전에는 등급 가중치 × 속성 단계마다 덜 나옴)
       out.push(pool.splice(i, 1)[0]);
     }
     return out;
@@ -273,7 +266,7 @@
     const t = fxText(d.fx, isElem(id) || id === "perfect" ? Math.max(1, lv) : 1);
     return ELEM_IDS.includes(id) && atk > 0 ? t + tx("bfx.now", (n) => ` (지금 공격력으로 한 번에 ${n})`, elemDmg(id, lv, atk)) : t;
   };
-  const api = { TIERS, BLESSINGS, RELICS, RELIC_MAX, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ICE_SLOW, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, ELEM_SLOW, AW_SLOW, ELEM_SLOTS, FLOOR_EVERY, elemHeld, swapElem, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
+  const api = { TIERS, BLESSINGS, RELICS, RELIC_MAX, CAPS, REROLL, OFFER, ELEM, ELEM_AREA, ICE_SLOW, POISON_LV, AWAKE, AWAKE_IDS, FUSE, FUSE_IDS, FUSE_MAX, ELEM_MAX, AW_FROM, ELEM_SLOTS, FLOOR_EVERY, elemHeld, swapElem, elemDmg, ELEM_IDS, isElem, elemUsed, cardText, nameOf, defOf, isRelic, fxText, totals, capsOf, offer, rerollCost, rng };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.RLBless = api;
 })(typeof window !== "undefined" ? window : globalThis);

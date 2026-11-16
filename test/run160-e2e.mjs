@@ -58,10 +58,10 @@ try {
   check(`rules: live ranged from floor ${M.RANGED.liveFrom}, share grows ${M.rangedLiveShare(2).toFixed(2)} → ${M.rangedLiveShare(26).toFixed(2)} → ${M.rangedLiveShare(50).toFixed(2)}`,
     M.RANGED.liveFrom === 2 && M.rangedLiveShare(2) < M.rangedLiveShare(26) && M.rangedLiveShare(26) < M.rangedLiveShare(50) && M.rangedLiveShare(60) === M.rangedLiveShare(50));
   check("guide (길잡이) blessing is gone", !B.BLESSINGS.guide && !Object.values(B.BLESSINGS).some(b => b.fx.guide));
-  // 속성 축복: Lv 9이면 처음보다 훨씬 덜 나옴
+  // 속성 축복: dc#160에는 Lv 9이면 처음보다 훨씬 덜 나왔음 → dc#178: 단계와 상관없이 같은 확률
   const seen = (have) => { let k = 0; for (let i = 0; i < 4000; i++) if (B.offer(`e${i}|0`, have).includes("fire")) k++; return k / 4000; };
   const s0 = seen({}), s9 = seen({ fire: 9 });
-  check(`element blessing shows up less as it levels (fire offered ${Math.round(s0 * 100)}% at Lv 0 → ${Math.round(s9 * 100)}% at Lv 9)`, B.ELEM_SLOW < 1 && s9 < s0 * 0.35, JSON.stringify({ s0, s9 }));
+  check(`dc#178: element blessing no longer fades as it levels (fire offered ${Math.round(s0 * 100)}% at Lv 0 → ${Math.round(s9 * 100)}% at Lv 9)`, B.ELEM_SLOW === undefined && s9 > s0 * 0.8, JSON.stringify({ s0, s9 }));
 
   const A = await open({ ...BASE, rl_save: save() });
   // ---- 2. 걷는 모습 ----

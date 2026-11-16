@@ -58,7 +58,7 @@ try {
   check("dc#171: 2 element slots — after fire 10 · bolt 10 no other base element card comes", B.ELEM_CAP === undefined && B.ELEM_SLOTS === 2 && !Array.from({ length: 200 }, (_, i) => B.offer(`cap${i}`, { fire: 10, bolt: 10 })).some(o => o.some(id => id === "ice" || id === "poison")));
   let any = 0; for (let i = 0; i < 3000; i++) if (B.offer(`w${i}`, {}).some(B.isElem)) any++;
   check(`element offers are common but not guaranteed (${Math.round(any / 30)}% of floors)`, any / 3000 > 0.45 && any / 3000 < 0.65);
-  check("monsters: normal depth ramp 1.37 (dc#171, was 3.0), nightmare/hell v2 multipliers", M.NORMAL.ramp === 1.37 && M.V2.nightmare.hp > 1 && M.V2.hell.hp > 1 && Math.abs(M.normalMul(50) - 2.37) < 1e-9);
+  check("monsters: normal depth ramp 2.5 (dc#178, was 1.37), nightmare/hell v2 multipliers", M.NORMAL.ramp === 2.5 && M.V2.nightmare.hp === 2.7 && M.V2.hell.hp === 3.9 && Math.abs(M.normalMul(50) - 3.5) < 1e-9);
   const legacy = J.TOWN.doors.filter(d => d.legacy).map(d => d.id).sort().join();
   check("town: nightmare · hell · gold dungeon · waypoint doors are legacy (hidden)", legacy === "golddungeon,golddungeonNM,hell,nightmare,waypoint" && J.TOWN.buildings.filter(b => !b.legacy).map(b => b.id).join() === "market,gate", legacy);
 

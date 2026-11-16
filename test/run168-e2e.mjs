@@ -19,7 +19,7 @@ const offered = (have, id) => Array.from({ length: 300 }, (_, i) => B.offer(`r16
 check("dc#171: with 2 elements held (fire 10 · ice 10) a third element (poison) never comes", !offered({ fire: 10, ice: 10 }, "poison") && offered({ fire: 10 }, "poison"));
 check("poison grows: area 1 → 4 → 9 → 16 tiles, alternating with damage / duration", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(l => B.ELEM.poison(l).size).join() === "1,1,2,2,3,3,3,3,4,4"
   && B.ELEM.poison(2).pct > B.ELEM.poison(1).pct && B.ELEM.poison(4).turns > B.ELEM.poison(3).turns && B.ELEM.poison(6).pct > B.ELEM.poison(5).pct && B.ELEM.poison(7).every < B.ELEM.poison(6).every);
-check("awakened plague needs poison Lv 10", !offered({ poison: 9 }, "poisonAw") && offered({ poison: 10 }, "poisonAw") && B.BLESSINGS.poisonAw.name.startsWith("각성 "));
+check("awakened plague needs poison picked first (dc#178: Lv 1, was Lv 10)", !offered({}, "poisonAw") && !offered({ fire: 3 }, "poisonAw") && offered({ poison: 1 }, "poisonAw") && B.BLESSINGS.poisonAw.name.startsWith("각성 "));
 check("6 fusion skills, one per pair of elements", Object.keys(B.FUSE_IDS).length === 6 && new Set(Object.values(B.FUSE_IDS).map(p => [...p].sort().join("+"))).size === 6);
 check("fusion appears only when both elements are Lv 10", !offered({ fire: 10, bolt: 9 }, "flamebolt") && offered({ fire: 10, bolt: 10 }, "flamebolt") && !offered({ fire: 10, bolt: 10 }, "steam"));
 check("fusion cards say what they do", Object.keys(B.FUSE_IDS).every(id => /Lv 1: /.test(B.cardText(id, 1)) && B.BLESSINGS[id].max === B.FUSE_MAX));

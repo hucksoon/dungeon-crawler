@@ -204,6 +204,11 @@ Xsolla Bot in Discord에서 플레이어가 `/shop`에 플레이어 ID(게임 �
 - 서명 방식이 문서에 없어서 서명이 없어도 처리하고, 서명 상태만 로그에 남겨요 (`sig=none` / `sig=ok:webhook_secret` / `sig=other`). **2026-11-10 확인: 봇은 서명을 보내지 않아요(`sig=none`).** 그래서 `bot_auth_require_sig => true`를 켜면 봇 로그인이 모두 막혀요
 - `bot_auth_ips`(쉼표로 여럿)를 넣으면 그 IP 말고는 403. 문서에는 34.102.38.178로 나오지만 **실제로 온 IP는 34.45.1.118**(구글 클라우드, `Go-http-client/1.1`)이에요. IP가 바뀌면 봇이 막히니 켤 때는 로그로 IP를 먼저 확인하세요
 - 로그: `sudo grep -h '\[bot_auth\]' /var/log/apache2/*error*.log | tail` (결과와 서명 상태만, ID·IP는 남기지 않음)
+- 로그 파일 (dc#180): 운영자 로그 보기 페이지 `logch.php`가 읽는 `/var/www/html/logs/연/월/bot_auth-YYYY-MM-DD.log`(한국 시간 하루 한 파일)에도 한 줄씩. logch.php 종류(prefix)에 **bot_auth**가 생겨요
+  - 예: `[2026-11-16 14:34:17 KST] 200 ok ip=34.45.1.118 sig=none id=e8abac14-**** fields=settings{merchant_id,project_id},user{country,id} ua=Go-http-client/1.1`
+  - 이유: `ok` · `unknown`(게임 계정 아님) · `format`(UUID 아님) · `json` · `no-id` · `project` · `sig` · `ip` · `method` · `size`
+  - ID는 앞 8자리만, 요청 값(나라 등)·이메일은 쓰지 않음 (항목 이름만). 다른 폴더는 config에 `'bot_auth_log_dir' => '/경로'`, 끄려면 `''`
+  - 폴더는 웹 서버(www-data)가 쓸 수 있어야 해요. 기존 로그와 같은 `/var/www/html/logs`라면 그대로 돼요
 - 결제 중 확인(`user_validation`)과 결제 웹훅은 그대로 `webhook.php`
 - `webhook.php`의 사용자 확인은 결과와 요청 모양(항목 이름만)·ID 종류를 남겨요 (dc#176). 디스코드 봇 · 웹훅 시험 버튼 · 결제 중 확인을 구분할 때:
   `sudo grep -h '\[webhook\] user_validation' /var/log/apache2/*error*.log | tail` → `ok|unknown fields=… id=uuid|test|other` (ID·이메일·IP 값은 남기지 않음)
