@@ -6,7 +6,9 @@ const REPO = process.argv[2];
 const DIR = path.dirname(new URL(import.meta.url).pathname) + "/php";
 const DB = path.join(DIR, "botauth.sqlite"); for (const f of [DB, DB + "-wal", DB + "-shm"]) fs.rmSync(f, { force: true });
 const SECRET = "test-webhook-secret", JWT_SECRET = "botauth-jwt";   // 가짜 키
-const cfg = (name, extra) => { const p = path.join(DIR, `config.botauth${name}.php`); fs.writeFileSync(p, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}', 'xsolla_project_id' => 317991, 'webhook_secret' => '${SECRET}'${extra}]);\n`); return p; };
+// 로그 파일 (dc#180): logch.php가 읽는 logs/연/월/bot_auth-YYYY-MM-DD.log
+const LOGS = path.join(DIR, "botauth-logs"); fs.rmSync(LOGS, { recursive: true, force: true }); fs.mkdirSync(LOGS, { recursive: true });
+const cfg = (name, extra) => { const p = path.join(DIR, `config.botauth${name}.php`); fs.writeFileSync(p, `<?php\n$c = require __DIR__ . '/config.test.php';\nreturn array_merge($c, ['db_dsn' => 'sqlite:${DB}', 'xsolla_project_id' => 317991, 'webhook_secret' => '${SECRET}', 'bot_auth_log_dir' => '${LOGS}'${extra}]);\n`); return p; };
 const results = []; const check = (n, ok, x = "") => { results.push(ok); console.log(`${ok ? "PASS" : "FAIL"} ${n}${x && !ok ? " — " + x : ""}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 let phpErr = "";
@@ -44,6 +46,16 @@ try {
   check("bot_auth_require_sig: unsigned → 401, signed → 200", (await auth(req(USER), { port: 8142 })).status === 401 && (await auth(req(USER), { port: 8142, sig: true })).status === 200);
   check("bot_auth_ips: other IP → 403", (await auth(req(USER), { port: 8143 })).status === 403);
   check("log has result and signature state but not the ID", /\[bot_auth\] 200 ok sig=none/.test(phpErr) && /sig=ok:webhook_secret/.test(phpErr) && !phpErr.includes(USER));
+  // ---- 로그 파일 ----
+  const kst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), [Y, M] = kst.split("-");
+  const lf = path.join(LOGS, Y, M, `bot_auth-${kst}.log`), txt = fs.existsSync(lf) ? fs.readFileSync(lf, "utf8") : "";
+  const lines = txt.trim().split("\n").filter(Boolean);
+  check(`log file for logch.php: logs/${Y}/${M}/bot_auth-${kst}.log (${lines.length} lines)`, lines.length >= 12 && /^[a-zA-Z0-9_\-]+-\d{4}-\d{2}-\d{2}\.log$/.test(path.basename(lf)), lf);
+  const ok = lines.find(l => / 200 ok /.test(l)) || "";
+  check(`a line: KST time, result, ip, signature, ID first 8 only, field names, sender (${ok.slice(0, 160)})`,
+    /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} KST\] 200 ok ip=127\.0\.0\.1 sig=none id=0a1b2c3d-\*\*\*\* fields=settings\{merchant_id,project_id\},user\{country,id\} ua=/.test(ok), ok);
+  check("log file has no full ID, no email, no body values (KR)", !txt.includes(USER) && !txt.includes("6666") && !txt.includes("@") && !/\bKR\b/.test(txt));
+  check("errors are logged too (404 · 400 · 401 · 403 · 405)", ["404 unknown", "404 format", "400 json", "400 project", "401 sig", "403 ip", "405 method"].every(k => txt.includes(k)), txt.slice(0, 400));
 } finally { for (const s of servers) s.kill(); }
 check("no php errors", !/Fatal|Warning|Deprecated/.test(phpErr), phpErr.slice(0, 300));
 console.log(`${results.filter(Boolean).length}/${results.length} passed`);
